@@ -1,0 +1,104 @@
+"""Entry point for the beakr CLI."""
+
+from __future__ import annotations
+
+import typer
+
+from beakr_cli.commands.auth import app as auth_app
+from beakr_cli.commands.kb import app as kb_app
+from beakr_cli.commands.workspace import app as workspace_app
+
+app = typer.Typer(
+    name="beakr",
+    help="CLI for Beakr's knowledge base. Query, search, and browse your team's knowledge base from the terminal.",
+    no_args_is_help=True,
+)
+
+app.add_typer(auth_app, name="auth")
+app.add_typer(kb_app, name="kb")
+app.add_typer(workspace_app, name="workspace")
+
+
+@app.command()
+def version() -> None:
+    """Show the CLI version."""
+    from beakr_cli import __version__
+
+    print(f"beakr-cli {__version__}")
+
+
+@app.command()
+def research(
+    query: str = typer.Argument(..., help="The question to answer."),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    space: str | None = typer.Option(None, "--space", "-s", help="Space/group ID to scope the query."),
+    project: str | None = typer.Option(None, "--project", "-P", help="Project ID to scope the query."),
+) -> None:
+    """Ask a question and get a researched answer with citations."""
+    from beakr_cli.client import api_post, scope_params
+    from beakr_cli.output import console, err_console, is_piped, print_json, print_markdown
+
+    params = scope_params(space=space, project=project)
+    body = {"query": query, **params}
+
+    err_console.print("[dim]Researching...[/dim]")
+    try:
+        data = api_post("/v1/knowledge/research", json=body)
+    except Exception as e:
+        err_console.print(f"[red]Error: {e}[/red]")
+        raise typer.Exit(1)
+
+    if json_out or is_piped():
+        print_json(data)
+        return
+
+    import re
+
+    answer = data.get("answer", "")
+    sources = data.get("sources", {})
+
+    # Replace {{key}} tokens with [N] numbered refs
+    seen_keys: list[str] = []
+    def _replace_token(m):
+        key = m.group(1)
+        if key not in seen_keys:
+            seen_keys.append(key)
+        return f"[{seen_keys.index(key) + 1}]"
+
+    formatted = re.sub(r"\{\{([^}]+)\}\}", _replace_token, answer)
+    if formatted:
+        print_markdown(formatted)
+
+    if seen_keys:
+        console.print("\n[bold]Sources:[/bold]")
+        for i, key in enumerate(seen_keys, 1):
+            src = sources.get(key, {})
+            source_type = src.get("type", key.split(":")[0] if ":" in key else "unknown")
+            title = src.get("title", "")
+            url = src.get("web_view_url", "")
+            line = f"  [{i}] ({source_type}) {title}"
+            if url:
+                line += f"\n      {url}"
+            console.print(line)
+
+    confidence = data.get("confidence", "")
+    gaps = data.get("gaps", "")
+    meta_parts = []
+    if confidence:
+        meta_parts.append(f"Confidence: {confidence}")
+    if gaps:
+        meta_parts.append(f"Gaps: {gaps}")
+    if meta_parts:
+        console.print(f"\n[dim]{' | '.join(meta_parts)}[/dim]")
+
+
+@app.command()
+def mcp() -> None:
+    """Start the MCP server for Claude Code / AI assistant integration."""
+    from beakr_cli.mcp_server import run_server
+
+    run_server()
+
+
+if __name__ == "__main__":
+    app()
