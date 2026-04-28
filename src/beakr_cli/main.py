@@ -100,5 +100,39 @@ def mcp() -> None:
     run_server()
 
 
+@app.command()
+def install(
+    client: str = typer.Option(
+        "auto",
+        "--client",
+        "-c",
+        help="Which client: auto (detect installed), claude, codex, or all.",
+    ),
+    scope: str = typer.Option(
+        "user",
+        "--scope",
+        "-s",
+        help="user (~/.claude, ~/.codex) or project (./.claude, ./.agents).",
+    ),
+    uninstall: bool = typer.Option(False, "--uninstall", help="Remove installed skills and commands."),
+    force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files."),
+) -> None:
+    """Install Beakr skills and slash commands into Claude Code and/or Codex."""
+    from beakr_cli.commands.install import Client, Scope, install_command
+
+    try:
+        client_enum = Client(client)
+    except ValueError:
+        typer.echo(f"Invalid --client '{client}'. Choose: auto, claude, codex, all.")
+        raise typer.Exit(2)
+    try:
+        scope_enum = Scope(scope)
+    except ValueError:
+        typer.echo(f"Invalid --scope '{scope}'. Choose: user, project.")
+        raise typer.Exit(2)
+
+    install_command(client=client_enum, scope=scope_enum, uninstall=uninstall, force=force)
+
+
 if __name__ == "__main__":
     app()

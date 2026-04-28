@@ -97,6 +97,42 @@ user's personal space. They do not write immediately; the assistant should show
 or list the proposal and only call `kb_accept_proposal` after the user explicitly
 asks to apply that proposal.
 
+## Skills (Claude Code & Codex)
+
+The CLI ships with a Beakr skill and slash commands you can install into your
+Claude Code or Codex setup. They teach the assistant *when* and *how* to use
+the MCP tools (research workflows, propose-then-accept patterns, citation
+discipline).
+
+```bash
+# Install for all detected clients (~/.claude and/or ~/.codex)
+beakr install
+
+# Install for one client explicitly
+beakr install --client claude
+beakr install --client codex
+
+# Install into the current project (./.claude and ./.agents/skills) — committed,
+# shared with teammates
+beakr install --scope project
+
+# Overwrite existing files
+beakr install --force
+
+# Remove
+beakr install --uninstall
+```
+
+What gets installed:
+
+- **Claude Code:** `~/.claude/skills/beakr/` (skill + examples + reference) and
+  `~/.claude/commands/kb-*.md` (slash commands: `/kb-search`, `/kb-research`,
+  `/kb-write`, `/kb-audit`).
+- **Codex:** `~/.codex/skills/beakr/` (same skill, invoked as `$beakr` or via
+  `/skills`).
+
+Restart Claude Code or Codex after installing if the skill doesn't appear.
+
 ## Environment variables
 
 | Variable | Description |
