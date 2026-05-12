@@ -58,8 +58,17 @@ fi
 
 # 4. Run the one-shot setup: auth prompt + skills + MCP registration for any
 #    detected client (Claude Code, Codex). Pass through any user flags.
+#
+# When invoked via `curl | sh`, stdin is the pipe from curl — typer prompts
+# would silently skip. Redirect stdin from /dev/tty so interactive prompts
+# (e.g. "Use existing API key? [Y/n]") reach the user's terminal. Fall back
+# to inherited stdin when /dev/tty isn't available (CI, no controlling tty).
 log "Running 'beakr setup' ..."
-beakr setup "$@"
+if [ -e /dev/tty ]; then
+  beakr setup "$@" < /dev/tty
+else
+  beakr setup "$@"
+fi
 
 cat <<'EOF'
 
