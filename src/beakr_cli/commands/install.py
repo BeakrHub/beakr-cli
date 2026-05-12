@@ -7,6 +7,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 from enum import Enum
 from pathlib import Path
 
@@ -404,13 +405,17 @@ def _unregister_codex_mcp() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _maybe_auth() -> None:
-    """Prompt for an API key and verify it, unless one is already configured."""
+def _identity_summary(data: dict) -> str:
+    user = data.get("user", data)
+    org = data.get("personal_org", data)
+    name = user.get("display_name") or user.get("primary_email") or "unknown"
+    org_name = org.get("name") or org.get("slug") or "unknown"
+    return f"{name} in {org_name}"
+
+
+def _prompt_and_save_new_key() -> None:
     from beakr_cli import config as beakr_config
     from beakr_cli.client import api_get
-
-    if os.environ.get("BEAKR_API_KEY") or beakr_config.get("api_key"):
-        return
 
     console.print("\n[bold]Beakr authentication[/bold]")
     console.print("Get an API key at [cyan]https://thebeakr.com/settings/api-keys[/cyan]")
@@ -425,13 +430,56 @@ def _maybe_auth() -> None:
         beakr_config.delete_key("api_key")
         err_console.print(f"[red]Auth failed:[/red] {exc}")
         raise typer.Exit(1) from exc
+    console.print(f"Authenticated as [bold]{_identity_summary(data)}[/bold]")
 
-    user = data.get("user", data)
-    org = data.get("personal_org", data)
-    console.print(
-        f"Authenticated as [bold]{user.get('display_name', user.get('primary_email', 'unknown'))}[/bold] "
-        f"in [bold]{org.get('name', org.get('slug', 'unknown'))}[/bold]"
-    )
+
+def _maybe_auth() -> None:
+    """Confirm or replace an existing API key, or prompt for a new one."""
+    from beakr_cli import config as beakr_config
+    from beakr_cli.client import api_get
+
+    env_key = os.environ.get("BEAKR_API_KEY")
+    config_key = beakr_config.get("api_key")
+
+    # 1. Env var wins — verify and announce, don't prompt.
+    if env_key:
+        try:
+            data = api_get("/v1/me")
+            console.print(
+                f"Using [bold]$BEAKR_API_KEY[/bold] ([dim]{_identity_summary(data)}[/dim])"
+            )
+        except Exception as exc:
+            err_console.print(f"[red]$BEAKR_API_KEY didn't verify:[/red] {exc}")
+            raise typer.Exit(1) from exc
+        return
+
+    # 2. Stored key — verify, then ask whether to keep using it.
+    if config_key:
+        try:
+            data = api_get("/v1/me")
+            identity = _identity_summary(data)
+        except Exception:
+            err_console.print(
+                "[yellow]Existing API key didn't verify; let's get a new one.[/yellow]"
+            )
+            beakr_config.delete_key("api_key")
+            _prompt_and_save_new_key()
+            return
+
+        # Non-interactive (piped/CI): keep the existing verified key silently.
+        if not sys.stdin.isatty():
+            console.print(f"Using existing API key ([dim]{identity}[/dim])")
+            return
+
+        console.print(f"\nExisting API key found for [bold]{identity}[/bold].")
+        if typer.confirm("Use this key?", default=True):
+            return
+        beakr_config.delete_key("api_key")
+        _prompt_and_save_new_key()
+        return
+
+    # 3. Nothing configured — full prompt path.
+    _prompt_and_save_new_key()
 
 
 # ---------------------------------------------------------------------------
