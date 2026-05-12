@@ -12,7 +12,21 @@ from beakr_cli.client import get_async_client, scope_params
 mcp = FastMCP(
     "beakr",
     instructions=(
-        "Beakr -- your organization's knowledge base and connected services.\n\n"
+        "Beakr is the team's organizational memory and connected services. "
+        "Teams write decisions, processes, ownership, and dated events here so "
+        "that 6 months later the answer to 'why did we do X' is one search "
+        "away instead of lost in Slack archives or tribal knowledge.\n\n"
+        "RESPONSIBILITIES:\n"
+        "Use Beakr to answer questions about the user's org with citations. "
+        "When the conversation produces something durable (a decision with "
+        "rationale, a named process, an ownership assignment, a dated event, "
+        "a key relationship), propose adding it -- don't wait to be asked. "
+        "First check with kb_search that it isn't already captured, then "
+        "surface a brief suggestion before writing ('this seems worth "
+        "capturing -- want me to propose it?'). Never auto-write; always go "
+        "through proposals and wait for explicit acceptance. Cite the current "
+        "session as a 'conversation' inline source with meta.excerpt when the "
+        "information originates from this chat.\n\n"
         "TOOLS:\n"
         "- 'research': Primary tool. Ask any question and get a cited answer from the "
         "wiki, documents, and connected services (Slack, Gmail, Calendar, Jira, etc.). "

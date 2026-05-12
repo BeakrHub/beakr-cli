@@ -5,7 +5,9 @@ description: "Access your organization's knowledge base, research questions with
 
 # Beakr Knowledge Base
 
-Use the Beakr MCP tools to search, read, research, and write to the organization's knowledge base.
+Beakr is the team's organizational memory. Teams write decisions, processes, ownership, and dated events here so that 6 months later the answer to "why did we do X" is one search away instead of lost in Slack archives or tribal knowledge.
+
+Use the Beakr MCP tools to search and read existing knowledge — and to add to it when the conversation produces something durable.
 
 ## When to use
 
@@ -13,6 +15,37 @@ Use the Beakr MCP tools to search, read, research, and write to the organization
 - User wants to look something up ("What do we know about X?", "Who owns Y?")
 - User wants to research a topic across documents and connected services
 - User wants to create, update, or audit knowledge base pages
+- **The conversation itself surfaces durable information worth capturing** (see "Proactive capture" below)
+
+## Proactive capture
+
+You are not just a read interface. When the conversation produces something durable, **propose adding it — don't wait to be asked**.
+
+**Capture when all of:**
+- **Durable**: would still matter in 6 months
+- **Shareable**: others would benefit, not just this user right now
+- **Not already in Beakr**: check with `kb_search` first
+- **In scope**: the user can write to it (their personal project, or a team project they belong to — confirm with `list_projects`)
+
+**Good candidates:**
+- Decisions with rationale ("we chose X over Y because…")
+- Named processes ("here's how we onboard a customer")
+- Role / ownership assignments ("Alex owns billing")
+- Dated events: launches, hires, fundraising rounds, incidents
+- External relationships: investors, partners, key vendors
+- Recurring questions you just answered
+
+**Skip:**
+- Debugging traces, transient state
+- Information already in source code, git history, Linear/Jira tickets
+- Hot takes, speculation, "thinking out loud"
+- Anything the user clearly considers ephemeral
+
+**Etiquette:**
+- **Surface the suggestion before writing**: "This decision about X seems worth capturing — want me to propose it for your wiki?"
+- Never auto-write. Always propose, always wait for explicit OK.
+- One capture offer per significant thread — don't pepper the user.
+- Cite the current session as `conversation:<short-id>` with `meta.excerpt` so the source is traceable.
 
 ## Core tools
 
