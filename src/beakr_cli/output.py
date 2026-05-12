@@ -44,13 +44,12 @@ def print_pages_table(pages: list[dict]) -> None:
         err_console.print("No pages found.")
         return
 
-    columns = ["Title", "Type", "Slug", "Rev", "Updated"]
+    columns = ["Title", "Type", "Rev", "Updated"]
     rows = []
     for p in pages:
         rows.append([
             p.get("title", ""),
             p.get("page_type", ""),
-            p.get("slug", ""),
             str(p.get("revision", "")),
             p.get("updated_at", "")[:10] if p.get("updated_at") else "",
         ])
@@ -67,10 +66,9 @@ def print_search_results(results: list[dict]) -> None:
 
     for r in results:
         title = r.get("title", "Untitled")
-        slug = r.get("slug", "")
         score = r.get("score", 0)
         snippet = r.get("snippet", r.get("summary", ""))[:120]
-        console.print(f"[bold]{title}[/bold]  ({slug})  score={score:.2f}")
+        console.print(f"[bold]{title}[/bold]  score={score:.2f}")
         if snippet:
             console.print(f"  {snippet}")
         console.print()
