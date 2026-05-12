@@ -2,11 +2,13 @@
 # install.sh - Bootstrap the Beakr CLI and wire it into Claude Code / Codex.
 #
 # Usage:
-#   curl -fsSL https://install.thebeakr.com | sh
+#   curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh | sh
+#
+# (Future: curl -fsSL https://install.thebeakr.com | sh — same script, prettier URL.)
 #
 # Pass flags through to `beakr setup`:
-#   curl -fsSL https://install.thebeakr.com | sh -s -- --no-auth
-#   curl -fsSL https://install.thebeakr.com | sh -s -- --client claude --force
+#   curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh | sh -s -- --no-auth
+#   curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh | sh -s -- --client claude --force
 
 set -eu
 

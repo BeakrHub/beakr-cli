@@ -14,8 +14,10 @@ If you only want one, install both anyway — they don't conflict and the MCP se
 ## One-line install
 
 ```bash
-curl -fsSL https://install.thebeakr.com | sh
+curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh | sh
 ```
+
+(Once `install.thebeakr.com` is wired up, `curl -fsSL https://install.thebeakr.com | sh` will work too — same script, prettier URL.)
 
 That's it. The script:
 
@@ -31,10 +33,10 @@ Pass flags through the pipe if you want non-interactive behavior:
 
 ```bash
 # Skip the API key prompt (auth later with `beakr auth login`)
-curl -fsSL https://install.thebeakr.com | sh -s -- --no-auth
+curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh | sh -s -- --no-auth
 
 # Only wire Claude Code, force-overwrite anything that exists
-curl -fsSL https://install.thebeakr.com | sh -s -- --client claude --force
+curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh | sh -s -- --client claude --force
 ```
 
 ## Manual install
