@@ -1,14 +1,14 @@
-"""Knowledge base commands: ls, cat, search, grep, blame, log, sources, provenance, links, timeline, research."""
+"""Knowledge base commands."""
 
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Optional
 
 import typer
 
-from beakr_cli.client import api_get, api_post, get_personal_space_id, scope_params
+from beakr_cli.citations import CitationValidationError, validate_proposal_sections
+from beakr_cli.client import api_get, api_post, get_personal_project_id, scope_params
 from beakr_cli.output import (
     console,
     err_console,
@@ -28,9 +28,25 @@ app.add_typer(propose_app, name="propose")
 app.add_typer(proposals_app, name="proposals")
 
 # Common scope options reused across commands
-_project_opt = typer.Option(None, "--project", "-P", help="Project ID to scope the query.")
-_space_opt = typer.Option(None, "--space", "-s", help="Space/group ID to scope the query.")
-_mine_opt = typer.Option(False, "--mine", "-m", help="Scope to your personal space only.")
+_project_opt = typer.Option(None, "--project", "-P", help="Project ID to scope the command.")
+_mine_opt = typer.Option(False, "--mine", "-m", help="Scope to your personal project only.")
+_sections_opt = typer.Option(
+    None,
+    "--sections",
+    help=(
+        "Section metadata JSON array, or @path. Include event_start/event_end/date_precision "
+        "and citations matching inline tokens like {{source_type:source_id}} in content."
+    ),
+)
+
+
+def _scope_params(*, project: str | None = None, mine: bool = False) -> dict:
+    """Build scope params and convert validation errors to CLI errors."""
+    try:
+        return scope_params(project=project, personal=mine)
+    except ValueError as exc:
+        err_console.print(str(exc))
+        raise typer.Exit(1) from exc
 
 
 def _scoped_get(
@@ -38,11 +54,10 @@ def _scoped_get(
     params: dict | None = None,
     *,
     project: str | None = None,
-    space: str | None = None,
     mine: bool = False,
 ):
     """GET with per-call scope override."""
-    merged = {**scope_params(space=space, project=project, personal=mine), **(params or {})}
+    merged = {**_scope_params(project=project, mine=mine), **(params or {})}
     return api_get(path, merged)
 
 
@@ -53,14 +68,18 @@ def _scoped_get(
 
 @app.command()
 def ls(
-    page_type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by page type."),
+    page_type: str | None = typer.Option(None, "--type", "-t", help="Filter by page type."),
     all_scopes: bool = typer.Option(False, "--all", "-a", help="Show pages across all scopes."),
     roots_only: bool = typer.Option(False, "--roots", help="Show only root pages (no parent)."),
-    parent: Optional[str] = typer.Option(None, "--parent", "-p", help="Filter to children of this page (slug, title, or UUID)."),
-    limit: Optional[int] = typer.Option(None, "--limit", "-n", help="Max pages to return."),
+    parent: str | None = typer.Option(
+        None,
+        "--parent",
+        "-p",
+        help="Filter to children of this page (title or UUID).",
+    ),
+    limit: int | None = typer.Option(None, "--limit", "-n", help="Max pages to return."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """List knowledge base pages in the current scope."""
@@ -72,13 +91,13 @@ def ls(
     if roots_only:
         params["roots_only"] = "true"
     if parent:
-        parent_data = _resolve_page(parent, project=project, space=space, mine=mine)
+        parent_data = _resolve_page(parent, project=project, mine=mine)
         if parent_data:
             params["parent_page_id"] = parent_data["id"]
     if limit is not None:
         params["limit"] = limit
 
-    data = _scoped_get("/v1/knowledge/wiki/pages", params, project=project, space=space, mine=mine)
+    data = _scoped_get("/v1/knowledge/wiki/pages", params, project=project, mine=mine)
     pages = data.get("pages", [])
 
     if json_out or is_piped():
@@ -94,15 +113,14 @@ def ls(
 
 @app.command()
 def cat(
-    page: str = typer.Argument(help="Page slug, title, or UUID."),
-    rev: Optional[int] = typer.Option(None, "--rev", "-r", help="Specific revision number."),
+    page: str = typer.Argument(help="Page title or UUID."),
+    rev: int | None = typer.Option(None, "--rev", "-r", help="Specific revision number."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Read a knowledge base page's content."""
-    page_data = _resolve_page(page, project=project, space=space, mine=mine)
+    page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
@@ -136,8 +154,7 @@ def search(
     query: str = typer.Argument(help="Search query."),
     limit: int = typer.Option(10, "--limit", "-n", help="Max results."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Semantic + keyword search across knowledge base pages."""
@@ -145,7 +162,6 @@ def search(
         "/v1/knowledge/wiki/search",
         {"q": query, "limit": limit},
         project=project,
-        space=space,
         mine=mine,
     )
     results = data.get("results", [])
@@ -165,8 +181,7 @@ def search(
 def grep(
     pattern: str = typer.Argument(help="Keyword or regex pattern."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Search page content by keyword or regex."""
@@ -174,7 +189,6 @@ def grep(
         "/v1/knowledge/wiki/search",
         {"q": pattern, "limit": 20},
         project=project,
-        space=space,
         mine=mine,
     )
     results = data.get("results", [])
@@ -192,14 +206,13 @@ def grep(
 
 @app.command()
 def blame(
-    page: str = typer.Argument(help="Page slug, title, or UUID."),
+    page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Show paragraph-level source attribution."""
-    page_data = _resolve_page(page, project=project, space=space, mine=mine)
+    page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
@@ -228,15 +241,14 @@ def blame(
 
 @app.command()
 def log(
-    page: Optional[str] = typer.Argument(None, help="Page slug, title, or UUID. Omit for global."),
+    page: str | None = typer.Argument(None, help="Page title or UUID. Omit for global."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Show revision history for a page, or recent ingestion events globally."""
     if page:
-        page_data = _resolve_page(page, project=project, space=space, mine=mine)
+        page_data = _resolve_page(page, project=project, mine=mine)
         if not page_data:
             return
         page_id = page_data["id"]
@@ -261,7 +273,6 @@ def log(
         data = _scoped_get(
             "/v1/knowledge/wiki/ingestion-events",
             project=project,
-            space=space,
             mine=mine,
         )
         events = data.get("events", [])
@@ -292,14 +303,13 @@ def log(
 
 @app.command()
 def sources(
-    page: str = typer.Argument(help="Page slug, title, or UUID."),
+    page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Show source documents that fed a knowledge base page."""
-    page_data = _resolve_page(page, project=project, space=space, mine=mine)
+    page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
@@ -333,14 +343,13 @@ def sources(
 
 @app.command()
 def provenance(
-    page: str = typer.Argument(help="Page slug, title, or UUID."),
+    page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Show section-level citations with stance."""
-    page_data = _resolve_page(page, project=project, space=space, mine=mine)
+    """Show section provenance rollups with inline citations and stance."""
+    page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
@@ -356,15 +365,24 @@ def provenance(
         err_console.print("No section provenance data.")
         return
 
-    for section_id, citations in prov.items():
-        console.print(f"\n[bold]{section_id}[/bold]")
-        for cit in citations if isinstance(citations, list) else [citations]:
+    for section_id, section_data in prov.items():
+        if isinstance(section_data, dict):
+            title = section_data.get("title") or section_id
+            citations = section_data.get("sources", [])
+        else:
+            title = section_id
+            citations = section_data if isinstance(section_data, list) else [section_data]
+
+        console.print(f"\n[bold]{title}[/bold]")
+        for cit in citations:
             stance = cit.get("stance", "support")
             source = cit.get("source_title", cit.get("source_id", "unknown"))
             style = {"support": "green", "contradicts": "red", "qualifies": "yellow"}.get(
                 stance, "white"
             )
-            console.print(f"  [{style}]{stance}[/{style}]  {source}")
+            inline = " inline" if cit.get("inline") else ""
+            key = f" ({cit.get('key')})" if cit.get("key") else ""
+            console.print(f"  [{style}]{stance}{inline}[/{style}]  {source}{key}")
 
 
 # ---------------------------------------------------------------------------
@@ -374,14 +392,13 @@ def provenance(
 
 @app.command()
 def links(
-    page: str = typer.Argument(help="Page slug, title, or UUID."),
+    page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Show pages that link to this page."""
-    page_data = _resolve_page(page, project=project, space=space, mine=mine)
+    page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
@@ -397,8 +414,8 @@ def links(
         err_console.print("No backlinks.")
         return
 
-    columns = ["Title", "Slug"]
-    rows = [[b.get("title", ""), b.get("slug", "")] for b in backlinks]
+    columns = ["Title"]
+    rows = [[b.get("title", "")] for b in backlinks]
     print_table(columns, rows)
 
 
@@ -409,15 +426,22 @@ def links(
 
 @app.command()
 def timeline(
-    query: Optional[str] = typer.Argument(None, help="Keyword filter (matches section titles, page titles, content)."),
-    start_date: Optional[str] = typer.Option(None, "--start", help="Start date YYYY-MM-DD."),
-    end_date: Optional[str] = typer.Option(None, "--end", help="End date YYYY-MM-DD."),
-    page_type: Optional[str] = typer.Option(None, "--type", "-t", help="Filter by page type."),
-    include_content: bool = typer.Option(False, "--content", "-c", help="Include section markdown content."),
+    query: str | None = typer.Argument(
+        None,
+        help="Keyword filter (matches section titles, page titles, content).",
+    ),
+    start_date: str | None = typer.Option(None, "--start", help="Start date YYYY-MM-DD."),
+    end_date: str | None = typer.Option(None, "--end", help="End date YYYY-MM-DD."),
+    page_type: str | None = typer.Option(None, "--type", "-t", help="Filter by page type."),
+    include_content: bool = typer.Option(
+        False,
+        "--content",
+        "-c",
+        help="Include section markdown content.",
+    ),
     limit: int = typer.Option(50, "--limit", "-n", help="Max events (max 100)."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Query temporal events across the knowledge base by date range and keyword."""
@@ -437,7 +461,6 @@ def timeline(
         "/v1/knowledge/wiki/timeline",
         params,
         project=project,
-        space=space,
         mine=mine,
     )
     events = data.get("events", [])
@@ -461,7 +484,7 @@ def timeline(
             f"[dim]{date_str}[/dim]  [cyan][{e.get('page_type', '')}][/cyan]  "
             f"[bold]{e.get('title', '')}[/bold]"
         )
-        console.print(f"  Page: {e.get('page_title', '')} ({e.get('page_slug', '')})")
+        console.print(f"  Page: {e.get('page_title', '')}")
         if e.get("content"):
             console.print()
             print_markdown(e["content"])
@@ -476,12 +499,11 @@ def timeline(
 @app.command()
 def graph(
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Dump the knowledge graph (nodes + edges)."""
-    data = _scoped_get("/v1/knowledge/wiki/graph", project=project, space=space, mine=mine)
+    data = _scoped_get("/v1/knowledge/wiki/graph", project=project, mine=mine)
 
     if json_out or is_piped():
         print_json(data)
@@ -504,12 +526,11 @@ def graph(
 @app.command()
 def stats(
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Show knowledge base statistics for the current scope."""
-    data = _scoped_get("/v1/knowledge/stats", project=project, space=space, mine=mine)
+    data = _scoped_get("/v1/knowledge/stats", project=project, mine=mine)
     if json_out or is_piped():
         print_json(data)
     else:
@@ -526,12 +547,11 @@ def stats(
 def research(
     query: str = typer.Argument(help="Question to research."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    project: Optional[str] = _project_opt,
-    space: Optional[str] = _space_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
     """Ask a question and get a researched answer with citations."""
-    body = {"query": query, **scope_params(space=space, project=project, personal=mine)}
+    body = {"query": query, **_scope_params(project=project, mine=mine)}
     data = api_post("/v1/knowledge/research", body)
 
     if json_out or is_piped():
@@ -576,11 +596,11 @@ def _proposal_scope(project: str | None, *, mine: bool = False) -> dict:
         raise typer.Exit(1)
     if project:
         return {"project_id": project}
-    personal_space_id = get_personal_space_id()
-    if not personal_space_id:
-        err_console.print("Could not resolve your personal space.")
+    personal_project_id = get_personal_project_id()
+    if not personal_project_id:
+        err_console.print("Could not resolve your personal project.")
         raise typer.Exit(1)
-    return {"group_id": personal_space_id}
+    return {"project_id": personal_project_id}
 
 
 def _proposal_filter_scope(project: str | None, *, mine: bool = False) -> dict:
@@ -622,6 +642,19 @@ def _load_sections_arg(value: str | None) -> list[dict]:
     return data
 
 
+def _validate_sections_arg(
+    content: str | None,
+    sections: list[dict],
+    *,
+    require_content: bool,
+) -> None:
+    try:
+        validate_proposal_sections(content, sections, require_content=require_content)
+    except CitationValidationError as exc:
+        err_console.print(f"Invalid --sections:\n{exc}")
+        raise typer.Exit(1) from exc
+
+
 def _print_proposal(proposal: dict) -> None:
     """Print a concise proposal summary."""
     console.print(f"[bold]Proposal:[/bold] {proposal.get('id')}")
@@ -661,30 +694,29 @@ def _accept_created_proposal(proposal: dict, *, accept: bool, yes: bool) -> None
 @propose_app.command("create")
 def propose_create(
     title: str = typer.Option(..., "--title", "-t", help="New page title."),
-    content: Optional[str] = typer.Option(None, "--content", "-c", help="New page markdown."),
-    file: Optional[Path] = typer.Option(None, "--file", "-f", help="Read page markdown from file."),
+    content: str | None = typer.Option(None, "--content", "-c", help="New page markdown."),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Read page markdown from file."),
     page_type: str = typer.Option("topic", "--type", help="Page type."),
     summary: str = typer.Option("", "--summary", help="Proposal summary."),
-    sections: Optional[str] = typer.Option(
-        None,
-        "--sections",
-        help="Section metadata JSON array, or @path. Includes citations and event dates.",
-    ),
-    parent: Optional[str] = typer.Option(None, "--parent", help="Parent page slug, title, or UUID."),
-    project: Optional[str] = _project_opt,
+    sections: str | None = _sections_opt,
+    parent: str | None = typer.Option(None, "--parent", help="Parent page title or UUID."),
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
     accept: bool = typer.Option(False, "--accept", help="Prompt to accept after creating."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation with --accept."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
     """Propose creating a wiki page."""
+    page_content = _read_content_arg(content, file)
+    section_data = _load_sections_arg(sections)
+    _validate_sections_arg(page_content, section_data, require_content=True)
     body = {
         "action": "create",
         "title": title,
-        "content": _read_content_arg(content, file),
+        "content": page_content,
         "page_type": page_type,
         "summary": summary,
-        "sections": _load_sections_arg(sections),
+        "sections": section_data,
         "parent": parent,
         **_proposal_scope(project, mine=mine),
     }
@@ -697,22 +729,23 @@ def propose_create(
 
 @propose_app.command("edit")
 def propose_edit(
-    page: str = typer.Argument(..., help="Page slug, title, or UUID."),
-    content: Optional[str] = typer.Option(None, "--content", "-c", help="Replacement markdown."),
-    file: Optional[Path] = typer.Option(None, "--file", "-f", help="Read replacement markdown from file."),
-    patches: Optional[str] = typer.Option(
+    page: str = typer.Argument(..., help="Page title or UUID."),
+    content: str | None = typer.Option(None, "--content", "-c", help="Replacement markdown."),
+    file: Path | None = typer.Option(
+        None,
+        "--file",
+        "-f",
+        help="Read replacement markdown from file.",
+    ),
+    patches: str | None = typer.Option(
         None,
         "--patches",
         help="Patch JSON array, or @path to a JSON file.",
     ),
-    title: Optional[str] = typer.Option(None, "--title", help="Optional new title."),
+    title: str | None = typer.Option(None, "--title", help="Optional new title."),
     summary: str = typer.Option("", "--summary", help="Proposal summary."),
-    sections: Optional[str] = typer.Option(
-        None,
-        "--sections",
-        help="Section metadata JSON array, or @path. Includes citations and event dates.",
-    ),
-    project: Optional[str] = _project_opt,
+    sections: str | None = _sections_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
     accept: bool = typer.Option(False, "--accept", help="Prompt to accept after creating."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation with --accept."),
@@ -722,18 +755,22 @@ def propose_edit(
     if patches and (content or file):
         err_console.print("Use either --patches or --content/--file, not both.")
         raise typer.Exit(1)
+    section_data = _load_sections_arg(sections)
     body = {
         "action": "edit",
         "page": page,
         "title": title,
         "summary": summary,
-        "sections": _load_sections_arg(sections),
+        "sections": section_data,
         **_proposal_scope(project, mine=mine),
     }
     if patches:
+        _validate_sections_arg(None, section_data, require_content=False)
         body["patches"] = _load_json_arg(patches)
     else:
-        body["content"] = _read_content_arg(content, file)
+        page_content = _read_content_arg(content, file)
+        _validate_sections_arg(page_content, section_data, require_content=True)
+        body["content"] = page_content
     proposal = api_post("/v1/knowledge/wiki/proposals", body)
     if json_out or is_piped():
         print_json(proposal)
@@ -747,7 +784,7 @@ def propose_replace(
     replace: str = typer.Option("", "--replace", help="Replacement text."),
     regex: bool = typer.Option(False, "--regex", help="Treat --find as regex."),
     summary: str = typer.Option("", "--summary", help="Proposal summary."),
-    project: Optional[str] = _project_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
     accept: bool = typer.Option(False, "--accept", help="Prompt to accept after creating."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation with --accept."),
@@ -769,11 +806,11 @@ def propose_replace(
 
 @propose_app.command("move")
 def propose_move(
-    page: str = typer.Argument(..., help="Page slug, title, or UUID."),
-    title: Optional[str] = typer.Option(None, "--title", help="Optional new title."),
-    parent: Optional[str] = typer.Option(None, "--parent", help="Optional new parent."),
+    page: str = typer.Argument(..., help="Page title or UUID."),
+    title: str | None = typer.Option(None, "--title", help="Optional new title."),
+    parent: str | None = typer.Option(None, "--parent", help="Optional new parent."),
     summary: str = typer.Option("", "--summary", help="Proposal summary."),
-    project: Optional[str] = _project_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
     accept: bool = typer.Option(False, "--accept", help="Prompt to accept after creating."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation with --accept."),
@@ -797,10 +834,10 @@ def propose_move(
 
 @propose_app.command("archive")
 def propose_archive(
-    page: str = typer.Argument(..., help="Page slug, title, or UUID."),
+    page: str = typer.Argument(..., help="Page title or UUID."),
     include_children: bool = typer.Option(True, "--children/--no-children"),
     summary: str = typer.Option("", "--summary", help="Proposal summary."),
-    project: Optional[str] = _project_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
     accept: bool = typer.Option(False, "--accept", help="Prompt to accept after creating."),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation with --accept."),
@@ -828,9 +865,13 @@ def propose_archive(
 
 @proposals_app.command("list")
 def proposals_list(
-    status_filter: str = typer.Option("pending", "--status", help="pending, accepted, or dismissed."),
+    status_filter: str = typer.Option(
+        "pending",
+        "--status",
+        help="pending, accepted, or dismissed.",
+    ),
     limit: int = typer.Option(50, "--limit", "-n", help="Max proposals."),
-    project: Optional[str] = _project_opt,
+    project: str | None = _project_opt,
     mine: bool = _mine_opt,
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
@@ -914,42 +955,46 @@ def _resolve_page(
     ref: str,
     *,
     project: str | None = None,
-    space: str | None = None,
     mine: bool = False,
 ) -> dict | None:
-    """Resolve a page reference (slug, title, or UUID) to a page dict."""
+    """Resolve a page reference (title or UUID) to a page dict.
+
+    Title resolution goes through wiki_page_title_aliases so renamed
+    pages still resolve via their previous titles. A fuzzy search
+    fallback handles partial input.
+    """
     # Try UUID first
     if len(ref) == 36 and "-" in ref:
         try:
             data = api_get(f"/v1/knowledge/wiki/pages/{ref}")
-            if not _page_matches_scope(data, project=project, space=space, mine=mine):
+            if not _page_matches_scope(data, project=project, mine=mine):
                 raise ValueError("Page is outside the requested scope.")
             return data
         except Exception:
             pass
 
-    # Try slug
+    # Try exact title (resolves through alias table -- current + previous)
     try:
         data = api_get(
-            f"/v1/knowledge/wiki/pages/by-slug/{ref}",
-            scope_params(space=space, project=project, personal=mine),
+            "/v1/knowledge/wiki/pages/by-title",
+            {"title": ref, **_scope_params(project=project, mine=mine)},
         )
         return data
     except Exception:
         pass
 
-    # Try search by title
+    # Try fuzzy search (handles partial input and slug-shaped legacy refs)
     try:
         results = api_get(
             "/v1/knowledge/wiki/search",
-            {"q": ref, "limit": 1, **scope_params(space=space, project=project, personal=mine)},
+            {"q": ref, "limit": 1, **_scope_params(project=project, mine=mine)},
         )
         hits = results.get("results", [])
         if hits:
             page_id = hits[0].get("id")
             if page_id:
                 data = api_get(f"/v1/knowledge/wiki/pages/{page_id}")
-                if not _page_matches_scope(data, project=project, space=space, mine=mine):
+                if not _page_matches_scope(data, project=project, mine=mine):
                     raise ValueError("Page is outside the requested scope.")
                 return data
     except Exception:
@@ -963,15 +1008,11 @@ def _page_matches_scope(
     page: dict,
     *,
     project: str | None = None,
-    space: str | None = None,
     mine: bool = False,
 ) -> bool:
     """Validate page IDs resolved directly still belong to the requested scope."""
-    params = scope_params(space=space, project=project, personal=mine)
+    params = _scope_params(project=project, mine=mine)
     project_id = params.get("project_id")
-    group_id = params.get("group_id")
     if project_id and str(page.get("project_id") or "") != str(project_id):
-        return False
-    if group_id and str(page.get("group_id") or "") != str(group_id):
         return False
     return True

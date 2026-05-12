@@ -55,7 +55,7 @@ User wants to audit knowledge base quality
 All tools accept an optional `project` parameter:
 - Omit it to search across the entire organization
 - Pass a project ID to scope results (use `list_projects` to discover IDs)
-- Pass `personal_only=true` to limit to the user's personal space
+- Pass `personal_only=true` to limit to the user's personal project
 
 ## Citing sources
 
@@ -63,6 +63,15 @@ Always cite sources when presenting information from the knowledge base:
 - Include the page title so the user can find it
 - For `research` results, the response includes numbered citations -- present them
 - For claims that need verification, use `kb_provenance` to show supporting/contradicting sources
+- When writing wiki pages, put inline citation tokens like `{{rag:abc123}}` or
+  `{{!rag:abc123}}` immediately after every factual claim, table row/value,
+  date, title, and relationship. Also include the same keys in
+  `sections[].citations` with `support`, `qualifies`, or `contradicts` stance.
+  Add `event_start`, `event_end`, and `date_precision` for dated decisions,
+  meetings, milestones, and other timeline-worthy sections. For current-session
+  or other not-yet-indexed sources, cite a stable key with `source_type`
+  `conversation`, `agent_note`, or `user_note`, plus `source_title` and
+  `meta.excerpt`, `meta.content`, or `meta.text`.
 
 ## Page references
 

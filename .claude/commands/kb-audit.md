@@ -2,7 +2,7 @@ Audit the Beakr knowledge base for quality issues: $ARGUMENTS
 
 If no specific focus is given, run a general health check. Follow this procedure:
 
-1. **Get the full picture.** Call `kb_ls --all` (or `kb_ls` per space) to get every page. Call `kb_stats` per space for counts.
+1. **Get the full picture.** Call `kb_ls --all` to get every page. Use `list_projects` and project-scoped `kb_stats` when you need counts by project.
 
 2. **Check the graph.** Call `kb_graph` to get all nodes and edges. Look for:
    - **Orphan pages** -- pages with no parent and no incoming links
@@ -33,4 +33,4 @@ If no specific focus is given, run a general health check. Follow this procedure
    - **Minor** -- style inconsistencies, missing Related Pages sections
    - **Recommendations** -- specific pages to create, merge, or reorganize
 
-Offer to fix issues directly using `kb_edit`, `kb_move`, or `kb_create` if the user approves.
+Offer to propose fixes with `kb_propose_edit`, `kb_propose_move`, or `kb_propose_create` if the user approves.

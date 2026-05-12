@@ -2,9 +2,9 @@ Research the following topic using the Beakr knowledge base and provide a thorou
 
 Follow this procedure:
 
-1. **Discover the landscape.** Call `list_spaces` and `list_projects` to understand the org structure. Then `kb_stats` on each space to know where the bulk of knowledge lives.
+1. **Discover the landscape.** Call `list_projects` to understand the available project structure. Use unscoped `kb_stats` for the full accessible knowledge base and project-scoped `kb_stats` when a project is clearly relevant.
 
-2. **Broad search.** Run `kb_search` with multiple query variations in parallel across spaces. Use different phrasings -- the knowledge base uses hybrid semantic + keyword search, so both precise terms and natural language queries work.
+2. **Broad search.** Run `kb_search` with multiple query variations. Use unscoped search first, then project-scoped searches for likely relevant projects. Use different phrasings -- the knowledge base uses hybrid semantic + keyword search, so both precise terms and natural language queries work.
 
 3. **Deep read.** Read the top 5-10 most relevant pages with `kb_cat` (in parallel). Pay attention to:
    - Section content and structure

@@ -98,7 +98,6 @@ def get_async_client() -> httpx.AsyncClient:
 
 def scope_params(
     *,
-    space: str | None = None,
     project: str | None = None,
     personal: bool = False,
 ) -> dict[str, Any]:
@@ -106,38 +105,45 @@ def scope_params(
 
     Per-call override takes priority over env var and config.
     No scope = org-wide (RLS ensures user only sees what they have access to).
-    If personal=True, scopes to the user's personal space.
+    If personal=True, scopes to the user's personal project.
     """
     params: dict[str, Any] = {}
-    if space:
-        params["group_id"] = space
-    elif personal:
-        ps_id = get_personal_space_id()
-        if ps_id:
-            params["group_id"] = ps_id
-    elif project or os.environ.get("BEAKR_PROJECT_ID") or config.get("project_id"):
-        params["project_id"] = project or os.environ.get("BEAKR_PROJECT_ID") or config.get("project_id")
+    if personal and project:
+        raise ValueError("Provide at most one of project or personal scope.")
+    if personal:
+        project_id = get_personal_project_id()
+        if not project_id:
+            raise ValueError("Could not resolve your personal project.")
+        params["project_id"] = project_id
+    else:
+        project_id = project or os.environ.get("BEAKR_PROJECT_ID") or config.get("project_id")
+        if project_id:
+            params["project_id"] = project_id
     return params
 
 
-# Cache for personal space ID
-_personal_space_id: str | None = None
+# Cache for personal project ID
+_personal_project_id: str | None = None
 
 
-def get_personal_space_id() -> str | None:
-    """Fetch and cache the user's personal space ID."""
-    global _personal_space_id
-    if _personal_space_id is not None:
-        return _personal_space_id
+def get_personal_project_id() -> str | None:
+    """Fetch and cache the user's personal project ID."""
+    global _personal_project_id
+    if _personal_project_id is not None:
+        return _personal_project_id
     try:
         with get_client() as c:
-            resp = c.get("/v1/groups/personal")
+            resp = c.get("/v1/projects")
             resp.raise_for_status()
             data = resp.json()
-            _personal_space_id = str(data.get("id", ""))
-            return _personal_space_id
+            projects = data if isinstance(data, list) else data.get("projects", data)
+            for project in projects or []:
+                if project.get("project_type") == "personal":
+                    _personal_project_id = str(project.get("id", ""))
+                    return _personal_project_id
     except Exception:
         return None
+    return None
 
 
 def api_get(

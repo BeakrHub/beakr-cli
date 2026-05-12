@@ -6,6 +6,7 @@ import json
 
 from mcp.server.fastmcp import FastMCP
 
+from beakr_cli.citations import CitationValidationError, validate_proposal_sections
 from beakr_cli.client import get_async_client, scope_params
 
 mcp = FastMCP(
@@ -19,24 +20,29 @@ mcp = FastMCP(
         "- 'kb_*' tools: Direct access to knowledge base pages. Use for browsing, "
         "reading specific pages, or inspecting sources/provenance.\n\n"
         "SCOPING:\n"
-        "Beakr organizes knowledge into projects and personal spaces. "
-        "Most read tools accept 'project_id', 'space_id', or 'personal_only=true'; "
-        "use one whenever the user is working in a specific workspace. Write "
+        "Beakr organizes knowledge into projects, including each user's personal project. "
+        "Most read tools accept 'project_id' or 'personal_only=true'; use one whenever "
+        "the user is working in a specific project. Write "
         "proposal tools require exactly one of project_id or personal=true. "
-        "Non-personal spaces do not have wikis; use projects for shared/team "
-        "knowledge.\n\n"
+        "Use list_projects to discover available project IDs.\n\n"
         "WRITES:\n"
         "All wiki writes go through proposals. Create proposals with kb_propose_* "
         "tools, show/list them for review, and only call kb_accept_proposal after "
         "the user explicitly asks to accept/apply that specific proposal. Proposal "
         "sections can include event metadata and citations. Section IDs must match "
         "<!-- sec:ID --> markers in content; event dates should be full YYYY-MM-DD "
-        "dates. Citations can reference existing Beakr sources from kb_sources or "
-        "kb_provenance, external identifiers, or inline source_type 'conversation', "
+        "dates. Put inline citation tokens like {{source_type:source_id}} or "
+        "{{!source_type:source_id}} directly in wiki markdown after every factual "
+        "claim, table row/value, date, title, and relationship. Use the same "
+        "source keys in sections[].citations with stance so section provenance "
+        "can roll up support, qualification, and contradiction. Proposal tools "
+        "validate that inline tokens and sections[].citations match. Citations can "
+        "reference existing Beakr sources from kb_sources or kb_provenance, "
+        "external identifiers, or inline source_type 'conversation', "
         "'agent_note', or 'user_note' with source_title and meta.excerpt/content/text. "
         "Section objects use this shape: "
         "{id, title, event_start, event_end, date_precision, citations:["
-        "{source_type, source_id, source_title, stance, meta}]}."
+        "{key, source_type, source_id, source_title, stance, chunk_ref, meta}]}."
     ),
 )
 
@@ -46,11 +52,10 @@ async def _get(
     *,
     project: str | None = None,
     project_id: str | None = None,
-    space_id: str | None = None,
     personal: bool = False,
 ) -> dict:
     merged = {
-        **scope_params(space=space_id, project=project_id or project, personal=personal),
+        **(await _scope_params(project=project, project_id=project_id, personal=personal)),
         **(params or {}),
     }
     async with get_async_client() as c:
@@ -66,6 +71,18 @@ async def _post(path: str, body: dict | None = None) -> dict:
         return resp.json()
 
 
+def _validate_sections(
+    content: str | None,
+    sections: list[dict],
+    *,
+    require_content: bool,
+) -> None:
+    try:
+        validate_proposal_sections(content, sections, require_content=require_content)
+    except CitationValidationError as exc:
+        raise ValueError(f"Invalid sections:\n{exc}") from exc
+
+
 async def _patch(path: str, body: dict | None = None) -> dict:
     async with get_async_client() as c:
         resp = await c.patch(path, json=body)
@@ -78,15 +95,46 @@ async def _proposal_scope(project_id: str, personal: bool) -> dict:
         raise ValueError("Provide exactly one of project_id or personal=true.")
     if project_id:
         return {"project_id": project_id}
-    personal_space_id = await _get_personal_space_id()
-    if not personal_space_id:
-        raise ValueError("Could not resolve the user's personal space.")
-    return {"group_id": personal_space_id}
+    personal_project_id = await _get_personal_project_id()
+    if not personal_project_id:
+        raise ValueError("Could not resolve the user's personal project.")
+    return {"project_id": personal_project_id}
 
 
-async def _get_personal_space_id() -> str:
-    data = await _get("/v1/groups/personal")
-    return str(data.get("id") or "")
+async def _scope_params(
+    *,
+    project: str | None = None,
+    project_id: str | None = None,
+    personal: bool = False,
+) -> dict:
+    explicit_project = project_id or project
+    if personal:
+        if explicit_project:
+            raise ValueError("Provide at most one of project_id or personal=true.")
+        personal_project_id = await _get_personal_project_id()
+        if not personal_project_id:
+            raise ValueError("Could not resolve the user's personal project.")
+        return {"project_id": personal_project_id}
+    return scope_params(project=explicit_project)
+
+
+_personal_project_id: str | None = None
+
+
+async def _get_personal_project_id() -> str:
+    global _personal_project_id
+    if _personal_project_id is not None:
+        return _personal_project_id
+    async with get_async_client() as c:
+        resp = await c.get("/v1/projects")
+        resp.raise_for_status()
+        data = resp.json()
+    projects = data if isinstance(data, list) else data.get("projects", data)
+    for project in projects or []:
+        if project.get("project_type") == "personal":
+            _personal_project_id = str(project.get("id") or "")
+            return _personal_project_id
+    return ""
 
 
 async def _proposal_filter_scope(project_id: str, personal: bool) -> dict:
@@ -101,14 +149,8 @@ def _page_matches_scope(
     page: dict,
     *,
     project_id: str = "",
-    space_id: str = "",
-    personal_space_id: str = "",
 ) -> bool:
     if project_id and str(page.get("project_id") or "") != str(project_id):
-        return False
-    if space_id and str(page.get("group_id") or "") != str(space_id):
-        return False
-    if personal_space_id and str(page.get("group_id") or "") != str(personal_space_id):
         return False
     return True
 
@@ -142,30 +184,16 @@ def _format_proposal(data: dict) -> str:
 
 
 @mcp.tool()
-async def list_spaces() -> str:
-    """List spaces/groups in the organization. Use returned IDs as space_id."""
-    data = await _get("/v1/groups")
-    groups = data if isinstance(data, list) else data.get("groups", data)
-    if not groups:
-        return "No spaces found."
-    lines = []
-    for g in groups:
-        name = g.get("name", "Untitled")
-        gid = g.get("id", "")
-        desc = g.get("description", "") or ""
-        lines.append(f"- {name} (id: {gid}){f' -- {desc}' if desc else ''}")
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def list_projects(space_id: str = "") -> str:
-    """List projects in the organization, optionally filtered by space_id.
+async def list_projects() -> str:
+    """List projects in the organization.
 
     Use this to discover available projects and their IDs.
     Pass the project ID to kb tools via the project_id parameter.
     """
-    params = {"group_id": space_id} if space_id else None
-    data = await _get("/v1/projects", params)
+    async with get_async_client() as c:
+        resp = await c.get("/v1/projects")
+        resp.raise_for_status()
+        data = resp.json()
     projects = data if isinstance(data, list) else data.get("projects", data)
     if not projects:
         return "No projects found."
@@ -173,8 +201,9 @@ async def list_projects(space_id: str = "") -> str:
     for p in projects:
         name = p.get("name", "Untitled")
         pid = p.get("id", "")
+        project_type = p.get("project_type", "standard")
         desc = p.get("description", "") or ""
-        lines.append(f"- {name} (id: {pid}){f' -- {desc}' if desc else ''}")
+        lines.append(f"- {name} ({project_type}, id: {pid}){f' -- {desc}' if desc else ''}")
     return "\n".join(lines)
 
 
@@ -182,26 +211,22 @@ async def list_projects(space_id: str = "") -> str:
 async def get_profile(
     profile_type: str = "org",
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
-    """Get the knowledge profile for an org, project, or space.
+    """Get the knowledge profile for an org or project.
 
     Profiles contain goals, focus areas, core people/organizations/topics,
     and extraction guidance that shape how knowledge is organized.
 
     Args:
-        profile_type: One of 'org', 'project', or 'space'.
+        profile_type: One of 'org' or 'project'.
         project_id: Project ID (required if profile_type is 'project').
-        space_id: Space/group ID (required if profile_type is 'space').
     """
     if profile_type == "org":
         data = await _get("/v1/knowledge/profiles/org")
     elif profile_type == "project" and project_id:
         data = await _get(f"/v1/knowledge/profiles/project/{project_id}")
-    elif profile_type == "space" and space_id:
-        data = await _get(f"/v1/knowledge/profiles/space/{space_id}")
     else:
-        return f"Invalid: profile_type='{profile_type}' requires the matching project_id or space_id."
+        return f"Invalid: profile_type='{profile_type}' requires profile_type='org' or project_id."
 
     if not data:
         return f"No {profile_type} profile found."
@@ -244,18 +269,16 @@ async def kb_ls(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """List all knowledge base pages in scope.
 
     Args:
-        page_type: Filter by type (topic, person, organization, decision, meeting, overview, research_note).
-        roots_only: If true, return only root pages (no parent). Useful for browsing the top-level hierarchy.
-        parent_page: Filter to children of this page (slug, title, or UUID). Use for tree navigation.
+        page_type: Filter by type.
+        roots_only: If true, return only root pages.
+        parent_page: Filter to children of this page (title or UUID).
         limit: Max pages to return.
-        personal_only: If true, only show pages in the user's personal space.
+        personal_only: If true, only show pages in the user's personal project.
         project_id: Project ID to scope the query. Use list_projects to discover IDs.
-        space_id: Space/group ID to scope the query. Use list_spaces to discover IDs.
     """
     params: dict = {"all": "true"}
     if page_type:
@@ -267,7 +290,7 @@ async def kb_ls(
             parent_page,
             project=project,
             project_id=project_id,
-            space_id=space_id,
+            personal=personal_only,
         )
         params["parent_page_id"] = parent["id"]
     if limit is not None:
@@ -277,13 +300,14 @@ async def kb_ls(
         params,
         project=project,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     pages = data.get("pages", [])
     lines = []
     for p in pages:
-        lines.append(f"- {p.get('title', 'Untitled')} ({p.get('page_type', '')}, slug: {p.get('slug', '')})")
+        title = p.get("title", "Untitled")
+        page_type = p.get("page_type", "")
+        lines.append(f"- {title} ({page_type})")
     return "\n".join(lines) if lines else "No pages found."
 
 
@@ -293,21 +317,18 @@ async def kb_cat(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Read a knowledge base page's full content.
 
     Args:
-        page: Page slug, title, or UUID.
-        personal_only: If true, only resolve pages in the user's personal space.
+        page: Page title or UUID.
+        personal_only: If true, only resolve pages in the user's personal project.
         project_id: Project ID to scope the query.
-        space_id: Space/group ID to scope the query.
     """
     page_data = await _resolve_page(
         page,
         project=project,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     title = page_data.get("title", "Untitled")
@@ -324,23 +345,20 @@ async def kb_search(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Search knowledge base pages by semantic similarity and keyword match.
 
     Args:
         query: Search query text.
         limit: Maximum number of results (default 10, max 20).
-        personal_only: If true, only search the user's personal space.
+        personal_only: If true, only search the user's personal project.
         project_id: Project ID to scope the search.
-        space_id: Space/group ID to scope the search.
     """
     data = await _get(
         "/v1/knowledge/wiki/search",
         {"q": query, "limit": min(limit, 20)},
         project=project,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     results = data.get("results", [])
@@ -349,9 +367,8 @@ async def kb_search(
     lines = []
     for r in results:
         title = r.get("title", "Untitled")
-        slug = r.get("slug", "")
         snippet = r.get("snippet", r.get("summary", ""))[:200]
-        lines.append(f"## {title} (slug: {slug})\n{snippet}\n")
+        lines.append(f"## {title}\n{snippet}\n")
     return "\n".join(lines)
 
 
@@ -361,22 +378,19 @@ async def kb_grep(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Search knowledge base page content by keyword or pattern.
 
     Args:
         pattern: Keyword or search pattern.
-        personal_only: If true, only search the user's personal space.
+        personal_only: If true, only search the user's personal project.
         project_id: Project ID to scope the search.
-        space_id: Space/group ID to scope the search.
     """
     data = await _get(
         "/v1/knowledge/wiki/search",
         {"q": pattern, "limit": 20},
         project=project,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     results = data.get("results", [])
@@ -385,8 +399,7 @@ async def kb_grep(
     lines = []
     for r in results:
         title = r.get("title", "Untitled")
-        slug = r.get("slug", "")
-        lines.append(f"- {title} (slug: {slug})")
+        lines.append(f"- {title}")
     return "\n".join(lines)
 
 
@@ -395,20 +408,17 @@ async def kb_blame(
     page: str,
     personal_only: bool = False,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Show paragraph-level source attribution for a knowledge base page.
 
     Args:
-        page: Page slug, title, or UUID.
-        personal_only: If true, only resolve pages in the user's personal space.
+        page: Page title or UUID.
+        personal_only: If true, only resolve pages in the user's personal project.
         project_id: Project ID to scope the query.
-        space_id: Space/group ID to scope the query.
     """
     page_data = await _resolve_page(
         page,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     page_id = page_data["id"]
@@ -430,20 +440,17 @@ async def kb_sources(
     page: str,
     personal_only: bool = False,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """List source documents that contributed to a knowledge base page.
 
     Args:
-        page: Page slug, title, or UUID.
-        personal_only: If true, only resolve pages in the user's personal space.
+        page: Page title or UUID.
+        personal_only: If true, only resolve pages in the user's personal project.
         project_id: Project ID to scope the query.
-        space_id: Space/group ID to scope the query.
     """
     page_data = await _resolve_page(
         page,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     page_id = page_data["id"]
@@ -453,7 +460,9 @@ async def kb_sources(
         return "No sources."
     lines = []
     for s in sources:
-        lines.append(f"- [{s.get('source_type', '')}] {s.get('source_title', s.get('source_id', ''))}")
+        source_type = s.get("source_type", "")
+        title = s.get("source_title", s.get("source_id", ""))
+        lines.append(f"- [{source_type}] {title}")
     return "\n".join(lines)
 
 
@@ -462,20 +471,17 @@ async def kb_provenance(
     page: str,
     personal_only: bool = False,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
-    """Show section-level citations with stance (support / contradicts / qualifies).
+    """Show section provenance rollups with inline citations and stance.
 
     Args:
-        page: Page slug, title, or UUID.
-        personal_only: If true, only resolve pages in the user's personal space.
+        page: Page title or UUID.
+        personal_only: If true, only resolve pages in the user's personal project.
         project_id: Project ID to scope the query.
-        space_id: Space/group ID to scope the query.
     """
     page_data = await _resolve_page(
         page,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     page_id = page_data["id"]
@@ -485,7 +491,11 @@ async def kb_provenance(
         return "No section provenance data."
     lines = []
     for section_id, section_data in prov.items():
-        title = section_data.get("title", section_id) if isinstance(section_data, dict) else section_id
+        title = (
+            section_data.get("title", section_id)
+            if isinstance(section_data, dict)
+            else section_id
+        )
         lines.append(f"\n## {title or section_id}")
         sources = section_data.get("sources", []) if isinstance(section_data, dict) else []
         if not sources:
@@ -494,7 +504,9 @@ async def kb_provenance(
         for c in sources:
             stance = c.get("stance", "support")
             source = c.get("source_title") or c.get("source_id", "unknown")
-            lines.append(f"  [{stance}] {source}")
+            inline = " inline" if c.get("inline") else ""
+            key = f" ({c.get('key')})" if c.get("key") else ""
+            lines.append(f"  [{stance}{inline}] {source}{key}")
     return "\n".join(lines)
 
 
@@ -503,20 +515,17 @@ async def kb_links(
     page: str,
     personal_only: bool = False,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Show pages that link to this page.
 
     Args:
-        page: Page slug, title, or UUID.
-        personal_only: If true, only resolve pages in the user's personal space.
+        page: Page title or UUID.
+        personal_only: If true, only resolve pages in the user's personal project.
         project_id: Project ID to scope the query.
-        space_id: Space/group ID to scope the query.
     """
     page_data = await _resolve_page(
         page,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     page_id = page_data["id"]
@@ -524,7 +533,7 @@ async def kb_links(
     backlinks = data.get("backlinks", [])
     if not backlinks:
         return "No backlinks."
-    lines = [f"- {b.get('title', '')} (slug: {b.get('slug', '')})" for b in backlinks]
+    lines = [f"- {b.get('title', '')}" for b in backlinks]
     return "\n".join(lines)
 
 
@@ -539,7 +548,6 @@ async def kb_timeline(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Query temporal events (decisions, meetings, etc.) across the knowledge base.
 
@@ -554,9 +562,8 @@ async def kb_timeline(
         page_type: Filter by type (decision, meeting, topic, person, etc.).
         include_content: If true, return each section's full markdown content.
         limit: Max events to return (default 50, max 100).
-        personal_only: If true, only show events from the user's personal space.
+        personal_only: If true, only show events from the user's personal project.
         project_id: Project ID to scope the query.
-        space_id: Space/group ID to scope the query.
     """
     params: dict = {"limit": min(limit, 100)}
     if query:
@@ -574,7 +581,6 @@ async def kb_timeline(
         params,
         project=project,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     events = data.get("events", [])
@@ -592,7 +598,7 @@ async def kb_timeline(
         title = e.get("title", "")
         page_title = e.get("page_title", "")
         lines.append(f"{date_str} [{ptype}] {title}")
-        lines.append(f"  Page: {page_title} (slug: {e.get('page_slug', '')})")
+        lines.append(f"  Page: {page_title}")
         if e.get("content"):
             lines.append(f"\n{e['content']}\n")
     return "\n".join(lines)
@@ -604,22 +610,19 @@ async def kb_log(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Show revision history for a page, or recent ingestion events if no page given.
 
     Args:
-        page: Page slug, title, or UUID. Omit for global ingestion log.
-        personal_only: If true, only show events from the user's personal space.
+        page: Page title or UUID. Omit for global ingestion log.
+        personal_only: If true, only show events from the user's personal project.
         project_id: Project ID to scope the ingestion log.
-        space_id: Space/group ID to scope the ingestion log.
     """
     if page:
         page_data = await _resolve_page(
             page,
             project=project,
             project_id=project_id,
-            space_id=space_id,
             personal=personal_only,
         )
         page_id = page_data["id"]
@@ -640,7 +643,6 @@ async def kb_log(
             "/v1/knowledge/wiki/ingestion-events",
             project=project,
             project_id=project_id,
-            space_id=space_id,
             personal=personal_only,
         )
         events = data.get("events", [])
@@ -662,20 +664,17 @@ async def kb_stats(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Show knowledge base statistics (page count, source count) for the current scope.
 
     Args:
-        personal_only: If true, only count pages in the user's personal space.
+        personal_only: If true, only count pages in the user's personal project.
         project_id: Project ID to scope the stats.
-        space_id: Space/group ID to scope the stats.
     """
     data = await _get(
         "/v1/knowledge/stats",
         project=project,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     return f"Pages: {data.get('pages', 0)}\nSources: {data.get('sources', 0)}"
@@ -686,7 +685,6 @@ async def kb_graph(
     personal_only: bool = False,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Get a summary of the knowledge base graph structure.
 
@@ -694,16 +692,14 @@ async def kb_graph(
     on a specific page to explore its neighborhood.
 
     Args:
-        personal_only: If true, only show the user's personal space graph.
+        personal_only: If true, only show the user's personal project graph.
         project_id: Project ID to scope the graph.
-        space_id: Space/group ID to scope the graph.
     """
     data = await _get(
         "/v1/knowledge/wiki/graph",
         {"max_nodes": "30"},
         project=project,
         project_id=project_id,
-        space_id=space_id,
         personal=personal_only,
     )
     nodes = data.get("nodes", [])
@@ -739,11 +735,11 @@ async def _resolve_page(
     *,
     project: str | None = None,
     project_id: str = "",
-    space_id: str = "",
     personal: bool = False,
 ) -> dict:
     """Resolve a page reference to a full page dict."""
-    personal_space_id = await _get_personal_space_id() if personal else ""
+    scope = await _scope_params(project=project, project_id=project_id, personal=personal)
+    scoped_project_id = str(scope.get("project_id") or "")
 
     # Try UUID
     if len(ref) == 36 and "-" in ref:
@@ -751,34 +747,33 @@ async def _resolve_page(
             page = await _get(f"/v1/knowledge/wiki/pages/{ref}")
             if _page_matches_scope(
                 page,
-                project_id=project_id or project or "",
-                space_id=space_id,
-                personal_space_id=personal_space_id,
+                project_id=scoped_project_id,
             ):
                 return page
         except Exception:
             pass
 
-    # Try slug
+    # Try title (resolves via wiki_page_title_aliases -- both current and
+    # previous titles match, so renamed pages still resolve).
     try:
         return await _get(
-            f"/v1/knowledge/wiki/pages/by-slug/{ref}",
+            "/v1/knowledge/wiki/pages/by-title",
+            {"title": ref},
             project=project,
             project_id=project_id,
-            space_id=space_id,
             personal=personal,
         )
     except Exception:
         pass
 
-    # Try search
+    # Try fuzzy search (handles partial input and slug-shaped legacy refs
+    # like "marcos-ortiz" by ranking on trigram + FTS).
     try:
         results = await _get(
             "/v1/knowledge/wiki/search",
             {"q": ref, "limit": 1},
             project=project,
             project_id=project_id,
-            space_id=space_id,
             personal=personal,
         )
         hits = results.get("results", [])
@@ -788,9 +783,7 @@ async def _resolve_page(
                 page = await _get(f"/v1/knowledge/wiki/pages/{page_id}")
                 if _page_matches_scope(
                     page,
-                    project_id=project_id or project or "",
-                    space_id=space_id,
-                    personal_space_id=personal_space_id,
+                    project_id=scoped_project_id,
                 ):
                     return page
     except Exception:
@@ -810,7 +803,6 @@ async def research(
     personal_only: bool = False,
     project: str = "",
     project_id: str = "",
-    space_id: str = "",
 ) -> str:
     """Ask a question and get a researched answer with citations from the
     organization's knowledge base, documents, and connected services.
@@ -829,11 +821,10 @@ async def research(
 
     Args:
         query: The question to answer.
-        personal_only: If true, only search the user's personal space.
+        personal_only: If true, only search the user's personal project.
         project_id: Optional project ID to scope the search.
-        space_id: Optional space/group ID to scope the search.
     """
-    params = scope_params(space=space_id, project=project_id or project, personal=personal_only)
+    params = await _scope_params(project=project, project_id=project_id, personal=personal_only)
     body = {"query": query, **params}
     data = await _post("/v1/knowledge/research", body)
 
@@ -905,10 +896,13 @@ async def kb_propose_create(
     with kb_accept_proposal after the user explicitly asks to apply it.
 
     Args:
-        sections: Optional section metadata and citations. See the MCP server
-            instructions for the expected shape. Section IDs must match
-            <!-- sec:ID --> markers in content.
+        sections: Optional section metadata and citations. Include event dates,
+            source citations, and keys matching inline tokens like
+            {{source_type:source_id}} in content. Section IDs must match
+            <!-- sec:ID --> markers.
     """
+    section_data = sections or []
+    _validate_sections(content, section_data, require_content=True)
     body = {
         "action": "create",
         "title": title,
@@ -916,7 +910,7 @@ async def kb_propose_create(
         "page_type": page_type,
         "summary": summary,
         "parent": parent or None,
-        "sections": sections or [],
+        "sections": section_data,
         **(await _proposal_scope(project_id, personal)),
     }
     data = await _post("/v1/knowledge/wiki/proposals", body)
@@ -939,16 +933,20 @@ async def kb_propose_edit(
     explicitly asks to accept/apply the proposal.
 
     Args:
-        sections: Optional section metadata and citations. Section IDs must
-            match <!-- sec:ID --> markers in the replacement content.
+        sections: Optional section metadata and citations. Include event dates,
+            source citations, and keys matching inline tokens like
+            {{source_type:source_id}} in the replacement content. Section IDs
+            must match <!-- sec:ID --> markers.
     """
+    section_data = sections or []
+    _validate_sections(content, section_data, require_content=True)
     body = {
         "action": "edit",
         "page": page,
         "content": content,
         "title": title or None,
         "summary": summary,
-        "sections": sections or [],
+        "sections": section_data,
         **(await _proposal_scope(project_id, personal)),
     }
     data = await _post("/v1/knowledge/wiki/proposals", body)
@@ -971,16 +969,20 @@ async def kb_propose_patch(
     insert_after. This does not write immediately.
 
     Args:
-        sections: Optional section metadata and citations. Section IDs must
-            match <!-- sec:ID --> markers in the proposed content after patches.
+        sections: Optional section metadata and citations. Include event dates,
+            source citations, and keys matching inline tokens like
+            {{source_type:source_id}} in the proposed content. Section IDs must
+            match <!-- sec:ID --> markers after patch application.
     """
+    section_data = sections or []
+    _validate_sections(None, section_data, require_content=False)
     body = {
         "action": "edit",
         "page": page,
         "patches": patches,
         "title": title or None,
         "summary": summary,
-        "sections": sections or [],
+        "sections": section_data,
         **(await _proposal_scope(project_id, personal)),
     }
     data = await _post("/v1/knowledge/wiki/proposals", body)
@@ -996,7 +998,7 @@ async def kb_propose_find_replace(
     regex: bool = False,
     summary: str = "",
 ) -> str:
-    """Propose find/replace across pages in one project or the user's personal wiki."""
+    """Propose find/replace across pages in one project or the user's personal project."""
     body = {
         "action": "find_replace",
         "replacements": [{"find": find, "replace": replace, "regex": regex}],
@@ -1016,7 +1018,7 @@ async def kb_propose_move(
     parent: str = "",
     summary: str = "",
 ) -> str:
-    """Propose moving or renaming a wiki page in one project or the user's personal wiki."""
+    """Propose moving or renaming a wiki page in one project or the user's personal project."""
     body = {
         "action": "mv",
         "page": page,
@@ -1037,7 +1039,7 @@ async def kb_propose_archive(
     include_children: bool = True,
     summary: str = "",
 ) -> str:
-    """Propose archiving a wiki page in one project or the user's personal wiki."""
+    """Propose archiving a wiki page in one project or the user's personal project."""
     body = {
         "action": "archive",
         "page": page,

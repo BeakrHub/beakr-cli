@@ -2,9 +2,9 @@ Search the Beakr knowledge base for information about: $ARGUMENTS
 
 Follow this procedure:
 
-1. **Discover scope.** Call `list_spaces` to see available spaces. If the user mentioned a specific space or project, use that. Otherwise search across all spaces.
+1. **Discover scope.** Call `list_projects` to see available projects. If the user mentioned a specific project, use that project ID. Otherwise run an unscoped search across all accessible knowledge.
 
-2. **Search in parallel.** If there are multiple spaces, launch parallel `kb_search` calls -- one per space -- with the query. Also run one unscoped (org-wide) search. This catches pages that live at org level.
+2. **Search broadly.** Run `kb_search` with the query. If the user likely means one or more specific projects, run additional project-scoped `kb_search` calls with those project IDs.
 
 3. **Read the top hits.** For the most relevant results (up to 3-5 pages), call `kb_cat` to read the full content. Do these reads in parallel.
 

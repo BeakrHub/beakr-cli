@@ -20,7 +20,10 @@ def is_piped() -> bool:
 
 
 def print_json(data: Any) -> None:
-    console.print(json.dumps(data, indent=2, default=str))
+    # Write directly to stdout — Rich would terminal-wrap long string values,
+    # injecting raw newlines that break `jq` and `json.loads`.
+    sys.stdout.write(json.dumps(data, indent=2, default=str, ensure_ascii=False))
+    sys.stdout.write("\n")
 
 
 def print_markdown(text: str) -> None:

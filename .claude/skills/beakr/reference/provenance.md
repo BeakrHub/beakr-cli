@@ -23,13 +23,15 @@ kb_sources "page-slug"
 Returns: source type, title, and ID for each source.
 
 ### kb_provenance
-Shows section-level citations with stance. This is the most powerful provenance tool.
+Shows section provenance rollups with inline citations and stance. This is the
+most powerful provenance tool.
 
 ```
 kb_provenance "page-slug"
 ```
 
-Returns citations organized by section, each with a stance:
+Returns citations organized by section. Inline citations show the exact source
+tokens found in the page markdown; section metadata supplies stance:
 - **supports** -- the source confirms the claim
 - **contradicts** -- the source disagrees with the claim
 - **qualifies** -- the source adds nuance or conditions to the claim

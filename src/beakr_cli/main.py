@@ -10,7 +10,10 @@ from beakr_cli.commands.workspace import app as workspace_app
 
 app = typer.Typer(
     name="beakr",
-    help="CLI for Beakr's knowledge base. Query, search, and browse your team's knowledge base from the terminal.",
+    help=(
+        "CLI for Beakr's knowledge base. Query, search, and browse your team's "
+        "knowledge base from the terminal."
+    ),
     no_args_is_help=True,
 )
 
@@ -31,14 +34,18 @@ def version() -> None:
 def research(
     query: str = typer.Argument(..., help="The question to answer."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
-    space: str | None = typer.Option(None, "--space", "-s", help="Space/group ID to scope the query."),
-    project: str | None = typer.Option(None, "--project", "-P", help="Project ID to scope the query."),
+    project: str | None = typer.Option(
+        None,
+        "--project",
+        "-P",
+        help="Project ID to scope the query.",
+    ),
 ) -> None:
     """Ask a question and get a researched answer with citations."""
     from beakr_cli.client import api_post, scope_params
     from beakr_cli.output import console, err_console, is_piped, print_json, print_markdown
 
-    params = scope_params(space=space, project=project)
+    params = scope_params(project=project)
     body = {"query": query, **params}
 
     err_console.print("[dim]Researching...[/dim]")
@@ -100,6 +107,22 @@ def mcp() -> None:
     run_server()
 
 
+def _parse_install_args(client: str, scope: str):
+    from beakr_cli.commands.install import Client, Scope
+
+    try:
+        client_enum = Client(client)
+    except ValueError:
+        typer.echo(f"Invalid --client '{client}'. Choose: auto, claude, codex, all.")
+        raise typer.Exit(2)
+    try:
+        scope_enum = Scope(scope)
+    except ValueError:
+        typer.echo(f"Invalid --scope '{scope}'. Choose: user, project.")
+        raise typer.Exit(2)
+    return client_enum, scope_enum
+
+
 @app.command()
 def install(
     client: str = typer.Option(
@@ -114,24 +137,62 @@ def install(
         "-s",
         help="user (~/.claude, ~/.codex) or project (./.claude, ./.agents).",
     ),
-    uninstall: bool = typer.Option(False, "--uninstall", help="Remove installed skills and commands."),
+    uninstall: bool = typer.Option(
+        False,
+        "--uninstall",
+        help="Remove installed skills and commands.",
+    ),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files."),
 ) -> None:
     """Install Beakr skills and slash commands into Claude Code and/or Codex."""
-    from beakr_cli.commands.install import Client, Scope, install_command
+    from beakr_cli.commands.install import install_command
 
-    try:
-        client_enum = Client(client)
-    except ValueError:
-        typer.echo(f"Invalid --client '{client}'. Choose: auto, claude, codex, all.")
-        raise typer.Exit(2)
-    try:
-        scope_enum = Scope(scope)
-    except ValueError:
-        typer.echo(f"Invalid --scope '{scope}'. Choose: user, project.")
-        raise typer.Exit(2)
-
+    client_enum, scope_enum = _parse_install_args(client, scope)
     install_command(client=client_enum, scope=scope_enum, uninstall=uninstall, force=force)
+
+
+@app.command()
+def setup(
+    client: str = typer.Option(
+        "auto",
+        "--client",
+        "-c",
+        help="Which client: auto (detect installed), claude, codex, or all.",
+    ),
+    scope: str = typer.Option(
+        "user",
+        "--scope",
+        "-s",
+        help="user (~/.claude, ~/.codex) or project (./.claude, ./.agents).",
+    ),
+    no_auth: bool = typer.Option(False, "--no-auth", help="Skip the API key prompt."),
+    no_skills: bool = typer.Option(False, "--no-skills", help="Skip skills install."),
+    no_mcp: bool = typer.Option(False, "--no-mcp", help="Skip MCP server registration."),
+    uninstall: bool = typer.Option(
+        False,
+        "--uninstall",
+        help="Remove skills and MCP registration.",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        "-f",
+        help="Overwrite existing files and registrations.",
+    ),
+) -> None:
+    """One-shot install: auth + skills + MCP registration for Claude Code and/or Codex."""
+    from beakr_cli.commands.install import setup_command
+
+    client_enum, scope_enum = _parse_install_args(client, scope)
+    setup_command(
+        client=client_enum,
+        scope=scope_enum,
+        skip_auth=no_auth,
+        skip_skills=no_skills,
+        skip_mcp=no_mcp,
+        uninstall=uninstall,
+        force=force,
+    )
 
 
 if __name__ == "__main__":
