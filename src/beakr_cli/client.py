@@ -30,16 +30,17 @@ def _resolve_org_id() -> str | None:
     return os.environ.get("BEAKR_ORG_ID") or config.get("org_id")
 
 
-def _resolve_dev_identity() -> tuple[str, str] | None:
+def _resolve_dev_identity() -> tuple[str, str, str | None] | None:
     """Resolve dev identity headers from env or config.
 
-    Returns (identity_id, email) tuple or None.
+    Returns (identity_id, email, identity_name) tuple or None.
     Used for local development against a Beakr API running in dev mode.
     """
     identity_id = os.environ.get("BEAKR_DEV_IDENTITY") or config.get("dev_identity_id")
     email = os.environ.get("BEAKR_DEV_EMAIL") or config.get("dev_email")
+    identity_name = os.environ.get("BEAKR_DEV_IDENTITY_NAME")
     if identity_id and email:
-        return (identity_id, email)
+        return (identity_id, email, identity_name)
     return None
 
 
@@ -52,9 +53,11 @@ def _build_headers() -> dict[str, str]:
 
     dev = _resolve_dev_identity()
     if dev:
-        identity_id, email = dev
+        identity_id, email, identity_name = dev
         headers["X-Identity-Id"] = identity_id
         headers["X-Email"] = email
+        if identity_name:
+            headers["X-Identity-Name"] = identity_name
         display_name = os.environ.get("BEAKR_DEV_DISPLAY_NAME") or config.get("dev_display_name")
         if display_name:
             headers["X-Display-Name"] = display_name
