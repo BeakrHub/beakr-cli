@@ -567,6 +567,5 @@ def setup_command(
             elif c == "codex":
                 _register_codex_mcp(force, scope)
 
-    console.print(
-        "\n[bold green]Done.[/bold green] Restart Claude Code / Codex to load the MCP server and skills."
-    )
+    console.print("\n[bold green]Done.[/bold green]")
+    console.print("Restart Claude Code / Codex to load the MCP server and skills.")

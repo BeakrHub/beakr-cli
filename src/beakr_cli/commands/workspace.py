@@ -6,7 +6,6 @@ import typer
 
 from beakr_cli.client import get_client
 from beakr_cli.output import (
-    console,
     err_console,
     is_piped,
     print_json,
@@ -81,7 +80,11 @@ def profiles(
             resp = c.get("/v1/projects")
             resp.raise_for_status()
             projects_data = resp.json()
-            projects = projects_data if isinstance(projects_data, list) else projects_data.get("projects", [])
+            projects = (
+                projects_data
+                if isinstance(projects_data, list)
+                else projects_data.get("projects", [])
+            )
             for p in projects:
                 pid = p.get("id")
                 if not pid:

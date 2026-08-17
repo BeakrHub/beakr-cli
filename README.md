@@ -7,7 +7,7 @@ CLI and MCP server for [Beakr's](https://thebeakr.com) knowledge base.
 Beakr ships both surfaces, and `beakr setup` installs both. They wrap the same backend.
 
 - **CLI** (`beakr research`, `beakr kb …`) — for you, in a terminal or shell script.
-- **MCP server** (`beakr mcp`) — for Claude Code and Codex. Starts automatically once registered; the assistant calls it through tools like `research` and `kb_search`. You don't invoke it directly.
+- **MCP server** (`beakr mcp`) — for Claude Code and Codex. Starts automatically once registered; the assistant calls it through `research`, `knowledge_base`, and `knowledge_base_write`. You don't invoke it directly.
 
 If you only want one, install both anyway — they don't conflict and the MCP server is a thin wrapper over the same API the CLI uses.
 
@@ -154,13 +154,14 @@ for shared/team knowledge or `--mine` to resolve and use your personal project.
 - **Codex skill**: `~/.codex/skills/beakr/`
 - **Codex MCP entry**: `[mcp_servers.beakr]` in `~/.codex/config.toml`
 
-The skill teaches the assistant *when* and *how* to call the MCP tools (research workflows, propose-then-accept patterns, citation discipline). The MCP server provides the actual tools: `research`, `kb_ls`, `kb_cat`, `kb_search`, `kb_grep`, `kb_blame`, `kb_sources`, `kb_provenance`, `kb_links`, `kb_timeline`, `kb_log`, `kb_stats`, `kb_graph`, `list_projects`, `get_profile`, `kb_propose_create`, `kb_propose_edit`, `kb_propose_patch`, `kb_propose_find_replace`, `kb_propose_move`, `kb_propose_archive`, `kb_list_proposals`, `kb_show_proposal`, `kb_accept_proposal`, `kb_dismiss_proposal`.
+The skill teaches the assistant *when* and *how* to call the MCP tools (research workflows, propose-then-accept patterns, citation discipline). The MCP server exposes the engine's canonical `knowledge_base` and proposal-only `knowledge_base_write` tools. Reads return both the canonical text and structured public source descriptors: opaque `source_ref`, citation key, filename, provider, path/URL, retained excerpt and locator, and source status. External clients can reuse `source_ref` in a later write; Beakr resolves its internal Unit/version/evidence identity server-side.
 
-MCP write tools follow the same proposal workflow as the CLI. They require
-exactly one scope: `project_id` for project knowledge or `personal=true` for the
-user's personal project. They do not write immediately; the assistant should show
-or list the proposal and only call `kb_accept_proposal` after the user explicitly
-asks to apply that proposal.
+The MCP contract intentionally does not expose Unit IDs, connector IDs, artifact IDs, table names, or `external_items` implementation details. Claude Code and Codex only need to know what the source is, where it lives, what exact evidence was retained, and which opaque reference to pass back.
+
+MCP writes follow the same proposal workflow as the CLI. Pass `scope` with a
+project name or ID. They do not write immediately; the assistant should show or
+list the proposal and only call `accept_proposal` after the user explicitly asks
+to apply that proposal.
 
 ## Project-scoped install
 

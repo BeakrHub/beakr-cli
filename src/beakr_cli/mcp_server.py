@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import PurePosixPath
 
 from mcp.server.fastmcp import FastMCP
 
-from beakr_cli.citations import CitationValidationError, validate_proposal_sections
 from beakr_cli.client import get_async_client, scope_params
 
 mcp = FastMCP(
@@ -21,8 +21,8 @@ mcp = FastMCP(
         "When the conversation produces something durable (a decision with "
         "rationale, a named process, an ownership assignment, a dated event, "
         "a key relationship), propose adding it -- don't wait to be asked. "
-        "First check with kb_search that it isn't already captured, then "
-        "surface a brief suggestion before writing ('this seems worth "
+        "First check with knowledge_base command='sections' that it isn't already "
+        "captured, then surface a brief suggestion before writing ('this seems worth "
         "capturing -- want me to propose it?'). Never auto-write; always go "
         "through proposals and wait for explicit acceptance. Cite the current "
         "session as a 'conversation' inline source with meta.excerpt when the "
@@ -31,17 +31,30 @@ mcp = FastMCP(
         "- 'research': Primary tool. Ask any question and get a cited answer from the "
         "wiki, documents, and connected services (Slack, Gmail, Calendar, Jira, etc.). "
         "Use this first for most questions.\n"
-        "- 'kb_*' tools: Direct access to knowledge base pages. Use for browsing, "
-        "reading specific pages, or inspecting sources/provenance.\n\n"
+        "- 'knowledge_base': every read over the wiki, by command -- ls, cat, grep, "
+        "sections, log, blame, diff, show, sources, provenance, links, timeline, "
+        "ontology, hover, references, diagnostics, completions, proposals, "
+        "suggest_parent. Start with 'sections' or 'grep' to find pages and 'cat' to "
+        "read one; 'cat' returns the page's sources and their recorded excerpts with "
+        "it. Read results also return structured public source records with an opaque "
+        "source_ref, filename, provider, path/URL, exact retained excerpt, verified "
+        "surrounding context, and locator. "
+        "Reuse source_ref in a later write citation; do not invent or request Beakr's "
+        "internal Unit, connector, artifact, or database IDs. This is the same tool, "
+        "under the same name with the same commands, that "
+        "Beakr's in-product agents use.\n"
+        "- 'knowledge_base_write': every change, by action -- new, edit, edit_section, "
+        "find_replace, mv, archive, merge, copy, page_type. Every action stages a "
+        "PROPOSAL; nothing is applied until accept_proposal.\n\n"
         "SCOPING:\n"
-        "Beakr organizes knowledge into projects, including each user's personal project. "
-        "Most read tools accept 'project_id' or 'personal_only=true'; use one whenever "
-        "the user is working in a specific project. Write "
-        "proposal tools require exactly one of project_id or personal=true. "
-        "Use list_projects to discover available project IDs.\n\n"
+        "Beakr organizes knowledge into projects, including each user's personal "
+        "project. Pass 'scope' with a project name or id to work in one project; omit "
+        "it to read everything you can see. Use list_projects to discover projects and "
+        "their ids -- the personal one is reported with project_type='personal' and is "
+        "scoped exactly like any other project.\n\n"
         "WRITES:\n"
-        "All wiki writes go through proposals. Create proposals with kb_propose_* "
-        "tools, show/list them for review, and only call kb_accept_proposal after "
+        "All wiki writes go through proposals. Stage one with knowledge_base_write, "
+        "review it with show_proposal, and only call accept_proposal after "
         "the user explicitly asks to accept/apply that specific proposal. Proposal "
         "sections can include event metadata and citations. Section IDs must match "
         "<!-- sec:ID --> markers in content; event dates should be full YYYY-MM-DD "
@@ -49,16 +62,32 @@ mcp = FastMCP(
         "{{!source_type:source_id}} directly in wiki markdown after every factual "
         "claim, table row/value, date, title, and relationship. Use the same "
         "source keys in sections[].citations with stance so section provenance "
-        "can roll up support, qualification, and contradiction. Proposal tools "
-        "validate that inline tokens and sections[].citations match. Citations can "
-        "reference existing Beakr sources from kb_sources or kb_provenance, "
+        "can roll up support, qualification, and contradiction. Citations can "
+        "reference existing Beakr sources from knowledge_base command='sources' or "
+        "command='provenance', "
         "external identifiers, or inline source_type 'conversation', "
         "'agent_note', or 'user_note' with source_title and meta.excerpt/content/text. "
         "Section objects use this shape: "
         "{id, title, event_start, event_end, date_precision, citations:["
-        "{key, source_type, source_id, source_title, stance, chunk_ref, meta}]}."
+        "{source_ref, key, source_type, source_id, source_title, stance, chunk_ref, meta}]}. "
+        "For a source returned by Beakr, source_ref plus stance is sufficient and preferred.\n\n"
+        "EVIDENCE:\n"
+        "Source listings show the filename/location, exact excerpt a claim rests on, "
+        "and a larger `context:` window copied from the same source when verification "
+        "was possible, plus the verdict the exact excerpt was "
+        "recorded under. An excerpt marked (paraphrase) is the compiler's wording "
+        "and one marked (human asserted) was supplied by a person without "
+        "source-text verification; "
+        "and one marked (unverified) was never checked against the source. Do not "
+        "copy either into a new citation as if it were a quote, and do not rest a "
+        "conclusion on one without opening the source -- an unverified excerpt "
+        "propagated into a proposal becomes an unverified claim on a permanent "
+        "page. 'at:' gives the location within the document; 'source changed since "
+        "cited' means the source has a newer version than the one the claim was "
+        "checked against."
     ),
 )
+
 
 async def _get(
     path: str,
@@ -66,10 +95,17 @@ async def _get(
     *,
     project: str | None = None,
     project_id: str | None = None,
-    personal: bool = False,
 ) -> dict:
+    """GET, with the optional project filter the non-vocabulary routes still take.
+
+    There is no ``personal`` argument, deliberately. Personal is not a special
+    scope -- it is a project with ``project_type='personal'`` that
+    ``list_projects`` already reports -- so it is named like any other and needs
+    no resolution step of its own. The flag used to cost a ``/v1/projects`` round
+    trip and a module-level cache to hide it.
+    """
     merged = {
-        **(await _scope_params(project=project, project_id=project_id, personal=personal)),
+        **scope_params(project=project_id or project),
         **(params or {}),
     }
     async with get_async_client() as c:
@@ -83,90 +119,6 @@ async def _post(path: str, body: dict | None = None) -> dict:
         resp = await c.post(path, json=body)
         resp.raise_for_status()
         return resp.json()
-
-
-def _validate_sections(
-    content: str | None,
-    sections: list[dict],
-    *,
-    require_content: bool,
-) -> None:
-    try:
-        validate_proposal_sections(content, sections, require_content=require_content)
-    except CitationValidationError as exc:
-        raise ValueError(f"Invalid sections:\n{exc}") from exc
-
-
-async def _patch(path: str, body: dict | None = None) -> dict:
-    async with get_async_client() as c:
-        resp = await c.patch(path, json=body)
-        resp.raise_for_status()
-        return resp.json()
-
-
-async def _proposal_scope(project_id: str, personal: bool) -> dict:
-    if bool(project_id) == bool(personal):
-        raise ValueError("Provide exactly one of project_id or personal=true.")
-    if project_id:
-        return {"project_id": project_id}
-    personal_project_id = await _get_personal_project_id()
-    if not personal_project_id:
-        raise ValueError("Could not resolve the user's personal project.")
-    return {"project_id": personal_project_id}
-
-
-async def _scope_params(
-    *,
-    project: str | None = None,
-    project_id: str | None = None,
-    personal: bool = False,
-) -> dict:
-    explicit_project = project_id or project
-    if personal:
-        if explicit_project:
-            raise ValueError("Provide at most one of project_id or personal=true.")
-        personal_project_id = await _get_personal_project_id()
-        if not personal_project_id:
-            raise ValueError("Could not resolve the user's personal project.")
-        return {"project_id": personal_project_id}
-    return scope_params(project=explicit_project)
-
-
-_personal_project_id: str | None = None
-
-
-async def _get_personal_project_id() -> str:
-    global _personal_project_id
-    if _personal_project_id is not None:
-        return _personal_project_id
-    async with get_async_client() as c:
-        resp = await c.get("/v1/projects")
-        resp.raise_for_status()
-        data = resp.json()
-    projects = data if isinstance(data, list) else data.get("projects", data)
-    for project in projects or []:
-        if project.get("project_type") == "personal":
-            _personal_project_id = str(project.get("id") or "")
-            return _personal_project_id
-    return ""
-
-
-async def _proposal_filter_scope(project_id: str, personal: bool) -> dict:
-    if project_id and personal:
-        raise ValueError("Provide at most one of project_id or personal=true.")
-    if not project_id and not personal:
-        return {}
-    return await _proposal_scope(project_id, personal)
-
-
-def _page_matches_scope(
-    page: dict,
-    *,
-    project_id: str = "",
-) -> bool:
-    if project_id and str(page.get("project_id") or "") != str(project_id):
-        return False
-    return True
 
 
 def _format_proposal(data: dict) -> str:
@@ -190,6 +142,273 @@ def _format_proposal(data: dict) -> str:
     elif data.get("proposal_type") == "mv":
         lines.append(f"Moves: {len(payload.get('reorg') or [])}")
     return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Source rendering
+#
+# The engine's source endpoints return the full citation record -- excerpt,
+# fidelity, locator, url, doi, artifact_id, availability, and whether the source
+# has changed since it was cited. Every tool below used to receive all of that
+# and print two fields of it, so an MCP agent holding a citation could not tell a
+# verbatim quote from the compiler's paraphrase, could not see where in the
+# document a claim came from, and could not open the source at all.
+#
+# The in-product twin of this is ``_source_detail_lines`` in
+# ``beakr/engines/tools/graph/wiki_tools.py``. This is deliberately NOT a copy of
+# it: that surface can mint a per-caller connector handle because it runs inside
+# the tool runtime with the caller's ctx, and this one cannot. The shared part is
+# the contract -- what a citation is obliged to show a reader -- and it is
+# restated here rather than imported because the two repositories do not share a
+# package.
+# ---------------------------------------------------------------------------
+
+#: Fidelity values meaning the excerpt is the SOURCE's words rather than the
+#: compiler's. Mirrors ``QUOTED_FIDELITIES`` in the engine's evidence DTOs.
+_QUOTED_FIDELITIES = frozenset({"verbatim", "normalized"})
+
+#: Evidence budget in a multi-result listing. This keeps enough surrounding
+#: source text to judge the citation; page/provenance reads return the complete
+#: retained 1,000-character context window.
+_LIST_EXCERPT_CHARS = 600
+
+
+def _excerpt_line(source: dict, *, excerpt_chars: int | None) -> str | None:
+    """The recorded evidence, with the verdict it was recorded under.
+
+    The verdict rides on the SAME line as the excerpt and never on one below it.
+    An excerpt whose fidelity is dropped renders as trusted downstream -- absent
+    fidelity is the legacy-trusted case in the frontend's gate -- so it must not
+    be possible to read the quote while skipping the label.
+    """
+    excerpt = str(source.get("excerpt") or (source.get("meta") or {}).get("quote") or "").strip()
+    if not excerpt:
+        return None
+    excerpt = " ".join(excerpt.split())
+    if excerpt_chars is not None and len(excerpt) > excerpt_chars:
+        excerpt = excerpt[:excerpt_chars].rstrip() + "..."
+    fidelity = str(source.get("fidelity") or "")
+    if not fidelity:
+        # No verdict recorded is NOT the same as verified, and the default
+        # downstream treatment is to trust it, so it is called out here.
+        verdict = " (unverified)"
+    elif fidelity in _QUOTED_FIDELITIES:
+        verdict = "" if fidelity == "verbatim" else " (normalized)"
+    elif fidelity == "human_asserted":
+        verdict = " (human asserted)"
+    else:
+        verdict = " (paraphrase)"
+    return f'"{excerpt}"{verdict}'
+
+
+def _context_line(source: dict, *, excerpt_chars: int | None) -> str | None:
+    """The larger verified source window surrounding the exact quote."""
+    evidence = source.get("evidence") or {}
+    fidelity = source.get("fidelity") or evidence.get("fidelity")
+    if fidelity not in _QUOTED_FIDELITIES:
+        return None
+    context = str(
+        source.get("context_excerpt")
+        or evidence.get("context_excerpt")
+        or (source.get("meta") or {}).get("context_excerpt")
+        or ""
+    ).strip()
+    if not context:
+        return None
+    context = " ".join(context.split())
+    if excerpt_chars is not None and len(context) > excerpt_chars:
+        context = context[:excerpt_chars].rstrip() + "..."
+    return f"context: {context}"
+
+
+def _source_lines(source: dict, *, indent: str, excerpt_chars: int | None) -> list[str]:
+    """The evidence and access lines under one source.
+
+    Used by ``research``; every knowledge_base command arrives already rendered by
+    the engine, which owns one formatter shared with the in-product tools, so
+    the four cannot describe the same citation differently -- they previously
+    did, each printing its own two-field subset.
+    """
+    lines: list[str] = []
+    meta = source.get("meta") or {}
+
+    provider = source.get("source_provider") or meta.get("provider")
+    path = source.get("display_path") or source.get("path") or meta.get("path")
+    filename = source.get("filename") or source.get("file_name") or meta.get("filename")
+    if not filename and path:
+        filename = PurePosixPath(str(path).rstrip("/")).name
+    if filename or provider:
+        identity = " · ".join(str(value) for value in (filename, provider) if value)
+        lines.append(f"{indent}{identity}")
+
+    bits: list[str] = []
+    if source.get("unit_kind"):
+        bits.append(str(source["unit_kind"]))
+    availability = str(source.get("source_availability") or "")
+    if availability:
+        bits.append(availability)
+    if source.get("source_moved"):
+        # Not the same fact as a stale anchor: the source has a newer reading
+        # than the one this claim was checked against.
+        bits.append("source changed since cited")
+    if bits:
+        lines.append(f"{indent}{' · '.join(bits)}")
+
+    excerpt = _excerpt_line(source, excerpt_chars=excerpt_chars)
+    if excerpt:
+        lines.append(f"{indent}{excerpt}")
+    context = _context_line(source, excerpt_chars=excerpt_chars)
+    if context:
+        lines.append(f"{indent}{context}")
+
+    if source.get("locator"):
+        lines.append(f"{indent}at: {source['locator']}")
+
+    url = source.get("url") or source.get("web_view_url") or meta.get("web_view_url")
+    if url:
+        lines.append(f"{indent}url: {url}")
+    if path:
+        lines.append(f"{indent}path: {path}")
+    if source.get("doi"):
+        lines.append(f"{indent}doi: {source['doi']}")
+
+    # No connector handle or artifact id here. They are Beakr implementation
+    # details and this external surface has no tool that can redeem them. The
+    # structured result carries an opaque source_ref plus public URL/path.
+    if availability and availability != "live":
+        lines.append(f"{indent}unavailable: source is {availability}")
+
+    return lines
+
+
+def _result_text(result: dict) -> str:
+    """Extract the canonical human-readable rendering from an engine result."""
+    blocks = result.get("content") if isinstance(result, dict) else None
+    if isinstance(blocks, list):
+        text_blocks = [
+            str(block["text"])
+            for block in blocks
+            if isinstance(block, dict) and block.get("type") == "text" and block.get("text")
+        ]
+        if text_blocks:
+            return "\n".join(text_blocks)
+    return json.dumps(result, indent=2, default=str)
+
+
+def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
+    """Keep only the public source contract; never forward backend row fields."""
+    meta = source.get("meta") if isinstance(source.get("meta"), dict) else {}
+    public_location = source.get("location") if isinstance(source.get("location"), dict) else {}
+    public_evidence = source.get("evidence") if isinstance(source.get("evidence"), dict) else {}
+    public_status = source.get("status") if isinstance(source.get("status"), dict) else {}
+    public_section = source.get("section") if isinstance(source.get("section"), dict) else {}
+    public_retrieval = (
+        source.get("retrieval") if isinstance(source.get("retrieval"), dict) else {}
+    )
+
+    def first(*keys: str):
+        for key in keys:
+            value = source.get(key)
+            if value not in (None, "", []):
+                return value
+            value = meta.get(key)
+            if value not in (None, "", []):
+                return value
+        return None
+
+    name = str(first("name", "source_title", "title") or "Untitled source")
+    kind = first("source_kind", "unit_kind", "type", "source_type")
+    path = public_location.get("display_path") or first("display_path", "path", "local_path")
+    filename = first("filename", "file_name")
+    if not filename and path:
+        filename = PurePosixPath(str(path).rstrip("/")).name
+    if not filename and str(kind or "").lower() in {"file", "document", "artifact"}:
+        filename = name
+
+    item = {
+        "source_ref": first("source_ref"),
+        "citation_key": citation_key or first("citation_key", "key"),
+        "name": name,
+        "filename": filename,
+        "provider": first("provider", "source_provider"),
+        "source_kind": kind,
+    }
+    location = {
+        "url": public_location.get("url")
+        or first("url", "web_view_url", "full_text_url", "pdf_url"),
+        "display_path": path,
+        "provider_item_id": public_location.get("provider_item_id")
+        or first("provider_file_id", "remote_file_id"),
+    }
+    evidence = {
+        "excerpt": public_evidence.get("excerpt") or first("excerpt", "excerpt_text", "quote"),
+        "locator": public_evidence.get("locator") or first("locator", "chunk_ref"),
+        "fidelity": public_evidence.get("fidelity") or first("fidelity"),
+        "evidence_kind": public_evidence.get("evidence_kind") or first("evidence_kind"),
+        "anchor_status": public_evidence.get("anchor_status") or first("anchor_status"),
+    }
+    source_status = {
+        "observed_at": public_status.get("observed_at") or first("observed_at"),
+        "availability": public_status.get("availability") or first("source_availability"),
+        "changed_since_cited": public_status.get("changed_since_cited")
+        if "changed_since_cited" in public_status
+        else first("source_moved"),
+    }
+    section = {
+        "title": public_section.get("title") or first("section_title"),
+        "event_start": public_section.get("event_start") or first("event_start"),
+        "event_end": public_section.get("event_end") or first("event_end"),
+        "date_precision": public_section.get("date_precision") or first("date_precision"),
+    }
+    for key, value in (
+        ("location", location),
+        ("evidence", evidence),
+        ("status", source_status),
+        ("section", section),
+    ):
+        cleaned = {k: v for k, v in value.items() if v not in (None, "")}
+        if cleaned:
+            item[key] = cleaned
+    retrieval_tool = public_retrieval.get("tool")
+    retrieval_args = public_retrieval.get("arguments")
+    if (
+        isinstance(retrieval_tool, str)
+        and retrieval_tool
+        and isinstance(retrieval_args, dict)
+        and isinstance(retrieval_args.get("handle"), str)
+        and retrieval_args["handle"]
+    ):
+        item["retrieval"] = {
+            "tool": retrieval_tool,
+            "arguments": {"handle": retrieval_args["handle"]},
+        }
+    return {key: value for key, value in item.items() if value not in (None, "")}
+
+
+def _wiki_result(result: dict) -> dict:
+    """Return canonical text plus the engine's sanitized structured sources."""
+    outcome = result.get("outcome") if isinstance(result.get("outcome"), dict) else {}
+    return {
+        "content": _result_text(result),
+        "sources": [
+            _public_source(source)
+            for source in result.get("sources", [])
+            if isinstance(source, dict)
+        ],
+        "status": outcome.get("status", "ok"),
+        **({"error_code": outcome["error_code"]} if outcome.get("error_code") else {}),
+    }
+
+
+#: Appended wherever sources are listed. Says what the marks mean rather than
+#: leaving a reader to infer that an unmarked quote and a "(paraphrase)" one
+#: carry the same weight.
+_SOURCE_NOTE = (
+    "\nCite with the {{token}}. An excerpt marked (paraphrase) is the compiler's "
+    "wording, one marked (human asserted) was supplied by a person, and one marked "
+    "(unverified) was never checked against the source -- "
+    "open the url before quoting either, or before resting a conclusion on it."
+)
 
 
 # ---------------------------------------------------------------------------
@@ -275,438 +494,62 @@ async def get_profile(
 
 
 @mcp.tool()
-async def kb_ls(
-    page_type: str | None = None,
-    roots_only: bool = False,
-    parent_page: str | None = None,
-    limit: int | None = None,
-    personal_only: bool = False,
-    project: str | None = None,
-    project_id: str = "",
-) -> str:
-    """List all knowledge base pages in scope.
+async def knowledge_base(
+    command: str,
+    arguments: dict | None = None,
+    scope: str | None = None,
+) -> dict:
+    """Run the engine's canonical knowledge-base read command.
+
+    This is the complete, shared Wiki vocabulary used by Beakr's in-product
+    agents. It avoids the MCP wrappers drifting from commands such as
+    ``sections``, and returns their source/evidence and section-date rendering
+    unchanged. ``sources`` is structured for external clients: it gives the
+    filename, provider, public location, retained excerpt/locator, status, an
+    executable ``retrieval`` tool call when available, and an opaque
+    ``source_ref`` reusable in ``knowledge_base_write`` citations.
 
     Args:
-        page_type: Filter by type.
-        roots_only: If true, return only root pages.
-        parent_page: Filter to children of this page (title or UUID).
-        limit: Max pages to return.
-        personal_only: If true, only show pages in the user's personal project.
-        project_id: Project ID to scope the query. Use list_projects to discover IDs.
+        command: Shared command, for example cat, sections, search, sources, or timeline.
+        arguments: Command arguments exactly as accepted by the in-product tool.
+        scope: Optional project name or ID. Omit to read everything RLS allows.
     """
-    params: dict = {"all": "true"}
-    if page_type:
-        params["page_type"] = page_type
-    if roots_only:
-        params["roots_only"] = "true"
-    if parent_page:
-        parent = await _resolve_page(
-            parent_page,
-            project=project,
-            project_id=project_id,
-            personal=personal_only,
-        )
-        params["parent_page_id"] = parent["id"]
-    if limit is not None:
-        params["limit"] = limit
-    data = await _get(
-        "/v1/knowledge/wiki/pages",
-        params,
-        project=project,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    pages = data.get("pages", [])
-    lines = []
-    for p in pages:
-        title = p.get("title", "Untitled")
-        page_type = p.get("page_type", "")
-        lines.append(f"- {title} ({page_type})")
-    return "\n".join(lines) if lines else "No pages found."
+    body = dict(arguments or {})
+    body["command"] = command
+    if scope:
+        body["scope"] = scope
+    return _wiki_result(await _post("/v1/knowledge/wiki/command", body))
 
 
 @mcp.tool()
-async def kb_cat(
-    page: str,
-    personal_only: bool = False,
-    project: str | None = None,
-    project_id: str = "",
-) -> str:
-    """Read a knowledge base page's full content.
-
-    Args:
-        page: Page title or UUID.
-        personal_only: If true, only resolve pages in the user's personal project.
-        project_id: Project ID to scope the query.
-    """
-    page_data = await _resolve_page(
-        page,
-        project=project,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    title = page_data.get("title", "Untitled")
-    content = page_data.get("content", "")
-    rev = page_data.get("revision", "?")
-    page_type = page_data.get("page_type", "")
-    return f"# {title}\nType: {page_type}  |  Revision: {rev}\n\n{content}"
-
-
-@mcp.tool()
-async def kb_search(
-    query: str,
-    limit: int = 10,
-    personal_only: bool = False,
-    project: str | None = None,
-    project_id: str = "",
-) -> str:
-    """Search knowledge base pages by semantic similarity and keyword match.
-
-    Args:
-        query: Search query text.
-        limit: Maximum number of results (default 10, max 20).
-        personal_only: If true, only search the user's personal project.
-        project_id: Project ID to scope the search.
-    """
-    data = await _get(
-        "/v1/knowledge/wiki/search",
-        {"q": query, "limit": min(limit, 20)},
-        project=project,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    results = data.get("results", [])
-    if not results:
-        return "No results found."
-    lines = []
-    for r in results:
-        title = r.get("title", "Untitled")
-        snippet = r.get("snippet", r.get("summary", ""))[:200]
-        lines.append(f"## {title}\n{snippet}\n")
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_grep(
-    pattern: str,
-    personal_only: bool = False,
-    project: str | None = None,
-    project_id: str = "",
-) -> str:
-    """Search knowledge base page content by keyword or pattern.
-
-    Args:
-        pattern: Keyword or search pattern.
-        personal_only: If true, only search the user's personal project.
-        project_id: Project ID to scope the search.
-    """
-    data = await _get(
-        "/v1/knowledge/wiki/search",
-        {"q": pattern, "limit": 20},
-        project=project,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    results = data.get("results", [])
-    if not results:
-        return "No matches found."
-    lines = []
-    for r in results:
-        title = r.get("title", "Untitled")
-        lines.append(f"- {title}")
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_blame(
-    page: str,
-    personal_only: bool = False,
-    project_id: str = "",
-) -> str:
-    """Show paragraph-level source attribution for a knowledge base page.
-
-    Args:
-        page: Page title or UUID.
-        personal_only: If true, only resolve pages in the user's personal project.
-        project_id: Project ID to scope the query.
-    """
-    page_data = await _resolve_page(
-        page,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    page_id = page_data["id"]
-    data = await _get(f"/v1/knowledge/wiki/pages/{page_id}/blame")
-    entries = data.get("blame", [])
-    if not entries:
-        return "No blame data available."
-    lines = []
-    for e in entries:
-        source = e.get("source_title", e.get("compiled_by", "unknown"))
-        rev = e.get("revision", "?")
-        text = e.get("text", "").strip()[:120]
-        lines.append(f"[rev {rev}] {source}: {text}")
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_sources(
-    page: str,
-    personal_only: bool = False,
-    project_id: str = "",
-) -> str:
-    """List source documents that contributed to a knowledge base page.
-
-    Args:
-        page: Page title or UUID.
-        personal_only: If true, only resolve pages in the user's personal project.
-        project_id: Project ID to scope the query.
-    """
-    page_data = await _resolve_page(
-        page,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    page_id = page_data["id"]
-    data = await _get(f"/v1/knowledge/wiki/pages/{page_id}/sources")
-    sources = data.get("sources", [])
-    if not sources:
-        return "No sources."
-    lines = []
-    for s in sources:
-        source_type = s.get("source_type", "")
-        title = s.get("source_title", s.get("source_id", ""))
-        lines.append(f"- [{source_type}] {title}")
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_provenance(
-    page: str,
-    personal_only: bool = False,
-    project_id: str = "",
-) -> str:
-    """Show section provenance rollups with inline citations and stance.
-
-    Args:
-        page: Page title or UUID.
-        personal_only: If true, only resolve pages in the user's personal project.
-        project_id: Project ID to scope the query.
-    """
-    page_data = await _resolve_page(
-        page,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    page_id = page_data["id"]
-    data = await _get(f"/v1/knowledge/wiki/pages/{page_id}/section-provenance")
-    prov = data.get("provenance", {})
-    if not prov:
-        return "No section provenance data."
-    lines = []
-    for section_id, section_data in prov.items():
-        title = (
-            section_data.get("title", section_id)
-            if isinstance(section_data, dict)
-            else section_id
-        )
-        lines.append(f"\n## {title or section_id}")
-        sources = section_data.get("sources", []) if isinstance(section_data, dict) else []
-        if not sources:
-            lines.append("  (no citations)")
-            continue
-        for c in sources:
-            stance = c.get("stance", "support")
-            source = c.get("source_title") or c.get("source_id", "unknown")
-            inline = " inline" if c.get("inline") else ""
-            key = f" ({c.get('key')})" if c.get("key") else ""
-            lines.append(f"  [{stance}{inline}] {source}{key}")
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_links(
-    page: str,
-    personal_only: bool = False,
-    project_id: str = "",
-) -> str:
-    """Show pages that link to this page.
-
-    Args:
-        page: Page title or UUID.
-        personal_only: If true, only resolve pages in the user's personal project.
-        project_id: Project ID to scope the query.
-    """
-    page_data = await _resolve_page(
-        page,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    page_id = page_data["id"]
-    data = await _get(f"/v1/knowledge/wiki/pages/{page_id}/backlinks")
-    backlinks = data.get("backlinks", [])
-    if not backlinks:
-        return "No backlinks."
-    lines = [f"- {b.get('title', '')}" for b in backlinks]
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_timeline(
-    query: str | None = None,
-    start_date: str | None = None,
-    end_date: str | None = None,
-    page_type: str | None = None,
-    include_content: bool = False,
-    limit: int = 50,
-    personal_only: bool = False,
-    project: str | None = None,
-    project_id: str = "",
-) -> str:
-    """Query temporal events (decisions, meetings, etc.) across the knowledge base.
-
-    Filter by keyword, date range, and/or page type. Returns events sorted
-    chronologically with their page context. Use this to trace how a topic,
-    project, or entity evolved over time.
-
-    Args:
-        query: Keyword filter -- matches section titles, page titles, and content.
-        start_date: Start date in YYYY-MM-DD format.
-        end_date: End date in YYYY-MM-DD format.
-        page_type: Filter by type (decision, meeting, topic, person, etc.).
-        include_content: If true, return each section's full markdown content.
-        limit: Max events to return (default 50, max 100).
-        personal_only: If true, only show events from the user's personal project.
-        project_id: Project ID to scope the query.
-    """
-    params: dict = {"limit": min(limit, 100)}
-    if query:
-        params["q"] = query
-    if include_content:
-        params["include_content"] = "true"
-    if start_date:
-        params["start_date"] = start_date
-    if end_date:
-        params["end_date"] = end_date
-    if page_type:
-        params["page_type"] = page_type
-    data = await _get(
-        "/v1/knowledge/wiki/timeline",
-        params,
-        project=project,
-        project_id=project_id,
-        personal=personal_only,
-    )
-    events = data.get("events", [])
-    if not events:
-        return "No events found in the specified range."
-    lines = []
-    for e in events:
-        date_str = e.get("event_start", "")
-        if e.get("event_end") and e["event_end"] != date_str:
-            date_str += f" -- {e['event_end']}"
-        precision = e.get("date_precision", "")
-        if precision and precision != "day":
-            date_str += f" ({precision})"
-        ptype = e.get("page_type", "")
-        title = e.get("title", "")
-        page_title = e.get("page_title", "")
-        lines.append(f"{date_str} [{ptype}] {title}")
-        lines.append(f"  Page: {page_title}")
-        if e.get("content"):
-            lines.append(f"\n{e['content']}\n")
-    return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_log(
-    page: str | None = None,
-    personal_only: bool = False,
-    project: str | None = None,
-    project_id: str = "",
-) -> str:
-    """Show revision history for a page, or recent ingestion events if no page given.
-
-    Args:
-        page: Page title or UUID. Omit for global ingestion log.
-        personal_only: If true, only show events from the user's personal project.
-        project_id: Project ID to scope the ingestion log.
-    """
-    if page:
-        page_data = await _resolve_page(
-            page,
-            project=project,
-            project_id=project_id,
-            personal=personal_only,
-        )
-        page_id = page_data["id"]
-        data = await _get(f"/v1/knowledge/wiki/pages/{page_id}/revisions")
-        revisions = data.get("revisions", [])
-        if not revisions:
-            return "No revisions."
-        lines = []
-        for r in revisions:
-            rev = r.get("revision", "?")
-            by = r.get("compiled_by", "")
-            summary = r.get("summary", "") or ""
-            date = (r.get("created_at", "") or "")[:16]
-            lines.append(f"rev {rev}  {by}  {date}  {summary}")
-        return "\n".join(lines)
-    else:
-        data = await _get(
-            "/v1/knowledge/wiki/ingestion-events",
-            project=project,
-            project_id=project_id,
-            personal=personal_only,
-        )
-        events = data.get("events", [])
-        if not events:
-            return "No recent ingestion events."
-        lines = []
-        for e in events:
-            titles = ", ".join(e.get("page_titles", []))
-            lines.append(
-                f"[{e.get('status', '')}] {e.get('source_title', '')} "
-                f"({e.get('pages_created', 0)} created, {e.get('pages_updated', 0)} updated) "
-                f"pages: {titles or '-'}  {e.get('created_at', '')[:16]}"
-            )
-        return "\n".join(lines)
-
-
-@mcp.tool()
-async def kb_stats(
-    personal_only: bool = False,
+async def wiki_stats(
     project: str | None = None,
     project_id: str = "",
 ) -> str:
     """Show knowledge base statistics (page count, source count) for the current scope.
 
     Args:
-        personal_only: If true, only count pages in the user's personal project.
         project_id: Project ID to scope the stats.
     """
     data = await _get(
         "/v1/knowledge/stats",
         project=project,
         project_id=project_id,
-        personal=personal_only,
     )
     return f"Pages: {data.get('pages', 0)}\nSources: {data.get('sources', 0)}"
 
 
 @mcp.tool()
-async def kb_graph(
-    personal_only: bool = False,
+async def wiki_graph(
     project: str | None = None,
     project_id: str = "",
 ) -> str:
     """Get a summary of the knowledge base graph structure.
 
-    Returns the top connected pages and basic graph stats. Use kb_links
+    Returns the top connected pages and basic graph stats. Use knowledge_base command='links'
     on a specific page to explore its neighborhood.
 
     Args:
-        personal_only: If true, only show the user's personal project graph.
         project_id: Project ID to scope the graph.
     """
     data = await _get(
@@ -714,7 +557,6 @@ async def kb_graph(
         {"max_nodes": "30"},
         project=project,
         project_id=project_id,
-        personal=personal_only,
     )
     nodes = data.get("nodes", [])
     edges = data.get("edges", [])
@@ -744,68 +586,6 @@ async def kb_graph(
 # ---------------------------------------------------------------------------
 
 
-async def _resolve_page(
-    ref: str,
-    *,
-    project: str | None = None,
-    project_id: str = "",
-    personal: bool = False,
-) -> dict:
-    """Resolve a page reference to a full page dict."""
-    scope = await _scope_params(project=project, project_id=project_id, personal=personal)
-    scoped_project_id = str(scope.get("project_id") or "")
-
-    # Try UUID
-    if len(ref) == 36 and "-" in ref:
-        try:
-            page = await _get(f"/v1/knowledge/wiki/pages/{ref}")
-            if _page_matches_scope(
-                page,
-                project_id=scoped_project_id,
-            ):
-                return page
-        except Exception:
-            pass
-
-    # Try title (resolves via wiki_page_title_aliases -- both current and
-    # previous titles match, so renamed pages still resolve).
-    try:
-        return await _get(
-            "/v1/knowledge/wiki/pages/by-title",
-            {"title": ref},
-            project=project,
-            project_id=project_id,
-            personal=personal,
-        )
-    except Exception:
-        pass
-
-    # Try fuzzy search (handles partial input and slug-shaped legacy refs
-    # like "marcos-ortiz" by ranking on trigram + FTS).
-    try:
-        results = await _get(
-            "/v1/knowledge/wiki/search",
-            {"q": ref, "limit": 1},
-            project=project,
-            project_id=project_id,
-            personal=personal,
-        )
-        hits = results.get("results", [])
-        if hits:
-            page_id = hits[0].get("id")
-            if page_id:
-                page = await _get(f"/v1/knowledge/wiki/pages/{page_id}")
-                if _page_matches_scope(
-                    page,
-                    project_id=scoped_project_id,
-                ):
-                    return page
-    except Exception:
-        pass
-
-    raise ValueError(f"Page not found: {ref}")
-
-
 # ---------------------------------------------------------------------------
 # Research
 # ---------------------------------------------------------------------------
@@ -814,10 +594,9 @@ async def _resolve_page(
 @mcp.tool()
 async def research(
     query: str,
-    personal_only: bool = False,
     project: str = "",
     project_id: str = "",
-) -> str:
+) -> dict:
     """Ask a question and get a researched answer with citations from the
     organization's knowledge base, documents, and connected services.
 
@@ -835,10 +614,9 @@ async def research(
 
     Args:
         query: The question to answer.
-        personal_only: If true, only search the user's personal project.
         project_id: Optional project ID to scope the search.
     """
-    params = await _scope_params(project=project, project_id=project_id, personal=personal_only)
+    params = scope_params(project=project_id or project)
     body = {"query": query, **params}
     data = await _post("/v1/knowledge/research", body)
 
@@ -850,6 +628,7 @@ async def research(
 
     # Collect referenced keys in order and replace tokens with [N]
     seen_keys: list[str] = []
+
     def _replace_token(m):
         key = m.group(1)
         if key not in seen_keys:
@@ -869,11 +648,17 @@ async def research(
             src = sources.get(key, {})
             source_type = src.get("type", key.split(":")[0] if ":" in key else "unknown")
             title = src.get("title", "")
-            url = src.get("web_view_url", "")
-            line = f"  [{i}] ({source_type}) {title}"
-            if url:
-                line += f"\n      {url}"
-            lines.append(line)
+            # The token as well as the ordinal. [1] is readable prose but names
+            # nothing outside this one answer, and the instructions above tell a
+            # writer to reuse these keys in sections[].citations -- so the key
+            # has to survive the rendering that makes the answer readable.
+            lines.append(f"  [{i}] {{{{{key}}}}}  ({source_type}) {title}")
+            # Excerpt and verdict, on the primary tool. This is where an MCP
+            # consumer is most exposed: research answers read as authoritative
+            # prose, and without the verdict a compiler paraphrase is
+            # indistinguishable from a checked quote.
+            lines.extend(_source_lines(src, indent="      ", excerpt_chars=_LIST_EXCERPT_CHARS))
+        lines.append(_SOURCE_NOTE)
 
     confidence = data.get("confidence", "")
     gaps = data.get("gaps", "")
@@ -885,7 +670,16 @@ async def research(
     if meta:
         lines.append(f"\n{' | '.join(meta)}")
 
-    return "\n".join(lines)
+    return {
+        "content": "\n".join(lines),
+        "sources": [
+            _public_source(src, citation_key=key)
+            for key, src in sources.items()
+            if isinstance(src, dict)
+        ],
+        "confidence": confidence or None,
+        "gaps": gaps or None,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -894,206 +688,34 @@ async def research(
 
 
 @mcp.tool()
-async def kb_propose_create(
-    title: str,
-    content: str,
-    project_id: str = "",
-    personal: bool = False,
-    page_type: str = "topic",
-    summary: str = "",
-    parent: str = "",
-    sections: list[dict] | None = None,
-) -> str:
-    """Propose creating a wiki page. Requires exactly one project_id or personal=true.
+async def knowledge_base_write(
+    action: str,
+    arguments: dict | None = None,
+    scope: str | None = None,
+) -> dict:
+    """Stage a Wiki proposal through the engine's canonical write vocabulary.
 
-    This does not write immediately. The proposal must be accepted separately
-    with kb_accept_proposal after the user explicitly asks to apply it.
-
-    Args:
-        sections: Optional section metadata and citations. Include event dates,
-            source citations, and keys matching inline tokens like
-            {{source_type:source_id}} in content. Section IDs must match
-            <!-- sec:ID --> markers.
+    This never commits directly. The returned proposal still requires the
+    user's explicit acceptance through the proposal tools. Citation objects may
+    contain ``source_ref`` from a prior knowledge_base read; Beakr resolves it to
+    exact provenance server-side without exposing internal source IDs.
     """
-    section_data = sections or []
-    _validate_sections(content, section_data, require_content=True)
-    body = {
-        "action": "create",
-        "title": title,
-        "content": content,
-        "page_type": page_type,
-        "summary": summary,
-        "parent": parent or None,
-        "sections": section_data,
-        **(await _proposal_scope(project_id, personal)),
-    }
-    data = await _post("/v1/knowledge/wiki/proposals", body)
-    return _format_proposal(data)
+    body = dict(arguments or {})
+    body["action"] = action
+    if scope:
+        body["scope"] = scope
+    return _wiki_result(await _post("/v1/knowledge/wiki/write", body))
 
 
 @mcp.tool()
-async def kb_propose_edit(
-    page: str,
-    content: str,
-    project_id: str = "",
-    personal: bool = False,
-    title: str = "",
-    summary: str = "",
-    sections: list[dict] | None = None,
-) -> str:
-    """Propose replacing a wiki page's content. Requires exactly one project_id or personal=true.
-
-    This does not write immediately. Use kb_accept_proposal only after the user
-    explicitly asks to accept/apply the proposal.
-
-    Args:
-        sections: Optional section metadata and citations. Include event dates,
-            source citations, and keys matching inline tokens like
-            {{source_type:source_id}} in the replacement content. Section IDs
-            must match <!-- sec:ID --> markers.
-    """
-    section_data = sections or []
-    _validate_sections(content, section_data, require_content=True)
-    body = {
-        "action": "edit",
-        "page": page,
-        "content": content,
-        "title": title or None,
-        "summary": summary,
-        "sections": section_data,
-        **(await _proposal_scope(project_id, personal)),
-    }
-    data = await _post("/v1/knowledge/wiki/proposals", body)
-    return _format_proposal(data)
-
-
-@mcp.tool()
-async def kb_propose_patch(
-    page: str,
-    patches: list[dict],
-    project_id: str = "",
-    personal: bool = False,
-    title: str = "",
-    summary: str = "",
-    sections: list[dict] | None = None,
-) -> str:
-    """Propose patching a wiki page. Requires exactly one project_id or personal=true.
-
-    Patch ops: replace_text, replace_section, append_section, delete_section,
-    insert_after. This does not write immediately.
-
-    Args:
-        sections: Optional section metadata and citations. Include event dates,
-            source citations, and keys matching inline tokens like
-            {{source_type:source_id}} in the proposed content. Section IDs must
-            match <!-- sec:ID --> markers after patch application.
-    """
-    section_data = sections or []
-    _validate_sections(None, section_data, require_content=False)
-    body = {
-        "action": "edit",
-        "page": page,
-        "patches": patches,
-        "title": title or None,
-        "summary": summary,
-        "sections": section_data,
-        **(await _proposal_scope(project_id, personal)),
-    }
-    data = await _post("/v1/knowledge/wiki/proposals", body)
-    return _format_proposal(data)
-
-
-@mcp.tool()
-async def kb_propose_find_replace(
-    find: str,
-    replace: str,
-    project_id: str = "",
-    personal: bool = False,
-    regex: bool = False,
-    summary: str = "",
-) -> str:
-    """Propose find/replace across pages in one project or the user's personal project."""
-    body = {
-        "action": "find_replace",
-        "replacements": [{"find": find, "replace": replace, "regex": regex}],
-        "summary": summary,
-        **(await _proposal_scope(project_id, personal)),
-    }
-    data = await _post("/v1/knowledge/wiki/proposals", body)
-    return _format_proposal(data)
-
-
-@mcp.tool()
-async def kb_propose_move(
-    page: str,
-    project_id: str = "",
-    personal: bool = False,
-    title: str = "",
-    parent: str = "",
-    summary: str = "",
-) -> str:
-    """Propose moving or renaming a wiki page in one project or the user's personal project."""
-    body = {
-        "action": "mv",
-        "page": page,
-        "title": title or None,
-        "parent": parent or None,
-        "summary": summary,
-        **(await _proposal_scope(project_id, personal)),
-    }
-    data = await _post("/v1/knowledge/wiki/proposals", body)
-    return _format_proposal(data)
-
-
-@mcp.tool()
-async def kb_propose_archive(
-    page: str,
-    project_id: str = "",
-    personal: bool = False,
-    include_children: bool = True,
-    summary: str = "",
-) -> str:
-    """Propose archiving a wiki page in one project or the user's personal project."""
-    body = {
-        "action": "archive",
-        "page": page,
-        "include_children": include_children,
-        "summary": summary,
-        **(await _proposal_scope(project_id, personal)),
-    }
-    data = await _post("/v1/knowledge/wiki/proposals", body)
-    return _format_proposal(data)
-
-
-@mcp.tool()
-async def kb_list_proposals(
-    status: str = "pending",
-    project_id: str = "",
-    personal: bool = False,
-    limit: int = 20,
-) -> str:
-    """List visible wiki proposals, optionally filtered by project_id or personal=true."""
-    params: dict = {
-        "status": status,
-        "limit": min(limit, 100),
-        **(await _proposal_filter_scope(project_id, personal)),
-    }
-    data = await _get("/v1/knowledge/wiki/proposals", params)
-    proposals = data.get("proposals", [])
-    if not proposals:
-        return "No proposals found."
-    return "\n\n".join(_format_proposal(p) for p in proposals)
-
-
-@mcp.tool()
-async def kb_show_proposal(proposal_id: str) -> str:
+async def show_proposal(proposal_id: str) -> str:
     """Show one wiki proposal before accepting or dismissing it."""
     data = await _get(f"/v1/knowledge/wiki/proposals/{proposal_id}")
     return _format_proposal(data) + "\n\nPayload:\n" + json.dumps(data.get("payload", {}), indent=2)
 
 
 @mcp.tool()
-async def kb_accept_proposal(proposal_id: str) -> str:
+async def accept_proposal(proposal_id: str) -> str:
     """Accept and apply a wiki proposal.
 
     Only call this after the user explicitly asks to accept/apply this specific
@@ -1105,7 +727,7 @@ async def kb_accept_proposal(proposal_id: str) -> str:
 
 
 @mcp.tool()
-async def kb_dismiss_proposal(proposal_id: str) -> str:
+async def dismiss_proposal(proposal_id: str) -> str:
     """Dismiss a wiki proposal after the user asks to reject it."""
     data = await _post(f"/v1/knowledge/wiki/proposals/{proposal_id}/dismiss")
     return f"Dismissed proposal {data.get('proposal_id', proposal_id)}."

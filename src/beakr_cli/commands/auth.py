@@ -92,10 +92,9 @@ def login(
         data = api_get("/v1/me")
         user = data.get("user", data)
         org = data.get("personal_org", data)
-        console.print(
-            f"Authenticated as [bold]{user.get('display_name', user.get('primary_email', 'unknown'))}[/bold] "
-            f"in [bold]{org.get('name', org.get('slug', 'unknown'))}[/bold]"
-        )
+        identity = user.get("display_name", user.get("primary_email", "unknown"))
+        org_name = org.get("name", org.get("slug", "unknown"))
+        console.print(f"Authenticated as [bold]{identity}[/bold] in [bold]{org_name}[/bold]")
     except Exception as exc:
         err_console.print(f"Authentication failed: {exc}")
         config.delete_key("api_key")
@@ -176,7 +175,9 @@ def dev(
 
 @app.command("set-scope")
 def set_scope(
-    project_id: str | None = typer.Option(None, "--project", "-p", help="Project ID (skip interactive picker)."),
+    project_id: str | None = typer.Option(
+        None, "--project", "-p", help="Project ID (skip interactive picker)."
+    ),
 ) -> None:
     """Change the default project scope."""
     if project_id:
