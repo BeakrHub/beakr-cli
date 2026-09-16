@@ -7,85 +7,85 @@
 
 ### Step 1: Check for duplicates
 ```
-kb_search(query="REST GraphQL decision internal API")
+knowledge_base(command="sections", arguments={"query": "REST to GraphQL decision internal API"})
 ```
 No existing page found.
 
-### Step 2: Find parent
+### Step 2: Pick the project and parent
 ```
-kb_ls(page_type="overview")
+list_projects()
+knowledge_base(command="suggest_parent", scope="Platform", arguments={"title": "Internal API: REST to GraphQL", "content": "... draft with [[API Architecture]] links ..."})
 ```
-Found "API Architecture" overview page -- use as parent.
+Suggested parent: "API Architecture".
 
-### Step 3: Research context
+### Step 3: Gather sources
 ```
-research(query="internal API architecture GraphQL REST")
+research(query="internal API architecture GraphQL REST", project="<platform project id>")
+knowledge_base(command="sources", arguments={"page": "API Architecture"})
 ```
-Gather background from existing pages to include context.
+Note each source's citation key and `source_ref`.
 
-### Step 4: Write the page
+### Step 4: Stage the page
 
-Create with type `decision`:
-
-```markdown
-<!-- sec:summary -->
-## Summary
-
-The engineering team decided to migrate the internal API from REST to GraphQL,
-effective Q2 2026 {{rag:api_decision}}. This affects service-to-service
-communication only; the public API remains REST {{rag:api_decision}}.
-
-<!-- sec:context -->
-## Context
-
-The internal API serves 12 backend services with ~40 endpoints {{rag:api_audit}}.
-Pain points included over-fetching, versioning complexity, and inconsistent
-error handling {{rag:api_audit}}. See [[API Architecture]] for the current state.
-
-<!-- sec:decision -->
-## Decision
-
-**Date:** 2026-03-15 {{rag:api_decision}}
-**Decision maker:** Sarah Chen (CTO) {{rag:api_decision}}
-**Participants:** Platform team, Backend leads {{rag:api_decision}}
-
-Adopt GraphQL for internal service communication using Apollo Federation {{rag:api_decision}}.
-Key factors:
-- Reduces over-fetching by 60% based on traffic analysis {{rag:traffic_analysis}}
-- Single schema eliminates versioning overhead {{rag:api_decision}}
-- TypeScript codegen provides type safety end-to-end {{rag:api_decision}}
-
-<!-- sec:alternatives -->
-## Alternatives considered
-
-1. **Keep REST, add OpenAPI codegen** -- Lower migration cost but doesn't solve over-fetching {{rag:api_decision}}
-2. **gRPC** -- Better performance but steeper learning curve and weaker tooling for our stack {{rag:api_decision}}
-3. **tRPC** -- Good DX but limited to TypeScript services only {{rag:api_decision}}
-
-<!-- sec:consequences -->
-## Consequences
-
-- 3-month migration timeline for core services {{rag:api_decision}}
-- Training needed for team members new to GraphQL {{rag:api_decision}}
-- Monitoring approach changes (per-field metrics vs per-endpoint) {{rag:api_decision}}
-
-## Related Pages
-
-- [[API Architecture]]
-- [[Platform Team]]
-- [[Q2 2026 Roadmap]]
+```
+knowledge_base_write(
+  action="new",
+  scope="Platform",
+  arguments={
+    "title": "Internal API: REST to GraphQL",
+    "page_type": "decision",
+    "summary": "Decision to move internal service-to-service APIs from REST to GraphQL.",
+    "parent": "API Architecture",
+    "rationale": "The user asked to record this decision; no existing page covers it.",
+    "sections": [
+      {
+        "title": "Summary",
+        "body": "The engineering team decided to migrate the internal API from REST to GraphQL, effective Q2 2026 {{gdrive:api-decision-doc}}. The public API remains REST {{gdrive:api-decision-doc}}.",
+        "citations": [
+          {"key": "gdrive:api-decision-doc", "source_ref": "beakr-source:v1:...", "stance": "support"}
+        ]
+      },
+      {
+        "title": "Decision",
+        "body": "**Decision maker:** Sarah Chen (CTO) {{gdrive:api-decision-doc}}\n\nAdopt GraphQL for internal service communication using Apollo Federation {{gdrive:api-decision-doc}}. It reduces over-fetching by 60% based on traffic analysis {{conversation:graphql-traffic}}.",
+        "event_start": "2026-03-15",
+        "date_precision": "day",
+        "citations": [
+          {"key": "gdrive:api-decision-doc", "source_ref": "beakr-source:v1:...", "stance": "support"},
+          {
+            "key": "conversation:graphql-traffic",
+            "source_type": "conversation",
+            "source_title": "Claude Code session on API traffic",
+            "stance": "support",
+            "meta": {"excerpt": "Traffic analysis showed GraphQL would cut over-fetching by about 60%."}
+          }
+        ]
+      },
+      {
+        "title": "Alternatives considered",
+        "body": "1. **Keep REST, add OpenAPI codegen** -- lower migration cost but doesn't solve over-fetching {{gdrive:api-decision-doc}}\n2. **gRPC** -- better performance but weaker tooling for our stack {{gdrive:api-decision-doc}}",
+        "citations": [
+          {"key": "gdrive:api-decision-doc", "source_ref": "beakr-source:v1:...", "stance": "support"}
+        ]
+      },
+      {
+        "title": "Related Pages",
+        "body": "- [[API Architecture]]\n- [[Platform Team]]"
+      }
+    ]
+  }
+)
 ```
 
-### Step 5: Verify
+### Step 5: Review with the user
 ```
-kb_cat("rest-to-graphql-decision")
+show_proposal(proposal_id="...")
 ```
+Call `accept_proposal` only after the user explicitly says to apply it.
 
 ## Key points
-- Always use `decision` page type for decision records
-- Include date, decision maker, and participants
-- Document alternatives that were considered and why they were rejected
-- Link to related pages with `[[Page Title]]` syntax
-- Add section markers for provenance tracking
-- Add inline citation tokens for every factual claim and table value
-- Put the same citation keys in section metadata with stance
+- Use the `decision` page type; include the date (`event_start` + `date_precision`), decision maker, and alternatives
+- `sections` is a list of `{title, body}`; Beakr adds the section markers
+- Put an inline `{{key}}` token after every factual claim, and a matching citation record in that section
+- Reuse `source_ref` for sources Beakr already has; cite this conversation with `source_type: "conversation"` and `meta.excerpt`
+- Link related pages with `[[Page Title]]`

@@ -487,6 +487,29 @@ def _maybe_auth() -> None:
 # ---------------------------------------------------------------------------
 
 
+def refresh_installed_assets() -> int:
+    """Overwrite skills and slash commands wherever a previous install put them.
+
+    Run by ``beakr update`` through the freshly upgraded binary, so the copies in
+    ~/.claude, ~/.codex and the current project match the tools this version's
+    MCP server actually exposes. It never installs into a location that did not
+    already have the skill: an upgrade should not widen where Beakr is wired in.
+    Returns the number of locations refreshed.
+    """
+    refreshed = 0
+    for scope in (Scope.user, Scope.project):
+        claude_skill, _ = _claude_paths(scope)
+        if claude_skill.exists():
+            _install_claude(scope, force=True)
+            refreshed += 1
+        if _codex_skill_path(scope).exists():
+            _install_codex(scope, force=True)
+            refreshed += 1
+    if refreshed == 0:
+        console.print("[dim]No installed Beakr skills found to refresh.[/dim]")
+    return refreshed
+
+
 def install_command(
     client: Client,
     scope: Scope,

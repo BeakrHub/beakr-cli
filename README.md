@@ -93,6 +93,30 @@ env = { BEAKR_API_KEY = "<your-key>" }
 
 `uvx` fetches `beakr-cli` on demand, so no global install is needed — but you also won't have the `beakr` CLI on your PATH.
 
+## Updating
+
+```bash
+beakr update           # upgrade to the latest release and refresh installed skills
+beakr update --check   # only report whether a newer release exists
+beakr version          # installed version, plus the latest release on PyPI
+```
+
+`beakr update` upgrades with the tool that installed it (`uv tool` or `pipx`) and then
+re-copies the skill and slash commands wherever they are already installed, so they
+match the new MCP tools. Restart Claude Code / Codex afterwards to load the new server.
+
+You don't have to remember to check:
+
+- Interactive CLI commands print a one-line notice when a newer release exists
+  (checked against PyPI at most once a day, cached in `~/.beakr/update_check.json`).
+- The MCP server tells the assistant when it is out of date, and exposes
+  `beakr_version` and `update_beakr` tools so you can ask it to update Beakr.
+
+Installs that cannot be upgraded safely in place are reported, not changed: a
+`uv tool` install from a local checkout, `pip` inside another environment, or `uvx`
+(which reuses a cached copy; use `uvx --from beakr-cli@latest beakr mcp` to always
+run the newest release). Set `BEAKR_NO_UPDATE_CHECK=1` to turn the check off.
+
 ## Quick start
 
 ```bash
@@ -184,6 +208,7 @@ This writes:
 | `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
 | `BEAKR_ORG_ID` | Active org UUID or slug for `X-Org-Id` |
 | `BEAKR_PROJECT_ID` | Project scope |
+| `BEAKR_NO_UPDATE_CHECK` | Set to `1` to disable the PyPI check for newer releases. |
 | `CLAUDE_CONFIG_DIR` | Claude Code config directory (default: `~/.claude`). If set, `beakr setup` installs skills there and falls back to `claude mcp add` rather than editing `~/.claude.json`. |
 | `CODEX_HOME` | Codex config directory (default: `~/.codex`). `beakr setup` writes skills and `config.toml` here. |
 
@@ -217,7 +242,7 @@ twine check dist/*
 After the workflow succeeds:
 
 ```bash
-uv tool install beakr-cli   # or: pipx install beakr-cli
+beakr update                # or a fresh: uv tool install beakr-cli
 beakr version
 ```
 

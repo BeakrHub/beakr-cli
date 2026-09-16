@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 
-from beakr_cli import config
+from beakr_cli import __version__, config
 
 
 def _resolve_base_url() -> str:
@@ -45,7 +45,11 @@ def _resolve_dev_identity() -> tuple[str, str] | None:
 
 def _build_headers() -> dict[str, str]:
     """Build auth headers -- dev headers take priority over bearer token."""
-    headers: dict[str, str] = {"Content-Type": "application/json"}
+    # The version lets the API tell which clients are still on an old release.
+    headers: dict[str, str] = {
+        "Content-Type": "application/json",
+        "User-Agent": f"beakr-cli/{__version__}",
+    }
     org_id = _resolve_org_id()
     if org_id:
         headers["X-Org-Id"] = org_id
@@ -55,6 +59,16 @@ def _build_headers() -> dict[str, str]:
         identity_id, email = dev
         headers["X-Identity-Id"] = identity_id
         headers["X-Email"] = email
+        # The API keys the dev user on the identity NAME as well as the id, and
+        # defaults a missing name to "seed". Omitting it therefore does not fail
+        # loudly -- it silently provisions a brand-new "seed" user that is a
+        # member of nothing, so every scoped read comes back 403 or empty. The
+        # eval harness already forwards BEAKR_DEV_IDENTITY_NAME expecting this.
+        identity_name = os.environ.get("BEAKR_DEV_IDENTITY_NAME") or config.get(
+            "dev_identity_name"
+        )
+        if identity_name:
+            headers["X-Identity-Name"] = identity_name
         display_name = os.environ.get("BEAKR_DEV_DISPLAY_NAME") or config.get("dev_display_name")
         if display_name:
             headers["X-Display-Name"] = display_name

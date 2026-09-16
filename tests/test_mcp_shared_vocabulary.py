@@ -32,7 +32,8 @@ SHARED_WIKI_TOOLS = {"knowledge_base", "knowledge_base_write"}
 #: proposal three are review actions (this surface's equivalent of the accept and
 #: dismiss buttons in the product), and stats/graph read aggregate endpoints the
 #: shared vocabulary has no command for. Listing proposals is NOT here: it is a
-#: shared operation, reached as knowledge_base command='proposals'.
+#: shared operation, reached as knowledge_base command='proposals'. The version
+#: pair manages this installed package, not the wiki.
 SURFACE_OWN_TOOLS = {
     "research",
     "list_projects",
@@ -42,6 +43,8 @@ SURFACE_OWN_TOOLS = {
     "dismiss_proposal",
     "wiki_stats",
     "wiki_graph",
+    "beakr_version",
+    "update_beakr",
 }
 
 

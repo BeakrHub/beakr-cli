@@ -1,14 +1,16 @@
 # Writing Knowledge Base Pages
 
-Use this workflow when the user wants to create or update a page.
+Use this workflow when the user wants to create or update a page. Every change goes through `knowledge_base_write`, which stages a **proposal**; nothing is written until the user asks you to `accept_proposal`.
 
 ## Before writing
 
-1. **Check for duplicates.** Search with `kb_search` across all accessible projects. If a page exists on this topic, read it with `kb_cat` and decide whether to update or create new.
+1. **Check for duplicates.** Search with `knowledge_base` command `sections` (and `grep` for exact names). If a page exists on this topic, read it with `cat` and update it instead of creating a new one.
 
-2. **Find the right parent.** Use `list_projects` to choose the target project, then use `kb_ls` in that project to see the page hierarchy. Place the new page under the most logical parent. If unsure, ask the user.
+2. **Pick the project.** Use `list_projects` and pass the project's name or ID as `scope`. Never guess: a page title or filename is not a scope.
 
-3. **Choose the right page type:**
+3. **Find the right parent.** Use `suggest_parent` with `title` (and your draft as `content`) for a page you are about to create, or `ls {parent}` to walk the hierarchy. If unsure, ask the user.
+
+4. **Choose the page type.** Run `ontology` to see the org's active types. Common ones:
 
 | Type | When to use |
 |------|-------------|
@@ -20,84 +22,63 @@ Use this workflow when the user wants to create or update a page.
 | `overview` | Index/section pages that tie a section together. |
 | `research_note` | Ephemeral analysis, not canonical knowledge. |
 
+## Updating an existing page (preferred)
+
+Use `edit_section` to change one section without touching the rest of the page. Read the page first (`cat {page, outline: true}`) to get section IDs. `new_section_body` replaces that section's entire body.
+
+```
+knowledge_base_write(
+  action="edit_section",
+  scope="Platform",
+  arguments={
+    "page": "API Architecture",
+    "section_id": "sec_auth",
+    "new_section_body": "Internal services authenticate with mTLS {{conversation:2026-09-16-auth}}.",
+    "citations": [
+      {
+        "key": "conversation:2026-09-16-auth",
+        "source_type": "conversation",
+        "source_title": "Claude Code session on service auth",
+        "stance": "support",
+        "meta": {"excerpt": "We agreed to move internal services to mTLS."}
+      }
+    ],
+    "edit_note": "Record the move to mTLS",
+    "rationale": "Decision made in this session; the page still described JWT."
+  }
+)
+```
+
+To add a section, pass a new `section_id` plus `section_title` (and `after` to position it). For several changes at once, use `edit` with `patches`.
+
+## Creating a page
+
+Use `new` with `title`, `page_type`, `summary`, `parent`, `rationale`, and `sections`.
+
+`sections` is the page: an ordered list of `{title, body}` objects. **Beakr writes the `<!-- sec:ID -->` markers and section IDs for you** -- do not author markers and do not pass `content`.
+
+Each section can also carry:
+- `citations`: records for the inline tokens in its body (see below)
+- `event_start`, `event_end`, `date_precision` (day, month, quarter, year, approx) for dated decisions, meetings, launches, incidents, and other timeline-worthy sections. `date_precision` is required whenever `event_start` is set.
+
+## Citations
+
+Put an inline token immediately after every factual claim, table value, date, title, and relationship: `{{key}}`. Then give each token a citation record in that section's `citations`:
+
+- **Re-citing a source Beakr already has:** use the `source_ref` from a `knowledge_base` read (`sources`, `provenance`, `cat`, `sections`) with the token key shown there, e.g. `{"key": "external_item:...-section-3", "source_ref": "beakr-source:v1:...", "stance": "support"}`.
+- **A source cited for the first time** (this conversation, a note): give a stable `key` with `source_type` `conversation`, `agent_note`, or `user_note`, a `source_title`, and `meta.excerpt` (or `meta.content` / `meta.text`).
+
+Set `stance` to `support`, `qualifies`, or `contradicts`. It defaults to `support`, and that default is itself a claim about the evidence. A token with no citation record is stored as a bare pointer that can never be verified.
+
 ## Content conventions
 
-### Section markers (required)
-Add `<!-- sec:OPAQUE_ID -->` before each major section. These enable section-level provenance tracking.
+- Use `[[Page Title]]` to link other pages; `[[Display Text|Page Title]]` when the text differs. Check targets exist first.
+- `summary` is a one-line description of what the page is about, never a note about your edit (that is `edit_note`).
+- Include a "Related Pages" section with links to connected pages.
+- Be specific: name WHO made decisions, WHEN things happened, WHY.
+- Use tables for structured data, code blocks for config/commands.
+- Do not create stub pages -- every page should have substantive content.
 
-```markdown
-<!-- sec:auth_overview -->
-## Authentication Overview
+## After proposing
 
-Our authentication uses JWT tokens issued by Clerk...
-
-<!-- sec:auth_flow -->
-## Authentication Flow
-
-1. User submits credentials to Clerk...
-```
-
-### Inline citations
-Every factual claim, table row/value, date, title, and relationship should carry
-an inline citation token immediately after the supported claim or value. Tokens
-must look like `{{source_type:source_id}}` or `{{!source_type:source_id}}`.
-
-```markdown
-Revenue was $12.4M {{rag:abc123}} and net retention was 118% {{gdrive:def456}}.
-
-| Company | Revenue |
-| --- | --- |
-| Acme | $12.4M {{rag:abc123}} |
-```
-
-Use the same citation keys in proposal section metadata so provenance can roll
-up support, qualification, and contradiction. Include event metadata for dated
-decisions, meetings, milestones, incidents, launches, and other timeline-worthy
-sections:
-
-```json
-[
-  {
-    "id": "financials",
-    "title": "Financials",
-    "event_start": "2026-04-01",
-    "date_precision": "day",
-    "citations": [
-      { "key": "rag:abc123", "stance": "support" },
-      { "key": "gdrive:def456", "stance": "qualifies" }
-    ]
-  }
-]
-```
-
-For citations that are not already wiki/page sources, provide source metadata in
-the same citation object. Current-session citations should use `conversation`,
-`agent_note`, or `user_note` and include `source_title` plus `meta.excerpt`,
-`meta.content`, or `meta.text`.
-
-```json
-{
-  "key": "agent_note:launch-risk",
-  "source_type": "agent_note",
-  "source_title": "Agent synthesis from current conversation",
-  "stance": "support",
-  "meta": {
-    "excerpt": "The team decided to keep the launch date but add a rollback gate."
-  }
-}
-```
-
-### Cross-references
-Use `[[Page Title]]` to link to other KB pages. Verify targets exist first with `kb_search`.
-
-Use `[[Display Text|slug]]` when display text differs from the page title.
-
-### Structure
-- Include a "Related Pages" section at the bottom with links to connected pages
-- Be specific: name WHO made decisions, WHEN things happened, WHY
-- Use tables for structured data, code blocks for config/commands
-- Do not create stub pages -- every page should have substantive content
-
-## After writing
-
-Read the page back with `kb_cat` to verify it rendered correctly.
+Show the user what you staged with `show_proposal`. Call `accept_proposal` only when the user explicitly asks to apply that proposal. `knowledge_base` command `proposals` lists what is still pending; a proposed page does not exist in `ls`, `cat`, or search until accepted.

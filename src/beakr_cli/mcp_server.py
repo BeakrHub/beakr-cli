@@ -6,12 +6,17 @@ import json
 from pathlib import PurePosixPath
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 
 from beakr_cli.client import get_async_client, scope_params
+from beakr_cli.updates import (
+    detect_install,
+    get_update_status,
+    installed_version_on_path,
+    run_upgrade,
+)
 
-mcp = FastMCP(
-    "beakr",
-    instructions=(
+_INSTRUCTIONS = (
         "Beakr is the team's organizational memory and connected services. "
         "Teams write decisions, processes, ownership, and dated events here so "
         "that 6 months later the answer to 'why did we do X' is one search "
@@ -55,10 +60,12 @@ mcp = FastMCP(
         "WRITES:\n"
         "All wiki writes go through proposals. Stage one with knowledge_base_write, "
         "review it with show_proposal, and only call accept_proposal after "
-        "the user explicitly asks to accept/apply that specific proposal. Proposal "
-        "sections can include event metadata and citations. Section IDs must match "
-        "<!-- sec:ID --> markers in content; event dates should be full YYYY-MM-DD "
-        "dates. Put inline citation tokens like {{source_type:source_id}} or "
+        "the user explicitly asks to accept/apply that specific proposal. A page's "
+        "content is `sections`: an ordered list of {title, body} objects; Beakr writes "
+        "the <!-- sec:ID --> markers and ids, so do not author markers. Prefer "
+        "action='edit_section' for changes to an existing page. Each section can carry "
+        "citations and event dates (full YYYY-MM-DD with date_precision). "
+        "Put inline citation tokens like {{source_type:source_id}} or "
         "{{!source_type:source_id}} directly in wiki markdown after every factual "
         "claim, table row/value, date, title, and relationship. Use the same "
         "source keys in sections[].citations with stance so section provenance "
@@ -68,7 +75,8 @@ mcp = FastMCP(
         "external identifiers, or inline source_type 'conversation', "
         "'agent_note', or 'user_note' with source_title and meta.excerpt/content/text. "
         "Section objects use this shape: "
-        "{id, title, event_start, event_end, date_precision, citations:["
+        "{title, body, id (only to keep an existing section), event_start, event_end, "
+        "date_precision, citations:["
         "{source_ref, key, source_type, source_id, source_title, stance, chunk_ref, meta}]}. "
         "For a source returned by Beakr, source_ref plus stance is sufficient and preferred.\n\n"
         "EVIDENCE:\n"
@@ -84,9 +92,33 @@ mcp = FastMCP(
         "propagated into a proposal becomes an unverified claim on a permanent "
         "page. 'at:' gives the location within the document; 'source changed since "
         "cited' means the source has a newer version than the one the claim was "
-        "checked against."
-    ),
+        "checked against.\n\n"
+        "VERSION:\n"
+        "beakr_version reports whether this MCP server is out of date. Only call "
+        "update_beakr when the user asks to update Beakr; afterwards they must restart "
+        "Claude Code / Codex to load the new server."
 )
+
+
+def _update_notice() -> str:
+    """One line for the instructions when the cached check says we are behind.
+
+    Cache only: no network while the client is waiting for ``initialize``. The
+    background refresh in ``run_server`` updates the cache for the next launch.
+    """
+    try:
+        status = get_update_status(allow_network=False)
+    except Exception:
+        return ""
+    if not status.update_available:
+        return ""
+    return (
+        f"\n\nUPDATE AVAILABLE: this Beakr MCP server is {status.current}; "
+        f"{status.latest} is released. Tell the user once, and offer to run update_beakr."
+    )
+
+
+mcp = FastMCP("beakr", instructions=_INSTRUCTIONS + _update_notice())
 
 
 async def _get(
@@ -418,10 +450,10 @@ _SOURCE_NOTE = (
 
 @mcp.tool()
 async def list_projects() -> str:
-    """List projects in the organization.
+    """List projects in the organization, including the user's personal project.
 
-    Use this to discover available projects and their IDs.
-    Pass the project ID to kb tools via the project_id parameter.
+    Pass a project's name or id as ``scope`` to knowledge_base and
+    knowledge_base_write, or as ``project`` to research, wiki_stats and wiki_graph.
     """
     async with get_async_client() as c:
         resp = await c.get("/v1/projects")
@@ -499,20 +531,40 @@ async def knowledge_base(
     arguments: dict | None = None,
     scope: str | None = None,
 ) -> dict:
-    """Run the engine's canonical knowledge-base read command.
+    """Read the knowledge base: the same commands Beakr's in-product agents use.
 
-    This is the complete, shared Wiki vocabulary used by Beakr's in-product
-    agents. It avoids the MCP wrappers drifting from commands such as
-    ``sections``, and returns their source/evidence and section-date rendering
-    unchanged. ``sources`` is structured for external clients: it gives the
-    filename, provider, public location, retained excerpt/locator, status, an
-    executable ``retrieval`` tool call when available, and an opaque
-    ``source_ref`` reusable in ``knowledge_base_write`` citations.
+    Pass the command name as ``command`` and its options as a flat ``arguments``
+    object. There is no ``search`` command: use ``sections`` or ``grep``.
+
+    Find pages:
+      sections   {query, page_type?, limit?}  Semantic section search. START HERE.
+      grep       {query, mode?, context_lines?, matches_per_page?, limit?}
+                 mode: text (default, literal substring), regex, semantic, history.
+      ls         {parent?, page_type?, sort_by?, limit?}  sort_by: title|updated_at|created_at.
+    Read:
+      cat        {page, section_id?, lines?, outline?, rev?}  Prefer section_id from a hit.
+      hover      {page}  Type, summary, revision, counts. Cheap triage before cat.
+    Graph:
+      links      {page}  Backlinks.     references {page}  Links plus prose mentions.
+      timeline   {timeline_query?, start_date?, end_date?, include_content?, include_approx?}
+      ontology   {include_proposed?}   suggest_parent {page | title, content?}
+    Trust and lineage:
+      provenance {page}  Per-section citations with stance.
+      blame      {page}  Paragraph-level attribution.
+      sources    {page}  Sources behind a page (or pass a source/citation token as page).
+    History:
+      log {page?}   diff {page, rev, rev2?}   show {page, rev}
+    Utility:
+      diagnostics {}   completions {prefix}   proposals {status?}  status: pending|dismissed.
+
+    ``page`` accepts a slug, title, UUID, or wiki citation key such as ``wiki:8f3a0c21``.
+    Results carry structured ``sources``, each with an opaque ``source_ref`` to reuse
+    in knowledge_base_write citations.
 
     Args:
-        command: Shared command, for example cat, sections, search, sources, or timeline.
-        arguments: Command arguments exactly as accepted by the in-product tool.
-        scope: Optional project name or ID. Omit to read everything RLS allows.
+        command: One of the commands above.
+        arguments: That command's options, e.g. {"query": "billing owner"}.
+        scope: Optional project name or ID. Omit to read everything you can see.
     """
     body = dict(arguments or {})
     body["command"] = command
@@ -526,10 +578,11 @@ async def wiki_stats(
     project: str | None = None,
     project_id: str = "",
 ) -> str:
-    """Show knowledge base statistics (page count, source count) for the current scope.
+    """Show knowledge base statistics (page count, source count).
 
     Args:
-        project_id: Project ID to scope the stats.
+        project: Project name or ID to scope the stats. Omit for everything you can see.
+        project_id: Deprecated alias for project.
     """
     data = await _get(
         "/v1/knowledge/stats",
@@ -550,7 +603,8 @@ async def wiki_graph(
     on a specific page to explore its neighborhood.
 
     Args:
-        project_id: Project ID to scope the graph.
+        project: Project ID to scope the graph. Omit for everything you can see.
+        project_id: Deprecated alias for project.
     """
     data = await _get(
         "/v1/knowledge/wiki/graph",
@@ -614,7 +668,8 @@ async def research(
 
     Args:
         query: The question to answer.
-        project_id: Optional project ID to scope the search.
+        project: Optional project ID to scope the search.
+        project_id: Deprecated alias for project.
     """
     params = scope_params(project=project_id or project)
     body = {"query": query, **params}
@@ -693,12 +748,36 @@ async def knowledge_base_write(
     arguments: dict | None = None,
     scope: str | None = None,
 ) -> dict:
-    """Stage a Wiki proposal through the engine's canonical write vocabulary.
+    """Propose a knowledge-base change. Nothing is written until accept_proposal.
 
-    This never commits directly. The returned proposal still requires the
-    user's explicit acceptance through the proposal tools. Citation objects may
-    contain ``source_ref`` from a prior knowledge_base read; Beakr resolves it to
-    exact provenance server-side without exposing internal source IDs.
+    Pass the action as ``action`` and its fields as a flat ``arguments`` object.
+    Every change except page_type needs ``rationale``; edits also take ``edit_note``.
+
+      edit_section {page, section_id, new_section_body, citations?, section_meta?,
+                    section_title?, after?}  PREFERRED for updating a page. Replaces one
+                    section's whole body; a new section_id plus section_title adds one.
+      new          {title, page_type, summary, sections, parent?, page_aliases?}
+      edit         {page, patches | sections, title?}  patches: [{op, section?, content?,
+                    find?, replace?, regex?, after?}]; sections replaces the whole page.
+      find_replace {replacements: [{find, replace, regex?}]}  Needs scope.
+      mv           {page | pages | moves, parent?, title?}   Same project only.
+      archive      {page | pages, include_children?}
+      merge        {page (the duplicate), canonical, merge_sections?}  Prefer over archive
+                    for duplicates: links keep resolving.
+      copy         {page | pages, include_children?, source_scope?}  scope = TARGET project.
+      page_type    {key, label, description, when_to_use, ...}  Only if no type fits.
+
+    ``sections`` is an ordered list of {title, body, id?, citations?, event_start?,
+    event_end?, date_precision?}. Beakr writes the section markers; do not author
+    them. Citation objects are {source_ref | key, stance, meta?}; stance is
+    support, qualifies, or contradicts. Use a ``source_ref`` from a knowledge_base
+    read, or for this conversation: {key: "conversation:<id>", source_type:
+    "conversation", source_title, stance, meta: {excerpt}}.
+
+    Args:
+        action: One of the actions above.
+        arguments: That action's fields.
+        scope: Project name or ID the change belongs to.
     """
     body = dict(arguments or {})
     body["action"] = action
@@ -734,10 +813,97 @@ async def dismiss_proposal(proposal_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Version and self-update
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True))
+async def beakr_version() -> str:
+    """Report this Beakr MCP server's version and whether a newer release exists.
+
+    Call when the user asks about the Beakr version or updates, or when a Beakr
+    tool behaves as if it is out of date.
+    """
+    import asyncio
+    from datetime import timedelta
+
+    status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
+    info = detect_install()
+    lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
+    if status.latest is None:
+        lines.append("Latest release: unknown (could not reach PyPI).")
+    elif status.update_available:
+        lines.append(f"Update available: {status.latest}.")
+        if info.upgrade_command is not None:
+            lines.append("update_beakr can install it; the user must then restart the client.")
+        else:
+            lines.append(info.instructions)
+    else:
+        lines.append(f"No newer release (latest release: {status.latest}).")
+    return "\n".join(lines)
+
+
+@mcp.tool(
+    annotations=ToolAnnotations(
+        readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True
+    )
+)
+async def update_beakr() -> str:
+    """Upgrade beakr-cli to the latest release and refresh its installed skills.
+
+    Only call this when the user has asked to update Beakr. It takes no arguments
+    and only ever upgrades the beakr-cli package with the tool that installed it
+    (uv or pipx). The running server keeps the old code: tell the user to restart
+    Claude Code / Codex afterwards.
+    """
+    import asyncio
+    from datetime import timedelta
+
+    status = await asyncio.to_thread(get_update_status, max_age=timedelta(0))
+    if status.latest is not None and not status.update_available:
+        return (
+            f"No update needed: installed {status.current}, latest release {status.latest}."
+        )
+    info = detect_install()
+    result = await asyncio.to_thread(run_upgrade, info)
+    if not result.ok:
+        tail = f"\n\n{result.output[-2000:]}" if result.output else ""
+        return f"Update did not run: {result.message}{tail}"
+    now = await asyncio.to_thread(installed_version_on_path)
+    return (
+        f"{result.message} beakr on PATH is now {now or 'unknown'} "
+        f"(this server is still {status.current}). Restart Claude Code / Codex to load it."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
 
 
+def _refresh_update_cache() -> None:
+    """Refresh the release cache in the background and note staleness on stderr.
+
+    stderr is the MCP client's log, never the protocol stream. Failures are
+    silent: an update check must never take the server down.
+    """
+    import sys
+
+    try:
+        status = get_update_status()
+    except Exception:
+        return
+    if status.update_available:
+        print(
+            f"beakr-cli {status.latest} is available (running {status.current}). "
+            "Run `beakr update`.",
+            file=sys.stderr,
+        )
+
+
 def run_server() -> None:
     """Start the MCP server on stdio."""
+    import threading
+
+    threading.Thread(target=_refresh_update_cache, name="beakr-update-check", daemon=True).start()
     mcp.run(transport="stdio")

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import typer
 
 from beakr_cli import config
@@ -128,10 +130,10 @@ def whoami() -> None:
         org = data.get("personal_org", data)
         console.print(f"User:  {user.get('display_name', user.get('primary_email', 'unknown'))}")
         console.print(f"Org:   {org.get('name', org.get('slug', 'unknown'))}")
-        active_org = config.get("org_id")
+        active_org = os.environ.get("BEAKR_ORG_ID") or config.get("org_id")
         if active_org:
             console.print(f"Org override: {active_org}")
-        scope_project = config.get("project_id")
+        scope_project = os.environ.get("BEAKR_PROJECT_ID") or config.get("project_id")
         if scope_project:
             console.print(f"Scope: project {scope_project}")
         else:

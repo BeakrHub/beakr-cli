@@ -1,36 +1,36 @@
 Audit the Beakr knowledge base for quality issues: $ARGUMENTS
 
-If no specific focus is given, run a general health check. Follow this procedure:
+If no specific focus is given, run a general health check. Pass a project's name or ID as `scope` when the user named one. Follow this procedure:
 
-1. **Get the full picture.** Call `kb_ls --all` to get every page. Use `list_projects` and project-scoped `kb_stats` when you need counts by project.
+1. **Get the full picture.** Call `wiki_stats` for counts and `knowledge_base` command `ls` (raise `limit` in `arguments` for a full list). Use command `ontology` to see which page types are in use.
 
-2. **Check the graph.** Call `kb_graph` to get all nodes and edges. Look for:
+2. **Run diagnostics.** Call `knowledge_base` command `diagnostics`. It reports broken links, orphan pages, and disputes.
+
+3. **Check the graph.** Call `wiki_graph` for the most-connected pages. Look for:
    - **Orphan pages** -- pages with no parent and no incoming links
-   - **Broken links** -- `[[links]]` that don't resolve to any page
    - **Dead ends** -- pages with no outgoing links (isolated knowledge)
    - **Missing index pages** -- overview pages that should tie a section together
 
-3. **Spot structural issues.** From `kb_ls` results, look for:
+4. **Spot structural issues.** From `ls` results, look for:
    - Duplicate or near-duplicate page titles
-   - Pages with slug collisions (same slug across different scopes)
    - Deeply nested hierarchies (more than 3 levels is usually too deep)
-   - Pages without a parent (should they be under a section?)
-   - Pages with revision 1 that may be stubs
+   - Pages without a parent (command `suggest_parent` with `{"page": ...}` finds a home)
+   - Pages that look like stubs
 
-4. **Sample content quality.** Read 5-10 pages with `kb_cat`, prioritizing:
-   - Pages with high revision counts (heavily edited -- is content coherent?)
-   - Pages with revision 1 (potentially stubs or unreviewed)
-   - Overview/index pages (are they up to date with their children?)
+5. **Sample content quality.** Read 5-10 pages with command `cat` (start with `{"page": ..., "outline": true}`), prioritizing:
+   - Heavily edited pages (command `log`) -- is content coherent?
+   - Recently created pages (sort `ls` by `created_at`) -- stubs or unreviewed?
+   - Overview/index pages -- are they up to date with their children?
 
-5. **Check provenance.** For key pages, call `kb_provenance` and look for:
+6. **Check provenance.** For key pages, call command `provenance` and look for:
    - Sections with no citations (unsourced claims)
-   - Sections with only `contradicts` citations (disputed content)
-   - Stale provenance (old sources, no recent updates)
+   - Sections with `contradicts` citations (disputed content)
+   - Excerpts marked (paraphrase) or (unverified), or sources that changed since cited
 
-6. **Report findings** organized as:
+7. **Report findings** organized as:
    - **Critical** -- broken links, orphaned important pages, contradicted content
    - **Moderate** -- missing sections, stale pages, structural issues
    - **Minor** -- style inconsistencies, missing Related Pages sections
    - **Recommendations** -- specific pages to create, merge, or reorganize
 
-Offer to propose fixes with `kb_propose_edit`, `kb_propose_move`, or `kb_propose_create` if the user approves.
+Offer to stage fixes with `knowledge_base_write` (actions `edit_section`, `merge` for duplicates, `mv`, `new`) if the user approves. Never call `accept_proposal` unless the user explicitly asks.

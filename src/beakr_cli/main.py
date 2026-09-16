@@ -22,12 +22,107 @@ app.add_typer(kb_app, name="kb")
 app.add_typer(workspace_app, name="workspace")
 
 
-@app.command()
-def version() -> None:
-    """Show the CLI version."""
-    from beakr_cli import __version__
+#: Commands that must not print the stale-version notice: ``mcp`` owns stdio for
+#: the protocol, and ``version``/``update`` report update status themselves.
+_NO_UPDATE_NOTICE = frozenset({"mcp", "version", "update"})
 
+
+@app.callback()
+def _main(ctx: typer.Context) -> None:
+    """Tell an interactive user, at most once a day of checking, that they are behind."""
+    import sys
+
+    if ctx.invoked_subcommand in _NO_UPDATE_NOTICE or not sys.stderr.isatty():
+        return
+    from beakr_cli.output import err_console
+    from beakr_cli.updates import get_update_status
+
+    status = get_update_status(timeout=1.5)
+    if status.update_available:
+        err_console.print(
+            f"[yellow]beakr-cli {status.latest} is available "
+            f"(you have {status.current}). Run [bold]beakr update[/bold].[/yellow]"
+        )
+
+
+@app.command()
+def version(
+    offline: bool = typer.Option(False, "--offline", help="Do not check PyPI."),
+) -> None:
+    """Show the CLI version and whether a newer release is available."""
+    from datetime import timedelta
+
+    from beakr_cli import __version__
+    from beakr_cli.updates import detect_install, get_update_status
+
+    # The first line stays machine-readable: `beakr update` parses it from the
+    # upgraded binary to confirm what is now on PATH.
     print(f"beakr-cli {__version__}")
+    if offline:
+        return
+    status = get_update_status(max_age=timedelta(hours=1))
+    if status.latest is None:
+        print("Latest release: unknown (could not reach PyPI)")
+    elif status.update_available:
+        print(f"Update available: {status.latest}. {detect_install().instructions}")
+    else:
+        print(f"No newer release (latest release: {status.latest})")
+
+
+@app.command()
+def update(
+    check: bool = typer.Option(
+        False, "--check", help="Only report whether an update is available."
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Run the upgrade even if already on the latest release."
+    ),
+) -> None:
+    """Upgrade beakr-cli to the latest release and refresh installed skills."""
+    from datetime import timedelta
+
+    from beakr_cli.output import console, err_console
+    from beakr_cli.updates import (
+        detect_install,
+        get_update_status,
+        installed_version_on_path,
+        run_upgrade,
+    )
+
+    status = get_update_status(max_age=timedelta(0))
+    info = detect_install()
+    if status.latest is None:
+        err_console.print("[yellow]Could not reach PyPI to check the latest release.[/yellow]")
+        if check or not force:
+            raise typer.Exit(1)
+    elif not status.update_available and not force:
+        console.print(
+            f"No update needed: installed {status.current}, latest release {status.latest}."
+        )
+        return
+    else:
+        console.print(f"Installed: {status.current}   Latest: {status.latest}")
+
+    if check:
+        console.print(info.instructions)
+        return
+
+    if info.upgrade_command is None:
+        err_console.print(
+            f"Cannot upgrade automatically ({info.method.value}). {info.instructions}"
+        )
+        raise typer.Exit(1)
+
+    console.print(f"[dim]$ {' '.join(info.upgrade_command)}[/dim]")
+    result = run_upgrade(info)
+    if result.output:
+        console.print(f"[dim]{result.output}[/dim]", highlight=False)
+    if not result.ok:
+        err_console.print(f"[red]{result.message}[/red]")
+        raise typer.Exit(1)
+    now = installed_version_on_path() or "unknown"
+    console.print(f"[green]{result.message}[/green] beakr on PATH is now {now}.")
+    console.print("Restart Claude Code / Codex so they launch the new MCP server.")
 
 
 @app.command()
@@ -143,10 +238,18 @@ def install(
         help="Remove installed skills and commands.",
     ),
     force: bool = typer.Option(False, "--force", "-f", help="Overwrite existing files."),
+    refresh: bool = typer.Option(
+        False,
+        "--refresh",
+        help="Overwrite skills and commands only where they are already installed.",
+    ),
 ) -> None:
     """Install Beakr skills and slash commands into Claude Code and/or Codex."""
-    from beakr_cli.commands.install import install_command
+    from beakr_cli.commands.install import install_command, refresh_installed_assets
 
+    if refresh:
+        refresh_installed_assets()
+        return
     client_enum, scope_enum = _parse_install_args(client, scope)
     install_command(client=client_enum, scope=scope_enum, uninstall=uninstall, force=force)
 
