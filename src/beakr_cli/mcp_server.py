@@ -831,7 +831,7 @@ async def beakr_version() -> str:
     info = detect_install()
     lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
     if status.latest is None:
-        lines.append("Latest release: unknown (could not reach PyPI).")
+        lines.append("Latest release: unknown (PyPI could not be checked).")
     elif status.update_available:
         lines.append(f"Update available: {status.latest}.")
         if info.upgrade_command is not None:
@@ -865,7 +865,7 @@ async def update_beakr() -> str:
             f"No update needed: installed {status.current}, latest release {status.latest}."
         )
     info = detect_install()
-    result = await asyncio.to_thread(run_upgrade, info)
+    result = await asyncio.to_thread(run_upgrade, info, expected_version=status.latest)
     if not result.ok:
         tail = f"\n\n{result.output[-2000:]}" if result.output else ""
         return f"Update did not run: {result.message}{tail}"

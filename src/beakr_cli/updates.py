@@ -104,18 +104,33 @@ def get_update_status(
     allow_network: bool = True,
     timeout: float = 2.0,
 ) -> UpdateStatus:
-    """Current vs latest version, from cache when fresh enough, else from PyPI."""
+    """Current vs latest version, from cache when fresh enough, else from PyPI.
+
+    A "latest" older than the running version is never reported or cached. PyPI's
+    CDN serves the project JSON with ``max-age=900``, so for up to 15 minutes after
+    a release it can still list the previous one; caching that answer used to make
+    a freshly upgraded CLI report the version it had just replaced as the latest.
+    """
     cached_latest, checked_at = _read_cache()
+    if cached_latest is not None and _older_than_running(cached_latest):
+        cached_latest, checked_at = None, None
     now = datetime.now(timezone.utc)
     fresh = checked_at is not None and now - checked_at <= max_age
     if fresh or not allow_network or check_disabled():
         return UpdateStatus(__version__, cached_latest, checked_at)
     latest = fetch_latest_version(timeout)
-    if latest is None:
-        # Offline or PyPI unavailable: fall back to what we last knew.
+    if latest is None or _older_than_running(latest):
+        # Offline, PyPI unavailable, or a stale CDN listing: keep what we last knew.
         return UpdateStatus(__version__, cached_latest, checked_at)
     _write_cache(latest, now)
     return UpdateStatus(__version__, latest, now)
+
+
+def _older_than_running(version: str) -> bool:
+    try:
+        return Version(version) < Version(__version__)
+    except InvalidVersion:
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +141,7 @@ def get_update_status(
 class InstallMethod(str, Enum):
     uv_tool = "uv tool"
     uv_tool_source = "uv tool (local source)"
+    uv_tool_pinned = "uv tool (pinned version)"
     pipx = "pipx"
     uvx = "uvx"
     other = "other"
@@ -161,6 +177,19 @@ def _receipt_is_local_source(receipt: Path) -> bool:
     return any(marker in text for marker in ("directory =", "path =", "git ="))
 
 
+def _receipt_pins_version(receipt: Path) -> bool:
+    """True when the uv tool was installed as ``beakr-cli==X``.
+
+    ``uv tool upgrade`` honours the pin and does nothing, so offering it would
+    report an upgrade that never happens.
+    """
+    try:
+        text = receipt.read_text()
+    except OSError:
+        return False
+    return f'name = "{PACKAGE_NAME}", specifier = "==' in text
+
+
 def detect_install(prefix: Path | None = None) -> InstallInfo:
     """Work out how this interpreter's beakr-cli was installed."""
     env = (prefix or Path(sys.prefix)).resolve()
@@ -180,16 +209,28 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
                 "`uv tool install --force <checkout>`, or switch to the published "
                 f"release with `uv tool install --force {PACKAGE_NAME}`.",
             )
+        if _receipt_pins_version(receipt):
+            return InstallInfo(
+                InstallMethod.uv_tool_pinned,
+                None,
+                "Installed with uv pinned to one version, which `uv tool upgrade` keeps. "
+                f"Unpin it with `uv tool install --force {PACKAGE_NAME}`.",
+            )
+        # --reinstall-package implies --refresh-package (which `uv tool upgrade` does not
+        # accept directly). uv caches the package index, and without a refresh an
+        # upgrade run shortly after a release resolves the old version and exits 0.
         return InstallInfo(
             InstallMethod.uv_tool,
-            ["uv", "tool", "upgrade", PACKAGE_NAME],
+            ["uv", "tool", "upgrade", "--reinstall-package", PACKAGE_NAME, PACKAGE_NAME],
             f"Run `beakr update` (or `uv tool upgrade {PACKAGE_NAME}`).",
         )
 
-    if "pipx" in parts and "venvs" in parts:
+    pipx_home = os.environ.get("PIPX_HOME")
+    in_custom_pipx = bool(pipx_home) and env.parent == (Path(pipx_home) / "venvs").resolve()
+    if in_custom_pipx or ("pipx" in parts and "venvs" in parts):
         return InstallInfo(
             InstallMethod.pipx,
-            ["pipx", "upgrade", PACKAGE_NAME],
+            ["pipx", "upgrade", "--pip-args=--no-cache-dir", PACKAGE_NAME],
             f"Run `beakr update` (or `pipx upgrade {PACKAGE_NAME}`).",
         )
 
@@ -227,11 +268,16 @@ def _beakr_executable() -> str | None:
     return shutil.which("beakr")
 
 
-def run_upgrade(info: InstallInfo, *, timeout: float = 300.0) -> UpgradeResult:
-    """Upgrade the package, then refresh the skills it installed.
+def run_upgrade(
+    info: InstallInfo, *, expected_version: str | None = None, timeout: float = 300.0
+) -> UpgradeResult:
+    """Upgrade the package, confirm it moved, then refresh the skills it installed.
 
     The skill refresh runs through the NEW binary on PATH, not this process: the
     running interpreter still has the old code and the old bundled assets loaded.
+    A package manager exiting 0 is not proof of an upgrade (a cached index or a
+    pin both "succeed" without changing anything), so the binary's own version is
+    checked against ``expected_version`` before anything is reported as upgraded.
     """
     if info.upgrade_command is None:
         return UpgradeResult(False, info.instructions, "")
@@ -254,6 +300,17 @@ def run_upgrade(info: InstallInfo, *, timeout: float = 300.0) -> UpgradeResult:
         return UpgradeResult(
             False, f"`{' '.join(info.upgrade_command)}` failed (exit {upgrade.returncode}).", output
         )
+
+    if expected_version is not None:
+        now = installed_version_on_path()
+        if now is None or _version_lt(now, expected_version):
+            return UpgradeResult(
+                False,
+                f"The upgrade ran but `beakr` on PATH is still {now or 'unknown'}, not "
+                f"{expected_version}. A new release can take a few minutes to reach PyPI's "
+                "mirrors; try again shortly.",
+                output,
+            )
 
     beakr = _beakr_executable()
     if beakr is None:
@@ -294,7 +351,11 @@ def installed_version_on_path() -> str | None:
         return None
     try:
         result = subprocess.run(
-            [beakr, "version"], capture_output=True, text=True, timeout=30, check=False
+            [beakr, "version", "--offline"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
         )
     except subprocess.TimeoutExpired:
         return None
@@ -303,3 +364,10 @@ def installed_version_on_path() -> str | None:
         return None
     # First line is "beakr-cli X.Y.Z"; later lines may describe update status.
     return text[0].removeprefix(f"{PACKAGE_NAME} ").strip() or None
+
+
+def _version_lt(left: str, right: str) -> bool:
+    try:
+        return Version(left) < Version(right)
+    except InvalidVersion:
+        return True

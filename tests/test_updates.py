@@ -102,6 +102,33 @@ def test_disabled_check_never_touches_network(monkeypatch) -> None:
     assert route.call_count == 0
 
 
+@respx.mock
+def test_cached_latest_older_than_running_version_is_refetched() -> None:
+    """Right after upgrading, a cache written by the old version must not be shown."""
+    route = respx.get(updates.PYPI_JSON_URL).mock(
+        return_value=httpx.Response(200, json=_pypi("0.2.1", "0.3.0"))
+    )
+    _write_cache("0.2.1", age=timedelta(minutes=5))
+    status = updates.get_update_status()
+    assert status.latest == "0.3.0"
+    assert route.call_count == 1
+
+
+@respx.mock
+def test_stale_cdn_listing_older_than_running_version_is_not_cached() -> None:
+    """PyPI's CDN can list the previous release for ~15 minutes after publishing.
+
+    That answer was cached for a day and shown as "latest release: 0.2.1" on 0.3.0.
+    """
+    respx.get(updates.PYPI_JSON_URL).mock(
+        return_value=httpx.Response(200, json=_pypi("0.2.0", "0.2.1"))
+    )
+    status = updates.get_update_status()
+    assert status.latest is None
+    assert not status.update_available
+    assert not (config.CONFIG_DIR / "update_check.json").exists()
+
+
 def test_running_ahead_of_pypi_is_not_an_update() -> None:
     assert not updates.UpdateStatus("0.3.0", "0.2.1", None).update_available
 
@@ -119,7 +146,26 @@ def test_detects_pypi_uv_tool_install(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("UV_TOOL_DIR", str(tools))
     info = updates.detect_install(env)
     assert info.method is updates.InstallMethod.uv_tool
-    assert info.upgrade_command == ["uv", "tool", "upgrade", "beakr-cli"]
+    # --reinstall-package implies a refresh of the cached index; without one an
+    # upgrade shortly after a release resolved the old version and still exited 0.
+    assert info.upgrade_command == [
+        "uv", "tool", "upgrade", "--reinstall-package", "beakr-cli", "beakr-cli",
+    ]
+
+
+def test_version_pinned_uv_tool_is_reported_not_upgraded(tmp_path, monkeypatch) -> None:
+    """`uv tool upgrade` keeps a `==X` pin, so running it would upgrade nothing."""
+    tools = tmp_path / "uv" / "tools"
+    env = tools / "beakr-cli"
+    env.mkdir(parents=True)
+    (env / "uv-receipt.toml").write_text(
+        '[tool]\nrequirements = [{ name = "beakr-cli", specifier = "==0.3.0" }]\n'
+    )
+    monkeypatch.setenv("UV_TOOL_DIR", str(tools))
+    info = updates.detect_install(env)
+    assert info.method is updates.InstallMethod.uv_tool_pinned
+    assert info.upgrade_command is None
+    assert "uv tool install --force beakr-cli" in info.instructions
 
 
 def test_local_checkout_uv_tool_is_never_upgraded_from_pypi(tmp_path, monkeypatch) -> None:
@@ -151,6 +197,16 @@ def test_detects_other_install_methods(prefix, method, can_upgrade, monkeypatch,
     assert (info.upgrade_command is not None) is can_upgrade
 
 
+def test_detects_pipx_with_a_custom_pipx_home(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("UV_TOOL_DIR", str(tmp_path / "no-tools-here"))
+    monkeypatch.setenv("PIPX_HOME", str(tmp_path / "custom-home"))
+    env = tmp_path / "custom-home" / "venvs" / "beakr-cli"
+    env.mkdir(parents=True)
+    info = updates.detect_install(env)
+    assert info.method is updates.InstallMethod.pipx
+    assert info.upgrade_command == ["pipx", "upgrade", "--pip-args=--no-cache-dir", "beakr-cli"]
+
+
 def test_upgrade_without_a_safe_command_only_returns_instructions() -> None:
     info = updates.InstallInfo(updates.InstallMethod.uvx, None, "use uvx --refresh")
     result = updates.run_upgrade(info)
@@ -177,6 +233,29 @@ def test_upgrade_refreshes_skills_through_the_new_binary(monkeypatch) -> None:
     result = updates.run_upgrade(info)
     assert result.ok
     assert calls == [["uv", "tool", "upgrade", "x"], ["/bin/beakr", "install", "--refresh"]]
+
+
+def test_upgrade_that_did_not_move_the_version_is_a_failure(monkeypatch) -> None:
+    """A package manager exiting 0 is not an upgrade; skills must not be refreshed."""
+    calls: list[list[str]] = []
+
+    class Done:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def fake_run(cmd, **_kwargs):
+        calls.append(cmd)
+        return Done()
+
+    monkeypatch.setattr(updates.shutil, "which", lambda name: f"/bin/{name}")
+    monkeypatch.setattr(updates.subprocess, "run", fake_run)
+    monkeypatch.setattr(updates, "installed_version_on_path", lambda: "0.3.0")
+    info = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv", "tool", "upgrade", "x"], "")
+    result = updates.run_upgrade(info, expected_version="0.3.1")
+    assert not result.ok
+    assert "still 0.3.0" in result.message
+    assert calls == [["uv", "tool", "upgrade", "x"]]
 
 
 # ---------------------------------------------------------------------------

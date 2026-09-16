@@ -62,7 +62,7 @@ def version(
         return
     status = get_update_status(max_age=timedelta(hours=1))
     if status.latest is None:
-        print("Latest release: unknown (could not reach PyPI)")
+        print("Latest release: unknown (PyPI could not be checked)")
     elif status.update_available:
         print(f"Update available: {status.latest}. {detect_install().instructions}")
     else:
@@ -114,7 +114,7 @@ def update(
         raise typer.Exit(1)
 
     console.print(f"[dim]$ {' '.join(info.upgrade_command)}[/dim]")
-    result = run_upgrade(info)
+    result = run_upgrade(info, expected_version=status.latest)
     if result.output:
         console.print(f"[dim]{result.output}[/dim]", highlight=False)
     if not result.ok:
