@@ -137,14 +137,39 @@ def test_running_ahead_of_pypi_is_not_an_update() -> None:
 # Install detection
 # ---------------------------------------------------------------------------
 
+#: Receipts exactly as uv 0.11 writes them. The entrypoints block matters: its
+#: ``install-path = ...`` made every PyPI install look like a local checkout when
+#: detection searched the whole file for ``path =``, so `beakr update` refused to
+#: upgrade any uv tool install in 0.3.0 and 0.3.1.
+_ENTRYPOINTS = """entrypoints = [
+    { name = "beakr", install-path = "/Users/u/.local/bin/beakr", from = "beakr-cli" },
+]
+"""
+PYPI_RECEIPT = '[tool]\nrequirements = [{ name = "beakr-cli" }]\n' + _ENTRYPOINTS
+PINNED_RECEIPT = (
+    '[tool]\nrequirements = [{ name = "beakr-cli", specifier = "==0.3.0" }]\n' + _ENTRYPOINTS
+)
+RANGE_RECEIPT = (
+    '[tool]\nrequirements = [{ name = "beakr-cli", specifier = ">=0.3" }]\n' + _ENTRYPOINTS
+)
+SOURCE_RECEIPT = (
+    '[tool]\nrequirements = [{ name = "beakr-cli", directory = "/src/beakr-cli" }]\n'
+    'constraints = [{ name = "mcp", specifier = "<2" }]\n' + _ENTRYPOINTS
+)
 
-def test_detects_pypi_uv_tool_install(tmp_path, monkeypatch) -> None:
+
+def _uv_tool_env(tmp_path, monkeypatch, receipt: str) -> Path:
     tools = tmp_path / "uv" / "tools"
     env = tools / "beakr-cli"
     env.mkdir(parents=True)
-    (env / "uv-receipt.toml").write_text('[tool]\nrequirements = [{ name = "beakr-cli" }]\n')
+    (env / "uv-receipt.toml").write_text(receipt)
     monkeypatch.setenv("UV_TOOL_DIR", str(tools))
-    info = updates.detect_install(env)
+    return env
+
+
+@pytest.mark.parametrize("receipt", [PYPI_RECEIPT, RANGE_RECEIPT])
+def test_detects_pypi_uv_tool_install(receipt, tmp_path, monkeypatch) -> None:
+    info = updates.detect_install(_uv_tool_env(tmp_path, monkeypatch, receipt))
     assert info.method is updates.InstallMethod.uv_tool
     # --reinstall-package implies a refresh of the cached index; without one an
     # upgrade shortly after a release resolved the old version and still exited 0.
@@ -155,14 +180,7 @@ def test_detects_pypi_uv_tool_install(tmp_path, monkeypatch) -> None:
 
 def test_version_pinned_uv_tool_is_reported_not_upgraded(tmp_path, monkeypatch) -> None:
     """`uv tool upgrade` keeps a `==X` pin, so running it would upgrade nothing."""
-    tools = tmp_path / "uv" / "tools"
-    env = tools / "beakr-cli"
-    env.mkdir(parents=True)
-    (env / "uv-receipt.toml").write_text(
-        '[tool]\nrequirements = [{ name = "beakr-cli", specifier = "==0.3.0" }]\n'
-    )
-    monkeypatch.setenv("UV_TOOL_DIR", str(tools))
-    info = updates.detect_install(env)
+    info = updates.detect_install(_uv_tool_env(tmp_path, monkeypatch, PINNED_RECEIPT))
     assert info.method is updates.InstallMethod.uv_tool_pinned
     assert info.upgrade_command is None
     assert "uv tool install --force beakr-cli" in info.instructions
@@ -170,14 +188,7 @@ def test_version_pinned_uv_tool_is_reported_not_upgraded(tmp_path, monkeypatch) 
 
 def test_local_checkout_uv_tool_is_never_upgraded_from_pypi(tmp_path, monkeypatch) -> None:
     """A developer's local build must not be silently replaced by the release."""
-    tools = tmp_path / "uv" / "tools"
-    env = tools / "beakr-cli"
-    env.mkdir(parents=True)
-    (env / "uv-receipt.toml").write_text(
-        '[tool]\nrequirements = [{ name = "beakr-cli", directory = "/src/beakr-cli" }]\n'
-    )
-    monkeypatch.setenv("UV_TOOL_DIR", str(tools))
-    info = updates.detect_install(env)
+    info = updates.detect_install(_uv_tool_env(tmp_path, monkeypatch, SOURCE_RECEIPT))
     assert info.method is updates.InstallMethod.uv_tool_source
     assert info.upgrade_command is None
 

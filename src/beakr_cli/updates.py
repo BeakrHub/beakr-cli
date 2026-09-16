@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -164,30 +165,40 @@ def _uv_tool_dir() -> Path:
     return base / "uv" / "tools"
 
 
-def _receipt_is_local_source(receipt: Path) -> bool:
-    """True when the uv tool was installed from a directory, path, or git checkout.
+#: The ``{ name = "beakr-cli", ... }`` inline table in a uv tool receipt's
+#: ``requirements``. Parsed from the requirement entry alone: the receipt also
+#: carries ``entrypoints`` with ``install-path = ...``, and matching keys against
+#: the whole file made every uv tool install look like a local checkout.
+_RECEIPT_REQUIREMENT = re.compile(r'\{\s*name\s*=\s*"' + re.escape(PACKAGE_NAME) + r'"([^}]*)\}')
+_SOURCE_KEYS = re.compile(r"(?<![\w-])(directory|path|git|url|editable)\s*=")
+_PINNED_SPECIFIER = re.compile(r'(?<![\w-])specifier\s*=\s*"\s*==')
+
+
+def _receipt_requirement(receipt: Path) -> str | None:
+    """The body of this package's requirement entry in a uv receipt, if readable."""
+    try:
+        match = _RECEIPT_REQUIREMENT.search(receipt.read_text())
+    except OSError:
+        return None
+    return match.group(1) if match else None
+
+
+def _receipt_is_local_source(requirement: str) -> bool:
+    """True when the uv tool was installed from a directory, path, URL, or git.
 
     Upgrading such an install from PyPI would silently swap a developer's local
     build for the release, so it is reported rather than done.
     """
-    try:
-        text = receipt.read_text()
-    except OSError:
-        return False
-    return any(marker in text for marker in ("directory =", "path =", "git ="))
+    return _SOURCE_KEYS.search(requirement) is not None
 
 
-def _receipt_pins_version(receipt: Path) -> bool:
+def _receipt_pins_version(requirement: str) -> bool:
     """True when the uv tool was installed as ``beakr-cli==X``.
 
     ``uv tool upgrade`` honours the pin and does nothing, so offering it would
     report an upgrade that never happens.
     """
-    try:
-        text = receipt.read_text()
-    except OSError:
-        return False
-    return f'name = "{PACKAGE_NAME}", specifier = "==' in text
+    return _PINNED_SPECIFIER.search(requirement) is not None
 
 
 def detect_install(prefix: Path | None = None) -> InstallInfo:
@@ -200,8 +211,8 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
     except OSError:
         in_uv_tools = False
     if in_uv_tools or ("uv" in parts and "tools" in parts):
-        receipt = env / "uv-receipt.toml"
-        if _receipt_is_local_source(receipt):
+        requirement = _receipt_requirement(env / "uv-receipt.toml") or ""
+        if _receipt_is_local_source(requirement):
             return InstallInfo(
                 InstallMethod.uv_tool_source,
                 None,
@@ -209,7 +220,7 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
                 "`uv tool install --force <checkout>`, or switch to the published "
                 f"release with `uv tool install --force {PACKAGE_NAME}`.",
             )
-        if _receipt_pins_version(receipt):
+        if _receipt_pins_version(requirement):
             return InstallInfo(
                 InstallMethod.uv_tool_pinned,
                 None,
