@@ -1344,7 +1344,7 @@
      },
      "error": {
       "$ref": "#/components/schemas/ApiError",
-      "description": "What went wrong, or null."
+      "description": "What went wrong."
      }
     },
     "required": [
@@ -3723,7 +3723,7 @@
       "type": "string"
      },
      "last_seen_at": {
-      "description": "When it was last seen, or null.",
+      "description": "When it was last seen.",
       "format": "date-time",
       "title": "Last Seen At",
       "type": "string"
@@ -5178,7 +5178,7 @@
       "type": "string"
      },
      "last_seen_at": {
-      "description": "When it was last seen, or null.",
+      "description": "When it was last seen.",
       "format": "date-time",
       "title": "Last Seen At",
       "type": "string"

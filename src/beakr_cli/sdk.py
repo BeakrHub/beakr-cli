@@ -63,7 +63,7 @@ def get_async_sdk(
 ) -> AsyncPrivateBeakr:
     """The async client for the stdio MCP server.
 
-    The timeout is higher than the terminal's because the engine gives research
+    Both clients wait past the research route limit because the engine gives research
     (an agentic loop that downloads and reads documents from connected
     services) up to 150s; 170s outwaits it, as the SDK's research call does
     (``beakr_sdk.resources.knowledge.RESEARCH_TIMEOUT``). Writes carry

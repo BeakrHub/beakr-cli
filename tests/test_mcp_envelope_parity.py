@@ -211,7 +211,7 @@ def test_a_compact_records_sources_footer_matches_the_hosted_one(hosted_render) 
 def test_sources_lines_lead_with_the_path_and_each_tokens_place(hosted_render) -> None:
     # Each passage says where it sits (``unit_locator``) and each document where it
     # lives (``display_path``), so the footer shows ``path: {{token}} › p. 7`` --
-    # ``path › p. 7`` is what read_file opens. The stdio copy must match the hosted
+    # ``path#p. 7`` is what read_file opens. The stdio copy must match the hosted
     # renderer byte for byte, compact excerpts included.
     from beakr_sdk.sources import public_source
 

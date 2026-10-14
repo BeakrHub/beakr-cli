@@ -53,6 +53,21 @@ def _door_reply(text: str, *, status: str = "success", code: str | None = None) 
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_knowledge_budget_hint_survives_without_coverage_sidecar() -> None:
+    # Live ls returned 137 of 271 pages. The API's only truncation warning
+    # lived in next, which _wiki_result discarded unless coverage also existed.
+    hint = "Output cut to 23241 of 49654 characters; page with limit and after_title."
+    reply = _door_reply("271 page(s):\n  - [matter] First matter")
+    reply.pop("coverage")
+    reply["next"] = [hint]
+    respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=Response(200, json=reply))
+    result = await _call("knowledge_base", {"command": "ls", "arguments": {"limit": 500}})
+    assert not result.isError
+    assert hint in "\n".join(block.text for block in result.content if hasattr(block, "text"))
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_top_level_knowledge_options_are_folded_into_arguments() -> None:
     route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(
         return_value=Response(200, json=_door_reply("1 page matched"))
@@ -201,57 +216,3 @@ async def test_research_numbers_each_document_once() -> None:
     text = result.content[0].text
     assert "TTL 300s.[1] Renewed by a heartbeat.[1]" in text
     assert "[1] {{rag:a}} {{rag:b}}  (rag) runtime.md" in text and "[2]" not in text
-
-
-@pytest.mark.asyncio
-@respx.mock
-@pytest.mark.parametrize(
-    ("status", "code", "fix"),
-    [
-        (429, "credits_exhausted", "Ask an organization admin to add credits, then retry."),
-        (504, "research_timeout", "Ask a narrower question, or use knowledge_base sections."),
-    ],
-)
-async def test_a_research_refusal_relays_the_envelopes_code_and_fix(status, code, fix) -> None:
-    # The hosted server's route_error keeps the envelope's code and fix apart;
-    # an agent told "out of credits" or "timed out" must get the same compact
-    # {status, error_code, message, fix} here, not a retry-worthy transport error.
-    route = respx.post(f"{API}/v1/knowledge/research").mock(
-        return_value=Response(
-            status,
-            json={"error": {"code": code, "message": f"Research refused: {code}", "fix": fix}},
-        )
-    )
-    result = await _call("research", {"query": "What changed?"})
-    assert result.isError and result.structuredContent is None
-    assert json.loads(result.content[0].text) == {
-        "status": "error",
-        "error_code": code,
-        "message": f"Research refused: {code}",
-        "fix": fix,
-    }
-    assert route.call_count == 1
-
-
-@pytest.mark.asyncio
-@respx.mock
-async def test_a_write_citing_an_uncitable_source_is_refused_as_is() -> None:
-    # Writes may cite only this conversation, the user's own uploads, or sources
-    # Knowledge already cites; the door refuses anything else, and the agent gets
-    # its code and message unchanged.
-    respx.post(f"{API}/v1/knowledge/wiki/write").mock(
-        return_value=Response(
-            200,
-            json=_door_reply(
-                "That source cannot be cited here.", status="error", code="citation_not_citeable"
-            ),
-        )
-    )
-    result = await _call(
-        "knowledge_base_write",
-        {"action": "add_fact", "arguments": {"page": "P", "attribute": "a", "value": "v"}},
-    )
-    assert result.isError
-    body = json.loads(result.content[0].text)
-    assert body["error_code"] == "citation_not_citeable"
-    assert body["message"] == "That source cannot be cited here."

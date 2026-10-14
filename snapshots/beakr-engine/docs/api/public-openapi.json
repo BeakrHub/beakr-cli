@@ -2164,7 +2164,7 @@
             "type": "string"
           },
           "expires_at": {
-            "description": "When it expires (ISO 8601, UTC); null if it does not.",
+            "description": "When it expires (ISO 8601, UTC).",
             "examples": [
               "2026-10-03T09:30:42Z"
             ],
@@ -3246,7 +3246,7 @@
       "CreatedLinkOut": {
         "properties": {
           "expires_at": {
-            "description": "When it expires (ISO 8601, UTC); null if it does not.",
+            "description": "When it expires (ISO 8601, UTC).",
             "examples": [
               "2026-10-03T09:30:42Z"
             ],
@@ -3305,6 +3305,34 @@
           "expires_at"
         ],
         "title": "CreatedLinkOut",
+        "type": "object"
+      },
+      "DocumentsResult": {
+        "properties": {
+          "content": {
+            "description": "Document text and citations, with scan and continuation notices.",
+            "title": "Content",
+            "type": "string"
+          },
+          "is_error": {
+            "default": false,
+            "description": "Whether it is error.",
+            "title": "Is Error",
+            "type": "boolean"
+          },
+          "sources": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ResearchSource"
+            },
+            "description": "The sources it cites or draws on.",
+            "title": "Sources",
+            "type": "object"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "DocumentsResult",
         "type": "object"
       },
       "DownloadUrl": {
@@ -3736,7 +3764,7 @@
           },
           "error": {
             "$ref": "#/components/schemas/ApiError",
-            "description": "What went wrong, or null."
+            "description": "What went wrong."
           }
         },
         "required": [
@@ -4104,7 +4132,7 @@
         "description": "File that failed during creation.",
         "properties": {
           "error": {
-            "description": "What went wrong, or null.",
+            "description": "What went wrong.",
             "title": "Error",
             "type": "string"
           },
@@ -9027,6 +9055,19 @@
             "title": "Answer",
             "type": "string"
           },
+          "checked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Checked.",
+            "title": "Checked"
+          },
           "citations": {
             "description": "The cited documents in citation order, as public source records: `source_ref` to cite in a later Knowledge write, `name`, `filename`, `location`, a brief `evidence.excerpt`, and, for a document cited at several passages, `cited_passages` and one brief entry per passage in `excerpts`.",
             "items": {
@@ -9073,6 +9114,20 @@
             "description": "What the research cost to run, in US dollars.",
             "title": "Cost Usd"
           },
+          "coverage": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How complete this result is: returned and total counts, and whether more exist.",
+            "title": "Coverage"
+          },
           "duration_s": {
             "anyOf": [
               {
@@ -9085,6 +9140,19 @@
             "default": null,
             "description": "How long the research took, in seconds.",
             "title": "Duration S"
+          },
+          "engine": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Engine.",
+            "title": "Engine"
           },
           "entities": {
             "anyOf": [
@@ -9115,6 +9183,19 @@
             "description": "What research looked for and could not find; empty when the answer is complete.",
             "title": "Gaps"
           },
+          "lead_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Lead model.",
+            "title": "Lead Model"
+          },
           "next": {
             "anyOf": [
               {
@@ -9131,6 +9212,19 @@
             "description": "Present when the response budget shortened or left out excerpts: how to read a cited passage in full.",
             "title": "Next"
           },
+          "not_checked": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Not checked.",
+            "title": "Not Checked"
+          },
           "sources": {
             "additionalProperties": {
               "$ref": "#/components/schemas/ResearchSource"
@@ -9138,6 +9232,45 @@
             "description": "The sources the raw answer cites, keyed by the citation key its `{{key}}` tokens use, each with its `source_ref`; `citations` describes the documents.",
             "title": "Sources",
             "type": "object"
+          },
+          "sources_consulted": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Sources consulted.",
+            "title": "Sources Consulted"
+          },
+          "stopped_early": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Stopped early.",
+            "title": "Stopped Early"
+          },
+          "subtasks": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Subtasks.",
+            "title": "Subtasks"
           },
           "text": {
             "description": "The answer with each cited document shown as [1], [2] ... in order of first use; `citations[n-1]` is document [n], and every passage of one document shares its number. When nothing was found the answer says so.",
@@ -10297,7 +10430,7 @@
             "type": "string"
           },
           "expires_at": {
-            "description": "When it expires (ISO 8601, UTC); null if it does not.",
+            "description": "When it expires (ISO 8601, UTC).",
             "examples": [
               "2026-10-03T09:30:42Z"
             ],
@@ -12161,7 +12294,7 @@
       "UploadPartUrl": {
         "properties": {
           "expires_at": {
-            "description": "When it expires (ISO 8601, UTC); null if it does not.",
+            "description": "When it expires (ISO 8601, UTC).",
             "examples": [
               "2026-10-03T09:30:42Z"
             ],
@@ -12428,7 +12561,7 @@
             "title": "Error"
           },
           "expires_at": {
-            "description": "When it expires (ISO 8601, UTC); null if it does not.",
+            "description": "When it expires (ISO 8601, UTC).",
             "examples": [
               "2026-10-03T09:30:42Z"
             ],
@@ -18415,6 +18548,110 @@
           "public",
           "jobs"
         ]
+      }
+    },
+    "/v1/knowledge/documents": {
+      "post": {
+        "description": "Search and read the original documents' text: the `documents` tool for API callers. Search and read the original documents' text: the ``documents`` tool for API callers.\n\nBehind the ``documents_api`` flag. Same commands and arguments as Beakr's own\nagents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across\nevery document in scope), ``read`` (line-numbered text of one document) and ``ls``.\n\nBody:\n    command: grep | read | ls (required).\n    arguments: that command's options, e.g. {\"pattern\": \"comfort letter\", \"output_mode\": \"files_with_matches\"}.\n    project_id: Optional project scope (UUID).",
+        "operationId": "documents_v1_knowledge_documents_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "examples": [
+                  {
+                    "arguments": {
+                      "output_mode": "files_with_matches",
+                      "pattern": "renewal"
+                    },
+                    "command": "grep",
+                    "project_id": "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+                  }
+                ],
+                "properties": {
+                  "arguments": {
+                    "additionalProperties": true,
+                    "description": "Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document.",
+                    "type": "object"
+                  },
+                  "command": {
+                    "description": "Search indexed text, read a document window, or list files.",
+                    "enum": [
+                      "grep",
+                      "read",
+                      "ls"
+                    ],
+                    "type": "string"
+                  },
+                  "project_id": {
+                    "description": "Limit to this project. Required for project-restricted credentials.",
+                    "format": "uuid",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "command"
+                ],
+                "title": "DocumentsRequest",
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentsResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Search and read original documents",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "projects:read"
       }
     },
     "/v1/knowledge/research": {

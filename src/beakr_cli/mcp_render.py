@@ -3,11 +3,11 @@
 Every tool here builds the shared result dict (``{content, coverage, next,
 sources?, ...}``, :mod:`beakr_cli.mcp_result`). The server used to declare an
 ``outputSchema`` and send that dict twice: serialized as JSON in a text block,
-and again as ``structuredContent``. Measured on agent evaluation traces
-(2026-10-13), that doubled every Knowledge result: Codex printed both copies
-into an exec cell it then cut at about 10k tokens, and Claude Code refused 41%
-of results for being over its ~50k-character limit. Neither client gave the
-model anything from the second copy that the first did not already hold.
+and again as ``structuredContent``. Measured on agent evaluation traces, that doubled every
+Knowledge result: Codex printed both copies into an exec cell it then cut at
+about 10k tokens, and Claude Code refused 41% of results for being over its
+~50k-character limit. Neither client gave the model anything from the second
+copy that the first did not already hold.
 
 So a result is sent once, as text a model reads directly:
 
@@ -27,18 +27,18 @@ one block: ``{status, error_code, message, fix}`` as compact JSON.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 #: Verbatim excerpt shown per cited document. 300 characters held 87-90% of
 #: the evidence answers used (excerpt-tuning.md, Q3).
 EXCERPT_CHARS = 300
 
+# Shared with the hosted renderer and its file-read formatter.
+LOCATION_SEPARATOR = " › "
+
 #: The whole Sources list stays under this; the rest is one ``sources`` call away.
 SOURCES_CHARS = 8_000
-
-#: Between a source and the place inside it (``memo.pdf › p. 7``). Equals
-#: the engine's ``LOCATION_SEPARATOR``, which the hosted renderer repeats.
-LOCATION_SEPARATOR = " \u203a "
 
 #: Citation tokens listed per document before "+N more".
 TOKENS_PER_DOCUMENT = 4
@@ -55,6 +55,18 @@ def render(tool: str, body: dict[str, Any]) -> str:
     """The one text block a tool's result is sent as."""
     text = str(body.get("content") or "").rstrip()
     parts = [text] if text else []
+    # Text is the only payload the model receives. Dropping coverage here made
+    # incomplete scans look exhaustive, even when the backend reported otherwise.
+    coverage = body.get("coverage") or {}
+    if isinstance(coverage, dict) and (
+        coverage.get("complete") is False
+        or coverage.get("has_more")
+        or coverage.get("truncated")
+        or coverage.get("next_cursor") is not None
+    ):
+        parts.append("Coverage: " + json.dumps(coverage, ensure_ascii=False, default=str))
+    if tool == "research" and body.get("research_usage"):
+        parts.append("Research usage: " + json.dumps(body["research_usage"], ensure_ascii=False))
     sources = body.get("sources")
     if tool in _SOURCE_LISTING_TOOLS and isinstance(sources, list) and sources:
         listing = sources_block(sources)
@@ -158,10 +170,10 @@ def _count_label(entries: list[dict[str, Any]]) -> str:
 
 
 def _document_lines(entry: dict[str, Any]) -> list[str]:
-    """``- <path>: {{token}} › <unit> ... · read_file <id>``, then one excerpt.
+    """``- <path>: {{token}} #<unit> ... · read_file <id>``, then one excerpt.
 
     The path leads and each token is followed by its place, so ``<path> › <unit>``
-    -- what ``read_file`` opens -- sits next to the token a writer cites. On
+    -- what ``read_file`` opens -- sits next to the token a writer cites. On the
     evaluation runs, tokens rewritten to ``path#part`` made Codex about twice as fast;
     the token stays because writes cite it.
     """
@@ -170,7 +182,7 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     tokens = entry["tokens"]
     units = entry.get("units") or {}
     shown = " ".join(
-        f"{{{{{t}}}}}" + (f"{LOCATION_SEPARATOR}{units[t]}" if units.get(t) else "")
+        f"{{{{{t}}}}}" + (f" › {units[t]}" if units.get(t) else "")
         for t in tokens[:TOKENS_PER_DOCUMENT]
     )
     if len(tokens) > TOKENS_PER_DOCUMENT:

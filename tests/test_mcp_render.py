@@ -1,6 +1,6 @@
 """Each stdio MCP result goes out once, as text the model reads.
 
-ROOT CAUSE (measured on agent evaluation traces): every
+ROOT CAUSE (agent evaluation traces): every
 Knowledge result was sent twice -- the dict as a JSON text block and again as
 ``structuredContent`` -- so Codex printed both into an exec cell it cut at
 ~10k tokens, and Claude Code refused 41% of results over its ~50k-character

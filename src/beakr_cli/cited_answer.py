@@ -17,6 +17,7 @@ numbered here as before.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -84,11 +85,34 @@ def print_cited_sources(order: list[str], sources: dict[str, dict[str, Any]]) ->
         console.print(f"  [{index}] {where}", highlight=False, markup=False, soft_wrap=True)
 
 
+def _research_details(data: dict[str, Any]) -> list[str]:
+    lines = [
+        f"{label}: {data[key]}"
+        for key, label in (("checked", "Checked"), ("not_checked", "Not checked"))
+        if data.get(key)
+    ]
+    if data.get("stopped_early"):
+        lines.append("Research stopped early; coverage is incomplete.")
+    if isinstance(data.get("coverage"), dict):
+        lines.append("Coverage: " + json.dumps(data["coverage"], ensure_ascii=False))
+    usage = {
+        key: data[key]
+        for key in ("cost_usd", "duration_s", "engine", "lead_model", "turns", "subtasks")
+        if key in data
+    }
+    if usage:
+        lines.append("Research usage: " + json.dumps(usage, ensure_ascii=False))
+    return lines
+
+
 def research_lines(data: dict[str, Any]) -> list[str]:
     """A research answer for an agent: the text with ``[n]`` citations, then one
     line per cited source saying where it lives (no terminal formatting)."""
     from beakr_sdk.sources import public_source, source_where
 
+    from beakr_cli.research_metadata import with_cited_labels
+
+    data = with_cited_labels(data)
     citations = research_citations(data)
     if citations is not None:
         lines = [str(data["text"]).rstrip()]
@@ -99,7 +123,7 @@ def research_lines(data: dict[str, Any]) -> list[str]:
         details = [f"{k}={data[k]}" for k in ("confidence", "gaps") if data.get(k)]
         if details:
             lines += ["", "\t".join(" ".join(str(d).split()) for d in details)]
-        return lines
+        return lines + _research_details(data)
 
     order: list[str] = []
     lines = [number_citations(str(data.get("answer") or ""), order).rstrip()]
@@ -114,7 +138,7 @@ def research_lines(data: dict[str, Any]) -> list[str]:
     details = [f"{k}={data[k]}" for k in ("confidence", "gaps") if data.get(k)]
     if details:
         lines += ["", "\t".join(" ".join(str(d).split()) for d in details)]
-    return lines
+    return lines + _research_details(data)
 
 
 def print_research_result(data: dict[str, Any]) -> None:
@@ -124,6 +148,9 @@ def print_research_result(data: dict[str, Any]) -> None:
     record per document; an older one sends ``answer`` with ``{{key}}`` tokens
     and ``sources`` keyed by citation key, numbered here.
     """
+    from beakr_cli.research_metadata import with_cited_labels
+
+    data = with_cited_labels(data)
     citations = research_citations(data)
     if citations is not None:
         if data["text"]:
@@ -149,3 +176,6 @@ def print_research_result(data: dict[str, Any]) -> None:
         details.append(f"Gaps: {data['gaps']}")
     if details:
         console.print(f"\n[dim]{' | '.join(details)}[/dim]")
+
+    for detail in _research_details(data):
+        console.print(detail, highlight=False, markup=False)
