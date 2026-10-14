@@ -108,7 +108,7 @@ Each section can also carry:
 
 Put an inline token immediately after every factual claim, table value, date, title, and relationship: `{{key}}`. Then give each token a citation record in that section's `citations`:
 
-- **Re-citing a source Beakr already has:** use the `source_ref` from a `knowledge_base` read (`sources`, `provenance`, `cat`, `sections`) with the token key shown there, e.g. `{"key": "external_item:...-section-3", "source_ref": "beakr-source:v1:...", "stance": "support"}`.
+- **Re-citing a source Beakr already has:** give the readable reference a `knowledge_base` read printed for it as `reference` (`memo.pdf › p. 7`, `#deals › message 2026-03-04 14:02 UTC`, `Page Title › Section`), or the `source_ref` from its Sources line, e.g. `{"reference": "memo.pdf › p. 7", "stance": "support"}`.
 - **A source cited for the first time** (this conversation, a note): give a stable `key` with `source_type` `conversation`, `agent_note`, or `user_note`, a `source_title`, and `meta.excerpt` (or `meta.content` / `meta.text`).
 
 Set `stance` to `support`, `qualifies`, or `contradicts`. It defaults to `support`, and that default is itself a claim about the evidence. A token with no citation record is stored as a bare pointer that can never be verified.

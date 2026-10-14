@@ -457,9 +457,9 @@ async def read_file(
 ) -> str | dict[str, Any]:
     """A window of a document's extracted text, as the hosted read_file reads it.
 
-    ``artifact_id`` (or ``path``) may be a file id, a version id, a citation
-    token (``{{artifact:<uuid>-u3}}``), or a file's path as a Sources line
-    prints it; with `` › <unit>`` (or ``#<unit>``) after one (``memo.pdf › p. 7``)
+    ``artifact_id`` (or ``path``) may be a file id, a version id, a citation's
+    readable reference or a file's path as a read prints it, or a citation
+    token; with `` › <unit>`` (or ``#<unit>``) after one (``memo.pdf › p. 7``)
     the window is the text around that place. One route resolves and reads all
     of them (``POST /v1/artifacts/read``), so a reference that reaches no
     readable file is one answer whatever the reason.
@@ -468,10 +468,11 @@ async def read_file(
     if not reference:
         return _read_error(
             "invalid_arguments",
-            "Pass `artifact_id`: a file id, a citation token such as {{artifact:<uuid>-u1}} "
-            "from a Knowledge read, or a file's path from its Sources (optionally with "
-            "' › <unit>', e.g. memo.pdf › p. 7).",
-            "Copy the `read_file <id>`, a {{token}} or the path from a Knowledge result's Sources.",
+            "Pass `artifact_id`: a file id, a citation's reference from a Knowledge read "
+            "(memo.pdf › p. 7), or a file's path from its Sources (optionally with "
+            "' › <unit>').",
+            "Copy the `read_file <id>`, a citation's reference or the path from a Knowledge "
+            "result's Sources.",
         )
     offset = max(0, int(offset or 0))
     limit = max(1, min(int(limit or READ_FILE_CHARS), READ_FILE_CHARS))

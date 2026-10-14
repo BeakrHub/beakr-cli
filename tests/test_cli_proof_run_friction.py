@@ -69,7 +69,7 @@ def test_kb_sections_runs_the_door_and_shows_each_passage(monkeypatch):
         "scope": PROJECT,
     }
     assert "TTL 300s" in result.stdout
-    assert "- runtime.md: {{artifact:v1-u2}} · read_file f1" in result.stdout
+    assert "- runtime.md · read_file f1" in result.stdout
     assert '"The lease TTL is 300 seconds."' in result.stdout
     assert "next: cat a hit with its section_id." in result.stdout
 

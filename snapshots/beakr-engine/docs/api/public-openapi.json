@@ -9273,7 +9273,7 @@
             "title": "Subtasks"
           },
           "text": {
-            "description": "The answer with each cited document shown as [1], [2] ... in order of first use; `citations[n-1]` is document [n], and every passage of one document shares its number. When nothing was found the answer says so.",
+            "description": "The answer with each citation shown as the readable reference in parentheses: `(memo.pdf \u203a p. 7)`, several passages of one document `(memo.pdf \u203a p. 7, p. 9)`, `(#deals \u203a message 2026-03-04 14:02 UTC)`, `(PROJ-12)`, `(Page Title \u203a Section)`. `citations` lists the documents in order of first use. When nothing was found the answer says so.",
             "title": "Text",
             "type": "string"
           },
@@ -9373,7 +9373,7 @@
         "type": "object"
       },
       "RunAnswer": {
-        "description": "A completed run's answer: numbered text, the raw text and its cited sources.",
+        "description": "A completed run's answer: readable text, the raw text and its cited sources.",
         "properties": {
           "raw_text": {
             "description": "The answer as the agent wrote it, with `{{key}}` citation tokens, for a client that renders citations itself.",
@@ -9390,7 +9390,7 @@
             "type": "array"
           },
           "text": {
-            "description": "The answer with each cited source shown as [1], [2] ... in order of first use; `sources[n-1]` is source [n].",
+            "description": "The answer with each citation shown as the readable reference in parentheses (`(memo.pdf \u203a p. 7)`, `(Page Title \u203a Section)`); `sources` lists the cited documents in order of first use.",
             "title": "Text",
             "type": "string"
           }
@@ -9464,7 +9464,7 @@
                 "type": "null"
               }
             ],
-            "description": "The run's answer, once `status` is `completed`: numbered text, the raw text and its cited sources. Null before then."
+            "description": "The run's answer, once `status` is `completed`: readable text, the raw text and its cited sources. Null before then."
           },
           "completed_at": {
             "anyOf": [
@@ -10736,7 +10736,7 @@
               }
             ],
             "default": null,
-            "description": "The passage's citation token.",
+            "description": "The passage's citation key. The text cites the passage by its readable reference instead; a Knowledge write still accepts the key.",
             "title": "Citation Key"
           },
           "section_id": {
@@ -10836,7 +10836,7 @@
               }
             ],
             "default": null,
-            "description": "Where the cited passage sits inside the source, as precisely as the citation recorded it: `p. 7` (PDF), `slide 3` (PowerPoint), `sheet 2, B4:D9` (a spreadsheet), `block 8` (Word, which stores no pages), `lines 12-19` or `para 3` (text), `message 2026-03-01 14:02 UTC` (Slack, email), `chars 120-480`. `<display_path> \u203a <unit_locator>` (e.g. `tax-memo.docx \u203a p. 7`, `#deals \u203a message 2026-03-04 14:02 UTC`) is the one reference to go to, what `read_file` accepts for a file (`#` in place of ` \u203a ` too), what to cite inline in an answer to a person, and a `reference` a Knowledge write may cite.",
+            "description": "Where the cited passage sits inside the source, as precisely as the citation recorded it: `p. 7` (PDF), `slide 3` (PowerPoint), `sheet 2, B4:D9` (a spreadsheet), `block 8` (Word, which stores no pages), `lines 12-19` or `para 3` (text), `message 2026-03-01 14:02 UTC` (Slack, email), `chars 120-480`. `<display_path> \u203a <unit_locator>` (e.g. `tax-memo.docx \u203a p. 7`, `#deals \u203a message 2026-03-04 14:02 UTC`) is the one reference to go to, what `read_file` accepts for a file (`#` in place of ` \u203a ` too), and a `reference` a Knowledge write may cite. The text names the same citation by the file's short name: `(tax-memo.docx \u203a p. 7)`.",
             "title": "Unit Locator"
           },
           "upload_path": {
@@ -10988,8 +10988,24 @@
               }
             ],
             "default": null,
-            "description": "On a compact `cat` or `sections` read: this record stands for one document, and the read cites this many of its passages. `sources` on the page or a token lists each passage with its excerpt.",
+            "description": "On a compact `cat` or `sections` read: this record stands for one document, and the read cites this many of its passages. `sources` on the page lists each passage with its excerpt.",
             "title": "Cited Passages"
+          },
+          "cited_places": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Every place in this document the text cites (`p. 7`, `slide 3`, `message 2026-03-04 14:02 UTC`), in order. Left out first when the response budget is tight: the text names each one inline.",
+            "title": "Cited Places"
           },
           "evidence": {
             "anyOf": [
@@ -11071,6 +11087,19 @@
             "default": null,
             "description": "Where the source lives: a connected service (`gdrive`, `dropbox`, `slack` ...) or `upload` for a file Beakr holds itself.",
             "title": "Provider"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The name the text cites this document by, when it is not `filename` (or `name`): two files of one name are told apart by their folders (`Closing/memo.pdf`), an issue is named by its key (`PROJ-12`). The text reads `(<reference> \u203a <place>)`, e.g. `(memo.pdf \u203a p. 7)`, `(#deals \u203a message 2026-03-04 14:02 UTC)`, `(Page Title \u203a Section)`.",
+            "title": "Reference"
           },
           "section": {
             "anyOf": [
@@ -18656,7 +18685,7 @@
     },
     "/v1/knowledge/research": {
       "post": {
-        "description": "A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. `text` numbers its sources [1], [2] in order of first use, and `citations[n-1]` is source [n]. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.",
+        "description": "A cited answer to `query`, researched across Knowledge, uploaded files and connected integrations. Pass `project_id` to research one project. Typical latency is 5 to 15 seconds, up to 45 when it reads documents from connected integrations. `text` cites each source by its readable reference in parentheses (`(memo.pdf \u203a p. 7)`), and `citations` lists the cited documents in order of first use. A credential limited to projects must pass one of its projects, and its research does not use connected integrations.",
         "operationId": "research_v1_knowledge_research_post",
         "requestBody": {
           "content": {
