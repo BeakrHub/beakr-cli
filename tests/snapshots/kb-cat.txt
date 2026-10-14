@@ -1,0 +1,126 @@
+$ beakr kb cat 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+[exit 0]
+--- stdout
+{
+  "ancestors": [
+    {
+      "id": "c41e8a26-93d7-4b5f-a2e8-6f1d0b7c3a95",
+      "page_id": "c41e8a26-93d7-4b5f-a2e8-6f1d0b7c3a95",
+      "page_type": "topic",
+      "title": "Programs"
+    }
+  ],
+  "breadcrumb": "Programs",
+  "children": [
+    {
+      "id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+      "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+      "page_type": "decision",
+      "title": "Decision: Helios Lead Selection"
+    }
+  ],
+  "content": "# Project Helios\n\n<!-- sec:sec_charter -->\n## Charter\n\nThe program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-1}} It is headed by [[Dana Whitfield]].{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-2}}\n\n<!-- sec:sec_budget -->\n## Budget\n\nFiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-3}}\n\n<!-- sec:sec_success_criterion -->\n## Success criterion\n\nA lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-4}}\n\n<!-- sec:sec_lead_decision -->\n## Lead decision  [2024-09-09]\n\nThe portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifact:bb4de0e9-1f4e-4c2e-88aa-efcd4352de0c-document-block-1}}\n",
+  "created_at": "2026-08-21T10:12:00Z",
+  "group_id": "48f926e5-01b4-4d4a-9361-f7767c810e8e",
+  "id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+  "last_compiled_by": "system",
+  "links": {},
+  "page_type": "project",
+  "parent_page_id": "c41e8a26-93d7-4b5f-a2e8-6f1d0b7c3a95",
+  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "revision": 7,
+  "sections": {},
+  "source_count": 4,
+  "summary": "Northwind's program to select a thermostable lead from the NW-200 series; NW-217 is the current lead.",
+  "tags": [
+    "thermostability"
+  ],
+  "title": "Project Helios",
+  "updated_at": "2026-09-30T17:02:00Z",
+  "sources": [
+    {
+      "source_ref": "beakr-source:v1:8e1f3a5c-7d9b-4b2e-8f04-6a1c3e5d7b92",
+      "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+      "name": "helios-charter.pdf",
+      "filename": "helios-charter.pdf",
+      "provider": "upload",
+      "source_kind": "artifact",
+      "stance": "support",
+      "location": {
+        "file_id": "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13"
+      },
+      "evidence": {
+        "locator": "pages 2-3"
+      },
+      "section": {
+        "id": "sec_facts"
+      }
+    },
+    {
+      "source_ref": "beakr-source:v1:2c7e9a14-5b3d-4f81-a6c2-8d0e4f6b1a39",
+      "citation_key": "artifact:6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
+      "name": "NW-217 Accelerated Stability Report",
+      "filename": "NW-217 Accelerated Stability Report",
+      "provider": "upload",
+      "source_kind": "artifact",
+      "stance": "contradicts",
+      "location": {
+        "file_id": "6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37"
+      },
+      "evidence": {
+        "locator": "page 7"
+      },
+      "section": {
+        "id": "sec_facts"
+      }
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr kb cat 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+[exit 0]
+--- stdout
+Project Helios
+Type: project  Rev: 7
+
+Project Helios
+
+
+Charter
+
+The program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-1}} It is headed by [[Dana Whitfield]].{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-2}}
+
+
+Budget
+
+Fiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-3}}
+
+
+Success criterion
+
+A lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-4}}
+
+
+Lead decision  [2024-09-09]
+
+The portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifact:bb4de0e9-1f4e-4c2e-88aa-efcd4352de0c-document-block-1}}
+
+Sources
+┏━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃# ┃ Source                                                               ┃ Citations ┃ Stance     ┃
+┡━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│1 │ helios-charter.pdf · upload · file                                   │ 1         │ support    │
+│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13 (`beakr files download          │           │            │
+│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13`)                               │           │            │
+│2 │ NW-217 Accelerated Stability Report · upload · file                  │ 1         │ contradicts│
+│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37 (`beakr files download          │           │            │
+│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37`)                               │           │            │
+└──┴──────────────────────────────────────────────────────────────────────┴───────────┴────────────┘
+--- stderr
+

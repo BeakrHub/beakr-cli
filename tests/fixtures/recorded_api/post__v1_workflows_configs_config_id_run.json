@@ -1,0 +1,29 @@
+{
+  "operation": "POST /v1/workflows/configs/{config_id}/run",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 201,
+  "content_type": "application/json",
+  "body": {
+    "completed_at": null,
+    "config_id": "2594a964-f0c5-4afa-b171-d6d2b9183590",
+    "config_inputs": {},
+    "config_is_saved": true,
+    "config_name": "Helios weekly update",
+    "config_output_location_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "config_output_location_type": "project",
+    "created_at": "2026-10-11T12:00:00Z",
+    "error_message": null,
+    "id": "2b36ecc8-d5ae-4beb-9919-f873cb9fa225",
+    "input_overrides": {},
+    "job_id": "5e1d84cf-db58-47b2-9f39-12adef5c2d29",
+    "output_canvas_id": null,
+    "started_at": null,
+    "status": "pending",
+    "status_url": "/v1/jobs/5e1d84cf-db58-47b2-9f39-12adef5c2d29",
+    "template_icon": null,
+    "template_name": "Weekly Update",
+    "thread_id": "6de10183-73b6-48a8-9479-b0bfd7d7abae",
+    "triggered_by": "user",
+    "triggered_by_user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11"
+  }
+}

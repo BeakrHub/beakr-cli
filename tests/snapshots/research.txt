@@ -1,0 +1,57 @@
+$ beakr research 'Which lead was selected?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> POST /v1/knowledge/research
+  {"project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "query": "Which lead was selected?"}
+[exit 0]
+--- stdout
+{
+  "answer": "The portfolio committee approved NW-217 as the Helios lead on 2026-09-30, citing its four-week stability at 40 C. {{artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13}}",
+  "citations": [
+    {
+      "source_ref": "beakr-source:v1:9b2d4f6a-8c0e-4e3a-b5d7-1f3a5c7e9b04",
+      "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+      "name": "helios-charter.pdf",
+      "filename": "helios-charter.pdf",
+      "source_kind": "artifact"
+    }
+  ],
+  "completeness": {
+    "enumeration": false,
+    "may_be_incomplete": false,
+    "note_added": false,
+    "truncated_reads": 0
+  },
+  "confidence": "high",
+  "cost_usd": 0.0412,
+  "duration_s": 18.4,
+  "entities": [
+    "NW-217"
+  ],
+  "gaps": "The November tox read-out is not yet in Knowledge.",
+  "sources": {
+    "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13": {
+      "key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+      "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+      "source_ref": "beakr-source:v1:9b2d4f6a-8c0e-4e3a-b5d7-1f3a5c7e9b04",
+      "title": "helios-charter.pdf",
+      "type": "artifact"
+    }
+  },
+  "text": "The portfolio committee approved NW-217 as the Helios lead on 2026-09-30, citing its four-week stability at 40 C. [1]",
+  "turns": 4
+}
+--- stderr
+Researching...
+
+$ beakr research 'Which lead was selected?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/research
+  {"project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "query": "Which lead was selected?"}
+[exit 0]
+--- stdout
+The portfolio committee approved NW-217 as the Helios lead on 2026-09-30, citing its four-week stability at 40 C. [1]
+
+Sources:
+  [1] helios-charter.pdf
+
+Confidence: high | Gaps: The November tox read-out is not yet in Knowledge.
+--- stderr
+Researching...

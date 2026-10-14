@@ -1,0 +1,175 @@
+$ beakr runs ls --json
+> GET /v1/me/threads?limit=20
+[exit 0]
+--- stdout
+{
+  "data": [
+    {
+      "created_at": "2026-10-01T12:00:00Z",
+      "created_by_user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+      "creator_display_name": "Dana Whitfield",
+      "creator_email": "dana@northwind.example",
+      "fallback_model": null,
+      "home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "is_owner": true,
+      "last_message_preview": "NW-217 cleared the Q3 stability panel at 40 C/75% RH; the charter now cites the 6-month data.",
+      "latest_message_at": "2026-10-03T15:42:10Z",
+      "latest_run_id": "cd980c98-30e9-4a8d-8d96-51fdc0cdf2b9",
+      "latest_run_status": "completed",
+      "mode": "deep",
+      "model_overrides": null,
+      "project_ids": [
+        "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+      ],
+      "scope": {
+        "artifacts": [
+          {
+            "id": "0c7d0f1a-876b-4349-acbe-1979fc33d706",
+            "title": "Helios Q3 Stability Report.pdf"
+          }
+        ],
+        "chat_attachments": [
+          {
+            "id": "266ff786-18ec-48a4-82ff-b23c5a73b37f",
+            "title": "NW-217 assay summary.xlsx"
+          }
+        ],
+        "databases": [
+          "pubmed"
+        ],
+        "enable_artifact_access": true,
+        "integrations": [
+          {
+            "connectorId": "3267fa25-5426-495b-8b01-653516eac57c",
+            "items": [
+              {
+                "id": "1Qz8vK3mHeliosLabData",
+                "name": "Helios Lab Data",
+                "path": "/Shared drives/Helios/Lab Data",
+                "type": "folder",
+                "url": "https://drive.google.com/drive/folders/1Qz8vK3mHeliosLabData"
+              }
+            ],
+            "provider": "google_drive"
+          }
+        ],
+        "knowledge_graph": true,
+        "knowledge_graph_only": false,
+        "labels": [
+          {
+            "id": "4825bf00-ca0e-429c-b8a2-596469120522",
+            "name": "Lead optimization"
+          }
+        ],
+        "local_coding_agent": false,
+        "local_coding_cli": null,
+        "local_files": false,
+        "projects": [
+          {
+            "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+            "name": "Helios"
+          }
+        ],
+        "spaces": [],
+        "web_search": true
+      },
+      "thread_id": "a65f5ede-be21-4933-bd39-c3dfe0a8153c",
+      "title": "Project Helios",
+      "updated_at": "2026-10-03T15:42:10Z",
+      "workflow_config_name": null,
+      "workflow_template_id": null
+    },
+    {
+      "created_at": "2026-09-24T09:15:00Z",
+      "created_by_user_id": "3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22",
+      "creator_display_name": "Maja Lindqvist",
+      "creator_email": "maja@northwind.example",
+      "fallback_model": "claude-sonnet-5",
+      "home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "is_owner": false,
+      "last_message_preview": "Drafted the lead selection decision: NW-217 over NW-204 on selectivity and hERG margin.",
+      "latest_message_at": "2026-09-30T17:05:44Z",
+      "latest_run_id": "fc8c6a1a-54c4-40fc-a42c-13b83c19860c",
+      "latest_run_status": "completed",
+      "mode": "custom",
+      "model_overrides": {
+        "orchestrator": "claude-opus-5"
+      },
+      "project_ids": [
+        "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+      ],
+      "scope": {
+        "artifacts": [
+          {
+            "id": "a79df038-d5b9-4113-be6f-d5af8e1a7a8d",
+            "title": "Helios Lead Selection Memo.docx"
+          }
+        ],
+        "chat_attachments": [],
+        "databases": [
+          "pubmed",
+          "clinical_trials"
+        ],
+        "enable_artifact_access": true,
+        "integrations": [
+          {
+            "connectorId": "bfa073b1-76c6-48cf-a255-9bf3b0b32b99",
+            "items": [
+              {
+                "id": "1Rb7nT2wHeliosDecisions",
+                "name": "Decisions",
+                "path": "/Shared drives/Helios/Decisions",
+                "type": "folder",
+                "url": "https://drive.google.com/drive/folders/1Rb7nT2wHeliosDecisions"
+              }
+            ],
+            "provider": "google_drive"
+          }
+        ],
+        "knowledge_graph": true,
+        "knowledge_graph_only": true,
+        "labels": [
+          {
+            "id": "4bac646b-5cb1-44e0-b0c3-8a685bbe21e9",
+            "name": "Decisions"
+          }
+        ],
+        "local_coding_agent": true,
+        "local_coding_cli": "claude",
+        "local_files": true,
+        "projects": [
+          {
+            "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+            "name": "Helios"
+          }
+        ],
+        "spaces": [],
+        "web_search": false
+      },
+      "thread_id": "22a1dde3-d376-4f48-9176-89fd88c1b915",
+      "title": "Decision: Helios Lead Selection",
+      "updated_at": "2026-09-30T17:05:44Z",
+      "workflow_config_name": "Weekly Helios Digest",
+      "workflow_template_id": "0d97b9d7-3bdb-4e71-8801-9180fc968d71"
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+--- stderr
+
+
+$ beakr runs ls
+> GET /v1/me/threads?limit=20
+[exit 0]
+--- stdout
+Threads (2)
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┓
+┃Thread ID             ┃ Latest run          ┃ Run status ┃ Title                ┃ Last activity   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━┩
+│a65f5ede-be21-4933-b… │ cd980c98-30e9-4a8d… │ completed  │ Project Helios       │ 2026-10-03T15:42│
+│22a1dde3-d376-4f48-9… │ fc8c6a1a-54c4-40fc… │ completed  │ Decision: Helios     │ 2026-09-30T17:05│
+│                      │                     │            │ Lead Selection       │                 │
+└──────────────────────┴─────────────────────┴────────────┴──────────────────────┴─────────────────┘
+--- stderr
+

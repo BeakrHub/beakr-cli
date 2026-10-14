@@ -1,0 +1,31 @@
+{
+  "operation": "POST /v1/runs",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "job_id": "45621828-0e8a-4b6c-8a76-8e0db8db4f19",
+    "preference_capture": {
+      "changes": [
+        {
+          "action": "ADD",
+          "content": "Report stability results as percent remaining activity.",
+          "memory_id": "5c1e8a3f-9d27-4b64-a0e5-2f7b3d9c1a86",
+          "state": "active"
+        }
+      ],
+      "code": "saved",
+      "message": "Saved 1 preference.",
+      "pending_count": 0,
+      "saved_count": 1,
+      "status": "saved",
+      "version": 1
+    },
+    "run_id": "6dcbaafb-7432-47cc-813a-d4f51196e99e",
+    "status": "pending",
+    "status_url": "/v1/jobs/45621828-0e8a-4b6c-8a76-8e0db8db4f19",
+    "stream_url": "/v1/runs/6dcbaafb-7432-47cc-813a-d4f51196e99e/events",
+    "thread_id": "0f3b727c-14f8-4c2f-81ad-7b4e66782489",
+    "user_message_id": "fb169499-6c68-44da-a260-0ab0618e4709"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "suite": "false_completeness",
+  "description": "Enumeration questions over a record that is deliberately partial. The answer must list what is recorded, say the record may be incomplete, never claim to be complete, and never invent the members it was not given (the names in must_not_include exist in the scenario but were never written to Beakr). Synthetic: sites, people and samples are invented.",
+  "cases": [
+    {
+      "id": "enrolling-sites",
+      "title": "Five sites enrolled; only three are recorded",
+      "steps": [
+        {"op": "seed_page", "title": "Cohort B enrollment at Lindqvist Clinic", "page_type": "topic", "summary": "Lindqvist Clinic enrollment for cohort B.", "sections": [
+          {"title": "Enrollment", "body": "Lindqvist Clinic enrolled 14 patients in cohort B by 2026-07-01."}
+        ]},
+        {"op": "seed_page", "title": "Cohort B enrollment at Okafor Medical Center", "page_type": "topic", "summary": "Okafor Medical Center enrollment for cohort B.", "sections": [
+          {"title": "Enrollment", "body": "Okafor Medical Center enrolled 9 patients in cohort B by 2026-07-01."}
+        ]},
+        {"op": "seed_page", "title": "Cohort B enrollment at Brightwater Hospital", "page_type": "topic", "summary": "Brightwater Hospital enrollment for cohort B.", "sections": [
+          {"title": "Enrollment", "body": "Brightwater Hospital enrolled 11 patients in cohort B by 2026-07-01."}
+        ]},
+        {"op": "ask", "label": "sites", "question": "List every site that enrolled patients in cohort B.", "checks": {"must_include": [["Lindqvist"], ["Okafor"], ["Brightwater"]], "must_not_include": ["Saltmarsh", "Venn Institute"], "forbid_completeness_claim": true, "require_partial_acknowledgement": true}}
+      ]
+    },
+    {
+      "id": "deviation-log",
+      "title": "Protocol deviations, of which only some were written down",
+      "steps": [
+        {"op": "seed_page", "title": "Protocol deviation PD-031", "page_type": "topic", "summary": "Deviation PD-031 in study KX2-101.", "sections": [
+          {"title": "Deviation", "body": "Protocol deviation PD-031 in study KX2-101: a dosing visit happened two days outside its window."}
+        ]},
+        {"op": "seed_page", "title": "Protocol deviation PD-034", "page_type": "topic", "summary": "Deviation PD-034 in study KX2-101.", "sections": [
+          {"title": "Deviation", "body": "Protocol deviation PD-034 in study KX2-101: a sample was stored at -20 C instead of -80 C."}
+        ]},
+        {"op": "ask", "label": "deviations", "question": "What are all the protocol deviations in study KX2-101?", "checks": {"must_include": [["PD-031"], ["PD-034"]], "must_not_include": ["PD-032", "PD-033"], "forbid_completeness_claim": true, "require_partial_acknowledgement": true}}
+      ]
+    },
+    {
+      "id": "freezer-inventory",
+      "title": "A freezer inventory with a missing shelf",
+      "steps": [
+        {"op": "seed_page", "title": "Freezer F-2 shelf 1 inventory", "page_type": "topic", "summary": "Inventory of freezer F-2 shelf 1.", "sections": [
+          {"title": "Contents", "body": "Freezer F-2 shelf 1 holds cell banks CB-101 and CB-102 as of 2026-08-01."}
+        ]},
+        {"op": "ask", "label": "inventory", "question": "Which cell banks are stored in freezer F-2?", "checks": {"must_include": [["CB-101"], ["CB-102"]], "must_not_include": ["CB-205", "CB-206"], "forbid_completeness_claim": true, "require_partial_acknowledgement": true}}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+$ beakr projects members invite 4dd25154-0d80-44ab-b4c2-167319bfacb4 maja@northwind.example --json
+> GET /v1/projects?limit=200
+> POST /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/invite
+  {"invitee_email": "maja@northwind.example", "role": "member"}
+[exit 0]
+--- stdout
+{
+  "created_at": "2026-10-11T12:00:00Z",
+  "created_by": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+  "expires_at": "2026-10-25T12:00:00Z",
+  "invitation_id": "f20b6657-86bd-4f68-92d6-d897a33fd59f",
+  "invitee_email": "priya.raman@northwind.example",
+  "role": "member"
+}
+--- stderr
+
+
+$ beakr projects members invite 4dd25154-0d80-44ab-b4c2-167319bfacb4 maja@northwind.example
+> GET /v1/projects?limit=200
+> POST /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/invite
+  {"invitee_email": "maja@northwind.example", "role": "member"}
+[exit 0]
+--- stdout
+Invited maja@northwind.example to Helios.
+--- stderr
+

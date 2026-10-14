@@ -1,0 +1,22 @@
+$ beakr skills edit 'Stability study summary' --file SKILL.md --json
+> GET /v1/me/skills/library?limit=200
+> PUT /v1/me/skills/Stability%20study%20summary/files/SKILL.md
+  {"content": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}
+[exit 0]
+--- stdout
+{
+  "path": "SKILL.md",
+  "skill_id": "228d4b4a-0de4-42d7-8cd0-0bd35275e9ef"
+}
+--- stderr
+
+
+$ beakr skills edit 'Stability study summary' --file SKILL.md
+> GET /v1/me/skills/library?limit=200
+> PUT /v1/me/skills/Stability%20study%20summary/files/SKILL.md
+  {"content": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}
+[exit 0]
+--- stdout
+Updated SKILL.md of Stability study summary.
+--- stderr
+

@@ -1,0 +1,42 @@
+$ beakr members ls --org 0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01 --json
+> GET /v1/organizations/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01/members?limit=200
+[exit 0]
+--- stdout
+[
+  {
+    "display_name": "Dana Whitfield",
+    "email": "dana@northwind.example",
+    "joined_at": "2025-03-14T16:20:00Z",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "revoked_at": null,
+    "role": "owner",
+    "seat_type": "pro",
+    "user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11"
+  },
+  {
+    "display_name": "Maja Lindqvist",
+    "email": "maja@northwind.example",
+    "joined_at": "2025-06-02T09:00:00Z",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "revoked_at": null,
+    "role": "admin",
+    "seat_type": "pro",
+    "user_id": "3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22"
+  }
+]
+--- stderr
+
+
+$ beakr members ls --org 0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01
+> GET /v1/organizations/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01/members?limit=200
+[exit 0]
+--- stdout
+Members
+┏━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃Name           ┃ Email                  ┃ Role  ┃ User ID                             ┃ Joined    ┃
+┡━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│Dana Whitfield │ dana@northwind.example │ owner │ 7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e… │ 2025-03-14│
+│Maja Lindqvist │ maja@northwind.example │ admin │ 3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e… │ 2025-06-02│
+└───────────────┴────────────────────────┴───────┴─────────────────────────────────────┴───────────┘
+--- stderr
+

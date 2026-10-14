@@ -1,0 +1,39 @@
+$ beakr runs show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/runs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+{
+  "completed_at": null,
+  "created_at": "2026-10-01T12:00:00Z",
+  "error": null,
+  "interrupt_kind": "async_wait",
+  "last_event_id": "1759320061234-0",
+  "pending_operation": {
+    "attempt_count": 1,
+    "deadline_at": "2026-10-01T12:31:15Z",
+    "kind": "modal_sandbox_wait",
+    "last_heartbeat_at": "2026-10-01T12:06:40Z",
+    "operation_id": "sbxop_4f8a2c6e9d1b",
+    "started_at": "2026-10-01T12:01:15Z",
+    "status": "running",
+    "stderr_tail": null,
+    "stdout_tail": "fitting Arrhenius model for NW-217 ... 3/6 time points"
+  },
+  "run_id": "9bc43756-28ed-4a78-961a-31154e35ad49",
+  "started_at": "2026-10-01T12:00:02Z",
+  "status": "interrupted",
+  "thread_id": "1b8a2e91-6b4f-467e-aa3a-60670b2542cb"
+}
+--- stderr
+
+
+$ beakr runs show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/runs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+Run:      9bc43756-28ed-4a78-961a-31154e35ad49
+Thread:   1b8a2e91-6b4f-467e-aa3a-60670b2542cb
+Status:   interrupted
+Started:  2026-10-01T12:00:02Z
+--- stderr
+

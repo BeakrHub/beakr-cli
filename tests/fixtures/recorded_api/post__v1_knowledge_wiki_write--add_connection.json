@@ -1,0 +1,22 @@
+{
+  "operation": "POST /v1/knowledge/wiki/write",
+  "source": "recorded by beakr-engine tests/api/test_knowledge_result_shape_parity.py (tests/fixtures/knowledge_door_results.json, writes.add_connection)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "content": [
+      {
+        "text": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_connections, rev 1).\nSummary: add_connection: | Follows | [[Protocol: Thermal Shift Assay]] |  | {{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}} |\nWaiting for user approval.",
+        "type": "text"
+      }
+    ],
+    "outcome": {
+      "commit_ids": [],
+      "committed_page_ids": [],
+      "committed_revisions": {},
+      "error_code": null,
+      "protocol": "beakr.wiki_tool_outcome.v1",
+      "status": "success"
+    }
+  }
+}

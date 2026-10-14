@@ -1,0 +1,14 @@
+{
+  "operation": "POST /v1/projects/{project_id}/invite",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 201,
+  "content_type": "application/json",
+  "body": {
+    "created_at": "2026-10-11T12:00:00Z",
+    "created_by": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+    "expires_at": "2026-10-25T12:00:00Z",
+    "invitation_id": "f20b6657-86bd-4f68-92d6-d897a33fd59f",
+    "invitee_email": "priya.raman@northwind.example",
+    "role": "member"
+  }
+}

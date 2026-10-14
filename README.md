@@ -1,6 +1,14 @@
 # beakr-cli
 
-CLI and MCP server for [Beakr's](https://thebeakr.com) knowledge base.
+CLI and MCP server for [Beakr](https://thebeakr.com): your team's
+Knowledge, projects, files and integrations, from a terminal, a script, or an agent.
+
+The CLI and SDKs cover Beakr's documented API, which is deliberately small:
+sign-in and keys, organization members and service accounts, projects, files,
+Knowledge (read, write, proposals, research), agent runs, interviews,
+conversations, integrations, and the embedded-mode pieces (external users,
+labels, end-user tokens). Run `beakr --help` for the commands; `beakr api` has
+one command per documented operation.
 
 ## CLI vs MCP — when to use which
 
@@ -117,7 +125,371 @@ Installs that cannot be upgraded safely in place are reported, not changed: a
 (which reuses a cached copy; use `uvx --from beakr-cli@latest beakr mcp` to always
 run the newest release). Set `BEAKR_NO_UPDATE_CHECK=1` to turn the check off.
 
+## Shell completion
+
+Tab completion covers every command, subcommand and option (including the
+generated `beakr api` commands) in bash, zsh, fish and PowerShell.
+
+```bash
+beakr --install-completion   # detect your shell, install completion, then restart the shell
+beakr --show-completion      # print the script for your current shell instead
+```
+
+`--install-completion` writes to:
+
+| Shell | Script | Loaded by |
+|-------|--------|-----------|
+| bash | `~/.bash_completions/beakr.sh` | a `source` line appended to `~/.bashrc` |
+| zsh | `~/.zfunc/_beakr` | `fpath+=~/.zfunc; autoload -Uz compinit; compinit` appended to `~/.zshrc` |
+| fish | `~/.config/fish/completions/beakr.fish` | fish, automatically |
+| PowerShell | your PowerShell profile | the profile |
+
+To generate the script for a specific shell (dotfiles, a Dockerfile, a shell other
+than the one you are in), set `_BEAKR_COMPLETE` to `source_<shell>`:
+
+```bash
+_BEAKR_COMPLETE=source_zsh  beakr > ~/.zfunc/_beakr
+_BEAKR_COMPLETE=source_bash beakr > ~/.bash_completions/beakr.sh   # bash 4.4+
+_BEAKR_COMPLETE=source_fish beakr > ~/.config/fish/completions/beakr.fish
+```
+
+The scripts call `beakr` to compute matches, so `beakr` must be on your `PATH`
+(a `uvx`-only setup has no completion). Deprecated command aliases are not offered.
+
 ## Quick start
+
+Install, sign in, bind a project, upload, ask, read a card:
+
+```bash
+uv tool install beakr-cli          # or the one-line installer above
+beakr auth login                   # browser sign-in; works with SSO and MFA
+beakr init --create "Research"     # bind this directory to a new project
+beakr upload docs/ notes.pdf       # folders keep their structure
+beakr research "what did we decide about the launch date?"
+beakr kb sections "launch date"    # find the card
+beakr kb cat "Launch Plan"
+```
+
+`beakr init` writes `.beakr/project.json`; inside that directory every command
+that takes `--project` uses it by default. `--project` (also `-P`, and `--scope`,
+the word the MCP tools use) takes a project id, slug or exact name. Project
+resolution order: the flag, `BEAKR_PROJECT_ID`, the nearest
+`.beakr/project.json`, then the default set by `beakr auth set-scope`.
+
+At a terminal, results are tables and text. When stdout is not a terminal (an
+agent or a script), each object is one tab-separated line -- its id, its name,
+then a few `key=value` fields -- followed by a `next:` line naming the command
+to run next when there is one (`beakr jobs wait ...` after an upload). Every
+command takes `--json` for the full objects; `BEAKR_OUTPUT=json|compact|human`
+forces one format. No command prompts when stdin is not a terminal. Exit codes
+are stable:
+
+| Code | Meaning |
+|------|---------|
+| 0 | ok |
+| 1 | error |
+| 2 | usage (bad flags, or a confirmation needed without `--yes`) |
+| 3 | not signed in, or the credential lacks a scope |
+| 4 | not found |
+| 5 | conflict |
+
+## Signing in and API keys
+
+```bash
+beakr auth login                    # opens your browser to sign in
+beakr auth login --no-browser       # print the sign-in link instead of opening it
+beakr auth login --device           # a one-time code to approve from another device
+echo "$KEY" | beakr auth login --with-api-key   # scripts and CI (or a hidden prompt at a terminal)
+beakr auth status                   # which credential is active and when it expires
+beakr auth token                    # print the current access token (refreshed if needed)
+beakr whoami
+beakr auth logout                   # revokes the sign-in at its issuer, then forgets it
+```
+
+Signing in stores a short-lived access token and a refresh token
+in the OS keychain (falling back to `~/.beakr/credentials`, mode 0600). The CLI,
+the MCP server and the SDK refresh it automatically, one process at a time under
+a lock, because refreshing rotates the pair. `beakr auth token --json` prints the
+access token (never the refresh token) for the current API, or the one named by
+`--api-url`, refreshing it first when it is about to expire; the TypeScript SDK
+uses it to reach a keychain sign-in and to refresh one without taking that lock
+itself.
+
+The API names the sign-in issuer, the CLI's OAuth client and the Beakr scopes
+to ask for (`GET /v1/auth/config`; Clerk for Beakr's hosted API). `beakr auth
+login` runs the OAuth authorization-code flow with PKCE in your browser: it
+listens once on `127.0.0.1` on a free port, opens the issuer's sign-in page, and
+takes the code from the redirect to `http://127.0.0.1:<port>/callback`, refusing
+a redirect whose `state` is not its own. `--no-browser` prints the link for you
+to open on the same machine. `--device` uses the issuer's device grant (a
+one-time code you confirm from any browser); when the issuer does not offer it,
+the command says so and points to `--with-api-key`. The token carries only the Beakr
+scopes it was granted; if `beakr doctor` reports a missing scope, sign in again.
+`beakr auth logout` revokes the refresh token at the issuer, then removes the
+local sign-in. Sign-ins saved by CLI versions before this one used Beakr's own
+device flow, which the API no longer serves: sign in again.
+
+API keys can be limited to scopes and projects and expire (90 days by default).
+They are created in the web app, from a signed-in browser session: the API
+refuses key creation from an API key or a CLI sign-in token, so a leaked token
+cannot mint itself a long-lived key. `beakr keys create` opens that page; with
+`--scope`, `--project`, `--expires-in` or `--name` the form opens filled in, and
+you review it and press Create there.
+
+```bash
+beakr keys create                   # opens <app>/settings?tab=api-keys
+beakr keys create --name CI --scope kb:read --project Platform --expires-in 30d
+beakr keys scopes                   # what each scope allows
+beakr keys ls
+beakr keys revoke <key-id>
+```
+
+Scopes used by the documented API: `kb:read`, `kb:write`, `projects:read`,
+`projects:admin`, `members:admin`, `uploads:write`, `integrations:read`,
+`integrations:admin`, `conversations:read`, `conversations:write`, `agent:run`,
+`interviews:read` and `interviews:write` (`beakr keys scopes` lists every scope a
+key can carry). A call outside a key's scopes exits 3 and names the missing scope.
+
+## Org, projects and files
+
+```bash
+beakr projects ls | create NAME | show ID | archive ID | rm ID
+beakr projects members ls ID | add ID USER_ID | invite ID EMAIL | rm ID TYPE PRINCIPAL_ID
+beakr members ls | role USER_ID admin | rm USER_ID
+beakr upload report.pdf data/ --project <id> --folder <folder-id>
+beakr files upload a.pdf b.pdf data/ --project <id>       # the same command, beside files ls
+beakr files ls --search budget | show ID | download ID --out ./ | rm ID
+beakr integrations ls | connect PROVIDER | status ID | rm ID
+beakr integrations tools --provider slack           # what your connected integrations can answer
+beakr integrations call slack_search --arg query="assay handover"
+beakr doctor                                        # auth, scopes, API, MCP, hooks, version
+```
+
+Organization admins manage service accounts (non-human members that own scoped
+keys, for CI and backends). Creating one and minting its keys need a browser
+session (Organization settings > Developer > Service accounts); listing,
+disabling and `show` work from the CLI:
+
+```bash
+beakr org show
+beakr org service-accounts ls | create "CI bot" --role member | disable ID --yes
+beakr org service-accounts key ID --scope kb:read --project <id>   # key shown once
+```
+
+### Building Beakr into your product
+
+A backend signed in as a service account mints short-lived tokens for its own
+users, limited to projects (or to an external user's memberships) and scopes:
+
+```bash
+beakr end-user-tokens mint --subject customer-42 --project <id> --scope kb:read --ttl 900
+beakr end-user-tokens ls --subject customer-42
+beakr end-user-tokens revoke TOKEN_ID
+```
+
+### Interviews
+
+Send someone a link; Beakr runs the interview and you read the result or file
+it into projects:
+
+```bash
+beakr interviews link create "Assay handover" --goal "How the binding assay is run" -q "Controls?"
+beakr interviews link show LINK_ID
+beakr interviews link send LINK_ID --project <id>
+beakr interviews link ls | revoke LINK_ID
+```
+
+## Knowledge cards
+
+Project-map cards hold Facts, Connections and dated Findings. Writes stage a
+proposal (or apply at once when your auto-approve is on):
+
+```bash
+beakr kb rows --table facts --entity "Stripe" --current-only
+beakr kb add-fact "Stripe" --attribute "contract renewal" --value "2027-01-31" \
+    --evidence "{{doc:abc123}}" --rationale "From the signed order form"
+beakr kb add-connection "Stripe" --relation "billing provider for" --to "Platform" \
+    --evidence "{{doc:abc123}}" --rationale "..."
+beakr kb add-finding "Stripe" --date 2026-10-01 --kind decision \
+    --text "Stay on Stripe through 2027" --evidence "{{doc:abc123}}" --rationale "..."
+beakr kb edit-rows "Stripe" --table facts \
+    --old-row '{"attribute": "tier", "value": "Basic"}' --row '{"attribute": "tier", "value": "Pro"}' \
+    --rationale "Upgraded"
+beakr kb proposals ls
+beakr kb proposals accept <proposal-id>
+```
+
+## Agents: context, session capture, skills
+
+```bash
+beakr hooks install                 # Claude Code: ~/.claude/settings.json
+beakr hooks install --client codex  # Codex: a Beakr block in ~/.codex/AGENTS.md
+beakr hooks status
+beakr hooks uninstall
+beakr hooks capture on              # this repository: allow automatic capture (off by default)
+beakr hooks learning on             # this repository: let your typed sessions teach personal learning (off by default)
+beakr codex                         # run Codex with fresh context; capture if allowed
+```
+
+Capture needs two opt-ins (spec step 8.1 item 3): installing the hooks is your
+choice as a user, and `capture: true` in a repository's `.beakr/project.json`
+is the project's. Set it with `beakr hooks capture on` (or `beakr init
+--capture`) in a bound repository; `beakr hooks capture off` withdraws it and
+drops that repository's queued retries. In a repository without it, the hooks
+never upload or queue anything, and the session-start context says capture is
+off. A deliberate `beakr compound --from-transcript` works either way.
+
+Personal learning from captured sessions is a third, separate opt-in:
+`learn_from_sessions: true` in `.beakr/project.json`, set by `beakr hooks
+learning on` (or `beakr init --learning`), off by default and reset when the
+directory is bound to another project. Each import tells Beakr whether a
+person typed the session (`interactive`), and it says `true` only when the
+project has this opt-in **and** the agent's own transcript classifies the
+session as human: Claude Code `entrypoint: cli` with a typed prompt, or a
+Codex session whose `source` is `cli` or `vscode`. Headless runs (`claude -p`
+and the Agent SDK, `entrypoint: sdk-*`; `codex exec`; MCP-driven and subagent
+sessions) and sessions without these markers are sent as `false`. The value
+is decided when the session is captured and recorded on each queued retry; a
+retry never sends it as more interactive, and withdrawing the opt-in sends
+pending retries as `false`. `beakr conversations import` sends `false` unless
+you pass `--interactive`, which is refused for a transcript recorded as
+headless.
+`beakr setup --uninstall` removes the hooks and the Codex block along with the
+skills and MCP server.
+
+For Claude Code this adds three hooks, merged into your existing settings
+without touching other hooks (re-running is safe):
+
+- **SessionStart** runs `beakr context --format claude_md --project auto --hook`
+  and injects your org, project and personal context into the session, with a
+  line saying whether session capture is on for this project.
+- **Stop** runs `beakr compound --hook --client claude-code --background`. Stop
+  fires after every turn, so capture is incremental: a per-session cursor in
+  `~/.beakr/hooks_state.json` records what was sent, and only messages added
+  since are imported (Beakr appends them to the same conversation). Queueing
+  the conversation for compounding is throttled to once per 15 minutes per
+  session.
+- **SessionEnd** does the same with `--force`, so the last turns are always
+  sent and compounded.
+
+Imported conversations are private to you. Hooks never block or fail the
+session: problems go to `~/.beakr/hooks.log`, and an import that fails (offline,
+API down) is kept in `~/.beakr/hook_queue/` (at most 50 entries) and sent first
+on the next run; `beakr doctor` reports the queue. Every process a hook starts
+carries `BEAKR_HOOK_ACTIVE=1`, and a hook that sees it does nothing, so capture
+cannot recurse.
+Codex has no hooks, so `beakr codex` is its pre-session wrapper: it rewrites
+the Beakr block in `~/.codex/AGENTS.md` with the bound project's current
+context, runs `codex` with every argument passed through (and its exit code),
+then imports the sessions written during the run if the repository allows
+capture. The block ends with a line naming the repository and saying whether
+capture is on for it, as Claude's SessionStart line does; it is computed from
+local consent, so `beakr hooks capture on|off` and `beakr init` rewrite it at
+once, and a refresh that cannot reach Beakr still rewrites it (and drops context
+left from another project). A failed refresh or import is reported, never a
+failed Codex run.
+`beakr compound --from-codex-sessions` still imports finished sessions by hand. `beakr setup --hooks` installs hooks along with the MCP server and
+skills (interactive setup asks; non-interactive setup skips them unless
+`--hooks` is passed).
+
+```bash
+beakr context --question "billing migration" --format markdown
+beakr compound --from-transcript ~/.claude/projects/.../session.jsonl --client claude-code
+beakr conversations ls --client claude-code
+beakr conversations search "pump calibration" --any   # your sessions and chats that answered it
+```
+
+The MCP server adds `context`, `skills`, `conversations_search` and
+`import_conversation` beside `research`, `knowledge_base` and
+`knowledge_base_write`. Card rows and writes are `knowledge_base` command
+`rows` and `knowledge_base_write` actions `add_fact`, `add_connection`,
+`add_finding` and `edit_rows`.
+
+By default the MCP server lists only the small eager set (`context`,
+`research`, `knowledge_base`, `knowledge_base_write`, `read_file`, `skills`,
+`workboard`) plus `discover_tools`, which returns every other tool's name,
+description and input schema; those tools stay callable by name. To list every
+tool, set `BEAKR_MCP_TOOLS=all` in the server's environment (for example
+`"env": {"BEAKR_MCP_TOOLS": "all"}` in the MCP entry).
+
+Beakr's hosted MCP server (`https://<api>/mcp`) exposes the same tools, including
+`beakr_version` and `update_beakr`. Those two answer for the server that runs
+them: here they report and upgrade this installed CLI; the hosted server reports
+its own version and the latest beakr-cli release it is configured with, and its
+`update_beakr` runs nothing and returns the command to run locally (`beakr update`).
+
+## Python SDK
+
+The CLI is built on Beakr's Python SDK, `beakr-sdk` (`import beakr_sdk`), which
+lives in its own repository, [BeakrHub/beakr-python](https://github.com/BeakrHub/beakr-python),
+with its documentation, generator and tests. Installing the CLI installs it, so
+scripts in the same environment can use it:
+
+```python
+from beakr_sdk import Beakr
+
+beakr = Beakr()  # api_key=..., else BEAKR_API_KEY, else your `beakr auth login`
+print(beakr.knowledge.sections("launch date", scope="Research"))
+```
+
+The TypeScript SDK, `@beakr/sdk`, is
+[BeakrHub/beakr-typescript](https://github.com/BeakrHub/beakr-typescript).
+
+The SDK covers only the documented contract. The CLI and its MCP server also
+call a few routes the API serves without documenting them (profile, skills,
+memories, outputs, workflows, org administration...), through the CLI's own
+private client, `beakr_cli._private_api`. Each of those operations is listed in
+`src/beakr_cli/_private_api/operations.allowlist`, and only those are generated
+(`scripts/generate_private_api.py` renders them with the SDK's generator from
+the engine's internal contract, filtered to those operations; this repository
+keeps only that filtered part, in `snapshots/beakr-engine/docs/api/cli-private-openapi.json`);
+`tests/test_private_api_allowlist.py` fails when a call site and the list
+disagree.
+
+### The Python SDK dependency
+
+Until `beakr-sdk` is on PyPI, `pyproject.toml` requires `beakr-sdk>=0.1.0,<0.2`
+and `[tool.uv.sources]` resolves it from git, pinned to a pushed commit of
+BeakrHub/beakr-python. To take a newer SDK:
+
+```bash
+scripts/pin_sdk.sh <commit-or-tag>   # or no argument: beakr-python's current main
+uv sync --extra dev
+```
+
+To install both from local checkouts (say, to try an SDK change with the CLI),
+tell uv to ignore `[tool.uv.sources]`; otherwise the git pin and the local path
+are two URLs for `beakr-sdk` and the install fails with "conflicting URLs":
+
+```bash
+uv pip install --no-sources ./beakr-python ./beakr-cli
+```
+
+To develop the CLI against a local SDK checkout, point the source at it while
+you work (do not commit this):
+`beakr-sdk = { path = "../beakr-python", editable = true }`.
+
+Once `beakr-sdk` is published to PyPI:
+
+1. delete the `beakr-sdk = { git = ... }` line from `[tool.uv.sources]`;
+2. keep (or narrow) the `beakr-sdk` range in `[project.dependencies]` so it
+   admits the published version, and run `uv lock`.
+
+Built wheels never carry `[tool.uv.sources]`: a `beakr-cli` wheel always
+declares `beakr-sdk` as a PyPI requirement. So `publish.yml` refuses to publish
+the CLI until a `beakr-sdk` version in that range is on PyPI.
+
+## Benchmarks
+
+`benchmarks/` holds the public compounding, corrections, false-completeness and
+cross-agent handoff suites. They run only through the public API, against a
+sandbox (`bk_test_` key); see `benchmarks/README.md`.
+
+```bash
+uv run python benchmarks/run.py --dry-run        # offline, exercises the harness only
+```
+
+## Knowledge base commands
 
 ```bash
 # Browse knowledge base
@@ -126,7 +498,6 @@ beakr kb ls --roots              # top-level pages only
 beakr kb ls --parent "My Page"   # children of a page
 beakr kb cat "Page Title"
 beakr kb search "authentication flow"
-beakr kb blame "API Design"
 beakr kb sources "API Design"
 beakr kb log
 
@@ -138,8 +509,8 @@ beakr kb propose create --project <project-id> --title "API Design" --file api-d
 beakr kb propose create --mine --title "Scratch Note" --content "Personal note"
 beakr kb propose edit --project <project-id> "API Design" --patches @patches.json
 beakr kb propose edit --project <project-id> "Launch Plan" --file launch.md --sections @sections.json
-beakr kb proposals list
-beakr kb proposals list --mine
+beakr kb proposals ls
+beakr kb proposals ls --mine
 beakr kb proposals show <proposal-id>
 beakr kb proposals accept <proposal-id>
 
@@ -158,8 +529,8 @@ claim, table row/value, date, title, and relationship, then use the same keys in
 so section provenance can roll up the inline citations. The CLI and MCP tools
 preflight-check that section IDs match `<!-- sec:ID -->` markers, event dates are
 valid, inline tokens are well formed, and citation keys match the inline tokens.
-Citations can reference existing Beakr sources from `beakr kb sources` or
-`beakr kb provenance`, external identifiers, or inline agent/user-supplied
+Citations can reference existing Beakr sources from `beakr kb sources`,
+external identifiers, or inline agent/user-supplied
 context. To cite the current session or another source that is not in the wiki
 yet, use a stable key such as `agent_note:launch-risk`, set `source_type` to
 `conversation`, `agent_note`, or `user_note`, and provide `source_title` plus
@@ -171,7 +542,8 @@ for shared/team knowledge or `--mine` to resolve and use your personal project.
 ## What gets installed
 
 - **CLI binary**: `~/.local/bin/beakr` (from `uv tool install`)
-- **Config**: `~/.beakr/config.json` (API key + default project)
+- **Config**: `~/.beakr/config.json` (API URL, saved API key, default project)
+- **Sign-in tokens**: the OS keychain, or `~/.beakr/credentials` (0600)
 - **Claude Code skill**: `~/.claude/skills/beakr/`
 - **Claude Code slash commands**: `~/.claude/commands/kb-*.md` (`/kb-search`, `/kb-research`, `/kb-write`, `/kb-audit`)
 - **Claude Code MCP entry**: registered via `claude mcp add` or written to `~/.claude.json`
@@ -205,9 +577,13 @@ This writes:
 | Variable | Description |
 |----------|-------------|
 | `BEAKR_API_KEY` | API key (overrides stored config) |
-| `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
+| `BEAKR_BASE_URL` / `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
+| `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute CLI writes to an agent session |
+| `BEAKR_APP_URL` | Web app URL for pages the CLI opens (default: saved at `beakr auth login`, else `https://app.thebeakr.com`) |
+| `BEAKR_HOME` | Directory for config, credentials and hook state (default: `~/.beakr`) |
+| `BEAKR_NO_KEYRING` | Set to `1` to store sign-in tokens in `~/.beakr/credentials` instead of the keychain |
 | `BEAKR_ORG_ID` | Active org UUID or slug for `X-Org-Id` |
-| `BEAKR_PROJECT_ID` | Project scope |
+| `BEAKR_PROJECT_ID` | Project scope (overrides `.beakr/project.json`) |
 | `BEAKR_NO_UPDATE_CHECK` | Set to `1` to disable the PyPI check for newer releases. |
 | `CLAUDE_CONFIG_DIR` | Claude Code config directory (default: `~/.claude`). If set, `beakr setup` installs skills there and falls back to `claude mcp add` rather than editing `~/.claude.json`. |
 | `CODEX_HOME` | Codex config directory (default: `~/.codex`). `beakr setup` writes skills and `config.toml` here. |
@@ -224,19 +600,73 @@ PyPI's pending publisher flow if the `beakr-cli` project does not exist yet:
 - Workflow filename: `publish.yml`
 - Environment name: `pypi`
 
-Then release:
+### Versions and release notes come from the API contract
+
+The `beakr api` command table and the agent tool surface are derived from the
+engine, so the engine decides what a release contains:
+
+- **Freshness.** CI never reads the engine. The engine files this repository
+  is derived from and tested against are committed under
+  `snapshots/beakr-engine` (laid out as in the engine), and
+  `snapshots/manifest.json` pins the engine commit they came from (with
+  `uncommitted_changes` when they were taken from a working tree) and each
+  file's SHA-256. `.github/workflows/ci.yml` checks, on every pull request and
+  push, that the snapshot is exactly what the manifest lists and that the
+  `beakr api` command table, the vendored agent tool surface and the private
+  client match it, then runs the tests against it. The engine's full internal
+  contract is never committed: only the allowlisted operations
+  (`cli-private-openapi.json`); and where a test needs one fact from an engine
+  source file, `derived/` holds that fact rather than the file. One command, with an engine checkout beside
+  this one (or its path as the argument), refreshes the snapshot and
+  regenerates everything from it after an engine change: `scripts/regen.sh`
+  (`scripts/refresh_snapshots.py diff` says whether the snapshot is stale; the
+  SDKs regenerate in their own repositories; take a new one with
+  `scripts/pin_sdk.sh`).
+- **What the engine's CI covers.** The engine's CI checks this repository out
+  on the branch named like its own (else `main`) and runs the same freshness
+  checks and tests against the engine itself, so an engine change that the
+  snapshot here does not have yet shows up there. Tests that run the engine's
+  own code in its `.venv` (`tests/test_hook_engine_reconciliation.py`,
+  `tests/test_codex_compound_text_policy_review.py`; `real_engine` in
+  `tests/_engine.py`) skip here and run only there.
+- **Version.** `scripts/prepare_release.py` (identical in every Beakr client
+  repository; `release/config.json` names this package's version files:
+  `pyproject.toml`, `beakr_cli.__version__`, `uv.lock`) compares the contract at
+  the last release (the engine commit in `release/released.json`) with the
+  current one, using the engine's compatibility rules (vendored in
+  `scripts/contract_compat.py`). A breaking change needs a major bump (below
+  1.0, a minor one), an added or changed operation a minor bump, a wording
+  change a patch.
+- **Notes.** The API changelog entries added since that release become the
+  release's section in `CHANGELOG.md`, grouped as the API changelog groups them;
+  the `### CLI and SDK` subsection is hand-written and kept across reapplies.
 
 ```bash
-# Bump both versions to the same value
-$EDITOR pyproject.toml src/beakr_cli/__init__.py
+uv run python scripts/prepare_release.py plan    # what changed, which bump it needs
+uv run python scripts/prepare_release.py apply   # bump versions, write CHANGELOG.md
+uv run python scripts/prepare_release.py check   # what CI and publishing run
+```
+
+### Releasing
+
+```bash
+uv run python scripts/prepare_release.py apply --date 2026-10-10
+uv run python scripts/prepare_release.py check
 
 # Verify locally
-python -m pip install --upgrade build twine
-python -m build
-twine check dist/*
+uv build
+uvx twine check dist/*
 
-# Commit, tag, push, and publish a GitHub release for the tag.
-# The publish workflow uploads dist/* to PyPI.
+# Commit, tag v<version>, push, and publish a GitHub release for the tag.
+# publish.yml runs ci.yml first (tests, freshness, release check), refuses a
+# tag that does not match pyproject.toml or a beakr-sdk requirement PyPI cannot
+# satisfy, then uploads dist/* to PyPI.
+
+# Afterwards, record what was released (the engine commit it was built from),
+# then refresh the snapshot so it carries that commit's contract and changelog
+# (snapshots/beakr-engine/release-base/<sha>), which the offline release check reads:
+uv run python scripts/prepare_release.py record --engine-commit <engine sha>
+uv run python scripts/refresh_snapshots.py refresh --engine <engine checkout>
 ```
 
 After the workflow succeeds:

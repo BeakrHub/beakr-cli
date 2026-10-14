@@ -1,0 +1,21 @@
+{
+  "operation": "GET /v1/uploads/{upload_id}",
+  "source": "synthesized from the contract's UploadSessionOut / UploadPartsResponse / UploadCompleteResponse (2026-10-12: every upload is resumable)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "id": "7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70",
+    "status": "open",
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "parent_folder_id": null,
+    "path": "charter.md",
+    "content_type": "text/markdown",
+    "content_length": 44,
+    "part_size": 5242880,
+    "part_count": 1,
+    "ingest_to_wiki": true,
+    "created_at": "2026-10-12T12:00:00Z",
+    "expires_at": "2026-10-13T12:00:00Z",
+    "uploaded_parts": []
+  }
+}

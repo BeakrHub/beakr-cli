@@ -1,0 +1,220 @@
+{
+  "capped": [
+    "workboard",
+    "wiki_graph"
+  ],
+  "discovery": [
+    "get_profile",
+    "wiki_stats",
+    "wiki_graph",
+    "show_proposal",
+    "accept_proposal",
+    "dismiss_proposal",
+    "conversations_search",
+    "import_conversation",
+    "org_audit_log",
+    "beakr_version",
+    "update_beakr"
+  ],
+  "eager": [
+    "context",
+    "list_projects",
+    "research",
+    "knowledge_base",
+    "knowledge_base_write",
+    "read_file",
+    "skills",
+    "workboard",
+    "discover_tools"
+  ],
+  "paged": [
+    "list_projects",
+    "skills",
+    "conversations_search",
+    "org_audit_log"
+  ],
+  "tier_meta_key": "com.thebeakr/tier",
+  "tools": [
+    {
+      "description": "Load onboarding context for this session: who the user is, the org and project profiles, memories, recent changes, skills. Use ONCE at the start of a task.",
+      "name": "context",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "List projects in the organization, including the user's personal project. Pass a project's name or id as `scope` to knowledge_base and knowledge_base_write, or as `project` to research, wiki_stats and wiki_graph. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "name": "list_projects",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "Ask a question and get a researched, cited answer from the organization's knowledge base, documents and connected services. The primary tool for questions about the organization: decisions, owners, status, everything related to a topic.",
+      "name": "research",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "Read the knowledge base: the commands Beakr's in-product agents use. Pass the command as `command` and its options as a flat `arguments` object; `scope` (a project name or id) narrows the read to one project. There is no `search` command.\n\nStart with sections: each hit shows the document passage (a verbatim excerpt) that supports it. Quote it directly; open the file only when the value you need is not in the excerpt.\n\nChoosing a command:\n- sections: START HERE for a fact, value, decision, status, or the right section of a known page (semantic; top 10 sections with the verbatim passages they rest on). [DISPUTED] marks a snippet a later source contradicts.\n- ls, rows: for 'every X', counts and superlatives -- ls lists the whole population by page_type (limit max 500, page on with after_title); rows is every map card's Facts/Connections/Findings as one table. These replace extracting the documents and grepping them: every document, its date and matter are already indexed.\n- grep: literal search for short tokens, ids and exact names. Content is NOT a census (capped at `limit` pages in title order; page on with after_title); for every page with an exact term use output_mode files_with_matches.\n- cat: read narrowly (section_id from a hit, lines, or outline=true). Its Path, Children and Linked from lines are graph edges: follow them instead of re-searching.\n- links, references, timeline: backlinks, prose mentions, dated events.\n- provenance, blame: how well a claim is supported and by which document.\n- log, diff, show: only when the question is about change over time.\n- proposals: your pending writes; a proposed page does not exist until approved.\nExact wording: sources {page} lists every cited passage; read_file with a {{artifact:...}} token, a file id or a file's path opens the original (x.pdf \u203a p. 7 opens that place). Slack, email, calendar and Jira items are not files: use their excerpt and url.\nResults stay under about 6k tokens; when `next` appears, page with it rather than re-querying. In a code cell (Codex), print only the result's text and make one knowledge_base call per cell.\nsections and cat list each cited document once, with where it lives and where each cited passage sits in it (path \u203a p. 7, which read_file opens); cite people inline with it, linked when it has a url. Full guidance for every command: command='help', or command='help' with `topic` set to one command.\n\nCommand index (options go in `arguments`):\nFind pages: sections {query, page_type?, limit?} (START HERE); grep {query, mode?, output_mode?, after_title?, context_lines?, matches_per_page?, limit?} (mode: text, regex, semantic, history; output_mode: content, files_with_matches, count: listings give the exact total, paged by after_title, where results say 'in their prose'); ls {parent?, page_type?, sort_by?, limit?} (sort_by: title|updated_at|created_at).\nRead: cat {page, section_id?, lines?, outline?, rev?} (prefer section_id from a hit); hover {page} (cheap triage before cat).\nGraph: links {page}; references {page}; timeline {timeline_query?, start_date?, end_date?, include_content?, include_approx?}; rows {table: facts|connections|findings, page_type?, entity?, attribute?, query?, start_date?, end_date?, current_only?, order_by?, descending?, limit?, offset?, include_evidence?} (every map card's rows as one table, tagged with its card); ontology {include_proposed?}; suggest_parent {page | title, content?}.\nTrust and lineage: provenance {page}; blame {page}; sources {page}.\nHistory: log {page?}; diff {page, rev, rev2?}; show {page, rev}.\nUtility: diagnostics {}; completions {prefix}; proposals {status?}; help {topic?}.\n`page` accepts a slug, title, UUID or citation key such as wiki:8f3a0c21. Each result ends with its Sources: per cited document, its path, its {{token}}s each with where that passage sits (p. 7, slide 3, sheet 2, B4:D9), and the id read_file opens. To people cite path \u203a place; in writes the {{token}} or source_ref (sources {page}).",
+      "name": "knowledge_base",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "Propose a knowledge-base change through the actions Beakr's in-product agents use. Nothing is written until accept_proposal, unless the result says the user's auto-approve is on. Pass the action as `action` and its fields as a flat `arguments` object; every change except page_type needs `rationale`. Read the page first.\n\nChoosing an action:\n- edit_section: PREFERRED for updates. Replaces ONE section's whole body (its ### headings included) and leaves the rest of the page and its citations alone; a missing section_id plus title creates the section (after= positions it).\n- edit: patches for surgical changes; `sections` REPLACES the whole page (an omitted section is deleted; keep a section's id to keep its citations and links).\n- new: title, page_type, summary and `sections`; do not author section markers.\n- add_fact, add_connection, add_finding: one row or one dated finding on a map card, merged into the live table -- never resend a table. Facts are what a source says; your conclusions are findings. edit_rows changes, merges or deletes rows; sort_table orders a table.\n- find_replace: batched replacements across one project (renames, links).\n- mv within a project; copy to another (scope is the target); archive.\n- merge: for a DUPLICATE page -- prefer it over archive so links keep resolving; name the duplicate's sections to keep in merge_sections.\n- flag: ask a person to decide (ambiguity, contradiction, unverifiable, likely_error); writes nothing.\n- page_type: only when no existing type fits.\nFull guidance for every action: action='help', or action='help' with `topic` set to one action.\n\nAction index (fields go in `arguments`):\nedit_section {page, section_id, new_section_body, citations?} (PREFERRED for updates); add_fact {page, attribute, value, evidence, when?}; add_connection {page, relation, to, evidence, when?}; add_finding {page, date, kind, text, evidence}; edit_rows; sort_table; new {title, page_type, summary, sections, parent?}; edit {page, patches | sections}; find_replace; mv; archive; merge; copy; page_type.\n`sections` is an ordered list of {title, body, citations?}; Beakr writes the section markers. Citations are {source_ref | key | reference, stance, meta?}: key a {{token}}, reference a Sources path or place (memo.pdf \u203a p. 7); stance is support, qualifies or contradicts. Cite only your conversation ({source_type: conversation, source_title, meta: {excerpt}}), a file you uploaded, or a source Knowledge already cites that you can read; anything else is refused (citation_not_citeable).",
+      "name": "knowledge_base_write",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "Read a file's text (PDF, Word, sheet, slides, text, or a canvas): the original a Knowledge citation points at. Use when you need the exact wording or a value the excerpt does not hold. Pass `artifact_id`: the file id (`read_file <id>` in a result's Sources, or location.file_id), a version id, a whole citation token such as {{artifact:<uuid>-u3}}, or the file's path from a Sources line (matters/x/Closing/memo.docx). Add ' \u203a <unit>' (memo.pdf \u203a p. 7, book.xlsx \u203a sheet 2, B4:D9, notes.md \u203a lines 10-30) to get the window around that place. Connected items (Slack, email, calendar, Jira) are not stored as files: use their excerpt and url. Long files come back in pieces: pass `offset` to continue.",
+      "name": "read_file",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "List the user's Beakr skills, or read one skill's SKILL.md (pass a slug, name or id). Use before a task a skill may cover. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "name": "skills",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "See what Knowledge agents are working on right now in one project (or label): who is planning to read or change which pages, and what is waiting. Use before a large Knowledge write to avoid colliding with another agent's work in progress. The result's coverage says whether everything was shown, and next says how to narrow it when it was not.",
+      "name": "workboard",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
+      "name": "discover_tools",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "eager"
+    },
+    {
+      "description": "Get the knowledge profile for the org or a project: goals, focus areas, core people, organizations and topics, and extraction guidance.",
+      "name": "get_profile",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Show knowledge base statistics (page count, source count).",
+      "name": "wiki_stats",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Summarize the knowledge graph: the most connected pages and basic stats. Use knowledge_base command='links' to explore one page's neighborhood. The result's coverage says whether everything was shown, and next says how to narrow it when it was not.",
+      "name": "wiki_graph",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Show one wiki proposal before accepting or dismissing it.",
+      "name": "show_proposal",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Accept and apply a wiki proposal. Only after the user explicitly asks to accept this specific proposal.",
+      "name": "accept_proposal",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Dismiss a wiki proposal after the user asks to reject it.",
+      "name": "dismiss_proposal",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Search your past conversations: sessions imported from Claude Code, Codex or ChatGPT, and your Beakr chats. Use when the user refers to earlier work or before redoing a task another session may have worked through. With a query it searches each conversation's index (title, summary, the entities and pages it touched); without one it lists your most recent imported sessions. Not for org knowledge: research and knowledge_base cover that. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "name": "conversations_search",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Save an agent session into the user's private Beakr conversations. To add to a session imported before, send only the new messages with base_index set to how many were imported before; without base_index the messages are read as the whole session.",
+      "name": "import_conversation",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Read the organization's audit trail (sign-ins, key and policy changes), newest first. Requires an organization admin. Pass `before` (an ISO time) to start further back; a next_cursor continues the list. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "name": "org_audit_log",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Report Beakr's version and whether a newer beakr-cli release exists. On the beakr CLI's local MCP server: the installed CLI version and the latest release. On the hosted MCP server: the server's version and the latest beakr-cli release the server knows of. Call when the user asks about the Beakr version or updates, or when a Beakr tool behaves as if it is out of date.",
+      "name": "beakr_version",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Update Beakr. Only call this when the user has asked to update Beakr; it takes no arguments. On the beakr CLI's local MCP server it upgrades the beakr-cli package with the tool that installed it (uv or pipx) and refreshes its installed skills; the running server keeps the old code, so tell the user to restart Claude Code / Codex afterwards. The hosted MCP server cannot change the user's machine: it runs nothing and returns the command to run locally instead (`beakr update`, or the install command when the CLI is not installed).",
+      "name": "update_beakr",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    }
+  ],
+  "version": 1
+}

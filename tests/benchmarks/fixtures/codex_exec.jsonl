@@ -1,0 +1,8 @@
+{"type":"thread.started","thread_id":"t1"}
+{"type":"turn.started"}
+{"type":"item.started","item":{"id":"item_0","type":"mcp_tool_call","server":"beakr","tool":"research","arguments":{"question":"ELISA wash protocol"},"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_0","type":"mcp_tool_call","server":"beakr","tool":"research","arguments":{"question":"ELISA wash protocol"},"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_1","type":"mcp_tool_call","server":"other","tool":"search","arguments":{},"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"command_execution","command":"ls","status":"completed"}}
+{"type":"item.completed","item":{"id":"item_3","type":"agent_message","text":"buffer: PBS-T\nwashes: 4\nvolume_ul: 300"}}
+{"type":"turn.completed","usage":{"input_tokens":5200,"cached_input_tokens":3100,"output_tokens":240}}

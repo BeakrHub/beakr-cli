@@ -1,0 +1,179 @@
+$ beakr workspace profiles --json
+> GET /v1/knowledge/profiles/org
+> GET /v1/projects?limit=200
+> GET /v1/knowledge/profiles/project/4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/profiles/project/7034917d-cab8-45a6-839a-b1aec49a5ac0
+[exit 0]
+--- stdout
+[
+  {
+    "core_organizations": [
+      {
+        "entity_id": "5ebe495f-c64f-4778-b185-7e16440c3deb",
+        "name": "Lindqvist Contract Research",
+        "relevance": "high",
+        "type": "CRO"
+      }
+    ],
+    "core_people": [
+      {
+        "entity_id": "03fb52ca-1cea-4bcf-80bf-8a55b7fb0b1d",
+        "name": "Dana Whitfield",
+        "relevance": "high",
+        "role": "Helios program lead"
+      }
+    ],
+    "core_topics": [
+      {
+        "entity_id": "df16e28e-bfd6-471e-8e32-b764c90ed296",
+        "name": "Thermostability",
+        "relevance": "high"
+      }
+    ],
+    "created_at": "2026-08-14T09:20:00Z",
+    "description": "Northwind Biosciences develops thermostable small-molecule therapeutics.",
+    "entity_types": [
+      "compound"
+    ],
+    "extraction_guidance": "Track compound identifiers (NW-2xx) exactly as written, and record every stability and potency measurement with its temperature, duration and date.",
+    "focus_areas": [
+      "Lead selection"
+    ],
+    "goals": [
+      "Select a thermostable lead for the NW-200 series by Q4 2026"
+    ],
+    "group_id": null,
+    "id": "3e01869a-6949-47bf-beb8-655215964ff2",
+    "industry": "Biotechnology",
+    "name": "Northwind Biosciences",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "profile_type": "org",
+    "project_id": null,
+    "settings": {},
+    "source_document_ids": [
+      "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13"
+    ],
+    "updated_at": "2026-09-30T16:05:00Z",
+    "_profile_type": "org"
+  },
+  {
+    "core_organizations": [
+      {
+        "entity_id": "2ee13ad6-6164-4f0f-a13a-e49ee262d6fb",
+        "name": "Lindqvist Contract Research",
+        "relevance": "high",
+        "type": "CRO"
+      }
+    ],
+    "core_people": [
+      {
+        "entity_id": "5c379fee-b4cf-49a8-b574-360f579ad1ff",
+        "name": "Dana Whitfield",
+        "relevance": "high",
+        "role": "Helios program lead"
+      }
+    ],
+    "core_topics": [
+      {
+        "entity_id": "7b787f34-1b85-4ce8-8c22-771758fcdfda",
+        "name": "Thermostability",
+        "relevance": "high"
+      }
+    ],
+    "created_at": "2026-08-20T13:00:00Z",
+    "description": "Thermostable lead selection for the NW-200 series.",
+    "entity_types": [
+      "compound"
+    ],
+    "extraction_guidance": "Track compound identifiers (NW-2xx) exactly as written, and record every stability and potency measurement with its temperature, duration and date.",
+    "focus_areas": [
+      "Lead selection"
+    ],
+    "goals": [
+      "Select a thermostable lead for the NW-200 series by Q4 2026"
+    ],
+    "group_id": null,
+    "id": "a28eaeac-88e6-4aa5-adfa-15232b874674",
+    "industry": "Biotechnology",
+    "name": "Helios",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "profile_type": "project",
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "settings": {},
+    "source_document_ids": [
+      "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13"
+    ],
+    "updated_at": "2026-10-01T12:00:00Z",
+    "_profile_type": "project"
+  },
+  {
+    "core_organizations": [
+      {
+        "entity_id": "2ee13ad6-6164-4f0f-a13a-e49ee262d6fb",
+        "name": "Lindqvist Contract Research",
+        "relevance": "high",
+        "type": "CRO"
+      }
+    ],
+    "core_people": [
+      {
+        "entity_id": "5c379fee-b4cf-49a8-b574-360f579ad1ff",
+        "name": "Dana Whitfield",
+        "relevance": "high",
+        "role": "Helios program lead"
+      }
+    ],
+    "core_topics": [
+      {
+        "entity_id": "7b787f34-1b85-4ce8-8c22-771758fcdfda",
+        "name": "Thermostability",
+        "relevance": "high"
+      }
+    ],
+    "created_at": "2026-08-20T13:00:00Z",
+    "description": "Thermostable lead selection for the NW-200 series.",
+    "entity_types": [
+      "compound"
+    ],
+    "extraction_guidance": "Track compound identifiers (NW-2xx) exactly as written, and record every stability and potency measurement with its temperature, duration and date.",
+    "focus_areas": [
+      "Lead selection"
+    ],
+    "goals": [
+      "Select a thermostable lead for the NW-200 series by Q4 2026"
+    ],
+    "group_id": null,
+    "id": "a28eaeac-88e6-4aa5-adfa-15232b874674",
+    "industry": "Biotechnology",
+    "name": "Helios",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "profile_type": "project",
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "settings": {},
+    "source_document_ids": [
+      "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13"
+    ],
+    "updated_at": "2026-10-01T12:00:00Z",
+    "_profile_type": "project"
+  }
+]
+--- stderr
+
+
+$ beakr workspace profiles
+> GET /v1/knowledge/profiles/org
+> GET /v1/projects?limit=200
+> GET /v1/knowledge/profiles/project/4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/profiles/project/7034917d-cab8-45a6-839a-b1aec49a5ac0
+[exit 0]
+--- stdout
+Knowledge Profiles
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓
+┃Name                  ┃ Type    ┃ ID                                   ┃ Focus Areas   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩
+│Northwind Biosciences │ org     │ 3e01869a-6949-47bf-beb8-655215964ff2 │ Lead selection│
+│Helios                │ project │ a28eaeac-88e6-4aa5-adfa-15232b874674 │ Lead selection│
+│Helios                │ project │ a28eaeac-88e6-4aa5-adfa-15232b874674 │ Lead selection│
+└──────────────────────┴─────────┴──────────────────────────────────────┴───────────────┘
+--- stderr
+

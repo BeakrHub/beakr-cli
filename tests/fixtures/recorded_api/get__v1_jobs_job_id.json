@@ -1,0 +1,48 @@
+{
+  "operation": "GET /v1/jobs/{job_id}",
+  "source": "hand-authored from beakr/services/public_jobs.py:_project_import (a finished import)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "job_id": "7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57",
+    "kind": "project_import",
+    "status": "succeeded",
+    "native_status": "completed",
+    "progress": null,
+    "result": {
+      "pages_staged": 14,
+      "pages_applied": 0,
+      "pages_left_for_review": 0,
+      "pages_failed": 0,
+      "skills_imported": 2,
+      "skills_skipped": 0,
+      "skills_failed": 0,
+      "profile_imported": true,
+      "claims_imported": 3,
+      "claims_failed": 0,
+      "outputs_imported": 1,
+      "outputs_failed": 0,
+      "output_ids": {
+        "3a5c7e9b-1d3f-4a5c-8e7b-9d1f3a5c7e68": "8e0a2c4e-6a8c-4e0a-9c2e-5a7c9e1b3d79"
+      },
+      "errors": [],
+      "progress": {
+        "profile": {
+          "state": "imported"
+        },
+        "page:pages/project-helios.md": {
+          "state": "staged"
+        },
+        "skill:helios-weekly-update": {
+          "state": "imported"
+        }
+      }
+    },
+    "error": null,
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "created_at": "2026-10-01T12:00:00Z",
+    "finished_at": "2026-10-01T12:03:41Z",
+    "status_url": "/v1/jobs/7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57",
+    "resource_url": "/v1/project-imports/7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "operation": "GET /v1/knowledge/wiki/proposals/{proposal_id}",
+  "source": "hand-authored from beakr/api/routes/knowledge.py:get_proposal",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+    "proposal_type": "edit",
+    "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "page_title": "Project Helios",
+    "summary": "Record the committee's choice of NW-217 as the Helios lead.",
+    "source": "cli_mcp",
+    "status": "pending",
+    "payload": {
+      "type": "edit",
+      "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+      "page_title": "Project Helios",
+      "current_content": "# Project Helios\n\nHelios is Northwind Biosciences' oral small-molecule program. The selection committee is weighing NW-205 and NW-217 as lead candidates.",
+      "proposed_content": "# Project Helios\n\nHelios is Northwind Biosciences' oral small-molecule program. The committee approved NW-217.",
+      "current_title": "Project Helios",
+      "proposed_title": null,
+      "summary": "Record the committee's choice of NW-217 as the Helios lead.",
+      "rationale": "The 2026-09-30 selection committee minutes name NW-217 as the lead.",
+      "expected_revision": 7,
+      "sections": [],
+      "group_id": null,
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+    },
+    "created_at": "2026-10-01T12:00:00+00:00",
+    "group_id": null,
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+  }
+}

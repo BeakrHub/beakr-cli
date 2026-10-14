@@ -1,0 +1,23 @@
+$ beakr init --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/projects?limit=200
+[exit 0]
+--- stdout
+{
+  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "name": "Helios",
+  "base_url": "https://api.test",
+  "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+  "path": "<TMP>/work/.beakr/project.json"
+}
+--- stderr
+
+
+$ beakr init --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects?limit=200
+[exit 0]
+--- stdout
+Bound <TMP>/work to Helios (4dd25154-0d80-44ab-b4c2-167319bfacb4).
+<TMP>/work/.beakr/project.json
+Session capture is off here; turn it on with `beakr hooks capture on`.
+--- stderr
+

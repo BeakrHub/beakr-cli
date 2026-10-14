@@ -1,70 +1,71 @@
-"""Persistent configuration stored in ~/.beakr/config.json.
+"""Non-secret CLI settings in ``config.json`` under the Beakr home.
 
-The file holds the API key, so it is readable by its owner only: the directory
-is 0700 and the file 0600. Releases up to 0.3.2 wrote both with the default
-umask (usually 0755/0644, readable by every local user); ``load`` and ``save``
-tighten an existing directory and file the first time this version touches them.
+The home is the SDK's :func:`beakr_sdk.credentials.beakr_home` (``~/.beakr``,
+or ``BEAKR_HOME``), read at call time, so the CLI and the SDK always read the
+same place. The directory is kept 0700 and the file is replaced atomically at
+0600 (:func:`beakr_sdk.credentials.write_private_file`).
+
+Secrets never live here. An API key is saved in the token store beside
+sign-ins (the keychain, else ``credentials`` at 0600). CLI 0.3.x saved it here
+in plain text at 0644; :func:`migrate_secrets` moves such a key into the store
+the next time the CLI reads its settings.
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 import os
 import stat
-import tempfile
 from pathlib import Path
 from typing import Any
 
-CONFIG_DIR = Path.home() / ".beakr"
-CONFIG_FILE = CONFIG_DIR / "config.json"
+from beakr_sdk.credentials import beakr_home, write_private_file
 
-_DIR_MODE = 0o700
-_FILE_MODE = 0o600
-# POSIX permission bits mean nothing useful on Windows, where the profile
-# directory is already private to the user.
-_ENFORCE_MODES = os.name != "nt"
+#: Keys that must never be written to ``config.json``.
+SECRET_KEYS = frozenset({"api_key"})
 
 
-def _tighten(path: Path, mode: int) -> None:
-    """Remove group and other access from ``path`` if it has any."""
-    if not _ENFORCE_MODES:
-        return
-    try:
-        current = stat.S_IMODE(path.stat().st_mode)
-        if current & 0o077:
-            path.chmod(mode)
-    except OSError:
-        # Best effort: a file owned by someone else, or on a filesystem without
-        # POSIX modes, must not stop the command from running.
-        return
+def config_dir() -> Path:
+    return beakr_home()
 
 
-def ensure_dir() -> None:
-    """Create ~/.beakr owner-only, or tighten it if an older release made it."""
-    CONFIG_DIR.mkdir(mode=_DIR_MODE, parents=True, exist_ok=True)
-    _tighten(CONFIG_DIR, _DIR_MODE)
+def config_file() -> Path:
+    return beakr_home() / "config.json"
+
+
+def ensure_dir() -> Path:
+    """The Beakr home, created (or tightened) to 0700."""
+    directory = config_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        os.chmod(directory, stat.S_IRWXU)
+    return directory
+
+
+def _read() -> dict[str, Any]:
+    path = config_file()
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text())
+    return data if isinstance(data, dict) else {}
 
 
 def load() -> dict[str, Any]:
-    if not CONFIG_FILE.exists():
-        return {}
-    _tighten(CONFIG_DIR, _DIR_MODE)
-    _tighten(CONFIG_FILE, _FILE_MODE)
-    return json.loads(CONFIG_FILE.read_text())
+    """The settings, after moving any secret an older CLI left in them."""
+    data = _read()
+    if SECRET_KEYS & data.keys():
+        migrate_secrets()
+        data = _read()
+    return data
 
 
 def save(data: dict[str, Any]) -> None:
+    leaked = SECRET_KEYS & data.keys()
+    if leaked:
+        raise ValueError(f"{sorted(leaked)} are secrets: save them with save_api_key, not here")
     ensure_dir()
-    # mkstemp creates the file 0600; renaming it over the config means the key
-    # is never on disk with wider permissions, even for an instant.
-    fd, tmp_name = tempfile.mkstemp(dir=CONFIG_DIR, prefix=".config.", suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w") as handle:
-            handle.write(json.dumps(data, indent=2) + "\n")
-        os.replace(tmp_name, CONFIG_FILE)
-    except BaseException:
-        Path(tmp_name).unlink(missing_ok=True)
-        raise
+    write_private_file(config_file(), json.dumps(data, indent=2) + "\n")
 
 
 def get(key: str, default: Any = None) -> Any:
@@ -79,5 +80,40 @@ def set_key(key: str, value: Any) -> None:
 
 def delete_key(key: str) -> None:
     data = load()
-    data.pop(key, None)
+    if key in data:
+        data.pop(key)
+        save(data)
+
+
+def save_api_key(api_key: str, base_url: str) -> None:
+    """Save an API key for ``base_url`` in the token store (keychain, else a 0600 file).
+
+    It takes the place of any sign-in for the same API, which would otherwise
+    outrank it.
+    """
+    from beakr_sdk.credentials import StoredTokens, TokenStore
+
+    ensure_dir()
+    TokenStore().save(StoredTokens.for_api_key(api_key, base_url=base_url))
+
+
+def migrate_secrets() -> bool:
+    """Move an ``api_key`` an older CLI saved in ``config.json`` into the token store.
+
+    The key is filed under the API it was saved for (``api_url``, else
+    production), removed from the file, and the file is rewritten at 0600.
+    Returns whether anything moved. Safe to call on every run.
+    """
+    from beakr_sdk.credentials import DEFAULT_BASE_URL, TokenStore
+
+    data = _read()
+    api_key = data.pop("api_key", None)
+    if not api_key:
+        return False
+    base_url = str(data.get("api_url") or DEFAULT_BASE_URL)
+    existing = TokenStore().load(base_url)
+    # A newer sign-in for the same API already outranks the old key; keep it.
+    if existing is None:
+        save_api_key(str(api_key), base_url)
     save(data)
+    return True

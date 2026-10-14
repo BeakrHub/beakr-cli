@@ -1,0 +1,44 @@
+$ beakr kb propose replace --find NW-205 --replace NW-217 --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> POST /v1/knowledge/wiki/proposals
+  {"action": "find_replace", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "replacements": [{"find": "NW-205", "regex": false, "replace": "NW-217"}], "summary": ""}
+[exit 0]
+--- stdout
+{
+  "id": "c41e8b27-93d5-4a6f-b0e2-6d8f1a3c5e97",
+  "proposal_type": "create",
+  "page_id": null,
+  "page_title": "Helios Budget",
+  "summary": "",
+  "source": "cli_mcp",
+  "status": "pending",
+  "payload": {
+    "type": "create",
+    "title": "Helios Budget",
+    "content": "Fiscal 2024 funding is USD 2.4 million.",
+    "page_type": "topic",
+    "summary": "",
+    "rationale": "Proposed from the Beakr CLI.",
+    "parent_page_id": null,
+    "page_aliases": [],
+    "sections": [],
+    "group_id": null,
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+  },
+  "created_at": "2026-10-01T12:04:31.482917+00:00",
+  "group_id": null,
+  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+}
+--- stderr
+
+
+$ beakr kb propose replace --find NW-205 --replace NW-217 --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/proposals
+  {"action": "find_replace", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "replacements": [{"find": "NW-205", "regex": false, "replace": "NW-217"}], "summary": ""}
+[exit 0]
+--- stdout
+Proposal: c41e8b27-93d5-4a6f-b0e2-6d8f1a3c5e97
+Type:   create
+Status: pending
+Page:   Helios Budget
+--- stderr
+

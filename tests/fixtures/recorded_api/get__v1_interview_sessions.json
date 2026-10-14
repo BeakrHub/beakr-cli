@@ -1,0 +1,38 @@
+{
+  "operation": "GET /v1/interview/sessions",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "created_at": "2026-10-01T15:05:00Z",
+        "first_proposal_title": "Project Helios",
+        "last_question": "Who signs off on HX-01 results before they are added to the charter?",
+        "mode": "gap_fill",
+        "outline": "HX-01 stability protocol ownership; sign-off path; open deviations",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "proposal_count": 1,
+        "session_id": "7097b32e-592a-445f-9bcd-a2b3e1329b4d",
+        "status": "in_progress",
+        "title": "Helios stability handoff",
+        "updated_at": "2026-10-01T15:21:33Z"
+      },
+      {
+        "created_at": "2026-09-28T09:31:00Z",
+        "first_proposal_title": "Decision: Helios Lead Selection",
+        "last_question": null,
+        "mode": "gap_fill",
+        "outline": "Lead selection criteria; why NW-214 was set aside; follow-ups",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "proposal_count": 2,
+        "session_id": "7b2c8803-75b7-47d2-bd4b-a5e142b18e58",
+        "status": "completed",
+        "title": "Lead selection rationale",
+        "updated_at": "2026-09-28T09:58:12Z"
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null
+  }
+}

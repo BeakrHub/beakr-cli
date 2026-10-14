@@ -1,0 +1,70 @@
+$ beakr memory ls --json
+> GET /v1/me/memories?limit=200
+[exit 0]
+--- stdout
+[
+  {
+    "activation": "always",
+    "applies_to": "all",
+    "content": "Report stability results as percent remaining activity, not absolute units.",
+    "created_at": "2026-09-10T08:30:00Z",
+    "created_by": "user",
+    "expires_at": null,
+    "id": "f256ee28-e9ef-43ef-bfcb-a52ee92a9c5d",
+    "inject_count": 37,
+    "invalid_at": null,
+    "invalid_reason": null,
+    "kind": "preference",
+    "last_injected_at": "2026-10-01T11:58:44Z",
+    "last_used_at": "2026-09-30T17:02:10Z",
+    "origin": "user_ui",
+    "pinned": true,
+    "preference_rule": {},
+    "source_thread_id": null,
+    "superseded_by_id": null,
+    "updated_at": "2026-09-10T08:30:00Z",
+    "use_count": 9
+  },
+  {
+    "activation": "contextual",
+    "applies_to": "ask",
+    "content": "The portfolio committee approved NW-217 as the Helios lead on 2026-09-18.",
+    "created_at": "2026-09-19T02:14:51Z",
+    "created_by": "agent",
+    "expires_at": null,
+    "id": "2fa9b6c4-0874-43ba-87f2-56c9e30a6973",
+    "inject_count": 4,
+    "invalid_at": null,
+    "invalid_reason": null,
+    "kind": "fact",
+    "last_injected_at": "2026-09-30T16:40:12Z",
+    "last_used_at": "2026-09-30T16:40:12Z",
+    "origin": "conversation_sweep",
+    "pinned": false,
+    "preference_rule": {},
+    "source_thread_id": "5ed0a184-0220-4542-8539-d76c2be28bb7",
+    "superseded_by_id": null,
+    "updated_at": "2026-09-19T02:14:51Z",
+    "use_count": 2
+  }
+]
+--- stderr
+
+
+$ beakr memory ls
+> GET /v1/me/memories?limit=200
+[exit 0]
+--- stdout
+Memories (2)
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┓
+┃Memory ID                      ┃ Kind       ┃ Applies to ┃ Memory                         ┃ Pinned┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━┩
+│f256ee28-e9ef-43ef-bfcb-a52ee… │ preference │ all        │ Report stability results as    │ yes   │
+│                               │            │            │ percent remaining activity,    │       │
+│                               │            │            │ n...                           │       │
+│2fa9b6c4-0874-43ba-87f2-56c9e… │ fact       │ ask        │ The portfolio committee        │       │
+│                               │            │            │ approved NW-217 as the Helios  │       │
+│                               │            │            │ lea...                         │       │
+└───────────────────────────────┴────────────┴────────────┴────────────────────────────────┴───────┘
+--- stderr
+

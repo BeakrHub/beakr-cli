@@ -18,8 +18,10 @@ from beakr_cli import mcp_server
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 ASSET_FILES = sorted(
-    [*(REPO_ROOT / ".claude" / "skills" / "beakr").rglob("*.md"),
-     *(REPO_ROOT / ".claude" / "commands").glob("kb-*.md")]
+    [
+        *(REPO_ROOT / ".claude" / "skills" / "beakr").rglob("*.md"),
+        *(REPO_ROOT / ".claude" / "commands").glob("kb-*.md"),
+    ]
 )
 
 

@@ -1,0 +1,96 @@
+# beakr-cli CI: tests, freshness against the engine contract, release checks.
+#
+# The `beakr api` command table, the vendored agent tool surface and the private
+# client for the CLI's allowlisted unlisted operations are derived from the
+# engine (docs/api/public-openapi.json, docs/api/agent-tool-surface.json, and the
+# internal contract filtered to src/beakr_cli/_private_api/operations.allowlist).
+# This workflow does not read the engine: it checks them against the engine
+# files committed under snapshots/beakr-engine, pinned to an engine commit in
+# snapshots/manifest.json (scripts/refresh_snapshots.py; scripts/regen.sh
+# refreshes them from a local engine checkout). The engine's own CI checks this
+# repository out on the branch named like its own and runs these checks and
+# tests against the engine itself, including the tests that run the engine's
+# code (tests/_engine.py real_engine), which skip here. It also runs the release
+# check (scripts/prepare_release.py): versions in step, bumped as far as the
+# contract change requires, with release notes derived from the API changelog.
+# publish.yml calls this workflow and publishes only when it passes.
+#
+# beakr-sdk is a git dependency on the public BeakrHub/beakr-python, pinned in
+# pyproject.toml until it is on PyPI. No secret is needed.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    name: tests-and-freshness
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # The committed engine snapshot stands in for an engine checkout.
+      BEAKR_ENGINE_PATH: ${{ github.workspace }}/snapshots/beakr-engine
+      # Engine-comparing tests fail instead of skipping when a file is missing.
+      BEAKR_REQUIRE_ENGINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Engine snapshot matches its manifest
+        run: python3 scripts/refresh_snapshots.py verify
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: uv sync --frozen --extra dev
+
+      - name: CLI command table is current
+        run: uv run python scripts/sync_operations.py --check
+
+      - name: Vendored agent tool surface is current
+        run: uv run python scripts/sync_tool_surface.py --check
+
+      - name: Private client is current with its allowlist
+        run: uv run python scripts/generate_private_api.py --check
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Install shells for completion tests
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fish zsh
+
+      - name: Tests
+        # Completion tests fail instead of skipping when a shell is missing.
+        # PowerShell (pwsh) is preinstalled on ubuntu-latest runners.
+        env:
+          BEAKR_REQUIRE_SHELLS: bash,zsh,fish,pwsh
+        run: uv run pytest -q
+
+      - name: Fish shell completion
+        run: |
+          set -euo pipefail
+          # fish is installed by "Install shells for completion tests" above.
+          # The script `beakr --show-completion` prints when run from fish
+          # (Typer detects the shell from the parent process).
+          uv run fish -c 'beakr --show-completion' > /tmp/beakr.fish
+          fish -n /tmp/beakr.fish
+          # It is the standard Click source script for fish...
+          _BEAKR_COMPLETE=source_fish uv run beakr | diff - /tmp/beakr.fish
+          # ...and, sourced, it completes real commands rather than merely parsing.
+          uv run fish -c 'source /tmp/beakr.fish; complete -C "beakr au"' > /tmp/beakr-fish-complete.txt
+          cat /tmp/beakr-fish-complete.txt
+          grep -q '^auth' /tmp/beakr-fish-complete.txt
+
+      - name: Release versions and notes
+        run: uv run python scripts/prepare_release.py check

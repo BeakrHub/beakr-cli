@@ -1,0 +1,7 @@
+{"timestamp":"2026-10-08T11:00:00Z","type":"session_meta","payload":{"id":"codex-session-1","cwd":"/work/other","originator":"codex_cli_rs"}}
+{"timestamp":"2026-10-08T11:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>\n  <cwd>/work/other</cwd>\n</environment_context>"}]}}
+{"timestamp":"2026-10-08T11:00:02Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"Why does the export job time out?"}]}}
+{"timestamp":"2026-10-08T11:00:03Z","type":"response_item","payload":{"type":"function_call","name":"shell","arguments":"{}"}}
+{"timestamp":"2026-10-08T11:00:04Z","type":"response_item","payload":{"type":"reasoning","summary":[]}}
+{"timestamp":"2026-10-08T11:00:05Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"It holds a DB session across the S3 upload."}]}}
+{"timestamp":"2026-10-08T11:00:06Z","type":"event_msg","payload":{"type":"token_count"}}

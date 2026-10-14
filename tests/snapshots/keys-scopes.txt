@@ -1,0 +1,150 @@
+$ beakr keys scopes --json
+> GET /v1/me/api-keys/scopes
+[exit 0]
+--- stdout
+[
+  {
+    "description": "Read Knowledge: cards, findings, rows, history, proposals.",
+    "name": "kb:read"
+  },
+  {
+    "description": "Add facts, connections and findings; stage and resolve proposals.",
+    "name": "kb:write"
+  },
+  {
+    "description": "List and read projects and their members.",
+    "name": "projects:read"
+  },
+  {
+    "description": "Create, edit and archive projects; manage project members.",
+    "name": "projects:admin"
+  },
+  {
+    "description": "Invite, remove and change roles of organization members.",
+    "name": "members:admin"
+  },
+  {
+    "description": "Upload, edit, move and delete files and folders.",
+    "name": "uploads:write"
+  },
+  {
+    "description": "List connected integrations and their scope.",
+    "name": "integrations:read"
+  },
+  {
+    "description": "Connect integrations, set their scope and trigger syncs.",
+    "name": "integrations:admin"
+  },
+  {
+    "description": "Read profiles and memories.",
+    "name": "profiles:read"
+  },
+  {
+    "description": "Confirm, edit and dismiss profile claims and memories.",
+    "name": "profiles:write"
+  },
+  {
+    "description": "List and read skills.",
+    "name": "skills:read"
+  },
+  {
+    "description": "Create, edit, import and approve skills.",
+    "name": "skills:write"
+  },
+  {
+    "description": "List and read conversations, including imported ones.",
+    "name": "conversations:read"
+  },
+  {
+    "description": "Import conversations and send them to be compounded.",
+    "name": "conversations:write"
+  },
+  {
+    "description": "Start, follow and cancel agent runs; build agent context.",
+    "name": "agent:run"
+  },
+  {
+    "description": "List, configure and run workflows.",
+    "name": "workflows:run"
+  },
+  {
+    "description": "List and read outputs (documents, sheets, decks), their revisions and exports.",
+    "name": "outputs:read"
+  },
+  {
+    "description": "Create, edit, roll back and delete outputs.",
+    "name": "outputs:write"
+  },
+  {
+    "description": "List and read interview requests, sessions and notes.",
+    "name": "interviews:read"
+  },
+  {
+    "description": "Create interview requests and send interview links.",
+    "name": "interviews:write"
+  },
+  {
+    "description": "Read usage and quotas.",
+    "name": "usage:read"
+  },
+  {
+    "description": "Export a project's knowledge.",
+    "name": "exports:create"
+  },
+  {
+    "description": "Create a project from an exported archive.",
+    "name": "imports:create"
+  },
+  {
+    "description": "Create, edit and test webhook endpoints.",
+    "name": "webhooks:admin"
+  },
+  {
+    "description": "Read the organization's event stream.",
+    "name": "events:read"
+  },
+  {
+    "description": "Read the audit log.",
+    "name": "audit:read"
+  }
+]
+--- stderr
+
+
+$ beakr keys scopes
+> GET /v1/me/api-keys/scopes
+[exit 0]
+--- stdout
+┏━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃Scope               ┃ Description                                                                 ┃
+┡━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│kb:read             │ Read Knowledge: cards, findings, rows, history, proposals.                  │
+│kb:write            │ Add facts, connections and findings; stage and resolve proposals.           │
+│projects:read       │ List and read projects and their members.                                   │
+│projects:admin      │ Create, edit and archive projects; manage project members.                  │
+│members:admin       │ Invite, remove and change roles of organization members.                    │
+│uploads:write       │ Upload, edit, move and delete files and folders.                            │
+│integrations:read   │ List connected integrations and their scope.                                │
+│integrations:admin  │ Connect integrations, set their scope and trigger syncs.                    │
+│profiles:read       │ Read profiles and memories.                                                 │
+│profiles:write      │ Confirm, edit and dismiss profile claims and memories.                      │
+│skills:read         │ List and read skills.                                                       │
+│skills:write        │ Create, edit, import and approve skills.                                    │
+│conversations:read  │ List and read conversations, including imported ones.                       │
+│conversations:write │ Import conversations and send them to be compounded.                        │
+│agent:run           │ Start, follow and cancel agent runs; build agent context.                   │
+│workflows:run       │ List, configure and run workflows.                                          │
+│outputs:read        │ List and read outputs (documents, sheets, decks), their revisions and       │
+│                    │ exports.                                                                    │
+│outputs:write       │ Create, edit, roll back and delete outputs.                                 │
+│interviews:read     │ List and read interview requests, sessions and notes.                       │
+│interviews:write    │ Create interview requests and send interview links.                         │
+│usage:read          │ Read usage and quotas.                                                      │
+│exports:create      │ Export a project's knowledge.                                               │
+│imports:create      │ Create a project from an exported archive.                                  │
+│webhooks:admin      │ Create, edit and test webhook endpoints.                                    │
+│events:read         │ Read the organization's event stream.                                       │
+│audit:read          │ Read the audit log.                                                         │
+└────────────────────┴─────────────────────────────────────────────────────────────────────────────┘
+--- stderr
+

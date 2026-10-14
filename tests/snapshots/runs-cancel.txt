@@ -1,0 +1,18 @@
+$ beakr runs cancel 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> POST /v1/runs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/cancel
+[exit 0]
+--- stdout
+{
+  "run_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+  "cancel_requested": true
+}
+--- stderr
+
+
+$ beakr runs cancel 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> POST /v1/runs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/cancel
+[exit 0]
+--- stdout
+Asked run 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f to stop.
+--- stderr
+

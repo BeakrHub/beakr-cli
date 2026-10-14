@@ -1,0 +1,3 @@
+{"id":"codex-legacy-1","timestamp":"2026-01-01T00:00:00Z","instructions":null}
+{"type":"message","role":"user","content":[{"type":"input_text","text":"List the flaky tests."}]}
+{"type":"message","role":"assistant","content":[{"type":"output_text","text":"test_export and test_upload."}]}

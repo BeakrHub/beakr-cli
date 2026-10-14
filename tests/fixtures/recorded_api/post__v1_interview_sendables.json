@@ -1,0 +1,9 @@
+{
+  "operation": "POST /v1/interview/sendables",
+  "source": "hand-authored from beakr/api/routes/sendable_interviews.py:create_sendable_interview",
+  "status": 201,
+  "content_type": "application/json",
+  "body": {
+    "id": "b7d2e940-5c1a-4f83-9e6b-2a8c0d4f7e15"
+  }
+}

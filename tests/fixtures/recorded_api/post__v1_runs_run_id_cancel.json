@@ -1,0 +1,6 @@
+{
+  "operation": "POST /v1/runs/{run_id}/cancel",
+  "source": "synthesized",
+  "status": 204,
+  "body": null
+}

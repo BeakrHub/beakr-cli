@@ -1,0 +1,74 @@
+$ beakr integrations status 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/integrations/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/status
+[exit 0]
+--- stdout
+{
+  "id": "e2d7a9c4-1f3b-4a6e-8c5d-9b0f2e4a6c18",
+  "provider": "gdrive:nango",
+  "label": "Northwind Research Drive",
+  "scope": "org",
+  "status": "active",
+  "health_status": "healthy",
+  "health_error": null,
+  "connection_role": "account",
+  "can_manage": true,
+  "created_at": "2026-09-14T16:20:05Z",
+  "projects": [
+    {
+      "attachment_id": "a8c3e5f7-2b4d-4e6a-9c1b-3d5f7a9b1c20",
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "name": "Helios Program Shared Drive",
+      "item_type": "folder"
+    }
+  ],
+  "health_checked_at": "2026-10-01T11:45:00Z",
+  "syncs": [
+    {
+      "attachment_id": "a8c3e5f7-2b4d-4e6a-9c1b-3d5f7a9b1c20",
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "name": "Helios Program Shared Drive",
+      "item_type": "folder",
+      "status": "completed",
+      "files_total": 12,
+      "files_completed": 11,
+      "files_failed": 1,
+      "files": [
+        {
+          "name": "NW-217 Lead Selection Memo.docx",
+          "status": "completed"
+        },
+        {
+          "name": "Helios Q3 Stability Results.xlsx",
+          "status": "completed"
+        },
+        {
+          "name": "Helios Assay Raw Export.zip",
+          "status": "failed"
+        }
+      ],
+      "error": null,
+      "started_at": "2026-10-01T11:30:12Z",
+      "phase": "syncing",
+      "files_expected": 12,
+      "recent_found": 9,
+      "agentic_found": 3,
+      "agentic_ran": true
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr integrations status 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/integrations/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/status
+[exit 0]
+--- stdout
+gdrive:nango Northwind Research Drive: health healthy
+Project sources
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━┓
+┃Project                            ┃ Source                      ┃ Sync      ┃ Files done ┃ Failed┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━┩
+│4dd25154-0d80-44ab-b4c2-167319bfa… │ Helios Program Shared Drive │ completed │ 11/12      │ 1     │
+└───────────────────────────────────┴─────────────────────────────┴───────────┴────────────┴───────┘
+--- stderr
+

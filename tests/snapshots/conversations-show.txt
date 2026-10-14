@@ -1,0 +1,108 @@
+$ beakr conversations show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/conversations/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+{
+  "id": "c4a1e8f2-6b3d-4f7a-9e21-8d5c0b3a7f14",
+  "kind": "imported",
+  "client": "claude_code",
+  "session_id": "8f14e45f-ceea-467a-9d3e-2b1c0a9f8e71",
+  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "title": "Helios lead selection follow-up",
+  "summary": "Reviewed the NW-217 lead selection rationale and added Q3 stability results to Project Helios.",
+  "message_count": 3,
+  "revision": 2,
+  "compounded_through": 3,
+  "compound_status": "done",
+  "compounded_at": "2026-10-01T11:20:00Z",
+  "last_compound_result": {
+    "status": "completed",
+    "summary": "Proposed an update to Project Helios with Q3 stability data.",
+    "stale_reads": 0,
+    "batch_start": 0,
+    "batch_through": 3,
+    "revision": 2
+  },
+  "files_touched": [
+    "analysis/helios_stability_q3.py"
+  ],
+  "tools_used": [
+    "Read",
+    "Edit",
+    "mcp__beakr__knowledge_base"
+  ],
+  "interactive": true,
+  "stored": "full_text",
+  "index": {
+    "task_summary": "Explain the NW-217 lead selection and record Q3 stability results.",
+    "entities": [
+      "Decision: Helios Lead Selection",
+      "Project Helios"
+    ],
+    "sources_read": [
+      {
+        "kind": "page",
+        "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+        "revision": 4
+      },
+      {
+        "kind": "file",
+        "path": "analysis/helios_stability_q3.py"
+      }
+    ],
+    "outputs": [],
+    "findings": [
+      {
+        "proposal_id": "6c8e0a2b-4d6f-4b8a-9c1e-3f5a7b9d1e46",
+        "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+        "page_title": "Project Helios",
+        "proposal_type": "edit",
+        "status": "pending",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+      }
+    ],
+    "indexed_at": "2026-10-01T11:20:00Z"
+  },
+  "created_at": "2026-10-01T11:06:00Z",
+  "updated_at": "2026-10-01T11:20:00Z",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Summarize why NW-217 was chosen as the Helios lead.",
+      "author": "human",
+      "at": "2026-10-01T11:02:10Z"
+    },
+    {
+      "role": "assistant",
+      "content": "NW-217 was selected over NW-204 for its cleaner hERG profile and better 6-month stability; see Decision: Helios Lead Selection.",
+      "author": "unknown",
+      "at": "2026-10-01T11:02:41Z"
+    },
+    {
+      "role": "user",
+      "content": "Add the Q3 stability numbers to the Project Helios page.",
+      "author": "human",
+      "at": "2026-10-01T11:05:03Z"
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr conversations show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/conversations/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+Helios lead selection follow-up
+Client: claude_code  Session: 8f14e45f-ceea-467a-9d3e-2b1c0a9f8e71  Messages: 3
+Compounded: 3/3 messages, done
+
+Reviewed the NW-217 lead selection rationale and added Q3 stability results to Project Helios.
+
+user: Summarize why NW-217 was chosen as the Helios lead.
+
+assistant: NW-217 was selected over NW-204 for its cleaner hERG profile and better 6-month stability; see Decision: Helios Lead Selection.
+
+user: Add the Q3 stability numbers to the Project Helios page.
+--- stderr
+

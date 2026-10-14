@@ -1,0 +1,68 @@
+$ beakr kb conflicts --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/conflicts?limit=50&scope=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+[
+  {
+    "contradicting": [
+      {
+        "citation_key": "artifact:6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
+        "excerpt": "At 40 C, NW-217 lost 12% potency over four weeks, outside the 10% stability limit.",
+        "name": "NW-217 Accelerated Stability Report",
+        "source_ref": "beakr-source:v1:2c7e9a14-5b3d-4f81-a6c2-8d0e4f6b1a39"
+      }
+    ],
+    "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "page_title": "Project Helios",
+    "review_proposal_id": "71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68",
+    "section_id": "sec_facts",
+    "supporting": [
+      {
+        "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+        "excerpt": "NW-217 met every thermostability criterion in the Q3 panel.",
+        "name": "helios-charter.pdf",
+        "source_ref": "beakr-source:v1:8e1f3a5c-7d9b-4b2e-8f04-6a1c3e5d7b92"
+      }
+    ]
+  },
+  {
+    "contradicting": [
+      {
+        "citation_key": "gdrive:e66dbcab",
+        "excerpt": "Maja recommends holding the lead decision until the second tox read-out in November.",
+        "name": "Helios Steering Notes 2026-09-24",
+        "source_ref": "beakr-source:v1:4a6c8e0b-2d4f-4a1c-9b3e-7f5d1c9a2e80"
+      }
+    ],
+    "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+    "page_title": "Decision: Helios Lead Selection",
+    "review_proposal_id": null,
+    "section_id": "sec_4k8m2p",
+    "supporting": [
+      {
+        "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+        "excerpt": "The portfolio committee approved NW-217 as the Helios lead on 2026-09-30.",
+        "name": "helios-charter.pdf",
+        "source_ref": "beakr-source:v1:9b2d4f6a-8c0e-4e3a-b5d7-1f3a5c7e9b04"
+      }
+    ]
+  }
+]
+--- stderr
+
+
+$ beakr kb conflicts --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/conflicts?limit=50&scope=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+Conflicts (2)
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃Card                        ┃ Section    ┃ Contradicting              ┃ Review                    ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│Project Helios              │ sec_facts  │ NW-217 Accelerated         │ 71d3b8e5-0a2f-4c6d-9e14-5…│
+│                            │            │ Stability Report           │                           │
+│Decision: Helios Lead       │ sec_4k8m2p │ Helios Steering Notes      │ -                         │
+│Selection                   │            │ 2026-09-24                 │                           │
+└────────────────────────────┴────────────┴────────────────────────────┴───────────────────────────┘
+--- stderr
+

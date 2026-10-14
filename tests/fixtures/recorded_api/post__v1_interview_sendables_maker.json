@@ -1,0 +1,19 @@
+{
+  "operation": "POST /v1/interview/sendables/maker",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "changes": {
+      "goals": "Capture who signs off on HX-01 stability results and how open deviations are tracked.",
+      "key_questions": [
+        "Who reviews HX-01 results before they reach the charter?",
+        "Which HX-01 deviations are still open?"
+      ]
+    },
+    "pending_files": [
+      "hx-01-stability.xlsx"
+    ],
+    "reply": "I tightened the goals around HX-01 sign-off and added a question about open deviations. The stability workbook is still being read."
+  }
+}

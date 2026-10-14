@@ -1,0 +1,12 @@
+{
+  "operation": "POST /v1/interview/sendables/{sendable_id}/links",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 201,
+  "content_type": "application/json",
+  "body": {
+    "expires_at": "2026-10-15T12:00:00Z",
+    "link_id": "e0a7ca1a-67fe-4413-abf9-9ecc0aa4cf56",
+    "path": "/i/bil_q7Xk2mZp9RvT4wLs8NcYb3HdFj6GaEu1KoPi5VtQrWe",
+    "token": "bil_q7Xk2mZp9RvT4wLs8NcYb3HdFj6GaEu1KoPi5VtQrWe"
+  }
+}

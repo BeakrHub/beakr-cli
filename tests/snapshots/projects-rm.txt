@@ -1,0 +1,21 @@
+$ beakr projects rm 4dd25154-0d80-44ab-b4c2-167319bfacb4 --yes --json
+> GET /v1/projects?limit=200
+> DELETE /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+{
+  "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "name": "Helios",
+  "deleted": true
+}
+--- stderr
+
+
+$ beakr projects rm 4dd25154-0d80-44ab-b4c2-167319bfacb4 --yes
+> GET /v1/projects?limit=200
+> DELETE /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+
+--- stderr
+Deleted Helios (4dd25154-0d80-44ab-b4c2-167319bfacb4) permanently.

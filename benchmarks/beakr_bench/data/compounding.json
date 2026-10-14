@@ -1,0 +1,64 @@
+{
+  "suite": "compounding",
+  "description": "The same questions asked after each episode of new material. Before the material exists the right answer is to abstain (premature confidence fails); after it lands the answer must use it; later episodes require combining material across episodes. The reported number is the change in pass rate from the first episode to the last. Synthetic: Vireo Labs, Kestrel Bio and Harrow Instruments are invented. Design modeled on the engine's compounding suite (episode clock, abstention, retrieval/reconciliation strata).",
+  "cases": [
+    {
+      "id": "vireo-lead-selection",
+      "title": "Vireo Labs: picking a lead compound across three episodes",
+      "notes": "Scoring changed 2026-10-10 (scorer 2026-10-10.2): the lead asks use must_not_assert (see kestrel-batch-release).",
+      "steps": [
+        {"op": "seed_page", "title": "VL-series assay plan", "page_type": "topic", "summary": "Plan for the VL-series kinase inhibitor screen.", "source_date": "2026-03-02", "sections": [
+          {"title": "Plan", "body": "Vireo Labs will screen VL-07, VL-12 and VL-19 against the KX2 kinase in a biochemical IC50 assay starting the week of 2026-03-02. No potency results exist yet."}
+        ]},
+        {"op": "ask", "label": "e1-potency", "episode": 1, "question": "What IC50 did VL-12 reach against KX2?", "checks": {"must_not_include": ["41 nM", "41nM"]}, "expectation": "Abstain: the assay has not produced results yet."},
+        {"op": "ask", "label": "e1-lead", "episode": 1, "question": "Which VL compound was chosen as the lead against KX2?", "checks": {"must_not_assert": ["VL-12 was chosen", "VL-12 is the lead", "chose VL-12"]}, "expectation": "Abstain: no lead has been chosen."},
+        {"op": "seed_page", "title": "VL-series KX2 IC50 results", "page_type": "topic", "summary": "Biochemical IC50 results for the VL series against KX2.", "source_date": "2026-03-20", "sections": [
+          {"title": "Results", "body": "In the KX2 biochemical IC50 assay of 2026-03-20, VL-12 reached an IC50 of 41 nM, VL-07 reached 380 nM and VL-19 was inactive above 10 uM."}
+        ]},
+        {"op": "ask", "label": "e2-potency", "episode": 2, "question": "What IC50 did VL-12 reach against KX2?", "checks": {"must_include": [["41 nM", "41nM", "41 nanomolar"]], "require_citation": true}},
+        {"op": "ask", "label": "e2-lead", "episode": 2, "question": "Which VL compound was chosen as the lead against KX2?", "checks": {"must_not_assert": ["VL-12 was chosen", "VL-12 is the lead", "chose VL-12"]}, "expectation": "Results exist but no decision yet; abstain from naming a chosen lead."},
+        {"op": "seed_page", "title": "Lead selection decision 2026-04-02", "page_type": "decision", "summary": "VL-12 advanced as the KX2 lead.", "source_date": "2026-04-02", "sections": [
+          {"title": "Decision", "body": "On 2026-04-02 the Vireo Labs program team chose VL-12 as the KX2 lead compound because it had the best IC50 against KX2 and no hERG signal at 10 uM. VL-07 is the backup."}
+        ]},
+        {"op": "ask", "label": "e3-potency", "episode": 3, "question": "What IC50 did VL-12 reach against KX2?", "checks": {"must_include": [["41 nM", "41nM", "41 nanomolar"]], "require_citation": true}},
+        {"op": "ask", "label": "e3-lead", "episode": 3, "question": "Which VL compound was chosen as the lead against KX2, and what was its IC50?", "checks": {"must_include": [["VL-12"], ["41 nM", "41nM", "41 nanomolar"]], "require_citation": true}, "expectation": "VL-12, 41 nM, combining the episode 2 results with the episode 3 decision."}
+      ]
+    },
+    {
+      "id": "kestrel-batch-release",
+      "title": "Kestrel Bio: a batch release that depends on two later results",
+      "notes": "Scoring changed 2026-10-10 (scorer 2026-10-10.2): the release asks use must_not_assert, not must_not_include. The correct answer declines to claim release, and a literal ban failed answers that said they could not confirm 'KB-2207 was released'. An asserted release still fails, including one beside unrelated uncertainty. Earlier reports keep their original scores; rescored copies are labelled (beakr_bench.rescore).",
+      "steps": [
+        {"op": "seed_page", "title": "Batch KB-2207 manufacturing record", "page_type": "topic", "summary": "Manufacturing record for lot KB-2207.", "source_date": "2026-05-04", "sections": [
+          {"title": "Record", "body": "Kestrel Bio manufactured lot KB-2207 of the KB-4 antibody on 2026-05-04. Release requires a passing sterility test and an endotoxin result below 0.5 EU/mL."}
+        ]},
+        {"op": "ask", "label": "e1-release", "episode": 1, "question": "Was lot KB-2207 released?", "checks": {"must_not_assert": ["KB-2207 was released", "released on 2026"]}, "expectation": "Abstain: release depends on tests not yet reported."},
+        {"op": "seed_page", "title": "Lot KB-2207 sterility test", "page_type": "topic", "summary": "Sterility result for lot KB-2207.", "source_date": "2026-05-18", "sections": [
+          {"title": "Result", "body": "The 14-day sterility test for lot KB-2207 passed on 2026-05-18 with no growth."}
+        ]},
+        {"op": "ask", "label": "e2-release", "episode": 2, "question": "Was lot KB-2207 released?", "checks": {"must_not_assert": ["KB-2207 was released", "released on 2026"]}, "expectation": "Still pending the endotoxin result."},
+        {"op": "seed_page", "title": "Lot KB-2207 endotoxin and release", "page_type": "decision", "summary": "Endotoxin result and release of lot KB-2207.", "source_date": "2026-05-22", "sections": [
+          {"title": "Release", "body": "Lot KB-2207 measured 0.12 EU/mL endotoxin on 2026-05-21 and quality assurance released lot KB-2207 on 2026-05-22."}
+        ]},
+        {"op": "ask", "label": "e3-release", "episode": 3, "question": "Was lot KB-2207 released, and on what results?", "checks": {"must_include": [["2026-05-22", "May 22"], ["0.12"], ["sterility"]], "require_citation": true}}
+      ]
+    },
+    {
+      "id": "harrow-instrument-drift",
+      "title": "Harrow Instruments: a drift explained only when two episodes are combined",
+      "steps": [
+        {"op": "seed_page", "title": "HPLC-3 calibration log", "page_type": "topic", "summary": "Calibration history of HPLC-3.", "source_date": "2026-06-01", "sections": [
+          {"title": "Calibration", "body": "HPLC-3 at Harrow Instruments was calibrated on 2026-06-01 using reference standard lot RS-118."}
+        ]},
+        {"op": "ask", "label": "e1-drift", "episode": 1, "question": "Why did HPLC-3 retention times drift in June 2026?", "checks": {"must_not_include": ["RS-118 was degraded", "degraded reference standard"]}, "expectation": "Abstain: no drift is recorded yet."},
+        {"op": "seed_page", "title": "HPLC-3 retention time drift", "page_type": "topic", "summary": "Retention time drift observed on HPLC-3.", "source_date": "2026-06-15", "sections": [
+          {"title": "Observation", "body": "From 2026-06-10 HPLC-3 retention times drifted 0.4 minutes late across all methods."}
+        ]},
+        {"op": "seed_page", "title": "Reference standard RS-118 recall", "page_type": "topic", "summary": "Recall of reference standard lot RS-118.", "source_date": "2026-06-20", "sections": [
+          {"title": "Recall", "body": "The supplier recalled reference standard lot RS-118 on 2026-06-20 because it degraded in storage; HPLC-3 calibration and drift should be rechecked with lot RS-121."}
+        ]},
+        {"op": "ask", "label": "e2-drift", "episode": 2, "question": "Why did HPLC-3 retention times drift in June 2026?", "checks": {"must_include": [["RS-118"], ["recall", "degraded"]], "require_citation": true}, "expectation": "The calibration used RS-118, which was later recalled as degraded."}
+      ]
+    }
+  ]
+}

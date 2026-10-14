@@ -1,0 +1,98 @@
+$ beakr trace page 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/trace/page/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+{
+  "kind": "page",
+  "id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+  "title": "Decision: Helios Lead Selection",
+  "type": "decision",
+  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "current_revision": 5,
+  "updated_at": "2026-10-01T11:40:00Z",
+  "inputs": [
+    {
+      "source_type": "artifact",
+      "source_id": "d1f3a5c7-9e2b-4d6f-8a0c-2e4b6d8f0a13",
+      "title": "NW-217 Lead Selection Memo.docx",
+      "artifact_id": "d1f3a5c7-9e2b-4d6f-8a0c-2e4b6d8f0a13",
+      "unit_version_id": "0e2c4a6b-8d1f-4b3e-a5c7-9f1b3d5e7a35",
+      "doc_sha256": "9f2b6c1e4a7d0b3f8e5c2a9d6b1f4e7c0a3d6b9e2f5c8a1d4b7e0c3f6a9d2b5e",
+      "added_at": "2026-09-22T15:10:00Z"
+    }
+  ],
+  "versions": [
+    {
+      "revision": 5,
+      "written_by": "system",
+      "compile_id": "4b6d8f0a-2c4e-4f6a-8b0d-6c8e0a2c4e81",
+      "created_at": "2026-10-01T11:40:00Z"
+    },
+    {
+      "revision": 4,
+      "written_by": "system",
+      "compile_id": null,
+      "created_at": "2026-09-22T15:12:00Z"
+    }
+  ],
+  "runs": [
+    {
+      "type": "compile",
+      "id": "4b6d8f0a-2c4e-4f6a-8b0d-6c8e0a2c4e81",
+      "source_type": "artifact",
+      "source_title": "NW-217 Lead Selection Memo.docx",
+      "status": "completed",
+      "created_at": "2026-10-01T11:38:30Z"
+    },
+    {
+      "type": "proposal",
+      "id": "5c7e9a1b-3d5f-4a7c-9e1b-7d9f1b3d5f92",
+      "proposal_type": "edit",
+      "source": "capture",
+      "status": "accepted",
+      "thread_id": null,
+      "created_at": "2026-09-22T14:50:00Z",
+      "reviewed_at": "2026-09-22T15:11:00Z"
+    }
+  ],
+  "actors": [
+    {
+      "user_id": "3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22",
+      "roles": [
+        "reviewed"
+      ]
+    },
+    {
+      "user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+      "roles": [
+        "proposed"
+      ]
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr trace page 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/trace/page/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+page Decision: Helios Lead Selection
+Inputs
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━┓
+┃Input                           ┃ Type    ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━┩
+│NW-217 Lead Selection Memo.docx │ artifact│
+└────────────────────────────────┴─────────┘
+Runs
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━┓
+┃Run                                  ┃ Type     ┃ Status   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━┩
+│4b6d8f0a-2c4e-4f6a-8b0d-6c8e0a2c4e81 │ compile  │ completed│
+│5c7e9a1b-3d5f-4a7c-9e1b-7d9f1b3d5f92 │ proposal │ accepted │
+└─────────────────────────────────────┴──────────┴──────────┘
+2 versions
+3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22: reviewed
+7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11: proposed
+--- stderr
+

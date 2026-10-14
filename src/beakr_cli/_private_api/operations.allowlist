@@ -1,0 +1,104 @@
+# The unlisted Beakr API operations the CLI and its stdio MCP server call.
+#
+# Unlisted: reachable with a credential, in the engine's docs/api/internal-openapi.json,
+# not in its documented docs/api/public-openapi.json, so no stability promise. The
+# public SDK (beakr-sdk) carries none of them; scripts/generate_private_api.py renders
+# a builder for each line here into src/beakr_cli/_private_api/_generated, and nothing
+# else. Documented operations are never listed: the CLI calls those through the SDK.
+#
+# Keep this list minimal and reviewed. tests/test_private_api_allowlist.py fails when
+# a call site uses an operation that is not listed, when a listed operation has no
+# call site, or when a listed operation becomes documented (call it through the SDK).
+#
+# One operation per line: METHOD /path, exactly as the internal contract spells it.
+
+# Sign-in: the OAuth issuer the CLI signs in with (beakr auth login).
+GET /v1/auth/config
+
+# Files: a file's versions (beakr files versions).
+GET /v1/artifacts/{artifact_id}/versions
+
+# Conversations: full-text settings and freshness of an imported session.
+GET /v1/conversations/settings
+PUT /v1/conversations/settings
+GET /v1/conversations/{conversation_id}/freshness
+
+# Integrations: coverage, sync and read scope of a connection.
+GET /v1/integrations/{connector_id}/coverage
+POST /v1/integrations/{connector_id}/sync
+GET /v1/integrations/hosted/connectors/{connector_id}/scope
+PUT /v1/integrations/hosted/connectors/{connector_id}/scope
+
+# Interviews: requests, sessions and the interview maker.
+GET /v1/interview/requests
+POST /v1/interview/requests
+POST /v1/interview/sendables/maker
+GET /v1/interview/sessions
+GET /v1/interview/sessions/{session_id}
+
+# Organization invitations (beakr members invite / invitations / revoke-invite).
+GET /v1/invitations
+POST /v1/invitations
+DELETE /v1/invitations/{invitation_id}
+
+# Knowledge: activity, conflicts, run undo, page history and graph, profiles.
+GET /v1/changes
+GET /v1/knowledge/conflicts
+POST /v1/knowledge/runs/{run}/undo
+GET /v1/knowledge/stats
+GET /v1/knowledge/wiki/graph
+GET /v1/knowledge/wiki/timeline
+GET /v1/knowledge/wiki/work-board
+GET /v1/knowledge/wiki/pages/{page_id}/backlinks
+GET /v1/knowledge/wiki/pages/{page_id}/blame
+GET /v1/knowledge/wiki/pages/{page_id}/section-provenance
+POST /v1/knowledge/profiles
+GET /v1/knowledge/profiles/org
+GET /v1/knowledge/profiles/project/{project_id}
+
+# Personal memory and the inferred profile.
+GET /v1/me/memories
+DELETE /v1/me/memories/{memory_id}
+GET /v1/me/profile
+PATCH /v1/me/profile
+PATCH /v1/me/profile/claims/{claim_id}
+DELETE /v1/me/profile/claims/{claim_id}
+
+# Skills: the library, SKILL.md bundles (skill sync) and mined proposals.
+GET /v1/me/skills/library
+POST /v1/me/skills/import/bundle
+GET /v1/me/skills/{skill_id}/bundle
+PUT /v1/me/skills/{skill_id}/bundle
+PUT /v1/me/skills/{skill_id}/files/{file_path}
+GET /v1/me/skills/proposals
+POST /v1/me/skills/proposals/{proposal_id}/accept
+
+# Organization administration: credentials, audit trail, sign-in policy.
+GET /v1/organizations/{org_id}/audit
+GET /v1/organizations/{org_id}/auth-policy
+PUT /v1/organizations/{org_id}/auth-policy
+GET /v1/organizations/{org_id}/credentials
+DELETE /v1/organizations/{org_id}/credentials/{kind}/{credential_id}
+
+# Outputs: metadata, revisions and exports.
+GET /v1/outputs/{output_id}
+GET /v1/outputs/{output_id}/export/{format}
+GET /v1/outputs/{output_id}/revisions
+GET /v1/outputs/{output_id}/revisions/{revision_no}/content
+
+# Usage and trace.
+GET /v1/usage
+GET /v1/trace/{kind}/{item_id}
+
+# Workflows: templates, saved configurations, schedules and runs.
+GET /v1/workflows/templates
+POST /v1/workflows/ai/generate
+POST /v1/workflows/ai/refine-template
+GET /v1/workflows/configs
+POST /v1/workflows/configs
+PATCH /v1/workflows/configs/{config_id}
+POST /v1/workflows/configs/{config_id}/run
+GET /v1/workflows/configs/{config_id}/runs
+GET /v1/workflows/runs
+GET /v1/workflows/runs/{run_id}
+POST /v1/workflows/schedule/preview

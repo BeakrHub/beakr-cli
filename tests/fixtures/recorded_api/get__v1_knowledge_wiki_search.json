@@ -1,0 +1,36 @@
+{
+  "operation": "GET /v1/knowledge/wiki/search",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "breadcrumb": "Programs",
+        "children_count": 1,
+        "content_snippet": "Helios selects a thermostable lead from Northwind's NW-200 series. The portfolio committee approved NW-217 as the lead on 2026-09-30.",
+        "id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+        "page_type": "project",
+        "score": 0.82,
+        "score_relative_to_top": 1.0,
+        "summary": "Northwind's program to select a thermostable lead from the NW-200 series; NW-217 is the current lead.",
+        "temperature": "hot",
+        "title": "Project Helios"
+      },
+      {
+        "breadcrumb": "Programs > Project Helios",
+        "children_count": 0,
+        "content_snippet": "On 2026-09-30 the portfolio committee selected NW-217 over NW-204 on four-week stability at 40 C.",
+        "id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+        "page_type": "decision",
+        "score": 0.67,
+        "score_relative_to_top": 0.82,
+        "summary": "The portfolio committee selected NW-217 as the Helios lead on 2026-09-30.",
+        "temperature": "warm",
+        "title": "Decision: Helios Lead Selection"
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "operation": "GET /v1/outputs/{output_id}/revisions",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "actor_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+        "actor_name": "Dana Whitfield",
+        "actor_type": "user",
+        "created_at": "2026-10-01T12:05:00Z",
+        "id": "9e1a3c5e-7b9d-4f1a-8c3e-5a7b9d1f3c57",
+        "revision_no": 3,
+        "summary": "Tightens the recommendation paragraph."
+      },
+      {
+        "actor_id": null,
+        "actor_name": "Beakr",
+        "actor_type": "agent",
+        "created_at": "2026-10-01T12:04:00Z",
+        "id": "0f2b4d6f-8c0e-4a2b-9d4f-6b8c0e2a4d68",
+        "revision_no": 2,
+        "summary": "Drafts the brief from the Helios decision page."
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null
+  }
+}

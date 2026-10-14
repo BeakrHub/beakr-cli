@@ -1,0 +1,17 @@
+{
+  "operation": "POST /v1/knowledge/wiki/proposals/{proposal_id}/accept",
+  "source": "hand-authored from beakr/api/routes/knowledge.py:accept_proposal",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "status": "accepted",
+    "proposal_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+    "page_ids": [
+      "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41"
+    ],
+    "pages_created": 0,
+    "pages_updated": 1,
+    "pages_skipped": 0,
+    "sections_left_behind": []
+  }
+}

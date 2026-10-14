@@ -1,0 +1,37 @@
+{
+  "operation": "GET /v1/integrations/{connector_id}/coverage",
+  "source": "hand-authored from beakr/api/routes/public_integrations.py:integration_coverage",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "connector_id": "e2d7a9c4-1f3b-4a6e-8c5d-9b0f2e4a6c18",
+    "provider": "gdrive:nango",
+    "known": 148,
+    "indexed": 131,
+    "not_readable": 9,
+    "removed": 2,
+    "compiled": 124,
+    "not_compiled": {
+      "failed": {
+        "extraction_timeout": 2
+      },
+      "skipped": {
+        "duplicate_content": 4,
+        "too_short": 1
+      }
+    },
+    "sources": [
+      {
+        "attachment_id": "a8c3e5f7-2b4d-4e6a-9c1b-3d5f7a9b1c20",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "name": "Helios Program Shared Drive",
+        "item_type": "folder",
+        "known": 148,
+        "indexed": 131,
+        "not_readable": 9,
+        "removed": 2,
+        "pending": 6
+      }
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "operation": "GET /v1/public/openapi.json",
+  "source": "hand-authored from beakr/api/routes/public_api.py:public_openapi",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "openapi": "3.1.0",
+    "info": {
+      "title": "Beakr API",
+      "version": "1.0.0",
+      "description": "The public Beakr API. Authenticate with `Authorization: Bearer <token>` using an API key (`bk_live_`) or a CLI/agent access token (`bk_at_`)."
+    },
+    "paths": {
+      "/v1/public/openapi.json": {
+        "get": {
+          "operationId": "public_openapi_v1_public_openapi_json_get",
+          "summary": "The OpenAPI document of the public API only",
+          "tags": [
+            "public"
+          ],
+          "security": [],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "additionalProperties": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/v1/me": {
+        "get": {
+          "operationId": "get_me_v1_me_get",
+          "summary": "The signed-in person",
+          "tags": [
+            "me"
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful Response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

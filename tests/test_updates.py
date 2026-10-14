@@ -23,8 +23,7 @@ from beakr_cli.main import app
 @pytest.fixture(autouse=True)
 def isolated_config(tmp_path, monkeypatch):
     """Point ~/.beakr at a temp dir so the cache never touches the real one."""
-    monkeypatch.setattr(config, "CONFIG_DIR", tmp_path / ".beakr")
-    monkeypatch.setattr(config, "CONFIG_FILE", tmp_path / ".beakr" / "config.json")
+    monkeypatch.setenv("BEAKR_HOME", str(tmp_path / ".beakr"))
     monkeypatch.delenv(updates.DISABLE_ENV, raising=False)
     monkeypatch.setattr(updates, "__version__", "0.3.0")
     return tmp_path
@@ -39,9 +38,9 @@ def _pypi(*versions: str, yanked: tuple[str, ...] = ()) -> dict:
 
 
 def _write_cache(latest: str, age: timedelta) -> None:
-    config.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    config.ensure_dir()
     checked_at = datetime.now(timezone.utc) - age
-    (config.CONFIG_DIR / "update_check.json").write_text(
+    (config.config_dir() / "update_check.json").write_text(
         json.dumps({"latest": latest, "checked_at": checked_at.isoformat()})
     )
 
@@ -54,8 +53,9 @@ def _write_cache(latest: str, age: timedelta) -> None:
 @respx.mock
 def test_latest_version_skips_prereleases_and_fully_yanked_releases() -> None:
     respx.get(updates.PYPI_JSON_URL).mock(
-        return_value=httpx.Response(200, json=_pypi("0.2.1", "0.3.0", "0.4.0", "0.5.0rc1",
-                                                    yanked=("0.4.0",)))
+        return_value=httpx.Response(
+            200, json=_pypi("0.2.1", "0.3.0", "0.4.0", "0.5.0rc1", yanked=("0.4.0",))
+        )
     )
     assert updates.fetch_latest_version(timeout=1) == "0.3.0"
 
@@ -126,7 +126,7 @@ def test_stale_cdn_listing_older_than_running_version_is_not_cached() -> None:
     status = updates.get_update_status()
     assert status.latest is None
     assert not status.update_available
-    assert not (config.CONFIG_DIR / "update_check.json").exists()
+    assert not (config.config_dir() / "update_check.json").exists()
 
 
 def test_running_ahead_of_pypi_is_not_an_update() -> None:
@@ -174,7 +174,12 @@ def test_detects_pypi_uv_tool_install(receipt, tmp_path, monkeypatch) -> None:
     # --reinstall-package implies a refresh of the cached index; without one an
     # upgrade shortly after a release resolved the old version and still exited 0.
     assert info.upgrade_command == [
-        "uv", "tool", "upgrade", "--reinstall-package", "beakr-cli", "beakr-cli",
+        "uv",
+        "tool",
+        "upgrade",
+        "--reinstall-package",
+        "beakr-cli",
+        "beakr-cli",
     ]
 
 
@@ -387,3 +392,18 @@ async def test_update_tool_does_nothing_when_current(monkeypatch) -> None:
 
     monkeypatch.setattr(mcp_server, "run_upgrade", must_not_upgrade)
     assert "No update needed" in await mcp_server.update_beakr()
+
+
+@respx.mock
+def test_version_says_a_build_ahead_of_pypi_is_newer() -> None:
+    """Root cause: a PyPI listing older than the running build was discarded the
+    same way as a failed check, so `beakr version` on an unreleased build said
+    "PyPI could not be checked" although PyPI answered."""
+    respx.get(updates.PYPI_JSON_URL).mock(
+        return_value=httpx.Response(200, json=_pypi("0.0.1", "0.0.2"))
+    )
+    result = CliRunner().invoke(app, ["version"])
+    assert result.exit_code == 0, result.output
+    assert "newer than the latest release (0.0.2)" in result.output
+    assert "could not be checked" not in result.output
+    assert not (config.config_dir() / "update_check.json").exists()

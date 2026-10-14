@@ -1,0 +1,236 @@
+def bounded(text: str, limit: int = MAX_TEXT_CHARS) -> str:
+    if len(text) <= limit:
+        return text
+    return text[:limit].rstrip() + f"\n\n[truncated: {len(text) - limit:,} more characters]"
+
+
+_CUT_MARKER = re.compile(r"\n\n\[truncated: [\d,]+ more characters\]\Z")
+
+
+def _capped_at(text: str, limit: int) -> bool:
+    """Whether ``text`` is what ``bounded`` makes at ``limit``: kept text plus its marker."""
+    marker = _CUT_MARKER.search(text)
+    return marker is not None and marker.start() <= limit
+
+
+#: Character caps that differ from ``MAX_TEXT_CHARS``: Knowledge reads carry
+#: whole sections, and a file read returns a 20,000-character window plus its
+#: header and continuation line.
+TEXT_LIMITS: dict[str, int] = {
+    "knowledge_base": 50_000,
+    "knowledge_base_write": 50_000,
+    "read_file": 22_000,
+}
+
+#: What to do when a tool's text is cut, per tool. Each must stay useful when
+#: the caller already narrowed the request, so it points at an untruncated path.
+CUT_HINTS: dict[str, str] = {
+    "knowledge_base": (
+        "The text was cut at 50,000 characters: read a section (section_id), lines, or a "
+        "smaller window (limit, offset)."
+    ),
+    "knowledge_base_write": (
+        "The result text was cut at 50,000 characters: read the page with knowledge_base "
+        "command='cat' to see it whole."
+    ),
+    "research": (
+        "The answer was cut at the text limit: ask a narrower question, or read the cited "
+        "pages with knowledge_base command='cat'."
+    ),
+    "context": (
+        "The context was cut at the text limit: pass a smaller budget_chars, a project, or a "
+        "question to narrow it."
+    ),
+    "workboard": (
+        "The board was cut at the text limit, so some agents are missing: read the whole board "
+        "untruncated with `beakr api knowledge get-wiki-work-board` (GET "
+        "/v1/knowledge/wiki/work-board) for the same label_id or project_id."
+    ),
+    "wiki_graph": (
+        "The graph summary was cut at the text limit: pass project to narrow it, or use "
+        "knowledge_base command='links' on one page."
+    ),
+    "show_proposal": (
+        "The proposal was cut at the text limit: read it whole with `beakr kb proposals show "
+        "<proposal_id> --json` (GET /v1/knowledge/wiki/proposals/{proposal_id})."
+    ),
+    "get_profile": (
+        "The profile was cut at the text limit: pass profile_type='project' with "
+        "project_id to read one project's profile."
+    ),
+    "skills": (
+        "The skill was cut at the text limit: open it in the Beakr web app to read it whole."
+    ),
+}
+
+_DEFAULT_CUT_HINT = "The result was cut at the text limit: narrow the request."
+_LIST_CUT_HINT = "The page was cut at the text limit: pass a smaller limit."
+
+
+def _text_of(content: Any) -> str:
+    """A result's text, from a string or a list of MCP content blocks."""
+    if isinstance(content, list):
+        return "\n\n".join(
+            str(block.get("text", "")) for block in content if isinstance(block, dict)
+        )
+    return "" if content is None else str(content)
+
+
+def finish(result: Any, *, tool: str, cut_hint: str | None = None) -> dict[str, Any]:
+    """Every MCP tool result in one shape: ``{content, coverage, next, ...}`` (SPEC-488).
+
+    Both MCP servers pass each tool's result through this once. ``content`` is the
+    text; ``coverage`` says how much came back (``returned``: rows for a list tool,
+    characters for a file window, None otherwise), whether more exists
+    (``has_more``, ``next_cursor``) and whether the result is ``complete``; ``next``
+    holds the hints for getting the rest. Any other keys (``sources``, ``status``,
+    ``file``...) are kept.
+
+    The text cap is applied here and only here, and cutting text always marks the
+    result incomplete with a hint, so a capped result can never claim to be whole
+    (audit C077: the work board kept ``complete: true`` after losing agents).
+    """
+    body: dict[str, Any] = dict(result) if isinstance(result, dict) else {"content": result}
+    text = _text_of(body.get("content"))
+    coverage = dict(body.get("coverage") or {})
+    coverage.setdefault("returned", None)
+    coverage.setdefault("has_more", False)
+    coverage.setdefault("next_cursor", None)
+    coverage.setdefault("complete", not coverage["has_more"])
+    hints = [str(hint) for hint in body.get("next") or []]
+    limit = TEXT_LIMITS.get(tool, MAX_TEXT_CHARS)
+    # The cap is enforced on the text itself, never on an incoming flag: an
+    # upstream ``coverage.truncated`` only says the upstream cut something, not
+    # that this cap was applied (audit C077 follow-up: a 90k Knowledge result
+    # flagged truncated upstream passed the 50k cap untouched). Text this cap
+    # already cut (a helper ran ``finish`` before the server did) is left as is,
+    # so shaping twice cannot shorten the marker and misreport what was dropped.
+    if len(text) > limit and not _capped_at(text, limit):
+        text = bounded(text, limit)
+        coverage["complete"] = False
+        coverage["truncated"] = True
+        hint = cut_hint or CUT_HINTS.get(tool, _DEFAULT_CUT_HINT)
+        if hint not in hints:
+            hints.insert(0, hint)
+    body["content"] = text
+    body["coverage"] = coverage
+    body["next"] = hints
+    return body
+
+
+def file_read(data: dict[str, Any]) -> dict[str, Any]:
+    """One window of a file's text (``POST /v1/artifacts/read``), with how to continue.
+
+    The header names where the window is -- the file's path, and the place in it
+    when the reference named one (``memo.pdf › p. 7``, a form ``read_file`` takes) --
+    and the file and
+    version read, so a transcript records which version it was.
+    """
+    file = data.get("file") or {}
+    unit = data.get("unit") or None
+    text = str(data.get("text") or "")
+    start, end = int(data.get("start") or 0), int(data.get("end") or 0)
+    total = data.get("total_chars")
+    where = str(file.get("display_path") or file.get("title") or "File")
+    hints: list[str] = []
+    if unit is not None:
+        locator = unit.get("locator")
+        if locator:
+            where += f"{render.LOCATION_SEPARATOR}{locator}"
+        page = unit.get("page")
+        span = f"page {page} of {unit.get('page_count')}, " if page else ""
+        position = f"{span}characters {start}-{end}" + (f" of {total}" if total else "")
+        if not unit.get("found", True):
+            hints.append("That place was not found in this version of the file; this is its start.")
+        if data.get("next_reference"):
+            hints.append(f"Next page: call read_file with {data['next_reference']!r}.")
+    else:
+        position = f"characters {start}-{end}" + (f" of {total}" if total else "")
+        if data.get("next_offset") is not None:
+            hints.append(f"More text follows: call read_file again with offset={end}.")
+    header = f"{where} ({position}; file {file.get('id')} version {file.get('version_id')})"
+    more = bool(data.get("has_more"))
+    body = f"{header}\n\n{text}" + ("".join(f"\n\n{hint}" for hint in hints))
+    return finish(
+        {
+            "content": body,
+            "coverage": {
+                "returned": len(text),
+                "has_more": more,
+                "next_cursor": None,
+                "complete": not more,
+                "next_offset": data.get("next_offset"),
+                "total_chars": total,
+            },
+            "next": hints,
+            "file": {
+                "artifact_id": str(file.get("id") or ""),
+                "version_id": str(file.get("version_id") or ""),
+                "title": file.get("title"),
+                "display_path": file.get("display_path"),
+                "unit_locator": (unit or {}).get("locator"),
+                "offset": start,
+                "next_offset": data.get("next_offset"),
+                "total_chars": total,
+            },
+        },
+        tool="read_file",
+    )
+
+
+def page_result(
+    text: str,
+    *,
+    tool: str,
+    returned: int,
+    has_more: bool,
+    next_cursor: str | None,
+    same_args: str = "",
+) -> dict[str, Any]:
+    """One bounded page of a list or search tool (developer platform W8, SPEC-488).
+
+    Every list tool on both MCP servers answers this shape: the rendered page,
+    ``coverage`` (how many rows came back, whether more exist and the cursor that
+    reaches them) and ``next`` hints. The continuation is also written into the
+    text, so a client that shows only text still learns how to page on.
+    """
+    hints: list[str] = []
+    if has_more and next_cursor:
+        keep = f" {same_args}" if same_args else ""
+        hints.append(f'More results: call {tool} again with cursor="{next_cursor}"{keep}.')
+    body_text = text + (f"\n\n[{hints[0]}]" if hints else "")
+    return finish(
+        {
+            "content": body_text,
+            "coverage": {
+                "returned": returned,
+                "has_more": has_more,
+                "next_cursor": next_cursor,
+                "complete": not has_more,
+            },
+            "next": hints,
+        },
+        tool=tool,
+        cut_hint=_LIST_CUT_HINT,
+    )
+
+
+def capped_result(
+    text: str, *, tool: str, returned: int, total: int | None, complete: bool, hint: str
+) -> dict[str, Any]:
+    """A result the route cannot page: what was shown, and how to narrow it.
+
+    ``complete`` is the caller's row count; ``finish`` still marks the result
+    incomplete when the text itself has to be cut.
+    """
+    hints = [] if complete else [hint]
+    body_text = text + (f"\n\n[{hint}]" if hints else "")
+    coverage: dict[str, Any] = {
+        "returned": returned,
+        "has_more": not complete,
+        "next_cursor": None,
+        "complete": complete,
+    }
+    if total is not None:
+        coverage["total"] = total
+    return finish({"content": body_text, "coverage": coverage, "next": hints}, tool=tool)

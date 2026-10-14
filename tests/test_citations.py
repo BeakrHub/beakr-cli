@@ -22,9 +22,7 @@ The team kept the May launch date {{agent_note:launch-risk}}.
                     "source_type": "agent_note",
                     "source_title": "Agent synthesis from current conversation",
                     "stance": "support",
-                    "meta": {
-                        "excerpt": "The team kept the launch date but added a rollback gate."
-                    },
+                    "meta": {"excerpt": "The team kept the launch date but added a rollback gate."},
                 }
             ],
         }

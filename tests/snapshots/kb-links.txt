@@ -1,0 +1,33 @@
+$ beakr kb links 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/backlinks?limit=200
+[exit 0]
+--- stdout
+[
+  {
+    "id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+    "summary": "The portfolio committee selected NW-217 as the Helios lead on 2026-09-30.",
+    "title": "Decision: Helios Lead Selection"
+  },
+  {
+    "id": "e8b3f1c7-4d2a-4e9b-b6c0-1a5d7f3e9b28",
+    "summary": "NW-217, the thermostable lead compound of Project Helios.",
+    "title": "NW-217"
+  }
+]
+--- stderr
+
+
+$ beakr kb links 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/backlinks?limit=200
+[exit 0]
+--- stdout
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃Title                          ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│Decision: Helios Lead Selection│
+│NW-217                         │
+└───────────────────────────────┘
+--- stderr
+

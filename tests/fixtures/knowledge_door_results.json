@@ -1,0 +1,4365 @@
+{
+ "about": "Captured by beakr-engine tests/api/test_knowledge_result_shape_parity.py: for each Knowledge read command and proposal action, the REST door's request and response and the hosted MCP server's structuredContent for the same call.",
+ "reads": {
+  "blame": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "Page: Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\n  [1] unknown: <!-- sec:sec_charter -->\n## Charter\n  [1] unknown: The program exists to find a thermostable lead from the NW-200 scaffold series f...\n  [1] unknown: <!-- sec:sec_budget -->\n## Budget\n  [1] unknown: Fiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio c...\n  [1] unknown: <!-- sec:sec_success_criterion -->\n## Success criterion\n  [1] unknown: A lead must keep at least 80 percent of its activity after two weeks at 40 degre...\n  [1] unknown: <!-- sec:sec_lead_decision -->\n## Lead decision\n  [1] unknown: The portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifa...",
+    "coverage": {
+     "command": "blame",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open the revision that wrote a line with show {page, rev}."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "blame",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Page: Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\n  [1] unknown: <!-- sec:sec_charter -->\n## Charter\n  [1] unknown: The program exists to find a thermostable lead from the NW-200 scaffold series f...\n  [1] unknown: <!-- sec:sec_budget -->\n## Budget\n  [1] unknown: Fiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio c...\n  [1] unknown: <!-- sec:sec_success_criterion -->\n## Success criterion\n  [1] unknown: A lead must keep at least 80 percent of its activity after two weeks at 40 degre...\n  [1] unknown: <!-- sec:sec_lead_decision -->\n## Lead decision\n  [1] unknown: The portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifa...",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "blame",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open the revision that wrote a line with show {page, rev}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "cat": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "# Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\nKB page ID: b4ba6ca5-fc2c-45d3-b094-876ac84da366\nPath: Project Helios (root)\nType: project | Rev: 1 | Created: 2026-10-13 | Updated: 2026-10-13 | Sources: 7 | Wiki: Synthetic KB f5d3ef14 (project id c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b)\nChildren: Decision: Helios Lead Selection, Helios HX-01 Thermal Stability Screen, Helios HX-02 Buffer Blocking Optimization, Helios HX-03 Signal Artifact Characterization, Helios HX-04 Dose Response in Primary Cells, Helios HX-05 Scale-up Feasibility (Draft), Helios Q2 2024 Review\nLinked from (3 pages, by type):\n  person (2): Dana Whitfield, Maja Lindqvist\n  organization (1): Northwind Biosciences\nLinks to: Dana Whitfield\n\n<!-- sec:sec_charter -->\n## Charter\n\nThe program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1}} It is headed by [[Dana Whitfield]].{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n\n<!-- sec:sec_budget -->\n## Budget\n\nFiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee.{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3}}\n\n<!-- sec:sec_success_criterion -->\n## Success criterion\n\nA lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius.{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4}}\n\n<!-- sec:sec_lead_decision -->\n## Lead decision  [2024-09-09]\n\nThe portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1}}\n\nSection date metadata:\n- sec_lead_decision (Lead decision): event_start=2024-09-09; date_precision=day\n\n---\nSources cited above:\n  - [artifact:upload:synthetic_kb] helios-go-decision-memo.docx  {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6}}\n  - [artifact:upload:synthetic_kb] helios-program-charter.pdf  {{artifact:045e1737-2060-45f0-a7ab-c8e906018593}}\n\nNote: This page is an AI-compiled summary, and the documents above are the ones its text cites. A citation in the body names a SPAN and so carries a suffix the list above does not -- {{artifact:<id>-document-block-12}}, {{artifact:<id>-u3}}, {{artifact:<id>-span-2-9}} and similar all belong to the line whose token is {{artifact:<id>}}. Match on the id and ignore what follows it. Pass either form to artifact_download: the span token opens the exact cited version, the id alone opens the current one. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.",
+    "coverage": {
+     "command": "cat",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Follow an edge with links, references or timeline.",
+     "Check where a claim came from with provenance {page} or sources {page}."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sedcc5d44",
+      "name": "Project Helios \u203a Budget",
+      "section": {
+       "title": "Budget"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_budget"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-s988dcf36",
+      "name": "Project Helios \u203a Charter",
+      "section": {
+       "title": "Charter"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_charter"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sacba1637",
+      "name": "Project Helios \u203a Lead decision",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Lead decision"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_lead_decision"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-s52c43951",
+      "name": "Project Helios \u203a Success criterion",
+      "section": {
+       "title": "Success criterion"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_success_criterion"
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593",
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:0e9ba765-955c-4442-885d-ac6270a8d6c3",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6",
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:dfedfbdc-afa4-4826-b72a-f57d86f95bf0",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1",
+      "evidence": {
+       "excerpt": "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3",
+      "evidence": {
+       "excerpt": "The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4",
+      "evidence": {
+       "excerpt": "Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1",
+      "evidence": {
+       "excerpt": "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
+      },
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771",
+      "status": {
+       "changed_since_cited": false
+      }
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "cat",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "# Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\nKB page ID: b4ba6ca5-fc2c-45d3-b094-876ac84da366\nPath: Project Helios (root)\nType: project | Rev: 1 | Created: 2026-10-13 | Updated: 2026-10-13 | Sources: 7 | Wiki: Synthetic KB f5d3ef14 (project id c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b)\nChildren: Decision: Helios Lead Selection, Helios HX-01 Thermal Stability Screen, Helios HX-02 Buffer Blocking Optimization, Helios HX-03 Signal Artifact Characterization, Helios HX-04 Dose Response in Primary Cells, Helios HX-05 Scale-up Feasibility (Draft), Helios Q2 2024 Review\nLinked from (3 pages, by type):\n  person (2): Dana Whitfield, Maja Lindqvist\n  organization (1): Northwind Biosciences\nLinks to: Dana Whitfield\n\n<!-- sec:sec_charter -->\n## Charter\n\nThe program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1}} It is headed by [[Dana Whitfield]].{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n\n<!-- sec:sec_budget -->\n## Budget\n\nFiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee.{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3}}\n\n<!-- sec:sec_success_criterion -->\n## Success criterion\n\nA lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius.{{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4}}\n\n<!-- sec:sec_lead_decision -->\n## Lead decision  [2024-09-09]\n\nThe portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1}}\n\nSection date metadata:\n- sec_lead_decision (Lead decision): event_start=2024-09-09; date_precision=day\n\n---\nSources cited above:\n  - [artifact:upload:synthetic_kb] helios-go-decision-memo.docx  {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6}}\n  - [artifact:upload:synthetic_kb] helios-program-charter.pdf  {{artifact:045e1737-2060-45f0-a7ab-c8e906018593}}\n\nNote: This page is an AI-compiled summary, and the documents above are the ones its text cites. A citation in the body names a SPAN and so carries a suffix the list above does not -- {{artifact:<id>-document-block-12}}, {{artifact:<id>-u3}}, {{artifact:<id>-span-2-9}} and similar all belong to the line whose token is {{artifact:<id>}}. Match on the id and ignore what follows it. Pass either form to artifact_download: the span token opens the exact cited version, the id alone opens the current one. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "cat",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Follow an edge with links, references or timeline.",
+     "Check where a claim came from with provenance {page} or sources {page}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sedcc5d44",
+      "name": "Project Helios \u203a Budget",
+      "section": {
+       "title": "Budget"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_budget"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-s988dcf36",
+      "name": "Project Helios \u203a Charter",
+      "section": {
+       "title": "Charter"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_charter"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sacba1637",
+      "name": "Project Helios \u203a Lead decision",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Lead decision"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_lead_decision"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-s52c43951",
+      "name": "Project Helios \u203a Success criterion",
+      "section": {
+       "title": "Success criterion"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_success_criterion"
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593",
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:0e9ba765-955c-4442-885d-ac6270a8d6c3",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6",
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:dfedfbdc-afa4-4826-b72a-f57d86f95bf0",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1",
+      "evidence": {
+       "excerpt": "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3",
+      "evidence": {
+       "excerpt": "The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4",
+      "evidence": {
+       "excerpt": "Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1",
+      "evidence": {
+       "excerpt": "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
+      },
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771",
+      "status": {
+       "changed_since_cited": false
+      }
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "completions": {
+   "arguments": {
+    "prefix": "Hel"
+   },
+   "mcp": {
+    "content": "8 match(es):\n\n  [experiment] Helios HX-01 Thermal Stability Screen  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-02 Buffer Blocking Optimization  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-03 Signal Artifact Characterization  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-04 Dose Response in Primary Cells  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-05 Scale-up Feasibility (Draft)  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-06 Dose Response Repeat  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-07 Solubility Card  [Synthetic KB f5d3ef14]\n  [meeting] Helios Q2 2024 Review  [Synthetic KB f5d3ef14]",
+    "coverage": {
+     "command": "completions",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open the page you meant with cat {page}."
+    ],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "completions",
+    "prefix": "Hel",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "8 match(es):\n\n  [experiment] Helios HX-01 Thermal Stability Screen  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-02 Buffer Blocking Optimization  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-03 Signal Artifact Characterization  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-04 Dose Response in Primary Cells  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-05 Scale-up Feasibility (Draft)  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-06 Dose Response Repeat  [Synthetic KB f5d3ef14]\n  [experiment] Helios HX-07 Solubility Card  [Synthetic KB f5d3ef14]\n  [meeting] Helios Q2 2024 Review  [Synthetic KB f5d3ef14]",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "completions",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open the page you meant with cat {page}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": []
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "diagnostics": {
+   "arguments": {},
+   "mcp": {
+    "content": "Wiki diagnostics (22 pages):\n\nBroken links: none\n\nDisputed sections: none\n\nOrphan pages (2):\n  - Helios HX-07 Solubility Card\n  - Protocol: Western Blot Blocking Step\n\nUncited sections: none",
+    "coverage": {
+     "command": "diagnostics",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Fix a reported page with knowledge_base_write."
+    ],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "diagnostics",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Wiki diagnostics (22 pages):\n\nBroken links: none\n\nDisputed sections: none\n\nOrphan pages (2):\n  - Helios HX-07 Solubility Card\n  - Protocol: Western Blot Blocking Step\n\nUncited sections: none",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "diagnostics",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Fix a reported page with knowledge_base_write."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": []
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "diff": {
+   "arguments": {
+    "page": "Project Helios",
+    "rev": 1
+   },
+   "mcp": {
+    "content": "No differences between rev 1 and rev 1.",
+    "coverage": {
+     "command": "diff",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "empty",
+     "total": null
+    },
+    "next": [
+     "Nothing matched: check the page name with completions {prefix}, widen `scope`, or search with sections {query}."
+    ],
+    "sources": [],
+    "status": "empty"
+   },
+   "rest_request": {
+    "command": "diff",
+    "page": "Project Helios",
+    "rev": 1,
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "No differences between rev 1 and rev 1.",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "diff",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "empty",
+     "total": null
+    },
+    "next": [
+     "Nothing matched: check the page name with completions {prefix}, widen `scope`, or search with sections {query}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "empty"
+    },
+    "sources": []
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "grep": {
+   "arguments": {
+    "query": "blocking"
+   },
+   "mcp": {
+    "content": "2 page(s) matched 'blocking':\n\nHelios HX-02 Buffer Blocking Optimization  (1 matching line)\n  \u00a7sec_question:4  {{wiki:7995448a-415b-4222-adf1-3305dda53578}}\n      Which blocking agent gives the lowest background in the NW-217 binding ELISA? Casein, BSA and a protein-free buffer were compared.{{artifact:ea1a095a-b1d1-4116-8f48-14c95ae4bcd9-document-block-1}}\n  page_id: 7995448a-415b-4222-adf1-3305dda53578\n\nProtocol: Western Blot Blocking Step  (1 matching line)\n  \u00a7sec_steps:4  {{wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31}}\n      Block the membrane in 5 percent non-fat milk in TBST for one hour at room temperature.{{artifact:ff38201f-134f-449a-b4b4-c461e7907128-document-block-1}} Never reuse blocking solution.{{artifact:ff3820...\n  page_id: d4138371-af8a-4f87-8f61-a5ffb44fce31\n\nRead a hit with `cat <page> section_id=<id>` -- open the whole page only when you need material outside the section that matched. Cite a hit with the token on its line.",
+    "coverage": {
+     "command": "grep",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open the best hit with cat {page, section_id?}."
+    ],
+    "sources": [
+     {
+      "citation_key": "artifact:ff38201f-134f-449a-b4b4-c461e7907128-document-block-1",
+      "evidence": {
+       "excerpt": "Block membranes in 5 percent non-fat milk in TBST for one hour at room temperature."
+      },
+      "filename": "sop-western-blot-blocking.pdf",
+      "location": {
+       "file_id": "760df444-e00d-4866-b1a7-fa7856f3bdc9"
+      },
+      "name": "sop-western-blot-blocking.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:218934e1-88c9-4862-879c-c4d6db1c37ff",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:ea1a095a-b1d1-4116-8f48-14c95ae4bcd9-document-block-1",
+      "evidence": {
+       "excerpt": "Casein, BSA and a commercial protein-free buffer were compared as blocking agents in the NW-217 binding ELISA."
+      },
+      "filename": "hx-02-blocking-buffer-notebook.docx",
+      "location": {
+       "file_id": "c988b5b2-34b4-4cdf-b5da-cc933cc9288b"
+      },
+      "name": "hx-02-blocking-buffer-notebook.docx",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:3259528b-c9d6-49a4-924f-1804b0d98d52",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:7995448a-415b-4222-adf1-3305dda53578",
+      "name": "Helios HX-02 Buffer Blocking Optimization",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7995448a-415b-4222-adf1-3305dda53578"
+     },
+     {
+      "citation_key": "wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31",
+      "name": "Protocol: Western Blot Blocking Step",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "grep",
+    "query": "blocking",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "2 page(s) matched 'blocking':\n\nHelios HX-02 Buffer Blocking Optimization  (1 matching line)\n  \u00a7sec_question:4  {{wiki:7995448a-415b-4222-adf1-3305dda53578}}\n      Which blocking agent gives the lowest background in the NW-217 binding ELISA? Casein, BSA and a protein-free buffer were compared.{{artifact:ea1a095a-b1d1-4116-8f48-14c95ae4bcd9-document-block-1}}\n  page_id: 7995448a-415b-4222-adf1-3305dda53578\n\nProtocol: Western Blot Blocking Step  (1 matching line)\n  \u00a7sec_steps:4  {{wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31}}\n      Block the membrane in 5 percent non-fat milk in TBST for one hour at room temperature.{{artifact:ff38201f-134f-449a-b4b4-c461e7907128-document-block-1}} Never reuse blocking solution.{{artifact:ff3820...\n  page_id: d4138371-af8a-4f87-8f61-a5ffb44fce31\n\nRead a hit with `cat <page> section_id=<id>` -- open the whole page only when you need material outside the section that matched. Cite a hit with the token on its line.",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "grep",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open the best hit with cat {page, section_id?}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "artifact:ff38201f-134f-449a-b4b4-c461e7907128-document-block-1",
+      "evidence": {
+       "excerpt": "Block membranes in 5 percent non-fat milk in TBST for one hour at room temperature."
+      },
+      "filename": "sop-western-blot-blocking.pdf",
+      "location": {
+       "file_id": "760df444-e00d-4866-b1a7-fa7856f3bdc9"
+      },
+      "name": "sop-western-blot-blocking.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:218934e1-88c9-4862-879c-c4d6db1c37ff",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:ea1a095a-b1d1-4116-8f48-14c95ae4bcd9-document-block-1",
+      "evidence": {
+       "excerpt": "Casein, BSA and a commercial protein-free buffer were compared as blocking agents in the NW-217 binding ELISA."
+      },
+      "filename": "hx-02-blocking-buffer-notebook.docx",
+      "location": {
+       "file_id": "c988b5b2-34b4-4cdf-b5da-cc933cc9288b"
+      },
+      "name": "hx-02-blocking-buffer-notebook.docx",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:3259528b-c9d6-49a4-924f-1804b0d98d52",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:7995448a-415b-4222-adf1-3305dda53578",
+      "name": "Helios HX-02 Buffer Blocking Optimization",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7995448a-415b-4222-adf1-3305dda53578"
+     },
+     {
+      "citation_key": "wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31",
+      "name": "Protocol: Western Blot Blocking Step",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "hover": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "Project Helios\n  Type: project\n  Rev: 1 | Created: 2026-10-13 | Updated: 2026-10-13\n  Sources: 7 | Sections: 4 | Linked from: 3\n  Wiki: Synthetic KB f5d3ef14\n  Summary: Project Helios is Northwind's program to find a heat-stable NW-200 lead for oral delivery; NW-217 is the approved lead.",
+    "coverage": {
+     "command": "hover",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Read the page with cat {page} if it is relevant."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "hover",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Project Helios\n  Type: project\n  Rev: 1 | Created: 2026-10-13 | Updated: 2026-10-13\n  Sources: 7 | Sections: 4 | Linked from: 3\n  Wiki: Synthetic KB f5d3ef14\n  Summary: Project Helios is Northwind's program to find a heat-stable NW-200 lead for oral delivery; NW-217 is the approved lead.",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "hover",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Read the page with cat {page} if it is relevant."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "links": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "3 page(s) link here (by type: person 2, organization 1):\n\n  - Dana Whitfield {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}} [person]\n  - Maja Lindqvist {{wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2}} [person]\n  - Northwind Biosciences {{wiki:026339a1-d420-4ce8-9689-1605131d7a04}} [organization]",
+    "coverage": {
+     "command": "links",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open a neighbour with cat {page}."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "links",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "3 page(s) link here (by type: person 2, organization 1):\n\n  - Dana Whitfield {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}} [person]\n  - Maja Lindqvist {{wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2}} [person]\n  - Northwind Biosciences {{wiki:026339a1-d420-4ce8-9689-1605131d7a04}} [organization]",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "links",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open a neighbour with cat {page}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "log": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}} (project 'Synthetic KB f5d3ef14', page b4ba6ca5-fc2c-45d3-b094-876ac84da366) -- 1 revision(s):\n\n  rev 1: synthetic-kb (2026-10-13)",
+    "coverage": {
+     "command": "log",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Compare revisions with diff {page, rev, rev2?} or read one with show."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "log",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}} (project 'Synthetic KB f5d3ef14', page b4ba6ca5-fc2c-45d3-b094-876ac84da366) -- 1 revision(s):\n\n  rev 1: synthetic-kb (2026-10-13)",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "log",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Compare revisions with diff {page, rev, rev2?} or read one with show."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "ls": {
+   "arguments": {},
+   "mcp": {
+    "content": "22 page(s):\n\n  - [person] Dana Whitfield  [Synthetic KB f5d3ef14] {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}}\n  - [experiment] Helios HX-07 Solubility Card  [Synthetic KB f5d3ef14] {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e}}\n  - [organization] Kestrel Analytical CRO  [Synthetic KB f5d3ef14] {{wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348}}\n    - [matter] Kestrel Master Services Agreement  [Synthetic KB f5d3ef14] {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959}}\n  - [person] Kwame Osei  [Synthetic KB f5d3ef14] {{wiki:0698b1d7-14df-40e3-a242-b96aa160fcee}}\n  - [person] Maja Lindqvist  [Synthetic KB f5d3ef14] {{wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2}}\n  - [organization] Northwind Biosciences  [Synthetic KB f5d3ef14] {{wiki:026339a1-d420-4ce8-9689-1605131d7a04}}\n  - [project] Project Borealis  [Synthetic KB f5d3ef14] {{wiki:f3a50671-a764-4ddf-a872-28ba905939aa}}\n    - [experiment] Borealis BX-01 Membrane Permeability Assay  [Synthetic KB f5d3ef14] {{wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3}}\n    - [experiment] Borealis BX-02 Solubility Panel  [Synthetic KB f5d3ef14] {{wiki:e29af438-5518-493d-8137-cc83cf15e4ca}}\n  - [project] Project Helios  [Synthetic KB f5d3ef14] {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\n    - [decision] Decision: Helios Lead Selection  [Synthetic KB f5d3ef14] {{wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4}}\n    - [experiment] Helios HX-01 Thermal Stability Screen  [Synthetic KB f5d3ef14] {{wiki:369d59f5-8a1c-4722-b125-57beacb72420}}\n      - [dataset] HX-01 Melt Curve Dataset  [Synthetic KB f5d3ef14] {{wiki:4531eb1c-6d67-40e8-98fd-6a3e6c6aea3c}}\n    - [experiment] Helios HX-02 Buffer Blocking Optimization  [Synthetic KB f5d3ef14] {{wiki:7995448a-415b-4222-adf1-3305dda53578}}\n    - [experiment] Helios HX-03 Signal Artifact Characterization  [Synthetic KB f5d3ef14] {{wiki:5d24917e-53db-458b-a81e-a504d9c37f14}}\n    - [experiment] Helios HX-04 Dose Response in Primary Cells  [Synthetic KB f5d3ef14] {{wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011}}\n      - [experiment] Helios HX-06 Dose Response Repeat  [Synthetic KB f5d3ef14] {{wiki:f30a8a74-d79c-4777-8423-5064e4f124ec}}\n    - [experiment] Helios HX-05 Scale-up Feasibility (Draft)  [Synthetic KB f5d3ef14] {{wiki:ae5a8627-1652-41c5-a9b4-39c1c755b840}}\n    - [meeting] Helios Q2 2024 Review  [Synthetic KB f5d3ef14] {{wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5}}\n  - [protocol] Protocol: Thermal Shift Assay  [Synthetic KB f5d3ef14] {{wiki:952ecfee-90a7-496c-ae98-3e8967d44e6c}}\n  - [protocol] Protocol: Western Blot Blocking Step  [Synthetic KB f5d3ef14] {{wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31}}",
+    "coverage": {
+     "command": "ls",
+     "complete": true,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": 22,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": 22
+    },
+    "next": [
+     "Open a page with cat {page}."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e",
+      "name": "Helios HX-07 Solubility Card",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e"
+     },
+     {
+      "citation_key": "wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348",
+      "name": "Kestrel Analytical CRO",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959",
+      "name": "Kestrel Master Services Agreement",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959"
+     },
+     {
+      "citation_key": "wiki:0698b1d7-14df-40e3-a242-b96aa160fcee",
+      "name": "Kwame Osei",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:0698b1d7-14df-40e3-a242-b96aa160fcee"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     },
+     {
+      "citation_key": "wiki:f3a50671-a764-4ddf-a872-28ba905939aa",
+      "name": "Project Borealis",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:f3a50671-a764-4ddf-a872-28ba905939aa"
+     },
+     {
+      "citation_key": "wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3",
+      "name": "Borealis BX-01 Membrane Permeability Assay",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3"
+     },
+     {
+      "citation_key": "wiki:e29af438-5518-493d-8137-cc83cf15e4ca",
+      "name": "Borealis BX-02 Solubility Panel",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:e29af438-5518-493d-8137-cc83cf15e4ca"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4",
+      "name": "Decision: Helios Lead Selection",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4"
+     },
+     {
+      "citation_key": "wiki:369d59f5-8a1c-4722-b125-57beacb72420",
+      "name": "Helios HX-01 Thermal Stability Screen",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:369d59f5-8a1c-4722-b125-57beacb72420"
+     },
+     {
+      "citation_key": "wiki:4531eb1c-6d67-40e8-98fd-6a3e6c6aea3c",
+      "name": "HX-01 Melt Curve Dataset",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:4531eb1c-6d67-40e8-98fd-6a3e6c6aea3c"
+     },
+     {
+      "citation_key": "wiki:7995448a-415b-4222-adf1-3305dda53578",
+      "name": "Helios HX-02 Buffer Blocking Optimization",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7995448a-415b-4222-adf1-3305dda53578"
+     },
+     {
+      "citation_key": "wiki:5d24917e-53db-458b-a81e-a504d9c37f14",
+      "name": "Helios HX-03 Signal Artifact Characterization",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:5d24917e-53db-458b-a81e-a504d9c37f14"
+     },
+     {
+      "citation_key": "wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011",
+      "name": "Helios HX-04 Dose Response in Primary Cells",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011"
+     },
+     {
+      "citation_key": "wiki:f30a8a74-d79c-4777-8423-5064e4f124ec",
+      "name": "Helios HX-06 Dose Response Repeat",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:f30a8a74-d79c-4777-8423-5064e4f124ec"
+     },
+     {
+      "citation_key": "wiki:ae5a8627-1652-41c5-a9b4-39c1c755b840",
+      "name": "Helios HX-05 Scale-up Feasibility (Draft)",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:ae5a8627-1652-41c5-a9b4-39c1c755b840"
+     },
+     {
+      "citation_key": "wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5",
+      "name": "Helios Q2 2024 Review",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5"
+     },
+     {
+      "citation_key": "wiki:952ecfee-90a7-496c-ae98-3e8967d44e6c",
+      "name": "Protocol: Thermal Shift Assay",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:952ecfee-90a7-496c-ae98-3e8967d44e6c"
+     },
+     {
+      "citation_key": "wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31",
+      "name": "Protocol: Western Blot Blocking Step",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "ls",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "22 page(s):\n\n  - [person] Dana Whitfield  [Synthetic KB f5d3ef14] {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}}\n  - [experiment] Helios HX-07 Solubility Card  [Synthetic KB f5d3ef14] {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e}}\n  - [organization] Kestrel Analytical CRO  [Synthetic KB f5d3ef14] {{wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348}}\n    - [matter] Kestrel Master Services Agreement  [Synthetic KB f5d3ef14] {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959}}\n  - [person] Kwame Osei  [Synthetic KB f5d3ef14] {{wiki:0698b1d7-14df-40e3-a242-b96aa160fcee}}\n  - [person] Maja Lindqvist  [Synthetic KB f5d3ef14] {{wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2}}\n  - [organization] Northwind Biosciences  [Synthetic KB f5d3ef14] {{wiki:026339a1-d420-4ce8-9689-1605131d7a04}}\n  - [project] Project Borealis  [Synthetic KB f5d3ef14] {{wiki:f3a50671-a764-4ddf-a872-28ba905939aa}}\n    - [experiment] Borealis BX-01 Membrane Permeability Assay  [Synthetic KB f5d3ef14] {{wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3}}\n    - [experiment] Borealis BX-02 Solubility Panel  [Synthetic KB f5d3ef14] {{wiki:e29af438-5518-493d-8137-cc83cf15e4ca}}\n  - [project] Project Helios  [Synthetic KB f5d3ef14] {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\n    - [decision] Decision: Helios Lead Selection  [Synthetic KB f5d3ef14] {{wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4}}\n    - [experiment] Helios HX-01 Thermal Stability Screen  [Synthetic KB f5d3ef14] {{wiki:369d59f5-8a1c-4722-b125-57beacb72420}}\n      - [dataset] HX-01 Melt Curve Dataset  [Synthetic KB f5d3ef14] {{wiki:4531eb1c-6d67-40e8-98fd-6a3e6c6aea3c}}\n    - [experiment] Helios HX-02 Buffer Blocking Optimization  [Synthetic KB f5d3ef14] {{wiki:7995448a-415b-4222-adf1-3305dda53578}}\n    - [experiment] Helios HX-03 Signal Artifact Characterization  [Synthetic KB f5d3ef14] {{wiki:5d24917e-53db-458b-a81e-a504d9c37f14}}\n    - [experiment] Helios HX-04 Dose Response in Primary Cells  [Synthetic KB f5d3ef14] {{wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011}}\n      - [experiment] Helios HX-06 Dose Response Repeat  [Synthetic KB f5d3ef14] {{wiki:f30a8a74-d79c-4777-8423-5064e4f124ec}}\n    - [experiment] Helios HX-05 Scale-up Feasibility (Draft)  [Synthetic KB f5d3ef14] {{wiki:ae5a8627-1652-41c5-a9b4-39c1c755b840}}\n    - [meeting] Helios Q2 2024 Review  [Synthetic KB f5d3ef14] {{wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5}}\n  - [protocol] Protocol: Thermal Shift Assay  [Synthetic KB f5d3ef14] {{wiki:952ecfee-90a7-496c-ae98-3e8967d44e6c}}\n  - [protocol] Protocol: Western Blot Blocking Step  [Synthetic KB f5d3ef14] {{wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31}}",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "ls",
+     "complete": true,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": 22,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": 22
+    },
+    "next": [
+     "Open a page with cat {page}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e",
+      "name": "Helios HX-07 Solubility Card",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e"
+     },
+     {
+      "citation_key": "wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348",
+      "name": "Kestrel Analytical CRO",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959",
+      "name": "Kestrel Master Services Agreement",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959"
+     },
+     {
+      "citation_key": "wiki:0698b1d7-14df-40e3-a242-b96aa160fcee",
+      "name": "Kwame Osei",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:0698b1d7-14df-40e3-a242-b96aa160fcee"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     },
+     {
+      "citation_key": "wiki:f3a50671-a764-4ddf-a872-28ba905939aa",
+      "name": "Project Borealis",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:f3a50671-a764-4ddf-a872-28ba905939aa"
+     },
+     {
+      "citation_key": "wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3",
+      "name": "Borealis BX-01 Membrane Permeability Assay",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3"
+     },
+     {
+      "citation_key": "wiki:e29af438-5518-493d-8137-cc83cf15e4ca",
+      "name": "Borealis BX-02 Solubility Panel",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:e29af438-5518-493d-8137-cc83cf15e4ca"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4",
+      "name": "Decision: Helios Lead Selection",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4"
+     },
+     {
+      "citation_key": "wiki:369d59f5-8a1c-4722-b125-57beacb72420",
+      "name": "Helios HX-01 Thermal Stability Screen",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:369d59f5-8a1c-4722-b125-57beacb72420"
+     },
+     {
+      "citation_key": "wiki:4531eb1c-6d67-40e8-98fd-6a3e6c6aea3c",
+      "name": "HX-01 Melt Curve Dataset",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:4531eb1c-6d67-40e8-98fd-6a3e6c6aea3c"
+     },
+     {
+      "citation_key": "wiki:7995448a-415b-4222-adf1-3305dda53578",
+      "name": "Helios HX-02 Buffer Blocking Optimization",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7995448a-415b-4222-adf1-3305dda53578"
+     },
+     {
+      "citation_key": "wiki:5d24917e-53db-458b-a81e-a504d9c37f14",
+      "name": "Helios HX-03 Signal Artifact Characterization",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:5d24917e-53db-458b-a81e-a504d9c37f14"
+     },
+     {
+      "citation_key": "wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011",
+      "name": "Helios HX-04 Dose Response in Primary Cells",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011"
+     },
+     {
+      "citation_key": "wiki:f30a8a74-d79c-4777-8423-5064e4f124ec",
+      "name": "Helios HX-06 Dose Response Repeat",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:f30a8a74-d79c-4777-8423-5064e4f124ec"
+     },
+     {
+      "citation_key": "wiki:ae5a8627-1652-41c5-a9b4-39c1c755b840",
+      "name": "Helios HX-05 Scale-up Feasibility (Draft)",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:ae5a8627-1652-41c5-a9b4-39c1c755b840"
+     },
+     {
+      "citation_key": "wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5",
+      "name": "Helios Q2 2024 Review",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5"
+     },
+     {
+      "citation_key": "wiki:952ecfee-90a7-496c-ae98-3e8967d44e6c",
+      "name": "Protocol: Thermal Shift Assay",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:952ecfee-90a7-496c-ae98-3e8967d44e6c"
+     },
+     {
+      "citation_key": "wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31",
+      "name": "Protocol: Western Blot Blocking Step",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:d4138371-af8a-4f87-8f61-a5ffb44fce31"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "ontology": {
+   "arguments": {},
+   "mcp": {
+    "content": "Active Knowledge page-type ontology:\n- compound (Compound): A drug, molecule, biologic, candidate, formulation, or other therapeutic material. Use when: Use for pages centered on a specific compound or therapeutic candidate. Do not use when: Do not use for target diseases or programs. Sections: Overview, Identifiers, Properties, Associated Work (cold-start declaration) Links to: disease, experiment Aliases: drug, molecule, biologic, candidate\n- dataset (Dataset): A result set, analysis output, assay readout, measurement collection, or structured data asset. Use when: Use for pages centered on a data collection, schema, measures, findings, and limitations. Do not use when: Do not use for the protocol that generated the data. Sections: Overview, Contents, Provenance, Usage (cold-start declaration) Links to: experiment, initiative Aliases: data, readout, analysis output\n- decision (Decision): A durable choice, conclusion, approval, rejection, or tradeoff. Use when: Use for pages centered on a decision and its rationale. Do not use when: Do not use for general discussion notes without a clear decision. Sections: Decision, Rationale, Alternatives Considered, Consequences (cold-start declaration) Links to: person, initiative Aliases: choice, ruling\n- disease (Disease): A medical condition, indication, phenotype, syndrome, or disease area. Use when: Use for pages centered on a disease or indication and its evidence, aliases, related compounds, protocols, datasets, biomarkers, and programs. Do not use when: Do not use for a customer-specific disease program name, pipeline stage, or project label. Sections: Overview, Mechanism, Associated Compounds, Associated Work (cold-start declaration) Links to: compound, protocol, dataset, initiative Declared metadata schema (retain source-supported values in cited page content; omit unsupported values): {\"aliases\": \"array<string>\", \"biomarkers\": \"array<string>\", \"disease_area\": \"string\", \"related_compounds\": \"array<wiki_link>\", \"related_datasets\": \"array<wiki_link>\", \"related_protocols\": \"array<wiki_link>\"} Aliases: indication, condition, phenotype, syndrome\n- experiment (Experiment): A specific study, assay run, test, analysis run, or trial-like activity. Use when: Use for a specific investigation with objective, setup, results, and interpretation. Do not use when: Do not use for reusable procedures; use protocol. Sections: Results (observed in 9 pages) Links to: protocol, dataset, compound, initiative Aliases: study, run, test\n- index (Index): A minimal structural container used to organize child pages. Use when: Use for navigation-only parent pages created to organize orphaned pages. Do not use when: Do not use for substantive knowledge pages. Aliases: container\n- initiative (Initiative): An ongoing program, project, effort, launch, or body of work. Use when: Use for pages centered on goals, scope, owners, status, timeline, and linked work. Do not use when: Do not encode a specific initiative name as a page type. Sections: Overview, Scope and Timeline, People, Outputs (cold-start declaration) Links to: person, organization, experiment, dataset Aliases: program, project, effort\n- meeting (Meeting): A meeting, call, workshop, review, or synchronous discussion. Use when: Use when the page is primarily a record of a dated discussion. Do not use when: Do not use for a decision extracted from a meeting; use decision for the decision page. Sections: Summary, Attendees, Decisions, Follow-ups (cold-start declaration) Links to: person, initiative, decision Aliases: call, workshop, review\n- organization (Organization): A company, institution, group, funder, vendor, partner, or formal team. Use when: Use for pages centered on a specific organization. Do not use when: Do not encode a specific customer, competitor, or project name as the page type. Sections: Overview, People, Work (cold-start declaration) Links to: person, initiative Aliases: company, institution, org\n- overview (Overview): A broad summary or landing page for a cluster of related pages. Use when: Use for project, area, or collection summaries that organize child pages. Do not use when: Do not use for thin redirect pages or generic containers; use index for structural containers. Sections: Overview, Key Areas (cold-start declaration) Aliases: summary\n- person (Person): An individual human with durable relevance. Use when: Use for pages centered on a specific person. Do not use when: Do not use for roles, teams, or organizations. Sections: Overview, Affiliations, Involvement (cold-start declaration) Links to: organization, initiative Aliases: individual\n- protocol (Protocol): A repeatable method, SOP, process, or workflow. Use when: Use for procedural pages with inputs, steps, parameters, controls, and outputs. Do not use when: Do not use for one-off results generated by following the method; use experiment or dataset. Sections: Purpose, Materials, Procedure (cold-start declaration) Links to: experiment Aliases: sop, method, workflow\n- topic (Topic): A general concept, theme, subject area, or reusable knowledge area. Use when: Use when no more specific ontology type applies. Do not use when: Do not use for clearly typed people, organizations, decisions, meetings, datasets, protocols, compounds, initiatives, or diseases. Sections: Overview (cold-start declaration) Aliases: concept, subject",
+    "coverage": {
+     "command": "ontology",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "List pages of a type with ls {page_type}."
+    ],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "ontology",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Active Knowledge page-type ontology:\n- compound (Compound): A drug, molecule, biologic, candidate, formulation, or other therapeutic material. Use when: Use for pages centered on a specific compound or therapeutic candidate. Do not use when: Do not use for target diseases or programs. Sections: Overview, Identifiers, Properties, Associated Work (cold-start declaration) Links to: disease, experiment Aliases: drug, molecule, biologic, candidate\n- dataset (Dataset): A result set, analysis output, assay readout, measurement collection, or structured data asset. Use when: Use for pages centered on a data collection, schema, measures, findings, and limitations. Do not use when: Do not use for the protocol that generated the data. Sections: Overview, Contents, Provenance, Usage (cold-start declaration) Links to: experiment, initiative Aliases: data, readout, analysis output\n- decision (Decision): A durable choice, conclusion, approval, rejection, or tradeoff. Use when: Use for pages centered on a decision and its rationale. Do not use when: Do not use for general discussion notes without a clear decision. Sections: Decision, Rationale, Alternatives Considered, Consequences (cold-start declaration) Links to: person, initiative Aliases: choice, ruling\n- disease (Disease): A medical condition, indication, phenotype, syndrome, or disease area. Use when: Use for pages centered on a disease or indication and its evidence, aliases, related compounds, protocols, datasets, biomarkers, and programs. Do not use when: Do not use for a customer-specific disease program name, pipeline stage, or project label. Sections: Overview, Mechanism, Associated Compounds, Associated Work (cold-start declaration) Links to: compound, protocol, dataset, initiative Declared metadata schema (retain source-supported values in cited page content; omit unsupported values): {\"aliases\": \"array<string>\", \"biomarkers\": \"array<string>\", \"disease_area\": \"string\", \"related_compounds\": \"array<wiki_link>\", \"related_datasets\": \"array<wiki_link>\", \"related_protocols\": \"array<wiki_link>\"} Aliases: indication, condition, phenotype, syndrome\n- experiment (Experiment): A specific study, assay run, test, analysis run, or trial-like activity. Use when: Use for a specific investigation with objective, setup, results, and interpretation. Do not use when: Do not use for reusable procedures; use protocol. Sections: Results (observed in 9 pages) Links to: protocol, dataset, compound, initiative Aliases: study, run, test\n- index (Index): A minimal structural container used to organize child pages. Use when: Use for navigation-only parent pages created to organize orphaned pages. Do not use when: Do not use for substantive knowledge pages. Aliases: container\n- initiative (Initiative): An ongoing program, project, effort, launch, or body of work. Use when: Use for pages centered on goals, scope, owners, status, timeline, and linked work. Do not use when: Do not encode a specific initiative name as a page type. Sections: Overview, Scope and Timeline, People, Outputs (cold-start declaration) Links to: person, organization, experiment, dataset Aliases: program, project, effort\n- meeting (Meeting): A meeting, call, workshop, review, or synchronous discussion. Use when: Use when the page is primarily a record of a dated discussion. Do not use when: Do not use for a decision extracted from a meeting; use decision for the decision page. Sections: Summary, Attendees, Decisions, Follow-ups (cold-start declaration) Links to: person, initiative, decision Aliases: call, workshop, review\n- organization (Organization): A company, institution, group, funder, vendor, partner, or formal team. Use when: Use for pages centered on a specific organization. Do not use when: Do not encode a specific customer, competitor, or project name as the page type. Sections: Overview, People, Work (cold-start declaration) Links to: person, initiative Aliases: company, institution, org\n- overview (Overview): A broad summary or landing page for a cluster of related pages. Use when: Use for project, area, or collection summaries that organize child pages. Do not use when: Do not use for thin redirect pages or generic containers; use index for structural containers. Sections: Overview, Key Areas (cold-start declaration) Aliases: summary\n- person (Person): An individual human with durable relevance. Use when: Use for pages centered on a specific person. Do not use when: Do not use for roles, teams, or organizations. Sections: Overview, Affiliations, Involvement (cold-start declaration) Links to: organization, initiative Aliases: individual\n- protocol (Protocol): A repeatable method, SOP, process, or workflow. Use when: Use for procedural pages with inputs, steps, parameters, controls, and outputs. Do not use when: Do not use for one-off results generated by following the method; use experiment or dataset. Sections: Purpose, Materials, Procedure (cold-start declaration) Links to: experiment Aliases: sop, method, workflow\n- topic (Topic): A general concept, theme, subject area, or reusable knowledge area. Use when: Use when no more specific ontology type applies. Do not use when: Do not use for clearly typed people, organizations, decisions, meetings, datasets, protocols, compounds, initiatives, or diseases. Sections: Overview (cold-start declaration) Aliases: concept, subject",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "ontology",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "List pages of a type with ls {page_type}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": []
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "proposals": {
+   "arguments": {},
+   "mcp": {
+    "content": "No pending proposals awaiting approval.",
+    "coverage": {
+     "command": "proposals",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "empty",
+     "total": null
+    },
+    "next": [
+     "Nothing matched: check the page name with completions {prefix}, widen `scope`, or search with sections {query}."
+    ],
+    "sources": [],
+    "status": "empty"
+   },
+   "rest_request": {
+    "command": "proposals",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "No pending proposals awaiting approval.",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "proposals",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "empty",
+     "total": null
+    },
+    "next": [
+     "Nothing matched: check the page name with completions {prefix}, widen `scope`, or search with sections {query}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "empty"
+    },
+    "sources": []
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "provenance": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "KB page ID: b4ba6ca5-fc2c-45d3-b094-876ac84da366\nPage: Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\n\nSection: Budget\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3}}\n    source_ref: beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980\n    \"The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190\n\nSection: Charter\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1}}\n    source_ref: beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15\n    \"Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n    source_ref: beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642\n    \"Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190\n\nSection: Lead decision\n  Date: 2024-09-09\n  - [support, inline] helios-go-decision-memo.docx (artifact, rev 1, key artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1) {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1}}\n    source_ref: beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771\n    \"On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate.\"\n    artifact_id: 2c4e5a7e-3ed5-401d-b0a8-4c77e65db072\n\nSection: Success criterion\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4}}\n    source_ref: beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09\n    \"Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190",
+    "coverage": {
+     "command": "provenance",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Read the cited source with sources {page} or read_file."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3",
+      "evidence": {
+       "excerpt": "The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Budget"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1",
+      "evidence": {
+       "excerpt": "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Charter"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Charter"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1",
+      "evidence": {
+       "excerpt": "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
+      },
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Lead decision"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4",
+      "evidence": {
+       "excerpt": "Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Success criterion"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09",
+      "status": {
+       "changed_since_cited": false
+      }
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "provenance",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "KB page ID: b4ba6ca5-fc2c-45d3-b094-876ac84da366\nPage: Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}\n\nSection: Budget\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3}}\n    source_ref: beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980\n    \"The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190\n\nSection: Charter\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1}}\n    source_ref: beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15\n    \"Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n    source_ref: beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642\n    \"Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190\n\nSection: Lead decision\n  Date: 2024-09-09\n  - [support, inline] helios-go-decision-memo.docx (artifact, rev 1, key artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1) {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1}}\n    source_ref: beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771\n    \"On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate.\"\n    artifact_id: 2c4e5a7e-3ed5-401d-b0a8-4c77e65db072\n\nSection: Success criterion\n  - [support, inline] helios-program-charter.pdf (artifact, rev 1, key artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4}}\n    source_ref: beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09\n    \"Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius.\"\n    artifact_id: 33a8787b-2e80-4d16-90dd-bd8f74f71190",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "provenance",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Read the cited source with sources {page} or read_file."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3",
+      "evidence": {
+       "excerpt": "The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Budget"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1",
+      "evidence": {
+       "excerpt": "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Charter"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Charter"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1",
+      "evidence": {
+       "excerpt": "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
+      },
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Lead decision"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4",
+      "evidence": {
+       "excerpt": "Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "section": {
+       "title": "Success criterion"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09",
+      "status": {
+       "changed_since_cited": false
+      }
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "references": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "Wiki links (3):\n  - Dana Whitfield {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}}\n  - Maja Lindqvist {{wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2}}\n  - Northwind Biosciences {{wiki:026339a1-d420-4ce8-9689-1605131d7a04}}\n\nProse mentions (1):\n  - Borealis BX-01 Membrane Permeability Assay {{wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3}}",
+    "coverage": {
+     "command": "references",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open a referencing page with cat {page}."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     },
+     {
+      "citation_key": "wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3",
+      "name": "Borealis BX-01 Membrane Permeability Assay",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "references",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Wiki links (3):\n  - Dana Whitfield {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}}\n  - Maja Lindqvist {{wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2}}\n  - Northwind Biosciences {{wiki:026339a1-d420-4ce8-9689-1605131d7a04}}\n\nProse mentions (1):\n  - Borealis BX-01 Membrane Permeability Assay {{wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3}}",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "references",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open a referencing page with cat {page}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     },
+     {
+      "citation_key": "wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:089ddfd6-04ab-4dde-909c-fed49b4eb5d2"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04"
+     },
+     {
+      "citation_key": "wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3",
+      "name": "Borealis BX-01 Membrane Permeability Assay",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:162d7a92-9955-460a-8fa2-ca5dc87863a3"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "rows": {
+   "arguments": {
+    "table": "facts"
+   },
+   "mcp": {
+    "content": "1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.\nKnowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.\n\n| entity | entity_type | attribute | value | when | sources | cite |\n| --- | --- | --- | --- | --- | --- | --- |\n| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8}} |",
+    "coverage": {
+     "command": "rows",
+     "complete": true,
+     "has_more": false,
+     "limit": 100,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": 0,
+     "returned": 1,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": 1
+    },
+    "next": [
+     "Cite a row with its cite token; open its card with cat {page} for context.",
+     "Narrow with entity, attribute or page_type, or set current_only for facts."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8",
+      "name": "Helios HX-07 Solubility Card \u203a Facts",
+      "section": {
+       "title": "Facts"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e#sec_facts"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "rows",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "table": "facts"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.\nKnowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.\n\n| entity | entity_type | attribute | value | when | sources | cite |\n| --- | --- | --- | --- | --- | --- | --- |\n| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8}} |",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "rows",
+     "complete": true,
+     "limit": 100,
+     "next_offset": null,
+     "offset": 0,
+     "returned": 1,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": 1
+    },
+    "next": [
+     "Cite a row with its cite token; open its card with cat {page} for context.",
+     "Narrow with entity, attribute or page_type, or set current_only for facts."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8",
+      "name": "Helios HX-07 Solubility Card \u203a Facts",
+      "section": {
+       "title": "Facts"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e#sec_facts"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "sections": {
+   "arguments": {
+    "query": "dose response"
+   },
+   "mcp": {
+    "content": "10 section result(s) for: 'dose response'\n\n1. [[Northwind Biosciences]] \u203a Overview {{wiki:026339a1-d420-4ce8-9689-1605131d7a04-s81ddd68a}} [match: strong]\n   (organization; 1 backlink)\n   Northwind Biosciences runs discovery programs in protein therapeutics. Its active programs are [[Project Helios]] and [[Project Borealis]], with shared program management.{{cite:org_chart#3}}\n   sources for this section: {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-3}}\n   page_id: 026339a1-d420-4ce8-9689-1605131d7a04  section_id: sec_overview\n2. [[Northwind Biosciences]] \u203a Leadership {{wiki:026339a1-d420-4ce8-9689-1605131d7a04-s78047867}} [match: strong]\n   (organization; 1 backlink)\n   [[Dana Whitfield]] directs protein sciences{{cite:org_chart#1}}, and [[Kwame Osei]] leads assay development under her.{{cite:org_chart#2}}\n   sources for this section: {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1}}, {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-2}}\n   page_id: 026339a1-d420-4ce8-9689-1605131d7a04  section_id: sec_leadership\n3. [[Northwind Biosciences]] \u203a Partners {{wiki:026339a1-d420-4ce8-9689-1605131d7a04-s62e6fd6b}} [match: strong]\n   (organization; 1 backlink)\n   Release testing is contracted to [[Kestrel Analytical CRO]] under a master services agreement.{{cite:kestrel_msa#1}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}\n   page_id: 026339a1-d420-4ce8-9689-1605131d7a04  section_id: sec_partners\n4. [[Kestrel Analytical CRO]] \u203a Overview {{wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348-s23735613}} [match: strong]\n   (organization; 2 backlinks)\n   Kestrel performs analytical release testing for [[Northwind Biosciences]] under a master services agreement.{{cite:kestrel_msa#1}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}\n   page_id: 7c430d3d-c1c1-4c7c-b121-a299dae2c348  section_id: sec_overview\n5. [[Kestrel Master Services Agreement]] \u203a Term {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d}} [match: strong]\n   (matter; 2024-03-01\u21922027-02-28; in Kestrel Analytical CRO)\n   Section date: event_start=2024-03-01; event_end=2027-02-28; date_precision=day\n   The agreement runs for three years from its 1 March 2024 effective date.{{cite:kestrel_msa#1}}{{cite:kestrel_msa#2}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}, {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-2}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_term\n6. [[Kestrel Master Services Agreement]] \u203a Termination {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s07aa0162}} [match: strong]\n   (matter; in Kestrel Analytical CRO)\n   Either side can walk away without cause by giving a quarter's written notice.{{cite:kestrel_msa#3}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-3}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_termination\n7. [[Kestrel Master Services Agreement]] \u203a Liability {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-sc9c08dba}} [match: strong]\n   (matter; in Kestrel Analytical CRO)\n   Kestrel's exposure is limited to twice the fees paid over the prior year, following Amendment No. 1.{{cite:kestrel_amendment#2}}\n   sources for this section: {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-2}}, {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-4}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_liability\n8. [[Kestrel Master Services Agreement]] \u203a Amendment No. 1 {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b}} [match: strong]\n   (matter; 2024-07-15; in Kestrel Analytical CRO)\n   Section date: event_start=2024-07-15; date_precision=day\n   Stability-indicating HPLC release testing joined the scope of services in July 2024.{{cite:kestrel_amendment#1}}\n   sources for this section: {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-1}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_amendment_1\n9. [[Dana Whitfield]] \u203a Role {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s7b985fca}} [match: strong]\n   (person; 3 backlinks)\n   Dana Whitfield is Director of Protein Sciences and reports to the Chief Scientific Officer.{{cite:org_chart#1}}\n   sources for this section: {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1}}\n   page_id: 8c9537b7-b6e2-4186-8b47-e103aa297c63  section_id: sec_role\n10. [[Dana Whitfield]] \u203a Programs {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s3df97e41}} [match: strong]\n   (person; 3 backlinks)\n   She is the principal investigator of [[Project Helios]].{{cite:helios_charter#2}}\n   sources for this section: {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n   page_id: 8c9537b7-b6e2-4186-8b47-e103aa297c63  section_id: sec_programs\n\nSources referenced above:\n  northwind-org-chart-2024.pdf\n    {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-3}}\n     source_ref: beakr-source:v1:3f025de7-279c-4660-bd50-4344c91cc580\n     \"Maja Lindqvist, Program Manager, supports Project Helios and Project Borealis.\" (unverified)\n    {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1}}\n     source_ref: beakr-source:v1:663c5e5b-937c-40e7-958c-93db41a2f525\n     \"Dana Whitfield, Director of Protein Sciences, reports to the Chief Scientific Officer.\" (unverified)\n    {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-2}}\n     source_ref: beakr-source:v1:3bfb742a-b8dd-420c-a411-91242b1f3ade\n     \"Kwame Osei, Senior Scientist, Assay Development, reports to Dana Whitfield.\" (unverified)\n  kestrel-master-services-agreement.pdf\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}\n     source_ref: beakr-source:v1:ce8a5aa5-08fd-44d3-a49c-3176607233a5\n     \"This Master Services Agreement between Northwind Biosciences and Kestrel Analytical CRO takes effect on 1 March 2024.\" (unverified)\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-2}}\n     source_ref: beakr-source:v1:d92f7de8-a6ed-4ab1-9eb1-fcdc7e9fad0a\n     \"The initial term is three years from the effective date.\" (unverified)\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-3}}\n     source_ref: beakr-source:v1:b4119907-9a09-4620-a9ab-ea0b93761dc2\n     \"Either party may terminate for convenience on ninety days' written notice.\" (unverified)\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-4}}\n     source_ref: beakr-source:v1:ca93ff1d-8224-442f-b040-f3417555096f\n     \"Kestrel's liability is capped at the fees paid in the twelve months preceding the claim.\" (unverified)\n  helios-program-charter.pdf\n    {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n     source_ref: beakr-source:v1:2e349355-e0d8-4c97-814b-f98163aa15c0\n     \"Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program.\" (unverified)\n  kestrel-msa-amendment-1.pdf\n    {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-2}}\n     source_ref: beakr-source:v1:04085f3e-8953-41f6-9ab9-98f9d5978b02\n     \"The liability cap is raised to two times the fees paid in the preceding twelve months.\" (unverified)\n    {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-1}}\n     source_ref: beakr-source:v1:a65b23e7-81cc-49a4-a8ea-be2ddaa443ea\n     \"Amendment No. 1 adds stability-indicating HPLC release testing to the scope of services, effective 15 July 2024.\" (unverified)\n\nNote: this list is the union over every result above. The \"sources for this section\" line under a result names the ones that support THAT section -- cite those for a claim you took from it, not this whole list. Read any cited artifact by passing its citation token above to artifact_download, which opens the exact cited version (the artifact_id alone opens the current one); sources with their own fetch/read line are opened that way instead. An excerpt marked (paraphrase) is the compiler's wording, not the source's -- open the source before quoting it.",
+    "coverage": {
+     "command": "sections",
+     "complete": null,
+     "has_more": false,
+     "limit": 10,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": 10,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open a hit with cat {page, section_id} using the hit's section id."
+    ],
+    "sources": [
+     {
+      "citation_key": "artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-3",
+      "evidence": {
+       "excerpt": "Maja Lindqvist, Program Manager, supports Project Helios and Project Borealis."
+      },
+      "filename": "northwind-org-chart-2024.pdf",
+      "location": {
+       "file_id": "9932182d-9a5e-49be-b461-5a2c35d0d2fc"
+      },
+      "name": "northwind-org-chart-2024.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:3f025de7-279c-4660-bd50-4344c91cc580",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1",
+      "evidence": {
+       "excerpt": "Dana Whitfield, Director of Protein Sciences, reports to the Chief Scientific Officer."
+      },
+      "filename": "northwind-org-chart-2024.pdf",
+      "location": {
+       "file_id": "9932182d-9a5e-49be-b461-5a2c35d0d2fc"
+      },
+      "name": "northwind-org-chart-2024.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:663c5e5b-937c-40e7-958c-93db41a2f525",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-2",
+      "evidence": {
+       "excerpt": "Kwame Osei, Senior Scientist, Assay Development, reports to Dana Whitfield."
+      },
+      "filename": "northwind-org-chart-2024.pdf",
+      "location": {
+       "file_id": "9932182d-9a5e-49be-b461-5a2c35d0d2fc"
+      },
+      "name": "northwind-org-chart-2024.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:3bfb742a-b8dd-420c-a411-91242b1f3ade",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1",
+      "evidence": {
+       "excerpt": "This Master Services Agreement between Northwind Biosciences and Kestrel Analytical CRO takes effect on 1 March 2024."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:ce8a5aa5-08fd-44d3-a49c-3176607233a5",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:2e349355-e0d8-4c97-814b-f98163aa15c0",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-2",
+      "evidence": {
+       "excerpt": "The initial term is three years from the effective date."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d92f7de8-a6ed-4ab1-9eb1-fcdc7e9fad0a",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-3",
+      "evidence": {
+       "excerpt": "Either party may terminate for convenience on ninety days' written notice."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:b4119907-9a09-4620-a9ab-ea0b93761dc2",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-2",
+      "evidence": {
+       "excerpt": "The liability cap is raised to two times the fees paid in the preceding twelve months."
+      },
+      "filename": "kestrel-msa-amendment-1.pdf",
+      "location": {
+       "file_id": "478e7376-da9d-4faf-a6fd-debdbb5333af"
+      },
+      "name": "kestrel-msa-amendment-1.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:04085f3e-8953-41f6-9ab9-98f9d5978b02",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-4",
+      "evidence": {
+       "excerpt": "Kestrel's liability is capped at the fees paid in the twelve months preceding the claim."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:ca93ff1d-8224-442f-b040-f3417555096f",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-1",
+      "evidence": {
+       "excerpt": "Amendment No. 1 adds stability-indicating HPLC release testing to the scope of services, effective 15 July 2024."
+      },
+      "filename": "kestrel-msa-amendment-1.pdf",
+      "location": {
+       "file_id": "478e7376-da9d-4faf-a6fd-debdbb5333af"
+      },
+      "name": "kestrel-msa-amendment-1.pdf",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-07-15"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:a65b23e7-81cc-49a4-a8ea-be2ddaa443ea",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04-s81ddd68a",
+      "name": "Northwind Biosciences \u203a Overview",
+      "section": {
+       "title": "Overview"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04#sec_overview"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04-s78047867",
+      "name": "Northwind Biosciences \u203a Leadership",
+      "section": {
+       "title": "Leadership"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04#sec_leadership"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04-s62e6fd6b",
+      "name": "Northwind Biosciences \u203a Partners",
+      "section": {
+       "title": "Partners"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04#sec_partners"
+     },
+     {
+      "citation_key": "wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348-s23735613",
+      "name": "Kestrel Analytical CRO \u203a Overview",
+      "section": {
+       "title": "Overview"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348#sec_overview"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d",
+      "name": "Kestrel Master Services Agreement \u203a Term",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01",
+       "title": "Term"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_term"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s07aa0162",
+      "name": "Kestrel Master Services Agreement \u203a Termination",
+      "section": {
+       "title": "Termination"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_termination"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-sc9c08dba",
+      "name": "Kestrel Master Services Agreement \u203a Liability",
+      "section": {
+       "title": "Liability"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_liability"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b",
+      "name": "Kestrel Master Services Agreement \u203a Amendment No. 1",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-07-15",
+       "title": "Amendment No. 1"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_amendment_1"
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s7b985fca",
+      "name": "Dana Whitfield \u203a Role",
+      "section": {
+       "title": "Role"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63#sec_role"
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s3df97e41",
+      "name": "Dana Whitfield \u203a Programs",
+      "section": {
+       "title": "Programs"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63#sec_programs"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "sections",
+    "query": "dose response",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "10 section result(s) for: 'dose response'\n\n1. [[Northwind Biosciences]] \u203a Overview {{wiki:026339a1-d420-4ce8-9689-1605131d7a04-s81ddd68a}} [match: strong]\n   (organization; 1 backlink)\n   Northwind Biosciences runs discovery programs in protein therapeutics. Its active programs are [[Project Helios]] and [[Project Borealis]], with shared program management.{{cite:org_chart#3}}\n   sources for this section: {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-3}}\n   page_id: 026339a1-d420-4ce8-9689-1605131d7a04  section_id: sec_overview\n2. [[Northwind Biosciences]] \u203a Leadership {{wiki:026339a1-d420-4ce8-9689-1605131d7a04-s78047867}} [match: strong]\n   (organization; 1 backlink)\n   [[Dana Whitfield]] directs protein sciences{{cite:org_chart#1}}, and [[Kwame Osei]] leads assay development under her.{{cite:org_chart#2}}\n   sources for this section: {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1}}, {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-2}}\n   page_id: 026339a1-d420-4ce8-9689-1605131d7a04  section_id: sec_leadership\n3. [[Northwind Biosciences]] \u203a Partners {{wiki:026339a1-d420-4ce8-9689-1605131d7a04-s62e6fd6b}} [match: strong]\n   (organization; 1 backlink)\n   Release testing is contracted to [[Kestrel Analytical CRO]] under a master services agreement.{{cite:kestrel_msa#1}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}\n   page_id: 026339a1-d420-4ce8-9689-1605131d7a04  section_id: sec_partners\n4. [[Kestrel Analytical CRO]] \u203a Overview {{wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348-s23735613}} [match: strong]\n   (organization; 2 backlinks)\n   Kestrel performs analytical release testing for [[Northwind Biosciences]] under a master services agreement.{{cite:kestrel_msa#1}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}\n   page_id: 7c430d3d-c1c1-4c7c-b121-a299dae2c348  section_id: sec_overview\n5. [[Kestrel Master Services Agreement]] \u203a Term {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d}} [match: strong]\n   (matter; 2024-03-01\u21922027-02-28; in Kestrel Analytical CRO)\n   Section date: event_start=2024-03-01; event_end=2027-02-28; date_precision=day\n   The agreement runs for three years from its 1 March 2024 effective date.{{cite:kestrel_msa#1}}{{cite:kestrel_msa#2}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}, {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-2}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_term\n6. [[Kestrel Master Services Agreement]] \u203a Termination {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s07aa0162}} [match: strong]\n   (matter; in Kestrel Analytical CRO)\n   Either side can walk away without cause by giving a quarter's written notice.{{cite:kestrel_msa#3}}\n   sources for this section: {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-3}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_termination\n7. [[Kestrel Master Services Agreement]] \u203a Liability {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-sc9c08dba}} [match: strong]\n   (matter; in Kestrel Analytical CRO)\n   Kestrel's exposure is limited to twice the fees paid over the prior year, following Amendment No. 1.{{cite:kestrel_amendment#2}}\n   sources for this section: {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-2}}, {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-4}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_liability\n8. [[Kestrel Master Services Agreement]] \u203a Amendment No. 1 {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b}} [match: strong]\n   (matter; 2024-07-15; in Kestrel Analytical CRO)\n   Section date: event_start=2024-07-15; date_precision=day\n   Stability-indicating HPLC release testing joined the scope of services in July 2024.{{cite:kestrel_amendment#1}}\n   sources for this section: {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-1}}\n   page_id: 30fa17f8-5c0e-4858-b142-501babb8e959  section_id: sec_amendment_1\n9. [[Dana Whitfield]] \u203a Role {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s7b985fca}} [match: strong]\n   (person; 3 backlinks)\n   Dana Whitfield is Director of Protein Sciences and reports to the Chief Scientific Officer.{{cite:org_chart#1}}\n   sources for this section: {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1}}\n   page_id: 8c9537b7-b6e2-4186-8b47-e103aa297c63  section_id: sec_role\n10. [[Dana Whitfield]] \u203a Programs {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s3df97e41}} [match: strong]\n   (person; 3 backlinks)\n   She is the principal investigator of [[Project Helios]].{{cite:helios_charter#2}}\n   sources for this section: {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n   page_id: 8c9537b7-b6e2-4186-8b47-e103aa297c63  section_id: sec_programs\n\nSources referenced above:\n  northwind-org-chart-2024.pdf\n    {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-3}}\n     source_ref: beakr-source:v1:3f025de7-279c-4660-bd50-4344c91cc580\n     \"Maja Lindqvist, Program Manager, supports Project Helios and Project Borealis.\" (unverified)\n    {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1}}\n     source_ref: beakr-source:v1:663c5e5b-937c-40e7-958c-93db41a2f525\n     \"Dana Whitfield, Director of Protein Sciences, reports to the Chief Scientific Officer.\" (unverified)\n    {{artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-2}}\n     source_ref: beakr-source:v1:3bfb742a-b8dd-420c-a411-91242b1f3ade\n     \"Kwame Osei, Senior Scientist, Assay Development, reports to Dana Whitfield.\" (unverified)\n  kestrel-master-services-agreement.pdf\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1}}\n     source_ref: beakr-source:v1:ce8a5aa5-08fd-44d3-a49c-3176607233a5\n     \"This Master Services Agreement between Northwind Biosciences and Kestrel Analytical CRO takes effect on 1 March 2024.\" (unverified)\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-2}}\n     source_ref: beakr-source:v1:d92f7de8-a6ed-4ab1-9eb1-fcdc7e9fad0a\n     \"The initial term is three years from the effective date.\" (unverified)\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-3}}\n     source_ref: beakr-source:v1:b4119907-9a09-4620-a9ab-ea0b93761dc2\n     \"Either party may terminate for convenience on ninety days' written notice.\" (unverified)\n    {{artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-4}}\n     source_ref: beakr-source:v1:ca93ff1d-8224-442f-b040-f3417555096f\n     \"Kestrel's liability is capped at the fees paid in the twelve months preceding the claim.\" (unverified)\n  helios-program-charter.pdf\n    {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}}\n     source_ref: beakr-source:v1:2e349355-e0d8-4c97-814b-f98163aa15c0\n     \"Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program.\" (unverified)\n  kestrel-msa-amendment-1.pdf\n    {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-2}}\n     source_ref: beakr-source:v1:04085f3e-8953-41f6-9ab9-98f9d5978b02\n     \"The liability cap is raised to two times the fees paid in the preceding twelve months.\" (unverified)\n    {{artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-1}}\n     source_ref: beakr-source:v1:a65b23e7-81cc-49a4-a8ea-be2ddaa443ea\n     \"Amendment No. 1 adds stability-indicating HPLC release testing to the scope of services, effective 15 July 2024.\" (unverified)\n\nNote: this list is the union over every result above. The \"sources for this section\" line under a result names the ones that support THAT section -- cite those for a claim you took from it, not this whole list. Read any cited artifact by passing its citation token above to artifact_download, which opens the exact cited version (the artifact_id alone opens the current one); sources with their own fetch/read line are opened that way instead. An excerpt marked (paraphrase) is the compiler's wording, not the source's -- open the source before quoting it.",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "sections",
+     "complete": null,
+     "limit": 10,
+     "next_offset": null,
+     "offset": null,
+     "returned": 10,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Open a hit with cat {page, section_id} using the hit's section id."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-3",
+      "evidence": {
+       "excerpt": "Maja Lindqvist, Program Manager, supports Project Helios and Project Borealis."
+      },
+      "filename": "northwind-org-chart-2024.pdf",
+      "location": {
+       "file_id": "9932182d-9a5e-49be-b461-5a2c35d0d2fc"
+      },
+      "name": "northwind-org-chart-2024.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:3f025de7-279c-4660-bd50-4344c91cc580",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-1",
+      "evidence": {
+       "excerpt": "Dana Whitfield, Director of Protein Sciences, reports to the Chief Scientific Officer."
+      },
+      "filename": "northwind-org-chart-2024.pdf",
+      "location": {
+       "file_id": "9932182d-9a5e-49be-b461-5a2c35d0d2fc"
+      },
+      "name": "northwind-org-chart-2024.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:663c5e5b-937c-40e7-958c-93db41a2f525",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:f3d8aa44-7c66-48db-89cc-7bbb41cc65bb-document-block-2",
+      "evidence": {
+       "excerpt": "Kwame Osei, Senior Scientist, Assay Development, reports to Dana Whitfield."
+      },
+      "filename": "northwind-org-chart-2024.pdf",
+      "location": {
+       "file_id": "9932182d-9a5e-49be-b461-5a2c35d0d2fc"
+      },
+      "name": "northwind-org-chart-2024.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:3bfb742a-b8dd-420c-a411-91242b1f3ade",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-1",
+      "evidence": {
+       "excerpt": "This Master Services Agreement between Northwind Biosciences and Kestrel Analytical CRO takes effect on 1 March 2024."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:ce8a5aa5-08fd-44d3-a49c-3176607233a5",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:2e349355-e0d8-4c97-814b-f98163aa15c0",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-2",
+      "evidence": {
+       "excerpt": "The initial term is three years from the effective date."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d92f7de8-a6ed-4ab1-9eb1-fcdc7e9fad0a",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-3",
+      "evidence": {
+       "excerpt": "Either party may terminate for convenience on ninety days' written notice."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:b4119907-9a09-4620-a9ab-ea0b93761dc2",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-2",
+      "evidence": {
+       "excerpt": "The liability cap is raised to two times the fees paid in the preceding twelve months."
+      },
+      "filename": "kestrel-msa-amendment-1.pdf",
+      "location": {
+       "file_id": "478e7376-da9d-4faf-a6fd-debdbb5333af"
+      },
+      "name": "kestrel-msa-amendment-1.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:04085f3e-8953-41f6-9ab9-98f9d5978b02",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:cbbb67fc-b878-4250-9db5-711a889b34fc-document-block-4",
+      "evidence": {
+       "excerpt": "Kestrel's liability is capped at the fees paid in the twelve months preceding the claim."
+      },
+      "filename": "kestrel-master-services-agreement.pdf",
+      "location": {
+       "file_id": "3572268e-e70c-4884-835e-7f79fe8a104d"
+      },
+      "name": "kestrel-master-services-agreement.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:ca93ff1d-8224-442f-b040-f3417555096f",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:49440ad7-56bc-4072-b3b0-63785bf1a448-document-block-1",
+      "evidence": {
+       "excerpt": "Amendment No. 1 adds stability-indicating HPLC release testing to the scope of services, effective 15 July 2024."
+      },
+      "filename": "kestrel-msa-amendment-1.pdf",
+      "location": {
+       "file_id": "478e7376-da9d-4faf-a6fd-debdbb5333af"
+      },
+      "name": "kestrel-msa-amendment-1.pdf",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-07-15"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:a65b23e7-81cc-49a4-a8ea-be2ddaa443ea",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04-s81ddd68a",
+      "name": "Northwind Biosciences \u203a Overview",
+      "section": {
+       "title": "Overview"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04#sec_overview"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04-s78047867",
+      "name": "Northwind Biosciences \u203a Leadership",
+      "section": {
+       "title": "Leadership"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04#sec_leadership"
+     },
+     {
+      "citation_key": "wiki:026339a1-d420-4ce8-9689-1605131d7a04-s62e6fd6b",
+      "name": "Northwind Biosciences \u203a Partners",
+      "section": {
+       "title": "Partners"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:026339a1-d420-4ce8-9689-1605131d7a04#sec_partners"
+     },
+     {
+      "citation_key": "wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348-s23735613",
+      "name": "Kestrel Analytical CRO \u203a Overview",
+      "section": {
+       "title": "Overview"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7c430d3d-c1c1-4c7c-b121-a299dae2c348#sec_overview"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d",
+      "name": "Kestrel Master Services Agreement \u203a Term",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01",
+       "title": "Term"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_term"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s07aa0162",
+      "name": "Kestrel Master Services Agreement \u203a Termination",
+      "section": {
+       "title": "Termination"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_termination"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-sc9c08dba",
+      "name": "Kestrel Master Services Agreement \u203a Liability",
+      "section": {
+       "title": "Liability"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_liability"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b",
+      "name": "Kestrel Master Services Agreement \u203a Amendment No. 1",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-07-15",
+       "title": "Amendment No. 1"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_amendment_1"
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s7b985fca",
+      "name": "Dana Whitfield \u203a Role",
+      "section": {
+       "title": "Role"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63#sec_role"
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63-s3df97e41",
+      "name": "Dana Whitfield \u203a Programs",
+      "section": {
+       "title": "Programs"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63#sec_programs"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "show": {
+   "arguments": {
+    "page": "Project Helios",
+    "rev": 1
+   },
+   "mcp": {
+    "content": "Revision 1 of Project Helios\n  By: synthetic-kb\n  Date: 2026-10-13\n\n(Initial revision -- no previous revision to diff against)",
+    "coverage": {
+     "command": "show",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Compare it with the current page using diff {page, rev}."
+    ],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "show",
+    "page": "Project Helios",
+    "rev": 1,
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Revision 1 of Project Helios\n  By: synthetic-kb\n  Date: 2026-10-13\n\n(Initial revision -- no previous revision to diff against)",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "show",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Compare it with the current page using diff {page, rev}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": []
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "sources": {
+   "arguments": {
+    "page": "Project Helios"
+   },
+   "mcp": {
+    "content": "KB page ID: b4ba6ca5-fc2c-45d3-b094-876ac84da366\n7 source(s) for Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}:\n\n  - helios-go-decision-memo.docx (artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6, origin: upload:synthetic_kb) {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6}}\n     also drawn on by 1 page(s): Decision: Helios Lead Selection {{wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4}}\n     source_ref: beakr-source:v1:dfedfbdc-afa4-4826-b72a-f57d86f95bf0\n     file: helios-go-decision-memo.docx\n     passages cited (1):\n       {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1}} \"On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate.\" -- backs Lead decision\n  - helios-program-charter.pdf (artifact:045e1737-2060-45f0-a7ab-c8e906018593, origin: upload:synthetic_kb) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593}}\n     also drawn on by 1 page(s): Dana Whitfield {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}}\n     source_ref: beakr-source:v1:0e9ba765-955c-4442-885d-ac6270a8d6c3\n     file: helios-program-charter.pdf\n     passages cited (4):\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1}} \"Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery.\" -- backs Charter\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}} \"Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program.\" -- backs Charter\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3}} \"The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee.\" -- backs Budget\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4}} \"Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius.\" -- backs Success criterion",
+    "coverage": {
+     "command": "sources",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Read a source's text with read_file {artifact_id} when you need exact values."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6",
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:dfedfbdc-afa4-4826-b72a-f57d86f95bf0",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1",
+      "evidence": {
+       "excerpt": "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
+      },
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4",
+      "name": "Decision: Helios Lead Selection",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4"
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593",
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:0e9ba765-955c-4442-885d-ac6270a8d6c3",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1",
+      "evidence": {
+       "excerpt": "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3",
+      "evidence": {
+       "excerpt": "The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4",
+      "evidence": {
+       "excerpt": "Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "sources",
+    "page": "Project Helios",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "KB page ID: b4ba6ca5-fc2c-45d3-b094-876ac84da366\n7 source(s) for Project Helios {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366}}:\n\n  - helios-go-decision-memo.docx (artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6, origin: upload:synthetic_kb) {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6}}\n     also drawn on by 1 page(s): Decision: Helios Lead Selection {{wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4}}\n     source_ref: beakr-source:v1:dfedfbdc-afa4-4826-b72a-f57d86f95bf0\n     file: helios-go-decision-memo.docx\n     passages cited (1):\n       {{artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1}} \"On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate.\" -- backs Lead decision\n  - helios-program-charter.pdf (artifact:045e1737-2060-45f0-a7ab-c8e906018593, origin: upload:synthetic_kb) {{artifact:045e1737-2060-45f0-a7ab-c8e906018593}}\n     also drawn on by 1 page(s): Dana Whitfield {{wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63}}\n     source_ref: beakr-source:v1:0e9ba765-955c-4442-885d-ac6270a8d6c3\n     file: helios-program-charter.pdf\n     passages cited (4):\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1}} \"Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery.\" -- backs Charter\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2}} \"Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program.\" -- backs Charter\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3}} \"The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee.\" -- backs Budget\n       {{artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4}} \"Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius.\" -- backs Success criterion",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "sources",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": null
+    },
+    "next": [
+     "Read a source's text with read_file {artifact_id} when you need exact values."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366"
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6",
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:dfedfbdc-afa4-4826-b72a-f57d86f95bf0",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:6ab7540d-9d8e-4016-8636-ecbbe57f12a6-document-block-1",
+      "evidence": {
+       "excerpt": "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
+      },
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+       "file_id": "2c4e5a7e-3ed5-401d-b0a8-4c77e65db072"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:c77c85aa-4441-412c-a3cc-4588a2618771",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4",
+      "name": "Decision: Helios Lead Selection",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4"
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593",
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:0e9ba765-955c-4442-885d-ac6270a8d6c3",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-1",
+      "evidence": {
+       "excerpt": "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:65612537-0e62-4b6d-8f09-4519b761ba15",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-2",
+      "evidence": {
+       "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:691662c2-1e11-439d-935c-39d214e21642",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-3",
+      "evidence": {
+       "excerpt": "The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:96d84eb3-58cd-4750-92dd-099227c67980",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "artifact:045e1737-2060-45f0-a7ab-c8e906018593-document-block-4",
+      "evidence": {
+       "excerpt": "Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+       "file_id": "33a8787b-2e80-4d16-90dd-bd8f74f71190"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:d194a84e-e233-4329-900d-f3e6e61a6f09",
+      "status": {
+       "changed_since_cited": false
+      }
+     },
+     {
+      "citation_key": "wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:8c9537b7-b6e2-4186-8b47-e103aa297c63"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "suggest_parent": {
+   "arguments": {
+    "title": "Helios HX-07 Stability Repeat"
+   },
+   "mcp": {
+    "content": "No parent candidates for 'Helios HX-07 Stability Repeat' from the link graph, and the semantic lookup could not run, so most of the evidence was never consulted. Try `sections <topic>` or `grep mode=semantic <topic>` for the area this belongs to, or `ls type=<type>` for an existing container, and name the parent yourself -- any page type may hold children, so a person, decision or meeting page is a valid parent.",
+    "coverage": {
+     "command": "suggest_parent",
+     "complete": null,
+     "has_more": false,
+     "limit": null,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "empty",
+     "total": null
+    },
+    "next": [
+     "Nothing matched: check the page name with completions {prefix}, widen `scope`, or search with sections {query}."
+    ],
+    "sources": [],
+    "status": "empty"
+   },
+   "rest_request": {
+    "command": "suggest_parent",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "title": "Helios HX-07 Stability Repeat"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "No parent candidates for 'Helios HX-07 Stability Repeat' from the link graph, and the semantic lookup could not run, so most of the evidence was never consulted. Try `sections <topic>` or `grep mode=semantic <topic>` for the area this belongs to, or `ls type=<type>` for an existing container, and name the parent yourself -- any page type may hold children, so a person, decision or meeting page is a valid parent.",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "suggest_parent",
+     "complete": null,
+     "limit": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": null,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "empty",
+     "total": null
+    },
+    "next": [
+     "Nothing matched: check the page name with completions {prefix}, widen `scope`, or search with sections {query}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "empty"
+    },
+    "sources": []
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "timeline": {
+   "arguments": {},
+   "mcp": {
+    "content": "11 event(s):\n\n  2024-02-12 [experiment] Design\n    Page: Helios HX-01 Thermal Stability Screen (369d59f5) {{wiki:369d59f5-8a1c-4722-b125-57beacb72420-sffdc794d}}\n  2024-03-01 to 2027-02-28 [matter] Term\n    Page: Kestrel Master Services Agreement (30fa17f8) {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d}}\n  2024-03-18 [experiment] Results\n    Page: Helios HX-02 Buffer Blocking Optimization (7995448a) {{wiki:7995448a-415b-4222-adf1-3305dda53578-sfa0dd1d3}}\n  2024-04-22 [experiment] Results\n    Page: Helios HX-04 Dose Response in Primary Cells (5f08de3b) {{wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011-sd5c64602}}\n  2024-06-27 [meeting] Experiment status\n    Page: Helios Q2 2024 Review (62cc5d90) {{wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5-s8990bab7}}\n  2024-07-15 [matter] Amendment No. 1\n    Page: Kestrel Master Services Agreement (30fa17f8) {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b}}\n  2024-08-05 [experiment] Results\n    Page: Helios HX-06 Dose Response Repeat (f30a8a74) {{wiki:f30a8a74-d79c-4777-8423-5064e4f124ec-s5e051b02}}\n  2024-09-09 [project] Lead decision\n    Page: Project Helios (b4ba6ca5) {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sacba1637}}\n  2024-09-09 [decision] Decision\n    Page: Decision: Helios Lead Selection (9a5638bf) {{wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4-sd6c9eb7e}}\n  2026-03-01 to 2026-03-31 (month) [experiment] Plates run: 2\n    Page: Helios HX-07 Solubility Card (79eda74b) {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8}}\n  2026-04-01 [experiment] result: Plate 2 failed QC.\n    Page: Helios HX-07 Solubility Card (79eda74b) {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e-s001c34ab}}",
+    "coverage": {
+     "command": "timeline",
+     "complete": true,
+     "has_more": false,
+     "limit": 50,
+     "next_cursor": null,
+     "next_offset": null,
+     "offset": null,
+     "returned": 11,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": 11
+    },
+    "next": [
+     "Open an event's page with cat {page}."
+    ],
+    "sources": [
+     {
+      "citation_key": "wiki:369d59f5-8a1c-4722-b125-57beacb72420-sffdc794d",
+      "name": "Helios HX-01 Thermal Stability Screen \u203a Design",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-02-12",
+       "title": "Design"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:369d59f5-8a1c-4722-b125-57beacb72420#sec_design"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d",
+      "name": "Kestrel Master Services Agreement \u203a Term",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01",
+       "title": "Term"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_term"
+     },
+     {
+      "citation_key": "wiki:7995448a-415b-4222-adf1-3305dda53578-sfa0dd1d3",
+      "name": "Helios HX-02 Buffer Blocking Optimization \u203a Results",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-03-18",
+       "title": "Results"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7995448a-415b-4222-adf1-3305dda53578#sec_results"
+     },
+     {
+      "citation_key": "wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011-sd5c64602",
+      "name": "Helios HX-04 Dose Response in Primary Cells \u203a Results",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-04-22",
+       "title": "Results"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011#sec_results"
+     },
+     {
+      "citation_key": "wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5-s8990bab7",
+      "name": "Helios Q2 2024 Review \u203a Experiment status",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-06-27",
+       "title": "Experiment status"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5#sec_experiment_status"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b",
+      "name": "Kestrel Master Services Agreement \u203a Amendment No. 1",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-07-15",
+       "title": "Amendment No. 1"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_amendment_1"
+     },
+     {
+      "citation_key": "wiki:f30a8a74-d79c-4777-8423-5064e4f124ec-s5e051b02",
+      "name": "Helios HX-06 Dose Response Repeat \u203a Results",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-08-05",
+       "title": "Results"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:f30a8a74-d79c-4777-8423-5064e4f124ec#sec_results"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sacba1637",
+      "name": "Project Helios \u203a Lead decision",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Lead decision"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_lead_decision"
+     },
+     {
+      "citation_key": "wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4-sd6c9eb7e",
+      "name": "Decision: Helios Lead Selection \u203a Decision",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Decision"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4#sec_decision"
+     },
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8",
+      "name": "Helios HX-07 Solubility Card \u203a Plates run: 2",
+      "section": {
+       "date_precision": "month",
+       "event_end": "2026-03-31",
+       "event_start": "2026-03-01",
+       "title": "Plates run: 2"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e#sec_facts"
+     },
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e-s001c34ab",
+      "name": "Helios HX-07 Solubility Card \u203a result: Plate 2 failed QC.",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2026-04-01",
+       "title": "result: Plate 2 failed QC."
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e#sec_findings"
+     }
+    ],
+    "status": "success"
+   },
+   "rest_request": {
+    "command": "timeline",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "11 event(s):\n\n  2024-02-12 [experiment] Design\n    Page: Helios HX-01 Thermal Stability Screen (369d59f5) {{wiki:369d59f5-8a1c-4722-b125-57beacb72420-sffdc794d}}\n  2024-03-01 to 2027-02-28 [matter] Term\n    Page: Kestrel Master Services Agreement (30fa17f8) {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d}}\n  2024-03-18 [experiment] Results\n    Page: Helios HX-02 Buffer Blocking Optimization (7995448a) {{wiki:7995448a-415b-4222-adf1-3305dda53578-sfa0dd1d3}}\n  2024-04-22 [experiment] Results\n    Page: Helios HX-04 Dose Response in Primary Cells (5f08de3b) {{wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011-sd5c64602}}\n  2024-06-27 [meeting] Experiment status\n    Page: Helios Q2 2024 Review (62cc5d90) {{wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5-s8990bab7}}\n  2024-07-15 [matter] Amendment No. 1\n    Page: Kestrel Master Services Agreement (30fa17f8) {{wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b}}\n  2024-08-05 [experiment] Results\n    Page: Helios HX-06 Dose Response Repeat (f30a8a74) {{wiki:f30a8a74-d79c-4777-8423-5064e4f124ec-s5e051b02}}\n  2024-09-09 [project] Lead decision\n    Page: Project Helios (b4ba6ca5) {{wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sacba1637}}\n  2024-09-09 [decision] Decision\n    Page: Decision: Helios Lead Selection (9a5638bf) {{wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4-sd6c9eb7e}}\n  2026-03-01 to 2026-03-31 (month) [experiment] Plates run: 2\n    Page: Helios HX-07 Solubility Card (79eda74b) {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8}}\n  2026-04-01 [experiment] result: Plate 2 failed QC.\n    Page: Helios HX-07 Solubility Card (79eda74b) {{wiki:79eda74b-762d-4ad3-9669-9050fa99235e-s001c34ab}}",
+      "type": "text"
+     }
+    ],
+    "coverage": {
+     "command": "timeline",
+     "complete": true,
+     "limit": 50,
+     "next_offset": null,
+     "offset": null,
+     "returned": 11,
+     "scope": {
+      "all_readable": false,
+      "project_ids": [
+       "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+      ]
+     },
+     "status": "success",
+     "total": 11
+    },
+    "next": [
+     "Open an event's page with cat {page}."
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    },
+    "sources": [
+     {
+      "citation_key": "wiki:369d59f5-8a1c-4722-b125-57beacb72420-sffdc794d",
+      "name": "Helios HX-01 Thermal Stability Screen \u203a Design",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-02-12",
+       "title": "Design"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:369d59f5-8a1c-4722-b125-57beacb72420#sec_design"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-scec4be5d",
+      "name": "Kestrel Master Services Agreement \u203a Term",
+      "section": {
+       "date_precision": "day",
+       "event_end": "2027-02-28",
+       "event_start": "2024-03-01",
+       "title": "Term"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_term"
+     },
+     {
+      "citation_key": "wiki:7995448a-415b-4222-adf1-3305dda53578-sfa0dd1d3",
+      "name": "Helios HX-02 Buffer Blocking Optimization \u203a Results",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-03-18",
+       "title": "Results"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:7995448a-415b-4222-adf1-3305dda53578#sec_results"
+     },
+     {
+      "citation_key": "wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011-sd5c64602",
+      "name": "Helios HX-04 Dose Response in Primary Cells \u203a Results",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-04-22",
+       "title": "Results"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:5f08de3b-ee64-4eeb-bdde-2e5a38eea011#sec_results"
+     },
+     {
+      "citation_key": "wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5-s8990bab7",
+      "name": "Helios Q2 2024 Review \u203a Experiment status",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-06-27",
+       "title": "Experiment status"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:62cc5d90-9de1-457d-8abe-cf13eb07e5e5#sec_experiment_status"
+     },
+     {
+      "citation_key": "wiki:30fa17f8-5c0e-4858-b142-501babb8e959-s0320f64b",
+      "name": "Kestrel Master Services Agreement \u203a Amendment No. 1",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-07-15",
+       "title": "Amendment No. 1"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:30fa17f8-5c0e-4858-b142-501babb8e959#sec_amendment_1"
+     },
+     {
+      "citation_key": "wiki:f30a8a74-d79c-4777-8423-5064e4f124ec-s5e051b02",
+      "name": "Helios HX-06 Dose Response Repeat \u203a Results",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-08-05",
+       "title": "Results"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:f30a8a74-d79c-4777-8423-5064e4f124ec#sec_results"
+     },
+     {
+      "citation_key": "wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366-sacba1637",
+      "name": "Project Helios \u203a Lead decision",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Lead decision"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:b4ba6ca5-fc2c-45d3-b094-876ac84da366#sec_lead_decision"
+     },
+     {
+      "citation_key": "wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4-sd6c9eb7e",
+      "name": "Decision: Helios Lead Selection \u203a Decision",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2024-09-09",
+       "title": "Decision"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:9a5638bf-79e4-451c-a361-0d5cd50dedb4#sec_decision"
+     },
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e-se7b12cb8",
+      "name": "Helios HX-07 Solubility Card \u203a Plates run: 2",
+      "section": {
+       "date_precision": "month",
+       "event_end": "2026-03-31",
+       "event_start": "2026-03-01",
+       "title": "Plates run: 2"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e#sec_facts"
+     },
+     {
+      "citation_key": "wiki:79eda74b-762d-4ad3-9669-9050fa99235e-s001c34ab",
+      "name": "Helios HX-07 Solubility Card \u203a result: Plate 2 failed QC.",
+      "section": {
+       "date_precision": "day",
+       "event_start": "2026-04-01",
+       "title": "result: Plate 2 failed QC."
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:79eda74b-762d-4ad3-9669-9050fa99235e#sec_findings"
+     }
+    ]
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  }
+ },
+ "writes": {
+  "add_connection": {
+   "arguments": {
+    "evidence": "{{artifact:656665cc-4d16-4889-b2a1-46dc8b77257e-document-block-1}}",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for add_connection.",
+    "relation": "Follows",
+    "to": "Protocol: Thermal Shift Assay"
+   },
+   "mcp": {
+    "content": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_connections, rev 1).\nSummary: Add connection: Follows Protocol: Thermal Shift Assay\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "add_connection",
+    "evidence": "{{artifact:656665cc-4d16-4889-b2a1-46dc8b77257e-document-block-1}}",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for add_connection.",
+    "relation": "Follows",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "to": "Protocol: Thermal Shift Assay"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_connections, rev 1).\nSummary: Add connection: Follows Protocol: Thermal Shift Assay\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "add_fact": {
+   "arguments": {
+    "attribute": "Operator",
+    "evidence": "{{artifact:656665cc-4d16-4889-b2a1-46dc8b77257e-document-block-1}}",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for add_fact.",
+    "value": "Kim",
+    "when": "2026-05-02"
+   },
+   "mcp": {
+    "content": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_facts, rev 1).\nSummary: Add fact: Operator: Kim\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "add_fact",
+    "attribute": "Operator",
+    "evidence": "{{artifact:656665cc-4d16-4889-b2a1-46dc8b77257e-document-block-1}}",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for add_fact.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "value": "Kim",
+    "when": "2026-05-02"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_facts, rev 1).\nSummary: Add fact: Operator: Kim\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "add_finding": {
+   "arguments": {
+    "date": "2026-06-20",
+    "evidence": "{{artifact:656665cc-4d16-4889-b2a1-46dc8b77257e-document-block-1}}",
+    "kind": "decision",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for add_finding.",
+    "text": "Report the screen under HX-01."
+   },
+   "mcp": {
+    "content": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_findings, rev 1).\nSummary: Add decision finding: Report the screen under HX-01.\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "add_finding",
+    "date": "2026-06-20",
+    "evidence": "{{artifact:656665cc-4d16-4889-b2a1-46dc8b77257e-document-block-1}}",
+    "kind": "decision",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for add_finding.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "text": "Report the screen under HX-01."
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_findings, rev 1).\nSummary: Add decision finding: Report the screen under HX-01.\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "archive": {
+   "arguments": {
+    "page": "Helios HX-05 Scale-up Feasibility (Draft)",
+    "rationale": "Shape parity check for archive."
+   },
+   "mcp": {
+    "content": "Proposed archiving \"Helios HX-05 Scale-up Feasibility (Draft)\".\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "archive",
+    "page": "Helios HX-05 Scale-up Feasibility (Draft)",
+    "rationale": "Shape parity check for archive.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed archiving \"Helios HX-05 Scale-up Feasibility (Draft)\".\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "copy": {
+   "arguments": {
+    "page": "Protocol: Thermal Shift Assay",
+    "rationale": "Shape parity check for copy.",
+    "source_scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "mcp": {
+    "content": "Proposed copying 1 page(s) to Shape parity copy target:\n- Protocol: Thermal Shift Assay [protocol]\n\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "copy",
+    "page": "Protocol: Thermal Shift Assay",
+    "rationale": "Shape parity check for copy.",
+    "scope": "6a10f730-b6e4-4837-a127-316470259e6e",
+    "source_scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed copying 1 page(s) to Shape parity copy target:\n- Protocol: Thermal Shift Assay [protocol]\n\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "6a10f730-b6e4-4837-a127-316470259e6e"
+  },
+  "edit": {
+   "arguments": {
+    "page": "Helios HX-01 Thermal Stability Screen",
+    "patches": [
+     {
+      "find": "Twelve",
+      "op": "replace_text",
+      "replace": "Twelve (12)"
+     }
+    ],
+    "rationale": "Shape parity check for edit."
+   },
+   "mcp": {
+    "content": "Proposed edit to \"Helios HX-01 Thermal Stability Screen\" (rev 1).\nSummary: \nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "edit",
+    "page": "Helios HX-01 Thermal Stability Screen",
+    "patches": [
+     {
+      "find": "Twelve",
+      "op": "replace_text",
+      "replace": "Twelve (12)"
+     }
+    ],
+    "rationale": "Shape parity check for edit.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed edit to \"Helios HX-01 Thermal Stability Screen\" (rev 1).\nSummary: \nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "edit_rows": {
+   "arguments": {
+    "old_rows": [
+     {
+      "attribute": "Plates run",
+      "value": "2"
+     }
+    ],
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for edit_rows.",
+    "reason": "The plate log shows a third plate.",
+    "rows": [
+     {
+      "attribute": "Plates run",
+      "value": "3"
+     }
+    ],
+    "table": "facts"
+   },
+   "mcp": {
+    "content": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_facts, rev 1).\nSummary: Edit facts: 1 rows replaced by 1 (The plate log shows a third plate.)\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "edit_rows",
+    "old_rows": [
+     {
+      "attribute": "Plates run",
+      "value": "2"
+     }
+    ],
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for edit_rows.",
+    "reason": "The plate log shows a third plate.",
+    "rows": [
+     {
+      "attribute": "Plates run",
+      "value": "3"
+     }
+    ],
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "table": "facts"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_facts, rev 1).\nSummary: Edit facts: 1 rows replaced by 1 (The plate log shows a third plate.)\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "edit_section": {
+   "arguments": {
+    "new_section_body": "The program budget is 2.4M USD.",
+    "page": "Project Helios",
+    "rationale": "Shape parity check for edit_section.",
+    "section_id": "sec_budget"
+   },
+   "mcp": {
+    "content": "Proposed section edit to \"Project Helios\" (section: sec_budget, rev 1).\nSummary: \nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "edit_section",
+    "new_section_body": "The program budget is 2.4M USD.",
+    "page": "Project Helios",
+    "rationale": "Shape parity check for edit_section.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "section_id": "sec_budget"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed section edit to \"Project Helios\" (section: sec_budget, rev 1).\nSummary: \nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "find_replace": {
+   "arguments": {
+    "rationale": "Shape parity check for find_replace.",
+    "replacements": [
+     {
+      "find": "NW-200",
+      "replace": "NW-201"
+     }
+    ]
+   },
+   "mcp": {
+    "content": "Found 2 match(es) across 2 page(s) in Synthetic KB f5d3ef14:\n\n  Project Helios (project) -- 1 match(es)\n    L4: ...ts to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:045e1737...\n      [NW-200 -> NW-201]\n\n  Helios HX-01 Thermal Stability Screen (experiment) -- 1 match(es)\n    L4: ...Twelve NW-200 variants were screened by differential scanning fluorimetry following [[Protocol: Ther...\n      [NW-200 -> NW-201]\n\nSummary: Replace 'NW-200' -> 'NW-201' across 2 page(s)\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "find_replace",
+    "rationale": "Shape parity check for find_replace.",
+    "replacements": [
+     {
+      "find": "NW-200",
+      "replace": "NW-201"
+     }
+    ],
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Found 2 match(es) across 2 page(s) in Synthetic KB f5d3ef14:\n\n  Project Helios (project) -- 1 match(es)\n    L4: ...ts to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:045e1737...\n      [NW-200 -> NW-201]\n\n  Helios HX-01 Thermal Stability Screen (experiment) -- 1 match(es)\n    L4: ...Twelve NW-200 variants were screened by differential scanning fluorimetry following [[Protocol: Ther...\n      [NW-200 -> NW-201]\n\nSummary: Replace 'NW-200' -> 'NW-201' across 2 page(s)\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "flag": {
+   "arguments": {
+    "concern": "unverifiable",
+    "details": "The HX-01 report names two plates; the card cites nothing newer.",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for flag.",
+    "reason": "The plate count of 2 needs the bench log to confirm a third plate.",
+    "section_id": "sec_facts"
+   },
+   "mcp": {
+    "content": "Flagged 'Helios HX-07 Solubility Card' (sec_facts) for review (unverifiable): The plate count of 2 needs the bench log to confirm a third plate. It is in the Knowledge inbox for a person to decide. The page itself is unchanged -- write what the sources establish separately.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "flag",
+    "concern": "unverifiable",
+    "details": "The HX-01 report names two plates; the card cites nothing newer.",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for flag.",
+    "reason": "The plate count of 2 needs the bench log to confirm a third plate.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "section_id": "sec_facts"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Flagged 'Helios HX-07 Solubility Card' (sec_facts) for review (unverifiable): The plate count of 2 needs the bench log to confirm a third plate. It is in the Knowledge inbox for a person to decide. The page itself is unchanged -- write what the sources establish separately.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "merge": {
+   "arguments": {
+    "canonical": "Helios HX-04 Dose Response in Primary Cells",
+    "page": "Helios HX-06 Dose Response Repeat",
+    "rationale": "Shape parity check for merge."
+   },
+   "mcp": {
+    "content": "Proposed merging \"Helios HX-06 Dose Response Repeat\" into \"Helios HX-04 Dose Response in Primary Cells\".\nAliases that will carry over: 'Helios HX-06 Dose Response Repeat'\nInbound links that will be retargeted: 2.\nNOTE: the identity gate would not let an agent perform this merge unattended -- nothing on record says 'Helios HX-06 Dose Response Repeat' and 'Helios HX-04 Dose Response in Primary Cells' name the same thing: neither is the other's numbered duplicate, neither page records the other's title as a former name, one name is not contained in the other, or the two pages have different page types. A one-word title counts as a short form only for a person, and only against their two-word full name. The proposal records that, so present it as a question for the user rather than as a correction you have already made.\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "merge",
+    "canonical": "Helios HX-04 Dose Response in Primary Cells",
+    "page": "Helios HX-06 Dose Response Repeat",
+    "rationale": "Shape parity check for merge.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed merging \"Helios HX-06 Dose Response Repeat\" into \"Helios HX-04 Dose Response in Primary Cells\".\nAliases that will carry over: 'Helios HX-06 Dose Response Repeat'\nInbound links that will be retargeted: 2.\nNOTE: the identity gate would not let an agent perform this merge unattended -- nothing on record says 'Helios HX-06 Dose Response Repeat' and 'Helios HX-04 Dose Response in Primary Cells' name the same thing: neither is the other's numbered duplicate, neither page records the other's title as a former name, one name is not contained in the other, or the two pages have different page types. A one-word title counts as a short form only for a person, and only against their two-word full name. The proposal records that, so present it as a question for the user rather than as a correction you have already made.\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "mv": {
+   "arguments": {
+    "page": "Helios HX-05 Scale-up Feasibility (Draft)",
+    "rationale": "Shape parity check for mv.",
+    "title": "Helios HX-05 Scale-up Feasibility"
+   },
+   "mcp": {
+    "content": "Proposed in Synthetic KB f5d3ef14: rename to \"Helios HX-05 Scale-up Feasibility\" for \"Helios HX-05 Scale-up Feasibility (Draft)\".\nWaiting for user approval.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "mv",
+    "page": "Helios HX-05 Scale-up Feasibility (Draft)",
+    "rationale": "Shape parity check for mv.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "title": "Helios HX-05 Scale-up Feasibility"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed in Synthetic KB f5d3ef14: rename to \"Helios HX-05 Scale-up Feasibility\" for \"Helios HX-05 Scale-up Feasibility (Draft)\".\nWaiting for user approval.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "new": {
+   "arguments": {
+    "page_type": "experiment",
+    "rationale": "Shape parity check for new.",
+    "sections": [
+     {
+      "body": "Repeat the HX-01 screen.",
+      "title": "Plan"
+     }
+    ],
+    "summary": "A repeat of the HX-01 screen.",
+    "title": "Helios HX-07 Stability Repeat"
+   },
+   "mcp": {
+    "content": "Proposed new page: \"Helios HX-07 Stability Repeat\" [experiment] in Synthetic KB f5d3ef14\nSummary: A repeat of the HX-01 screen.\nPROPOSAL pending \u2014 this is NOT yet a published page. It will not appear in ls, cat, search, or the browsable list until the user approves it, and it has no revision yet. Do not describe it as an existing/created page or claim it is live. Use `knowledge_base proposals` to check its status.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "new",
+    "page_type": "experiment",
+    "rationale": "Shape parity check for new.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "sections": [
+     {
+      "body": "Repeat the HX-01 screen.",
+      "title": "Plan"
+     }
+    ],
+    "summary": "A repeat of the HX-01 screen.",
+    "title": "Helios HX-07 Stability Repeat"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Proposed new page: \"Helios HX-07 Stability Repeat\" [experiment] in Synthetic KB f5d3ef14\nSummary: A repeat of the HX-01 screen.\nPROPOSAL pending \u2014 this is NOT yet a published page. It will not appear in ls, cat, search, or the browsable list until the user approves it, and it has no revision yet. Do not describe it as an existing/created page or claim it is live. Use `knowledge_base proposals` to check its status.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "page_type": {
+   "arguments": {
+    "description": "A set of assays planned and run together against one question.",
+    "key": "assay_panel",
+    "label": "Assay panel",
+    "rationale": "Panels recur across programs and are neither experiments nor protocols.",
+    "when_to_use": "When several assays share one plan, owner and readout."
+   },
+   "mcp": {
+    "content": "Page type assay_panel (Assay panel) is active in Synthetic KB f5d3ef14. Verifier: approve_proposed. Approved: no duplicate or over-specific key detected.",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "page_type",
+    "description": "A set of assays planned and run together against one question.",
+    "key": "assay_panel",
+    "label": "Assay panel",
+    "rationale": "Panels recur across programs and are neither experiments nor protocols.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "when_to_use": "When several assays share one plan, owner and readout."
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Page type assay_panel (Assay panel) is active in Synthetic KB f5d3ef14. Verifier: approve_proposed. Approved: no duplicate or over-specific key detected.",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [],
+     "committed_revisions": {},
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  },
+  "sort_table": {
+   "arguments": {
+    "order_by": "attribute",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for sort_table.",
+    "table": "facts"
+   },
+   "mcp": {
+    "content": "Updated section 'sec_facts' of \"Helios HX-07 Solubility Card\" (rev 2).",
+    "coverage": {
+     "complete": true,
+     "has_more": false,
+     "next_cursor": null,
+     "returned": null
+    },
+    "next": [],
+    "sources": [],
+    "status": "success"
+   },
+   "rest_request": {
+    "action": "sort_table",
+    "order_by": "attribute",
+    "page": "Helios HX-07 Solubility Card",
+    "rationale": "Shape parity check for sort_table.",
+    "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b",
+    "table": "facts"
+   },
+   "rest_response": {
+    "content": [
+     {
+      "text": "Updated section 'sec_facts' of \"Helios HX-07 Solubility Card\" (rev 2).",
+      "type": "text"
+     }
+    ],
+    "outcome": {
+     "commit_ids": [],
+     "committed_page_ids": [
+      "79eda74b-762d-4ad3-9669-9050fa99235e"
+     ],
+     "committed_revisions": {
+      "79eda74b-762d-4ad3-9669-9050fa99235e": 2
+     },
+     "error_code": null,
+     "protocol": "beakr.wiki_tool_outcome.v1",
+     "status": "success"
+    }
+   },
+   "scope": "c4bcdf9c-21c2-4dd4-a737-3b4e3fc8527b"
+  }
+ }
+}

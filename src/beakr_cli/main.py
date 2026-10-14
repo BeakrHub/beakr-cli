@@ -1,25 +1,96 @@
-"""Entry point for the beakr CLI."""
+"""Entry point for the beakr CLI.
+
+``internal_app`` is every command the CLI has; ``app``, the entry point, is the
+published part of it (:mod:`beakr_cli.command_surface`): the commands over the
+documented API plus sign-in, hooks, install, ``doctor``, the Codex wrapper and
+the MCP server. The rest stay in ``internal_app`` for tests and later exposure.
+"""
 
 from __future__ import annotations
 
 import typer
 
-from beakr_cli.commands.auth import app as auth_app
+from beakr_cli.command_surface import core_tree
+from beakr_cli.commands import (
+    activity,
+    auth,
+    codex_wrapper,
+    doctor,
+    end_user_tokens,
+    external_users,
+    files,
+    hooks,
+    integrations,
+    interview_links,
+    interviews,
+    jobs,
+    kb_cards,
+    kb_entities,
+    keys,
+    labels,
+    members,
+    memory,
+    memory_store,
+    org,
+    outputs,
+    profile,
+    project_members,
+    projects,
+    runs,
+    skills,
+    usage,
+    workflows,
+)
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.commands.workspace import app as workspace_app
+from beakr_cli.errors import BeakrGroup
+from beakr_cli.project_ref import project_ref_callback
 
-app = typer.Typer(
+internal_app = typer.Typer(
     name="beakr",
+    # Maps API errors to stable exit codes: 3 auth, 4 not found, 5 conflict.
+    cls=BeakrGroup,
     help=(
-        "CLI for Beakr's knowledge base. Query, search, and browse your team's "
-        "knowledge base from the terminal."
+        "CLI for Beakr: sign in, manage projects and members, upload files, read and "
+        "write Knowledge, sync skills, and connect Claude Code and Codex. Every command "
+        "takes --json; exit codes: 0 ok, 1 error, 2 usage, 3 auth, 4 not found, 5 conflict."
     ),
     no_args_is_help=True,
 )
 
-app.add_typer(auth_app, name="auth")
-app.add_typer(kb_app, name="kb")
-app.add_typer(workspace_app, name="workspace")
+internal_app.add_typer(kb_app, name="kb")
+internal_app.add_typer(workspace_app, name="workspace")
+for _module in (
+    auth,
+    codex_wrapper,
+    keys,
+    projects,
+    project_members,
+    members,
+    org,
+    files,
+    kb_cards,
+    kb_entities,
+    profile,
+    skills,
+    memory,
+    memory_store,
+    hooks,
+    activity,
+    integrations,
+    runs,
+    workflows,
+    outputs,
+    interviews,
+    interview_links,
+    end_user_tokens,
+    external_users,
+    labels,
+    jobs,
+    usage,
+    doctor,
+):
+    _module.register(internal_app)
 
 
 #: Commands that must not print the stale-version notice: ``mcp`` owns stdio for
@@ -27,14 +98,43 @@ app.add_typer(workspace_app, name="workspace")
 _NO_UPDATE_NOTICE = frozenset({"mcp", "version", "update"})
 
 
-@app.callback()
-def _main(ctx: typer.Context) -> None:
-    """Tell an interactive user, at most once a day of checking, that they are behind."""
+def _print_version(value: bool) -> None:
+    """``beakr --version``: the installed version, offline (``beakr version`` checks PyPI)."""
+    if value:
+        from beakr_cli import __version__
+
+        print(f"beakr-cli {__version__}")
+        raise typer.Exit()
+
+
+@internal_app.callback()
+def _main(
+    ctx: typer.Context,
+    show_version: bool = typer.Option(
+        False,
+        "--version",
+        "-V",
+        is_eager=True,
+        callback=_print_version,
+        help="Print the CLI version and exit (`beakr version` also checks for updates).",
+    ),
+) -> None:
+    """Move any key an older CLI left in config.json; tell an interactive user they are behind."""
     import sys
+
+    from beakr_cli import config
+    from beakr_cli.output import err_console
+
+    try:
+        # CLI 0.3.x saved API keys in plain text in config.json (0644).
+        config.migrate_secrets()
+    except Exception as exc:  # never block the command; the key still works from there
+        err_console.print(
+            f"[yellow]Could not move the saved API key to secure storage: {exc}[/yellow]"
+        )
 
     if ctx.invoked_subcommand in _NO_UPDATE_NOTICE or not sys.stderr.isatty():
         return
-    from beakr_cli.output import err_console
     from beakr_cli.updates import get_update_status
 
     status = get_update_status(timeout=1.5)
@@ -45,15 +145,33 @@ def _main(ctx: typer.Context) -> None:
         )
 
 
-@app.command()
+_json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
+
+
+@internal_app.command()
 def version(
     offline: bool = typer.Option(False, "--offline", help="Do not check PyPI."),
+    json_out: bool = _json_opt,
 ) -> None:
     """Show the CLI version and whether a newer release is available."""
     from datetime import timedelta
 
     from beakr_cli import __version__
+    from beakr_cli.output import print_json
     from beakr_cli.updates import detect_install, get_update_status
+
+    if json_out:
+        report: dict[str, object] = {"version": __version__}
+        if not offline:
+            status = get_update_status(max_age=timedelta(hours=1))
+            report.update(
+                latest=status.latest,
+                update_available=status.update_available,
+                published_older=status.published_older,
+                instructions=detect_install().instructions if status.update_available else None,
+            )
+        print_json(report)
+        return
 
     # The first line stays machine-readable: `beakr update` parses it from the
     # upgraded binary to confirm what is now on PATH.
@@ -61,7 +179,9 @@ def version(
     if offline:
         return
     status = get_update_status(max_age=timedelta(hours=1))
-    if status.latest is None:
+    if status.latest is None and status.published_older is not None:
+        print(f"This build is newer than the latest release ({status.published_older})")
+    elif status.latest is None:
         print("Latest release: unknown (PyPI could not be checked)")
     elif status.update_available:
         print(f"Update available: {status.latest}. {detect_install().instructions}")
@@ -69,7 +189,7 @@ def version(
         print(f"No newer release (latest release: {status.latest})")
 
 
-@app.command()
+@internal_app.command()
 def update(
     check: bool = typer.Option(
         False, "--check", help="Only report whether an update is available."
@@ -77,8 +197,19 @@ def update(
     force: bool = typer.Option(
         False, "--force", "-f", help="Run the upgrade even if already on the latest release."
     ),
+    json_out: bool = _json_opt,
 ) -> None:
     """Upgrade beakr-cli to the latest release and refresh installed skills."""
+    from beakr_cli.output import human_output_to_stderr, print_json
+
+    with human_output_to_stderr(json_out):
+        result = _update(check=check, force=force)
+    if json_out:
+        print_json(result)
+
+
+def _update(*, check: bool, force: bool) -> dict[str, object]:
+    """``beakr update``; human progress goes to ``console``, the outcome is returned."""
     from datetime import timedelta
 
     from beakr_cli.output import console, err_console
@@ -90,22 +221,31 @@ def update(
     )
 
     status = get_update_status(max_age=timedelta(0))
+    report: dict[str, object] = {
+        "current": status.current,
+        "latest": status.latest,
+        "update_available": status.update_available,
+        "updated": False,
+    }
     info = detect_install()
     if status.latest is None:
-        err_console.print("[yellow]Could not reach PyPI to check the latest release.[/yellow]")
+        err_console.print(
+            "[yellow]Could not determine the latest release: PyPI was unreachable or is "
+            "still publishing a new release. Try again in a few minutes.[/yellow]"
+        )
         if check or not force:
             raise typer.Exit(1)
     elif not status.update_available and not force:
         console.print(
             f"No update needed: installed {status.current}, latest release {status.latest}."
         )
-        return
+        return report
     else:
         console.print(f"Installed: {status.current}   Latest: {status.latest}")
 
     if check:
         console.print(info.instructions)
-        return
+        return {**report, "instructions": info.instructions}
 
     if info.upgrade_command is None:
         err_console.print(
@@ -123,9 +263,10 @@ def update(
     now = installed_version_on_path() or "unknown"
     console.print(f"[green]{result.message}[/green] beakr on PATH is now {now}.")
     console.print("Restart Claude Code / Codex so they launch the new MCP server.")
+    return {**report, "updated": True, "on_path": now}
 
 
-@app.command()
+@internal_app.command()
 def research(
     query: str = typer.Argument(..., help="The question to answer."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
@@ -133,70 +274,41 @@ def research(
         None,
         "--project",
         "-P",
-        help="Project ID to scope the query.",
+        "--scope",
+        help="Project id, slug or name to scope the query.",
+        callback=project_ref_callback,
     ),
 ) -> None:
     """Ask a question and get a researched answer with citations."""
-    from beakr_cli.client import api_post, scope_params
-    from beakr_cli.output import console, err_console, is_piped, print_json, print_markdown
+    from beakr_cli.cited_answer import print_research_result, research_lines
+    from beakr_cli.output import err_console, machine_output
+    from beakr_cli.scope import scope_params
+    from beakr_cli.sdk import get_sdk
 
-    params = scope_params(project=project)
-    body = {"query": query, **params}
+    project_id = scope_params(project=project).get("project_id")
 
     err_console.print("[dim]Researching...[/dim]")
     try:
-        data = api_post("/v1/knowledge/research", json=body)
+        with get_sdk() as sdk:
+            data = sdk.knowledge.research(query, project_id=project_id)
     except Exception as e:
         err_console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)
 
-    if json_out or is_piped():
-        print_json(data)
+    if machine_output(data, json_out=json_out, lines=research_lines):
         return
 
-    import re
-
-    answer = data.get("answer", "")
-    sources = data.get("sources", {})
-
-    # Replace {{key}} tokens with [N] numbered refs
-    seen_keys: list[str] = []
-    def _replace_token(m):
-        key = m.group(1)
-        if key not in seen_keys:
-            seen_keys.append(key)
-        return f"[{seen_keys.index(key) + 1}]"
-
-    formatted = re.sub(r"\{\{([^}]+)\}\}", _replace_token, answer)
-    if formatted:
-        print_markdown(formatted)
-
-    if seen_keys:
-        console.print("\n[bold]Sources:[/bold]")
-        for i, key in enumerate(seen_keys, 1):
-            src = sources.get(key, {})
-            source_type = src.get("type", key.split(":")[0] if ":" in key else "unknown")
-            title = src.get("title", "")
-            url = src.get("web_view_url", "")
-            line = f"  [{i}] ({source_type}) {title}"
-            if url:
-                line += f"\n      {url}"
-            console.print(line)
-
-    confidence = data.get("confidence", "")
-    gaps = data.get("gaps", "")
-    meta_parts = []
-    if confidence:
-        meta_parts.append(f"Confidence: {confidence}")
-    if gaps:
-        meta_parts.append(f"Gaps: {gaps}")
-    if meta_parts:
-        console.print(f"\n[dim]{' | '.join(meta_parts)}[/dim]")
+    print_research_result(data)
 
 
-@app.command()
+@internal_app.command()
 def mcp() -> None:
-    """Start the MCP server for Claude Code / AI assistant integration."""
+    """Start the MCP server for Claude Code / AI assistant integration.
+
+    Speaks MCP over stdio; there is no --json.
+    """
+    # No --json: stdout carries the MCP protocol itself (see JSON_EXEMPT_COMMANDS
+    # in tests/test_cli_json_everywhere.py).
     from beakr_cli.mcp_server import run_server
 
     run_server()
@@ -218,7 +330,7 @@ def _parse_install_args(client: str, scope: str):
     return client_enum, scope_enum
 
 
-@app.command()
+@internal_app.command()
 def install(
     client: str = typer.Option(
         "auto",
@@ -243,18 +355,28 @@ def install(
         "--refresh",
         help="Overwrite skills and commands only where they are already installed.",
     ),
+    json_out: bool = _json_opt,
 ) -> None:
     """Install Beakr skills and slash commands into Claude Code and/or Codex."""
     from beakr_cli.commands.install import install_command, refresh_installed_assets
+    from beakr_cli.output import human_output_to_stderr, print_json
 
-    if refresh:
-        refresh_installed_assets()
-        return
-    client_enum, scope_enum = _parse_install_args(client, scope)
-    install_command(client=client_enum, scope=scope_enum, uninstall=uninstall, force=force)
+    with human_output_to_stderr(json_out):
+        if refresh:
+            result: dict[str, object] = {
+                "action": "refresh",
+                "refreshed": refresh_installed_assets(),
+            }
+        else:
+            client_enum, scope_enum = _parse_install_args(client, scope)
+            result = install_command(
+                client=client_enum, scope=scope_enum, uninstall=uninstall, force=force
+            )
+    if json_out:
+        print_json(result)
 
 
-@app.command()
+@internal_app.command()
 def setup(
     client: str = typer.Option(
         "auto",
@@ -282,20 +404,38 @@ def setup(
         "-f",
         help="Overwrite existing files and registrations.",
     ),
+    hooks: bool | None = typer.Option(
+        None,
+        "--hooks/--no-hooks",
+        help=(
+            "Install session hooks (context at start, session capture as it runs). "
+            "Default: ask when interactive, skip when not."
+        ),
+    ),
+    json_out: bool = _json_opt,
 ) -> None:
-    """One-shot install: auth + skills + MCP registration for Claude Code and/or Codex."""
+    """One-shot install: auth + skills + MCP + hooks for Claude Code and/or Codex."""
     from beakr_cli.commands.install import setup_command
+    from beakr_cli.output import human_output_to_stderr, print_json
 
     client_enum, scope_enum = _parse_install_args(client, scope)
-    setup_command(
-        client=client_enum,
-        scope=scope_enum,
-        skip_auth=no_auth,
-        skip_skills=no_skills,
-        skip_mcp=no_mcp,
-        uninstall=uninstall,
-        force=force,
-    )
+    with human_output_to_stderr(json_out):
+        result = setup_command(
+            client=client_enum,
+            scope=scope_enum,
+            skip_auth=no_auth,
+            skip_skills=no_skills,
+            skip_mcp=no_mcp,
+            uninstall=uninstall,
+            force=force,
+            hooks=hooks,
+        )
+    if json_out:
+        print_json(result)
+
+
+#: The published command tree (the ``beakr`` entry point).
+app = core_tree(internal_app)
 
 
 if __name__ == "__main__":

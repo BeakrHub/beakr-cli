@@ -1,0 +1,20 @@
+{
+  "operation": "GET /v1/organizations/{org_id}/auth-policy",
+  "source": "hand-authored from beakr/api/routes/org_platform_admin.py:get_auth_policy",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "allow_personal_keys": true,
+    "max_key_lifetime_days": 180,
+    "require_step_up_mfa": true,
+    "allowed_clients": null,
+    "require_sso": false,
+    "approved_oauth_clients": [
+      "bkc_Hx3nV8cQ2rTy6LmA",
+      "bkc_9fK2mQ7xLp4Rt8Wz"
+    ],
+    "sso_connections": null,
+    "step_up_for_sign_ins": false,
+    "allow_non_expiring_keys": false
+  }
+}

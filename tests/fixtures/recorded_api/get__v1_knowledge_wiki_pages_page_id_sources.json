@@ -1,0 +1,42 @@
+{
+  "operation": "GET /v1/knowledge/wiki/pages/{page_id}/sources",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "added_at": "2026-08-21T10:12:00Z",
+        "chunk_ref": "pages 2-3",
+        "key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+        "meta": {
+          "artifact_id": "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+          "artifact_version_id": "d2f4a6c8-0e1b-4d3f-9a5c-7b9d1e3f5a24"
+        },
+        "section_id": "sec_facts",
+        "source_id": "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+        "source_ref": "beakr-source:v1:8e1f3a5c-7d9b-4b2e-8f04-6a1c3e5d7b92",
+        "source_title": "helios-charter.pdf",
+        "source_type": "artifact",
+        "stance": "support"
+      },
+      {
+        "added_at": "2026-09-22T14:31:00Z",
+        "chunk_ref": "page 7",
+        "key": "artifact:6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
+        "meta": {
+          "artifact_id": "6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
+          "artifact_version_id": "f1a3c5e7-9b2d-4f6a-8c0e-3d5f7a9b1c46"
+        },
+        "section_id": "sec_facts",
+        "source_id": "6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
+        "source_ref": "beakr-source:v1:2c7e9a14-5b3d-4f81-a6c2-8d0e4f6b1a39",
+        "source_title": "NW-217 Accelerated Stability Report",
+        "source_type": "artifact",
+        "stance": "contradicts"
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null
+  }
+}

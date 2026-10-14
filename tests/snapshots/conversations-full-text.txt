@@ -1,0 +1,19 @@
+$ beakr conversations full-text --json
+> GET /v1/conversations/settings
+[exit 0]
+--- stdout
+{
+  "full_text_clients": [
+    "claude_code"
+  ]
+}
+--- stderr
+
+
+$ beakr conversations full-text
+> GET /v1/conversations/settings
+[exit 0]
+--- stdout
+Full text is kept for imports from: claude_code.
+--- stderr
+

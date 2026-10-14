@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import PurePosixPath
+from typing import Any
 
-from mcp.server.fastmcp import FastMCP
+from beakr_sdk.sources import public_source as _shared_public_source
 from mcp.types import ToolAnnotations
 
-from beakr_cli.client import get_async_client, scope_params
+from beakr_cli import tool_surface
+
+# Underscored: every public coroutine in this module is read as an MCP tool.
+from beakr_cli.mcp_errors import call_api as _call_api
+from beakr_cli.scope import scope_params
 from beakr_cli.updates import (
     detect_install,
     get_update_status,
@@ -17,86 +23,48 @@ from beakr_cli.updates import (
 )
 
 _INSTRUCTIONS = (
-        "Beakr is the team's organizational memory and connected services. "
-        "Teams write decisions, processes, ownership, and dated events here so "
-        "that 6 months later the answer to 'why did we do X' is one search "
-        "away instead of lost in Slack archives or tribal knowledge.\n\n"
-        "RESPONSIBILITIES:\n"
-        "Use Beakr to answer questions about the user's org with citations. "
-        "When the conversation produces something durable (a decision with "
-        "rationale, a named process, an ownership assignment, a dated event, "
-        "a key relationship), propose adding it -- don't wait to be asked. "
-        "First check with knowledge_base command='sections' that it isn't already "
-        "captured, then surface a brief suggestion before writing ('this seems worth "
-        "capturing -- want me to propose it?'). Never auto-write; always go "
-        "through proposals and wait for explicit acceptance. Cite the current "
-        "session as a 'conversation' inline source with meta.excerpt when the "
-        "information originates from this chat.\n\n"
-        "TOOLS:\n"
-        "- 'research': Primary tool. Ask any question and get a cited answer from the "
-        "wiki, documents, and connected services (Slack, Gmail, Calendar, Jira, etc.). "
-        "Use this first for most questions.\n"
-        "- 'knowledge_base': every read over the wiki, by command -- ls, cat, grep, "
-        "sections, log, blame, diff, show, sources, provenance, links, timeline, "
-        "ontology, hover, references, diagnostics, completions, proposals, "
-        "suggest_parent. Start with 'sections' or 'grep' to find pages and 'cat' to "
-        "read one; 'cat' returns the page's sources and their recorded excerpts with "
-        "it. Read results also return structured public source records with an opaque "
-        "source_ref, filename, provider, path/URL, exact retained excerpt, verified "
-        "surrounding context, and locator. "
-        "Reuse source_ref in a later write citation; do not invent or request Beakr's "
-        "internal Unit, connector, artifact, or database IDs. This is the same tool, "
-        "under the same name with the same commands, that "
-        "Beakr's in-product agents use.\n"
-        "- 'knowledge_base_write': every change, by action -- new, edit, edit_section, "
-        "find_replace, mv, archive, merge, copy, page_type. Every action stages a "
-        "PROPOSAL; nothing is applied until accept_proposal.\n\n"
-        "SCOPING:\n"
-        "Beakr organizes knowledge into projects, including each user's personal "
-        "project. Pass 'scope' with a project name or id to work in one project; omit "
-        "it to read everything you can see. Use list_projects to discover projects and "
-        "their ids -- the personal one is reported with project_type='personal' and is "
-        "scoped exactly like any other project.\n\n"
-        "WRITES:\n"
-        "All wiki writes go through proposals. Stage one with knowledge_base_write, "
-        "review it with show_proposal, and only call accept_proposal after "
-        "the user explicitly asks to accept/apply that specific proposal. A page's "
-        "content is `sections`: an ordered list of {title, body} objects; Beakr writes "
-        "the <!-- sec:ID --> markers and ids, so do not author markers. Prefer "
-        "action='edit_section' for changes to an existing page. Each section can carry "
-        "citations and event dates (full YYYY-MM-DD with date_precision). "
-        "Put inline citation tokens like {{source_type:source_id}} or "
-        "{{!source_type:source_id}} directly in wiki markdown after every factual "
-        "claim, table row/value, date, title, and relationship. Use the same "
-        "source keys in sections[].citations with stance so section provenance "
-        "can roll up support, qualification, and contradiction. Citations can "
-        "reference existing Beakr sources from knowledge_base command='sources' or "
-        "command='provenance', "
-        "external identifiers, or inline source_type 'conversation', "
-        "'agent_note', or 'user_note' with source_title and meta.excerpt/content/text. "
-        "Section objects use this shape: "
-        "{title, body, id (only to keep an existing section), event_start, event_end, "
-        "date_precision, citations:["
-        "{source_ref, key, source_type, source_id, source_title, stance, chunk_ref, meta}]}. "
-        "For a source returned by Beakr, source_ref plus stance is sufficient and preferred.\n\n"
-        "EVIDENCE:\n"
-        "Source listings show the filename/location, exact excerpt a claim rests on, "
-        "and a larger `context:` window copied from the same source when verification "
-        "was possible, plus the verdict the exact excerpt was "
-        "recorded under. An excerpt marked (paraphrase) is the compiler's wording "
-        "and one marked (human asserted) was supplied by a person without "
-        "source-text verification; "
-        "and one marked (unverified) was never checked against the source. Do not "
-        "copy either into a new citation as if it were a quote, and do not rest a "
-        "conclusion on one without opening the source -- an unverified excerpt "
-        "propagated into a proposal becomes an unverified claim on a permanent "
-        "page. 'at:' gives the location within the document; 'source changed since "
-        "cited' means the source has a newer version than the one the claim was "
-        "checked against.\n\n"
-        "VERSION:\n"
-        "beakr_version reports whether this MCP server is out of date. Only call "
-        "update_beakr when the user asks to update Beakr; afterwards they must restart "
-        "Claude Code / Codex to load the new server."
+    "Beakr is the team's organizational memory: decisions, processes, ownership and "
+    "dated events, so 'why did we do X' is one search away.\n\n"
+    "Answer questions about the user's org with citations. Start with knowledge_base "
+    "command='sections': each hit shows the document passage (a verbatim excerpt) that "
+    "supports it; quote it directly, and open the file only when the value you need is "
+    "not in the excerpt. For 'every X', counts and superlatives use 'ls' (by page_type) "
+    "or 'rows' (every card's facts as one table); do not extract the corpus and grep it, "
+    "the knowledge base already indexes every document. Results stay under about 6k "
+    "tokens; when 'next' appears, page with it rather than re-querying. Exact wording: "
+    "command='sources' {page} lists every cited passage. Each Sources line names where a "
+    "document lives and where each cited passage sits (path › p. 7): read_file with that "
+    "path › place, a {{artifact:...}} token or a file id opens the original there. Check a "
+    "decisive value in the file; when the file and a card disagree, the file wins. In "
+    "answers to people, cite inline with the readable reference a result prints "
+    "(tax-memo.docx › p. 7, #deals › message 2026-03-04 14:02 UTC), linked when it has a "
+    "url, or research's [n]. In a "
+    "code cell (Codex), print "
+    "only the result's text and make one Knowledge call per cell. Where 'research' is "
+    "available it gives one cited answer across the wiki, documents and connected "
+    "services. 'context' once at the start of a task for the user's profiles, memories "
+    "and skills; 'skills' to read a SKILL.md before following it.\n\n"
+    "Scope: pass 'scope' (a project name or id) to work in one project, or omit it to read "
+    "everything you can see; list_projects names them, the user's personal project "
+    "included (project_type='personal').\n\n"
+    "Writes: when the conversation produces something durable (a decision with its "
+    "rationale, a process, an owner, a dated event), check with knowledge_base "
+    "command='sections' that it is not already captured, then offer to propose it. "
+    "knowledge_base_write only stages a PROPOSAL: call accept_proposal only when the user "
+    "asks to accept that proposal. If the result says auto-approve is on, Beakr applies it "
+    "itself: do not ask for approval or call accept_proposal. Cite this chat as a "
+    "'conversation' source with meta.excerpt. Put a {{key}} citation token after each "
+    "factual claim in a section body and list the same sources in sections[].citations "
+    "with a stance; cite with the {{token}}, a read's source_ref or its readable "
+    "reference, and only this conversation, files the user uploaded, or sources Knowledge "
+    "already cites (anything else is refused citation_not_citeable). Never invent Beakr's "
+    "internal ids.\n\n"
+    "Evidence: an excerpt marked (paraphrase) is the compiler's wording, (human asserted) "
+    "was supplied by a person, and (unverified) was never checked against the source -- "
+    "open the source before quoting one or resting a conclusion on it. 'at:' locates the "
+    "excerpt; 'source changed since cited' means a newer version exists.\n\n"
+    "Version: beakr_version says whether this server is out of date; call update_beakr "
+    "only when the user asks, then they restart the client."
 )
 
 
@@ -118,17 +86,15 @@ def _update_notice() -> str:
     )
 
 
-mcp = FastMCP("beakr", instructions=_INSTRUCTIONS + _update_notice())
+# W8.2: the eager tools are listed by default and the rest are found through
+# discover_tools (BEAKR_MCP_TOOLS=all lists everything).
+mcp = tool_surface.TieredFastMCP(
+    "beakr", instructions=_INSTRUCTIONS + tool_surface.DISCOVERY_NOTE + _update_notice()
+)
 
 
-async def _get(
-    path: str,
-    params: dict | None = None,
-    *,
-    project: str | None = None,
-    project_id: str | None = None,
-) -> dict:
-    """GET, with the optional project filter the non-vocabulary routes still take.
+def _scoped_project(project: str | None = None, project_id: str | None = None) -> str | None:
+    """The project filter the non-vocabulary routes still take (argument, else the binding).
 
     There is no ``personal`` argument, deliberately. Personal is not a special
     scope -- it is a project with ``project_type='personal'`` that
@@ -136,21 +102,29 @@ async def _get(
     no resolution step of its own. The flag used to cost a ``/v1/projects`` round
     trip and a module-level cache to hide it.
     """
-    merged = {
-        **scope_params(project=project_id or project),
-        **(params or {}),
-    }
-    async with get_async_client() as c:
-        resp = await c.get(path, params=merged)
-        resp.raise_for_status()
-        return resp.json()
+    return scope_params(project=project_id or project).get("project_id")
 
 
-async def _post(path: str, body: dict | None = None) -> dict:
-    async with get_async_client() as c:
-        resp = await c.post(path, json=body)
-        resp.raise_for_status()
-        return resp.json()
+async def _project_by_name_or_id(
+    project: str | None = None, project_id: str | None = None
+) -> str | None:
+    """``_scoped_project`` for a ``project`` that may be a name, as list_projects suggests.
+
+    The research, stats and graph routes take a project id; an agent passes the
+    name it read from list_projects (or the ``scope`` it gives knowledge_base) and
+    was refused with "project_id must be a valid UUID".
+    """
+    from beakr_cli.mcp_tools_platform import _project_id
+
+    given = (project_id or project or "").strip()
+    if not given:
+        return _scoped_project()
+    resolved = await _project_id(given)
+    if resolved is None:
+        raise ValueError(
+            f"No single project named {given!r}; pass its id or exact name from list_projects."
+        )
+    return resolved
 
 
 def _format_proposal(data: dict) -> str:
@@ -328,93 +302,11 @@ def _result_text(result: dict) -> str:
 
 
 def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
-    """Keep only the public source contract; never forward backend row fields."""
-    meta = source.get("meta") if isinstance(source.get("meta"), dict) else {}
-    public_location = source.get("location") if isinstance(source.get("location"), dict) else {}
-    public_evidence = source.get("evidence") if isinstance(source.get("evidence"), dict) else {}
-    public_status = source.get("status") if isinstance(source.get("status"), dict) else {}
-    public_section = source.get("section") if isinstance(source.get("section"), dict) else {}
-    public_retrieval = (
-        source.get("retrieval") if isinstance(source.get("retrieval"), dict) else {}
-    )
+    """Keep only the public source contract; never forward backend row fields.
 
-    def first(*keys: str):
-        for key in keys:
-            value = source.get(key)
-            if value not in (None, "", []):
-                return value
-            value = meta.get(key)
-            if value not in (None, "", []):
-                return value
-        return None
-
-    name = str(first("name", "source_title", "title") or "Untitled source")
-    kind = first("source_kind", "unit_kind", "type", "source_type")
-    path = public_location.get("display_path") or first("display_path", "path", "local_path")
-    filename = first("filename", "file_name")
-    if not filename and path:
-        filename = PurePosixPath(str(path).rstrip("/")).name
-    if not filename and str(kind or "").lower() in {"file", "document", "artifact"}:
-        filename = name
-
-    item = {
-        "source_ref": first("source_ref"),
-        "citation_key": citation_key or first("citation_key", "key"),
-        "name": name,
-        "filename": filename,
-        "provider": first("provider", "source_provider"),
-        "source_kind": kind,
-    }
-    location = {
-        "url": public_location.get("url")
-        or first("url", "web_view_url", "full_text_url", "pdf_url"),
-        "display_path": path,
-        "provider_item_id": public_location.get("provider_item_id")
-        or first("provider_file_id", "remote_file_id"),
-    }
-    evidence = {
-        "excerpt": public_evidence.get("excerpt") or first("excerpt", "excerpt_text", "quote"),
-        "locator": public_evidence.get("locator") or first("locator", "chunk_ref"),
-        "fidelity": public_evidence.get("fidelity") or first("fidelity"),
-        "evidence_kind": public_evidence.get("evidence_kind") or first("evidence_kind"),
-        "anchor_status": public_evidence.get("anchor_status") or first("anchor_status"),
-    }
-    source_status = {
-        "observed_at": public_status.get("observed_at") or first("observed_at"),
-        "availability": public_status.get("availability") or first("source_availability"),
-        "changed_since_cited": public_status.get("changed_since_cited")
-        if "changed_since_cited" in public_status
-        else first("source_moved"),
-    }
-    section = {
-        "title": public_section.get("title") or first("section_title"),
-        "event_start": public_section.get("event_start") or first("event_start"),
-        "event_end": public_section.get("event_end") or first("event_end"),
-        "date_precision": public_section.get("date_precision") or first("date_precision"),
-    }
-    for key, value in (
-        ("location", location),
-        ("evidence", evidence),
-        ("status", source_status),
-        ("section", section),
-    ):
-        cleaned = {k: v for k, v in value.items() if v not in (None, "")}
-        if cleaned:
-            item[key] = cleaned
-    retrieval_tool = public_retrieval.get("tool")
-    retrieval_args = public_retrieval.get("arguments")
-    if (
-        isinstance(retrieval_tool, str)
-        and retrieval_tool
-        and isinstance(retrieval_args, dict)
-        and isinstance(retrieval_args.get("handle"), str)
-        and retrieval_args["handle"]
-    ):
-        item["retrieval"] = {
-            "tool": retrieval_tool,
-            "arguments": {"handle": retrieval_args["handle"]},
-        }
-    return {key: value for key, value in item.items() if value not in (None, "")}
+    The one shape the SDK, the CLI and this server share (``beakr_sdk.sources``).
+    """
+    return _shared_public_source(source, citation_key=citation_key)
 
 
 def _wiki_result(result: dict) -> dict:
@@ -429,7 +321,29 @@ def _wiki_result(result: dict) -> dict:
         ],
         "status": outcome.get("status", "ok"),
         **({"error_code": outcome["error_code"]} if outcome.get("error_code") else {}),
+        # A read's coverage and next-step hints, as the engine sent them
+        # (beakr/engines/tools/graph/kb_result_coverage.py in beakr-engine).
+        **(
+            {"coverage": result["coverage"], "next": list(result.get("next") or [])}
+            if isinstance(result.get("coverage"), dict)
+            else {}
+        ),
     }
+
+
+#: A span token's passage suffix: ``artifact:<version>-u3`` is passage 3 of the
+#: document ``artifact:<version>``.
+_SPAN_SUFFIX = re.compile(r"-u\d+$")
+
+
+def _research_document(key: str, source: dict) -> str:
+    """What makes two cited passages the same document in a research answer."""
+    meta = source.get("meta") or {}
+    for name in ("artifact_id", "file_id", "artifact_version_id"):
+        value = source.get(name) or meta.get(name) or (source.get("location") or {}).get(name)
+        if value:
+            return f"{name}:{value}"
+    return _SPAN_SUFFIX.sub("", key)
 
 
 #: Appended wherever sources are listed. Says what the marks mean rather than
@@ -448,31 +362,41 @@ _SOURCE_NOTE = (
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
-async def list_projects() -> str:
+@mcp.tool(**tool_surface.tool_kwargs("list_projects"))
+async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
     """List projects in the organization, including the user's personal project.
 
     Pass a project's name or id as ``scope`` to knowledge_base and
     knowledge_base_write, or as ``project`` to research, wiki_stats and wiki_graph.
+    One page at a time (SPEC-488); the hosted server answers the same shape.
+
+    Args:
+        cursor: The next_cursor from the previous page's coverage.
+        limit: Projects per page (1-50).
     """
-    async with get_async_client() as c:
-        resp = await c.get("/v1/projects")
-        resp.raise_for_status()
-        data = resp.json()
-    projects = data if isinstance(data, list) else data.get("projects", data)
-    if not projects:
-        return "No projects found."
+    from beakr_cli.mcp_tools_platform import _cursor, _page_of, _page_result, _page_size
+
+    page = await _call_api(
+        lambda sdk: sdk.api.projects.list_projects(cursor=_cursor(cursor), limit=_page_size(limit))
+    )
+    rows, has_more, next_cursor = _page_of(page, "data", "projects")
     lines = []
-    for p in projects:
+    for p in rows[:50]:
         name = p.get("name", "Untitled")
         pid = p.get("id", "")
         project_type = p.get("project_type", "standard")
         desc = p.get("description", "") or ""
         lines.append(f"- {name} ({project_type}, id: {pid}){f' -- {desc}' if desc else ''}")
-    return "\n".join(lines)
+    return _page_result(
+        "\n".join(lines) if lines else "No projects found.",
+        tool="list_projects",
+        returned=min(len(rows), 50),
+        has_more=has_more,
+        next_cursor=next_cursor,
+    )
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("get_profile"))
 async def get_profile(
     profile_type: str = "org",
     project_id: str = "",
@@ -487,9 +411,9 @@ async def get_profile(
         project_id: Project ID (required if profile_type is 'project').
     """
     if profile_type == "org":
-        data = await _get("/v1/knowledge/profiles/org")
+        data = await _call_api(lambda sdk: sdk.profile.org())
     elif profile_type == "project" and project_id:
-        data = await _get(f"/v1/knowledge/profiles/project/{project_id}")
+        data = await _call_api(lambda sdk: sdk.profile.project(project_id))
     else:
         return f"Invalid: profile_type='{profile_type}' requires profile_type='org' or project_id."
 
@@ -525,12 +449,12 @@ async def get_profile(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("knowledge_base"))
 async def knowledge_base(
     command: str,
     arguments: dict | None = None,
     scope: str | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """Read the knowledge base: the same commands Beakr's in-product agents use.
 
     Pass the command name as ``command`` and its options as a flat ``arguments``
@@ -547,6 +471,13 @@ async def knowledge_base(
     Graph:
       links      {page}  Backlinks.     references {page}  Links plus prose mentions.
       timeline   {timeline_query?, start_date?, end_date?, include_content?, include_approx?}
+      rows       {table: facts|connections|findings, page_type?, entity?, attribute?, query?,
+                  start_date?, end_date?, current_only?, order_by?, descending?, limit?, offset?,
+                  include_evidence?}
+                 Every map card's rows as one table, each tagged with its card (entity).
+                 include_evidence adds each row's cited passage (at most 50 rows).
+                 current_only keeps the latest When per attribute; a connection's `to` is
+                 an entity, so facts and connections join on it.
       ontology   {include_proposed?}   suggest_parent {page | title, content?}
     Trust and lineage:
       provenance {page}  Per-section citations with stance.
@@ -566,14 +497,15 @@ async def knowledge_base(
         arguments: That command's options, e.g. {"query": "billing owner"}.
         scope: Optional project name or ID. Omit to read everything you can see.
     """
-    body = dict(arguments or {})
-    body["command"] = command
-    if scope:
-        body["scope"] = scope
-    return _wiki_result(await _post("/v1/knowledge/wiki/command", body))
+    # check=False: a refusal the door reports in ``outcome`` is shown to the agent.
+    return _wiki_result(
+        await _call_api(
+            lambda sdk: sdk.knowledge.relay_command(command, arguments, scope=scope, check=False)
+        )
+    )
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("wiki_stats"))
 async def wiki_stats(
     project: str | None = None,
     project_id: str = "",
@@ -584,19 +516,16 @@ async def wiki_stats(
         project: Project name or ID to scope the stats. Omit for everything you can see.
         project_id: Deprecated alias for project.
     """
-    data = await _get(
-        "/v1/knowledge/stats",
-        project=project,
-        project_id=project_id,
-    )
+    scoped = await _project_by_name_or_id(project, project_id)
+    data = await _call_api(lambda sdk: sdk.knowledge.pages.stats(project_id=scoped))
     return f"Pages: {data.get('pages', 0)}\nSources: {data.get('sources', 0)}"
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("wiki_graph"))
 async def wiki_graph(
     project: str | None = None,
     project_id: str = "",
-) -> str:
+) -> dict[str, Any]:
     """Get a summary of the knowledge base graph structure.
 
     Returns the top connected pages and basic graph stats. Use knowledge_base command='links'
@@ -606,33 +535,49 @@ async def wiki_graph(
         project: Project ID to scope the graph. Omit for everything you can see.
         project_id: Deprecated alias for project.
     """
-    data = await _get(
-        "/v1/knowledge/wiki/graph",
-        {"max_nodes": "30"},
-        project=project,
-        project_id=project_id,
+    from beakr_cli.mcp_tools_platform import _capped_result
+
+    scoped = await _project_by_name_or_id(project, project_id)
+    data = await _call_api(
+        lambda sdk: sdk.knowledge.pages.graph(project_id=scoped, max_nodes=_GRAPH_MAX_NODES)
     )
+    data = data if isinstance(data, dict) else {}
     nodes = data.get("nodes", [])
     edges = data.get("edges", [])
 
     # Count connections per node
     connections: dict[str, int] = {}
     for e in edges:
-        connections[e["from"]] = connections.get(e["from"], 0) + 1
-        connections[e["to"]] = connections.get(e["to"], 0) + 1
+        for end in (e.get("from"), e.get("to")):
+            if end:
+                connections[end] = connections.get(end, 0) + 1
 
     # Build summary
     lines = [f"Graph: {len(nodes)} pages, {len(edges)} links\n"]
     lines.append("Top connected pages:")
-    node_map = {n["id"]: n for n in nodes}
+    node_map = {n.get("id"): n for n in nodes}
     ranked = sorted(connections.items(), key=lambda x: x[1], reverse=True)[:15]
     for node_id, count in ranked:
         n = node_map.get(node_id, {})
-        label = n.get("label", node_id[:8])
+        label = n.get("label", str(node_id)[:8])
         ptype = n.get("page_type", "")
         lines.append(f"  {label} ({ptype}) - {count} links")
 
-    return "\n".join(lines)
+    return _capped_result(
+        "\n".join(lines),
+        tool="wiki_graph",
+        returned=len(nodes),
+        total=None,
+        complete=len(nodes) < _GRAPH_MAX_NODES,
+        hint=(
+            f"The graph summary is capped at {_GRAPH_MAX_NODES} pages: pass project to narrow "
+            "it, or use knowledge_base command='links' on one page."
+        ),
+    )
+
+
+#: Pages the graph summary asks for; a graph that returns this many may have more.
+_GRAPH_MAX_NODES = 30
 
 
 # ---------------------------------------------------------------------------
@@ -645,7 +590,7 @@ async def wiki_graph(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("research"))
 async def research(
     query: str,
     project: str = "",
@@ -671,24 +616,35 @@ async def research(
         project: Optional project ID to scope the search.
         project_id: Deprecated alias for project.
     """
-    params = scope_params(project=project_id or project)
-    body = {"query": query, **params}
-    data = await _post("/v1/knowledge/research", body)
+    scoped = await _project_by_name_or_id(project, project_id)
+    data = await _call_api(lambda sdk: sdk.knowledge.research(query, project_id=scoped))
+    citations = data.get("citations")
+    if isinstance(citations, list) and isinstance(data.get("text"), str):
+        return _research_from_citations(data, citations)
 
-    # Format the response: replace {{key}} tokens with [N] numbered refs
-    import re
-
+    # An engine without the public answer form (no `text` / `citations`).
+    # Format the response: replace {{key}} tokens with [N] numbered refs, one
+    # number per cited DOCUMENT (the hosted server's formatting.research): two
+    # passages of the same file share it, so the list never shows one file
+    # twice (proof run 2026-10-13 listed it as [1] and [2]).
     answer = data.get("answer", "")
-    sources = data.get("sources", {})
-
-    # Collect referenced keys in order and replace tokens with [N]
+    sources = data.get("sources", {}) if isinstance(data.get("sources"), dict) else {}
+    documents: list[str] = []
+    tokens: dict[str, list[str]] = {}
     seen_keys: list[str] = []
 
     def _replace_token(m):
         key = m.group(1)
+        src = sources.get(key) if isinstance(sources.get(key), dict) else {}
+        document = _research_document(key, src)
+        if document not in tokens:
+            documents.append(document)
+            tokens[document] = []
+        if key not in tokens[document]:
+            tokens[document].append(key)
         if key not in seen_keys:
             seen_keys.append(key)
-        return f"[{seen_keys.index(key) + 1}]"
+        return f"[{documents.index(document) + 1}]"
 
     formatted_answer = re.sub(r"\{\{([^}]+)\}\}", _replace_token, answer)
 
@@ -697,17 +653,18 @@ async def research(
         lines.append(formatted_answer)
 
     # Sources legend
-    if seen_keys:
+    if documents:
         lines.append("\n---\nSources:")
-        for i, key in enumerate(seen_keys, 1):
-            src = sources.get(key, {})
-            source_type = src.get("type", key.split(":")[0] if ":" in key else "unknown")
-            title = src.get("title", "")
-            # The token as well as the ordinal. [1] is readable prose but names
+        for index, document in enumerate(documents, 1):
+            keys = tokens[document]
+            src = sources.get(keys[0], {}) if isinstance(sources.get(keys[0]), dict) else {}
+            source_type = src.get("type", keys[0].split(":")[0] if ":" in keys[0] else "unknown")
+            # The tokens as well as the ordinal. [1] is readable prose but names
             # nothing outside this one answer, and the instructions above tell a
-            # writer to reuse these keys in sections[].citations -- so the key
-            # has to survive the rendering that makes the answer readable.
-            lines.append(f"  [{i}] {{{{{key}}}}}  ({source_type}) {title}")
+            # writer to reuse these keys in sections[].citations -- so the keys
+            # have to survive the rendering that makes the answer readable.
+            shown = " ".join(f"{{{{{key}}}}}" for key in keys)
+            lines.append(f"  [{index}] {shown}  ({source_type}) {src.get('title', '')}")
             # Excerpt and verdict, on the primary tool. This is where an MCP
             # consumer is most exposed: research answers read as authoritative
             # prose, and without the verdict a compiler paraphrase is
@@ -727,13 +684,71 @@ async def research(
 
     return {
         "content": "\n".join(lines),
+        # Only the sources the answer cites, in citation order: the researcher
+        # returns everything it read (69 records, ~16k tokens, for a two-citation
+        # answer on the dogfood instance), which the [n] legend never shows.
         "sources": [
-            _public_source(src, citation_key=key)
-            for key, src in sources.items()
-            if isinstance(src, dict)
+            _public_source(sources[key], citation_key=key)
+            for key in seen_keys
+            if isinstance(sources.get(key), dict)
         ],
         "confidence": confidence or None,
         "gaps": gaps or None,
+    }
+
+
+def _numbered_sources(citations: list[dict]) -> list[str]:
+    """``Sources:`` then ``[n]`` and one entry per cited document, within ``SOURCES_CHARS``.
+
+    The hosted server's ``formatting._numbered_sources``: the same Sources list
+    a Knowledge read shows, numbered as the answer's ``[n]`` and capped alike.
+    """
+    from beakr_cli import mcp_render
+
+    lines = ["\n---\nSources:"]
+    used = 0
+    for number, record in enumerate(citations, 1):
+        block = mcp_render.sources_block([record]).splitlines()[1:]
+        if not block:
+            continue
+        block[0] = f"[{number}] " + block[0].removeprefix("- ")
+        size = sum(len(line) + 1 for line in block)
+        if number > 1 and used + size > mcp_render.SOURCES_CHARS:
+            lines.append(
+                f"+{len(citations) - number + 1} more sources: knowledge_base command='sources' "
+                "with a citation token reads one."
+            )
+            break
+        lines.extend(block)
+        used += size
+    return lines
+
+
+def _research_from_citations(data: dict, citations: list) -> dict:
+    """A research answer in the engine's public form, rendered as the hosted server does.
+
+    The engine already numbers each cited document once in ``text`` and keeps
+    one record per document in ``citations`` (brief excerpts); ``next`` says
+    how to read what it trimmed. Byte for byte the hosted
+    ``formatting.research`` (tests/test_research_rendering.py).
+    """
+    lines = [data["text"]] if data["text"] else []
+    if citations:
+        lines.extend(_numbered_sources(citations))
+        lines.append(_SOURCE_NOTE)
+    meta = [
+        f"{label}: {data[k]}"
+        for k, label in (("confidence", "Confidence"), ("gaps", "Gaps"))
+        if data.get(k)
+    ]
+    if meta:
+        lines.append("\n" + " | ".join(meta))
+    return {
+        "content": "\n".join(lines),
+        "sources": [_public_source(record) for record in citations],
+        "next": list(data.get("next") or []),
+        "confidence": data.get("confidence") or None,
+        "gaps": data.get("gaps") or None,
     }
 
 
@@ -742,13 +757,15 @@ async def research(
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("knowledge_base_write"))
 async def knowledge_base_write(
     action: str,
     arguments: dict | None = None,
     scope: str | None = None,
-) -> dict:
-    """Propose a knowledge-base change. Nothing is written until accept_proposal.
+) -> dict[str, Any]:
+    """Propose a knowledge-base change. Nothing is written until accept_proposal --
+    unless the result says the user's auto-approve is on, in which case Beakr
+    applies it automatically (new, edit and edit_section only).
 
     Pass the action as ``action`` and its fields as a flat ``arguments`` object.
     Every change except page_type needs ``rationale``; edits also take ``edit_note``.
@@ -756,6 +773,29 @@ async def knowledge_base_write(
       edit_section {page, section_id, new_section_body, citations?, section_meta?,
                     section_title?, after?}  PREFERRED for updating a page. Replaces one
                     section's whole body; a new section_id plus section_title adds one.
+      add_fact     {page, attribute, value, evidence, when?, citations?}
+                    One Facts row on a project-map card, merged into the live table.
+                    attribute is named stably; value is the statement as the source
+                    gives it, qualifiers included; when is when it happened or held
+                    (YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY).
+      add_connection {page, relation, to, evidence, when?, citations?}
+                    One Connections row; relation is a short verb phrase carrying any
+                    detail; `to` is the other page's title.
+      add_finding  {page, date, kind, text, evidence, about?, finding_scope?, supersedes?}
+                    One dated Findings bullet. kind: result|lesson|decision|question|
+                    correction. Your conclusions go here, not in Facts. evidence holds
+                    the {{key}} token of each source. Each of the three takes
+                    rows=[{...}, ...] to add several at once (items inherit evidence
+                    and when). They are refused on a page that is not a card outside
+                    a project map: use edit_section there.
+      sort_table   {page, table: facts|connections, order_by}  e.g. 'attribute, when desc'.
+                    Sorts the table and keeps it sorted on every later write.
+      edit_rows    {page, table: facts|connections, old_rows, rows, reason?}  Edits,
+                    merges or deletes rows already on a card. old_rows names each row
+                    as the card shows it ({attribute, value} or {relation, to}); rows
+                    replace them (empty deletes). A new row with no evidence keeps the
+                    replaced rows' citations. reason is required to delete rows or to
+                    drop a citation. Several at once: edits=[{old_rows, rows, reason}].
       new          {title, page_type, summary, sections, parent?, page_aliases?}
       edit         {page, patches | sections, title?}  patches: [{op, section?, content?,
                     find?, replace?, regex?, after?}]; sections replaces the whole page.
@@ -779,21 +819,21 @@ async def knowledge_base_write(
         arguments: That action's fields.
         scope: Project name or ID the change belongs to.
     """
-    body = dict(arguments or {})
-    body["action"] = action
-    if scope:
-        body["scope"] = scope
-    return _wiki_result(await _post("/v1/knowledge/wiki/write", body))
+    return _wiki_result(
+        await _call_api(
+            lambda sdk: sdk.knowledge.relay_write(action, arguments, scope=scope, check=False)
+        )
+    )
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("show_proposal"))
 async def show_proposal(proposal_id: str) -> str:
     """Show one wiki proposal before accepting or dismissing it."""
-    data = await _get(f"/v1/knowledge/wiki/proposals/{proposal_id}")
+    data = await _call_api(lambda sdk: sdk.knowledge.proposals.show(proposal_id))
     return _format_proposal(data) + "\n\nPayload:\n" + json.dumps(data.get("payload", {}), indent=2)
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("accept_proposal"))
 async def accept_proposal(proposal_id: str) -> str:
     """Accept and apply a wiki proposal.
 
@@ -801,14 +841,14 @@ async def accept_proposal(proposal_id: str) -> str:
     proposal. Do not create and accept a proposal in the same assistant step
     unless the user already explicitly requested that behavior.
     """
-    data = await _post(f"/v1/knowledge/wiki/proposals/{proposal_id}/accept")
+    data = await _call_api(lambda sdk: sdk.knowledge.proposals.accept(proposal_id))
     return f"Accepted proposal {data.get('proposal_id', proposal_id)}."
 
 
-@mcp.tool()
+@mcp.tool(**tool_surface.tool_kwargs("dismiss_proposal"))
 async def dismiss_proposal(proposal_id: str) -> str:
     """Dismiss a wiki proposal after the user asks to reject it."""
-    data = await _post(f"/v1/knowledge/wiki/proposals/{proposal_id}/dismiss")
+    data = await _call_api(lambda sdk: sdk.knowledge.proposals.dismiss(proposal_id))
     return f"Dismissed proposal {data.get('proposal_id', proposal_id)}."
 
 
@@ -817,7 +857,10 @@ async def dismiss_proposal(proposal_id: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool(annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True))
+@mcp.tool(
+    **tool_surface.tool_kwargs("beakr_version"),
+    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True),
+)
 async def beakr_version() -> str:
     """Report this Beakr MCP server's version and whether a newer release exists.
 
@@ -844,9 +887,10 @@ async def beakr_version() -> str:
 
 
 @mcp.tool(
+    **tool_surface.tool_kwargs("update_beakr"),
     annotations=ToolAnnotations(
         readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True
-    )
+    ),
 )
 async def update_beakr() -> str:
     """Upgrade beakr-cli to the latest release and refresh its installed skills.
@@ -861,9 +905,7 @@ async def update_beakr() -> str:
 
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(0))
     if status.latest is not None and not status.update_available:
-        return (
-            f"No update needed: installed {status.current}, latest release {status.latest}."
-        )
+        return f"No update needed: installed {status.current}, latest release {status.latest}."
     info = detect_install()
     result = await asyncio.to_thread(run_upgrade, info, expected_version=status.latest)
     if not result.ok:
@@ -907,3 +949,19 @@ def run_server() -> None:
 
     threading.Thread(target=_refresh_update_cache, name="beakr-update-check", daemon=True).start()
     mcp.run(transport="stdio")
+
+
+# Platform tools (context, skills, conversations) live in their own module to keep
+# this one focused. The names are bound here so the surface tests, which read this
+# module's namespace, see the whole tool set.
+from beakr_cli import mcp_tools_platform as _platform  # noqa: E402
+
+context = _platform.context
+skills = _platform.skills
+conversations_search = _platform.conversations_search
+import_conversation = _platform.import_conversation
+org_audit_log = _platform.org_audit_log
+read_file = _platform.read_file
+workboard = _platform.workboard
+discover_tools = _platform.discover_tools
+_platform.register_platform_tools(mcp)

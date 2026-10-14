@@ -1,0 +1,262 @@
+[
+ {
+  "title": "Helios budget questions",
+  "create_time": 1728550000.0,
+  "update_time": 1728551000.0,
+  "conversation_id": "chatgpt-conv-1",
+  "id": "chatgpt-conv-1",
+  "current_node": "n6",
+  "mapping": {
+   "root": {
+    "id": "root",
+    "message": null,
+    "parent": null,
+    "children": [
+     "n0"
+    ]
+   },
+   "n0": {
+    "id": "n0",
+    "message": {
+     "id": "n0",
+     "author": {
+      "role": "system"
+     },
+     "content": {
+      "content_type": "text",
+      "parts": [
+       ""
+      ]
+     },
+     "metadata": {
+      "is_visually_hidden_from_conversation": true
+     }
+    },
+    "parent": "root",
+    "children": [
+     "n0b"
+    ]
+   },
+   "n0b": {
+    "id": "n0b",
+    "message": {
+     "id": "n0b",
+     "author": {
+      "role": "user"
+     },
+     "content": {
+      "content_type": "user_editable_context",
+      "user_profile": "I am a chemist"
+     },
+     "metadata": {
+      "is_visually_hidden_from_conversation": true
+     }
+    },
+    "parent": "n0",
+    "children": [
+     "n1",
+     "n1x"
+    ]
+   },
+   "n1x": {
+    "id": "n1x",
+    "message": {
+     "id": "n1x",
+     "author": {
+      "role": "user"
+     },
+     "create_time": 1728550050.0,
+     "content": {
+      "content_type": "text",
+      "parts": [
+       "An abandoned draft question."
+      ]
+     }
+    },
+    "parent": "n0b",
+    "children": []
+   },
+   "n1": {
+    "id": "n1",
+    "message": {
+     "id": "n1",
+     "author": {
+      "role": "user"
+     },
+     "create_time": 1728550100.0,
+     "content": {
+      "content_type": "text",
+      "parts": [
+       "Plot the Helios quarterly spend."
+      ]
+     },
+     "recipient": "all"
+    },
+    "parent": "n0b",
+    "children": [
+     "n2"
+    ]
+   },
+   "n2": {
+    "id": "n2",
+    "message": {
+     "id": "n2",
+     "author": {
+      "role": "assistant"
+     },
+     "create_time": 1728550110.0,
+     "content": {
+      "content_type": "code",
+      "text": "import matplotlib"
+     },
+     "recipient": "python"
+    },
+    "parent": "n1",
+    "children": [
+     "n3"
+    ]
+   },
+   "n3": {
+    "id": "n3",
+    "message": {
+     "id": "n3",
+     "author": {
+      "role": "tool",
+      "name": "python"
+     },
+     "create_time": 1728550120.0,
+     "content": {
+      "content_type": "execution_output",
+      "text": "<plot>"
+     }
+    },
+    "parent": "n2",
+    "children": [
+     "n4"
+    ]
+   },
+   "n4": {
+    "id": "n4",
+    "message": {
+     "id": "n4",
+     "author": {
+      "role": "assistant"
+     },
+     "create_time": 1728550130.0,
+     "content": {
+      "content_type": "text",
+      "parts": [
+       "Here is the plot of quarterly spend."
+      ]
+     },
+     "recipient": "all"
+    },
+    "parent": "n3",
+    "children": [
+     "n5"
+    ]
+   },
+   "n5": {
+    "id": "n5",
+    "message": {
+     "id": "n5",
+     "author": {
+      "role": "user"
+     },
+     "create_time": 1728550200.0,
+     "content": {
+      "content_type": "multimodal_text",
+      "parts": [
+       {
+        "content_type": "image_asset_pointer",
+        "asset_pointer": "file-service://x"
+       },
+       "What does this chart show?"
+      ]
+     }
+    },
+    "parent": "n4",
+    "children": [
+     "n6"
+    ]
+   },
+   "n6": {
+    "id": "n6",
+    "message": {
+     "id": "n6",
+     "author": {
+      "role": "assistant"
+     },
+     "create_time": 1728550210.0,
+     "content": {
+      "content_type": "text",
+      "parts": [
+       "Spend rises each quarter."
+      ]
+     },
+     "recipient": "all"
+    },
+    "parent": "n5",
+    "children": []
+   }
+  }
+ },
+ {
+  "title": "Empty",
+  "conversation_id": "chatgpt-conv-2",
+  "current_node": "m0",
+  "mapping": {
+   "m0": {
+    "id": "m0",
+    "message": null,
+    "parent": null,
+    "children": []
+   }
+  }
+ },
+ {
+  "title": "Second chat",
+  "id": "chatgpt-conv-3",
+  "current_node": "k2",
+  "mapping": {
+   "k1": {
+    "id": "k1",
+    "message": {
+     "id": "k1",
+     "author": {
+      "role": "user"
+     },
+     "create_time": 1728560000,
+     "content": {
+      "content_type": "text",
+      "parts": [
+       "Summarize the NW-217 decision."
+      ]
+     }
+    },
+    "parent": null,
+    "children": [
+     "k2"
+    ]
+   },
+   "k2": {
+    "id": "k2",
+    "message": {
+     "id": "k2",
+     "author": {
+      "role": "assistant"
+     },
+     "create_time": 1728560010,
+     "content": {
+      "content_type": "text",
+      "parts": [
+       "NW-217 was approved as the lead."
+      ]
+     }
+    },
+    "parent": "k1",
+    "children": []
+   }
+  }
+ }
+]

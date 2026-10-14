@@ -1,0 +1,50 @@
+$ beakr files versions 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/artifacts/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/versions
+[exit 0]
+--- stdout
+{
+  "data": [
+    {
+      "artifact_id": "0c7d0f1a-876b-4349-acbe-1979fc33d706",
+      "blob_key": "org/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01/blobs/da7d3920-230d-4678-9f76-3be63eefbb2b",
+      "content_hash": "9f2b6c0e41d7a8b35e6c1f0d2a94b7e8c3d5f61a0b2e4c7d9f18a3b6c5e2d407",
+      "created_at": "2026-09-14T15:22:08Z",
+      "id": "da7d3920-230d-4678-9f76-3be63eefbb2b",
+      "managed_blob": true,
+      "metadata": {},
+      "mime_type": "application/pdf",
+      "size_bytes": 1843221,
+      "version_no": 3
+    },
+    {
+      "artifact_id": "0c7d0f1a-876b-4349-acbe-1979fc33d706",
+      "blob_key": "org/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01/blobs/8db7aa92-5828-4c75-be1a-b57bca364ded",
+      "content_hash": "1b7e3d9a05c4f2e8a6d1b3c7f9e0a2d4c6b8e1f3a5d7c9b0e2f4a6c8d1b3e5f7",
+      "created_at": "2026-08-28T10:03:44Z",
+      "id": "8db7aa92-5828-4c75-be1a-b57bca364ded",
+      "managed_blob": true,
+      "metadata": {},
+      "mime_type": "application/pdf",
+      "size_bytes": 1790044,
+      "version_no": 2
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+--- stderr
+
+
+$ beakr files versions 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/artifacts/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/versions
+[exit 0]
+--- stdout
+Versions of 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+┏━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┓
+┃Version ┃ Version ID                           ┃ Created          ┃ Size      ┃ MIME           ┃
+┡━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━┩
+│3       │ da7d3920-230d-4678-9f76-3be63eefbb2b │ 2026-09-14T15:22 │ 1,843,221 │ application/pdf│
+│2       │ 8db7aa92-5828-4c75-be1a-b57bca364ded │ 2026-08-28T10:03 │ 1,790,044 │ application/pdf│
+└────────┴──────────────────────────────────────┴──────────────────┴───────────┴────────────────┘
+--- stderr
+

@@ -1,0 +1,62 @@
+{
+  "operation": "GET /v1/outputs/{output_id}",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "canvas_template_id": "b7d9f1a3-5c7e-4b9d-8f1a-2c4e6a8b0d35",
+    "canvas_template_update_available": false,
+    "canvas_template_version_no": 1,
+    "canvas_type": "doc",
+    "content": "# Helios Lead Selection Brief\n\nThe portfolio committee approved NW-217 as the lead. {{1}}",
+    "content_hash": "af8dd44c21fec1ea172acaad4c563a2294daf7c5cfa102519180bdad2516ef90",
+    "created_at": "2026-10-01T12:00:00Z",
+    "deck_theme_overrides": {},
+    "description": "Thermostable lead selection for the NW-200 series.",
+    "document_review": false,
+    "generated_at": "2026-10-01T12:04:00Z",
+    "id": "e2c4a6f8-1b3d-4e5f-a7b9-0c2d4e6f8a91",
+    "knowledge_autosync": false,
+    "native_document_format": "docx",
+    "native_document_revision": "8180765aaf41a28aad9fe7aec730f0e102316b495e559dcdca9ee76814a212c4",
+    "revision": 3,
+    "source_message_id": "1d3f5b7d-9e1a-4c3e-b5d7-8f0a2c4e6b13",
+    "source_thread_id": "6c8e0a2c-4f6b-4d8f-9a1c-3e5f7b9d1a24",
+    "sources": [
+      {
+        "artifact_id": "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+        "artifact_version_id": "d2f4a6c8-0e1b-4d3f-9a5c-7b9d1e3f5a24",
+        "connector_id": "8f1b3d5f-7a9c-4e1b-b3d5-9f1a3c5e7b46",
+        "images": [],
+        "index": 1,
+        "key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+        "page_number": 2,
+        "remote_file_id": "1Hx7qK2mZp9VbR4tLw8cNd3E",
+        "title": "helios-charter.pdf",
+        "type": "artifact",
+        "web_view_url": "https://drive.google.com/file/d/1Hx7qK2mZp9VbR4tLw8cNd3E/view"
+      }
+    ],
+    "sources_read": [
+      {
+        "artifact_id": null,
+        "artifact_version_id": null,
+        "citation_key": "wiki:5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+        "cited": false,
+        "name": "Decision: Helios Lead Selection",
+        "observed_at": "2026-10-01T12:02:00Z",
+        "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+        "page_revision": 2,
+        "source_kind": "page",
+        "source_ref": "beakr-source:v1:wiki:5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+        "unit_version_id": null,
+        "version_basis": "current_at_generation"
+      }
+    ],
+    "sources_read_total": 1,
+    "template_field_values": {},
+    "template_id": null,
+    "title": "Helios Lead Selection Brief",
+    "updated_at": "2026-10-01T12:05:00Z"
+  }
+}

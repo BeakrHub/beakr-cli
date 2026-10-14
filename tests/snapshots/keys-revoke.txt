@@ -1,0 +1,18 @@
+$ beakr keys revoke 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> DELETE /v1/me/api-keys/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+{
+  "id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+  "revoked": true
+}
+--- stderr
+
+
+$ beakr keys revoke 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> DELETE /v1/me/api-keys/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+Revoked key 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f.
+--- stderr
+

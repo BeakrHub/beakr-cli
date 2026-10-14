@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import typer
 
-from beakr_cli.client import get_client
 from beakr_cli.output import (
     err_console,
-    is_piped,
-    print_json,
+    machine_output,
     print_table,
 )
+from beakr_cli.sdk import get_sdk
 
 app = typer.Typer(help="Discover projects and profiles in your org.")
 
@@ -26,14 +25,10 @@ def projects(
 ) -> None:
     """List all projects in your organization."""
     # Bypass auto-scope — list all projects
-    with get_client() as c:
-        resp = c.get("/v1/projects")
-        resp.raise_for_status()
-        data = resp.json()
-    project_list = data if isinstance(data, list) else data.get("projects", data)
+    with get_sdk() as sdk:
+        project_list = sdk.projects.list()
 
-    if json_out or is_piped():
-        print_json(project_list)
+    if machine_output(project_list, json_out=json_out):
         return
 
     if not project_list:
@@ -43,11 +38,13 @@ def projects(
     columns = ["Name", "ID", "Description"]
     rows = []
     for p in project_list:
-        rows.append([
-            p.get("name", ""),
-            str(p.get("id", "")),
-            (p.get("description", "") or "")[:50],
-        ])
+        rows.append(
+            [
+                p.get("name", ""),
+                str(p.get("id", "")),
+                (p.get("description", "") or "")[:50],
+            ]
+        )
     print_table(columns, rows, title="Projects")
 
 
@@ -63,12 +60,10 @@ def profiles(
     """List knowledge profiles (org and project)."""
     profile_list: list[dict] = []
 
-    with get_client() as c:
+    with get_sdk() as sdk:
         # Fetch org profile
         try:
-            resp = c.get("/v1/knowledge/profiles/org")
-            resp.raise_for_status()
-            org_profile = resp.json()
+            org_profile = sdk.profile.org()
             if org_profile:
                 org_profile["_profile_type"] = "org"
                 profile_list.append(org_profile)
@@ -77,22 +72,12 @@ def profiles(
 
         # Fetch projects, then each project profile
         try:
-            resp = c.get("/v1/projects")
-            resp.raise_for_status()
-            projects_data = resp.json()
-            projects = (
-                projects_data
-                if isinstance(projects_data, list)
-                else projects_data.get("projects", [])
-            )
-            for p in projects:
+            for p in sdk.projects.list():
                 pid = p.get("id")
                 if not pid:
                     continue
                 try:
-                    resp = c.get(f"/v1/knowledge/profiles/project/{pid}")
-                    resp.raise_for_status()
-                    pp = resp.json()
+                    pp = sdk.profile.project(pid)
                     if pp:
                         pp["_profile_type"] = "project"
                         profile_list.append(pp)
@@ -101,8 +86,7 @@ def profiles(
         except Exception:
             pass
 
-    if json_out or is_piped():
-        print_json(profile_list)
+    if machine_output(profile_list, json_out=json_out):
         return
 
     if not profile_list:
@@ -113,10 +97,12 @@ def profiles(
     rows = []
     for p in profile_list:
         focus = ", ".join(p.get("focus_areas", []))[:40]
-        rows.append([
-            p.get("name", ""),
-            p.get("_profile_type", ""),
-            str(p.get("id", "")),
-            focus,
-        ])
+        rows.append(
+            [
+                p.get("name", ""),
+                p.get("_profile_type", ""),
+                str(p.get("id", "")),
+                focus,
+            ]
+        )
     print_table(columns, rows, title="Knowledge Profiles")

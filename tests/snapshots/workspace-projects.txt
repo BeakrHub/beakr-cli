@@ -1,0 +1,87 @@
+$ beakr workspace projects --json
+> GET /v1/projects?limit=200
+[exit 0]
+--- stdout
+[
+  {
+    "can_add_content": true,
+    "can_delete": true,
+    "can_edit": true,
+    "can_edit_kb": true,
+    "can_manage_kb_profile": true,
+    "can_manage_members": true,
+    "can_share": true,
+    "can_view_kb_gaps": true,
+    "created_at": "2026-02-03T09:30:00Z",
+    "description": "Thermostable lead selection for the NW-200 series.",
+    "group_id": "641560fa-194d-4042-8b3a-4b1d6adc7938",
+    "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "is_shared": true,
+    "member_count": 3,
+    "name": "Helios",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "owner_email": "dana@northwind.example",
+    "owner_name": "Dana Whitfield",
+    "owner_user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+    "project_type": "standard",
+    "requires_knowledge_profile": false,
+    "sidebar_pinned": false,
+    "sidebar_sort_order": 1,
+    "slug": "helios",
+    "status": "active",
+    "tags": [
+      "lead-selection",
+      "thermostability"
+    ],
+    "updated_at": "2026-10-08T15:12:40Z"
+  },
+  {
+    "can_add_content": true,
+    "can_delete": false,
+    "can_edit": false,
+    "can_edit_kb": false,
+    "can_manage_kb_profile": false,
+    "can_manage_members": false,
+    "can_share": false,
+    "can_view_kb_gaps": false,
+    "created_at": "2025-06-02T09:10:00Z",
+    "description": "Reading list and how-tos for new Northwind scientists.",
+    "group_id": "90c02e11-59d4-4b9b-b1cb-be9865828664",
+    "id": "7034917d-cab8-45a6-839a-b1aec49a5ac0",
+    "is_shared": true,
+    "member_count": 12,
+    "name": "Northwind Onboarding",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "owner_email": "maja@northwind.example",
+    "owner_name": "Maja Lindqvist",
+    "owner_user_id": "3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22",
+    "project_type": "standard",
+    "requires_knowledge_profile": false,
+    "sidebar_pinned": false,
+    "sidebar_sort_order": 2,
+    "slug": "northwind-onboarding",
+    "status": "active",
+    "tags": [
+      "onboarding"
+    ],
+    "updated_at": "2026-09-18T11:00:00Z"
+  }
+]
+--- stderr
+
+
+$ beakr workspace projects
+> GET /v1/projects?limit=200
+[exit 0]
+--- stdout
+Projects
+┏━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃Name                 ┃ ID                                   ┃ Description                         ┃
+┡━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│Helios               │ 4dd25154-0d80-44ab-b4c2-167319bfacb4 │ Thermostable lead selection for the │
+│                     │                                      │ NW-200 series.                      │
+│Northwind Onboarding │ 7034917d-cab8-45a6-839a-b1aec49a5ac0 │ Reading list and how-tos for new    │
+│                     │                                      │ Northwind scienti                   │
+└─────────────────────┴──────────────────────────────────────┴─────────────────────────────────────┘
+--- stderr
+
