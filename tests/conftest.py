@@ -7,7 +7,16 @@ over it), so isolation is applied to every test rather than opted into.
 
 from __future__ import annotations
 
+import os
+
 import pytest
+
+# Typer and Rich decide when they are imported whether to force colored, boxed
+# output: they do on a CI runner (GITHUB_ACTIONS) or when FORCE_COLOR/PY_COLORS is
+# set. Tests compare plain text, so a run on GitHub Actions failed on ANSI codes
+# that a local run never sees. Cleared here, before any test imports the CLI.
+for _name in ("GITHUB_ACTIONS", "FORCE_COLOR", "PY_COLORS", "TTY_COMPATIBLE"):
+    os.environ.pop(_name, None)
 
 _CREDENTIAL_ENV = (
     "BEAKR_API_KEY",
