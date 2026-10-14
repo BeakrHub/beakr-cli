@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=6dc0ed9dbb6b6645f833ffdd5db3319112d4dca019ef5d22868bdc07ba71064f changelog sha256=5abdd0d350f040f55d7095e4a06d68e860043e0e8a72ba65984d86cf47aa0485 -->
+<!-- contract-stamp: public-openapi sha256=808e40fc6dea92c548b15cdf54deaade2a0d2d973174605911d033cec851fcfa changelog sha256=1044d91b11f79fb5bb5871e81a8dfab44cd4e7c8d96de4efbea6bc4aa6a8d386 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -31,7 +31,16 @@ The first public version.
   is unchanged. `POST /v1/knowledge/wiki/write` accepts every reference a read
   prints as a citation's `reference`, Knowledge pages (`Page Title › Section`)
   included; a short file name that several readable files share resolves to the
-  one Knowledge cites.
+  one Knowledge cites. A write's prose may cite inline the same way: a
+  reference in parentheses after a claim (`Rent is $5 (memo.pdf › p. 7).`) is
+  stored as that citation, and one that names nothing the caller may cite is
+  refused with `citation_not_citeable`. A `conversation`, `agent_note` or
+  `user_note` citation may carry a `key` in its own namespace
+  (`conversation:call-with-ana`) and be cited inline as `{{conversation:call-with-ana}}`.
+  `POST /v1/knowledge/documents` results and `POST /v1/knowledge/wiki/write`
+  results name citations the same readable way. `ResearchResult` fields `checked`, `not_checked`,
+  `sources_consulted`, `subtasks`, `stopped_early`, `engine` and `lead_model`
+  now say what they hold.
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
   project-restricted credential must supply one of its authorized projects.

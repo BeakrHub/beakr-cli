@@ -9065,7 +9065,7 @@
               }
             ],
             "default": null,
-            "description": "Checked.",
+            "description": "What the research covered: the sources and scopes it read.",
             "title": "Checked"
           },
           "citations": {
@@ -9151,7 +9151,7 @@
               }
             ],
             "default": null,
-            "description": "Engine.",
+            "description": "Which research engine answered.",
             "title": "Engine"
           },
           "entities": {
@@ -9193,7 +9193,7 @@
               }
             ],
             "default": null,
-            "description": "Lead model.",
+            "description": "The model that led the research and wrote the answer.",
             "title": "Lead Model"
           },
           "next": {
@@ -9222,7 +9222,7 @@
               }
             ],
             "default": null,
-            "description": "Not checked.",
+            "description": "What it did not cover and a reader would still have to open; treat the answer as incomplete for those.",
             "title": "Not Checked"
           },
           "sources": {
@@ -9243,7 +9243,7 @@
               }
             ],
             "default": null,
-            "description": "Sources consulted.",
+            "description": "How many distinct sources the research read, cited or not.",
             "title": "Sources Consulted"
           },
           "stopped_early": {
@@ -9256,7 +9256,7 @@
               }
             ],
             "default": null,
-            "description": "Stopped early.",
+            "description": "True when the research reached its time or step limit and answered from what it had; `not_checked` says what is missing.",
             "title": "Stopped Early"
           },
           "subtasks": {
@@ -9269,7 +9269,7 @@
               }
             ],
             "default": null,
-            "description": "Subtasks.",
+            "description": "How many parallel research subtasks the lead started.",
             "title": "Subtasks"
           },
           "text": {

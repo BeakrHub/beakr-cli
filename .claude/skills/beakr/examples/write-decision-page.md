@@ -23,7 +23,7 @@ Suggested parent: "API Architecture".
 research(query="internal API architecture GraphQL REST", project="<platform project id>")
 knowledge_base(command="sources", arguments={"page": "API Architecture"})
 ```
-Note each source's citation key and `source_ref`.
+Note the readable reference each source is cited by (`api-decision.docx › p. 2`).
 
 ### Step 4: Stage the page
 
@@ -40,18 +40,14 @@ knowledge_base_write(
     "sections": [
       {
         "title": "Summary",
-        "body": "The engineering team decided to migrate the internal API from REST to GraphQL, effective Q2 2026 {{gdrive:api-decision-doc}}. The public API remains REST {{gdrive:api-decision-doc}}.",
-        "citations": [
-          {"key": "gdrive:api-decision-doc", "source_ref": "beakr-source:v1:...", "stance": "support"}
-        ]
+        "body": "The engineering team decided to migrate the internal API from REST to GraphQL, effective Q2 2026 (api-decision.docx › p. 1). The public API remains REST (api-decision.docx › p. 1)."
       },
       {
         "title": "Decision",
-        "body": "**Decision maker:** Sarah Chen (CTO) {{gdrive:api-decision-doc}}\n\nAdopt GraphQL for internal service communication using Apollo Federation {{gdrive:api-decision-doc}}. It reduces over-fetching by 60% based on traffic analysis {{conversation:graphql-traffic}}.",
+        "body": "**Decision maker:** Sarah Chen (CTO) (api-decision.docx › p. 1)\n\nAdopt GraphQL for internal service communication using Apollo Federation (api-decision.docx › p. 2). It reduces over-fetching by 60% based on traffic analysis {{conversation:graphql-traffic}}.",
         "event_start": "2026-03-15",
         "date_precision": "day",
         "citations": [
-          {"key": "gdrive:api-decision-doc", "source_ref": "beakr-source:v1:...", "stance": "support"},
           {
             "key": "conversation:graphql-traffic",
             "source_type": "conversation",
@@ -63,10 +59,7 @@ knowledge_base_write(
       },
       {
         "title": "Alternatives considered",
-        "body": "1. **Keep REST, add OpenAPI codegen** -- lower migration cost but doesn't solve over-fetching {{gdrive:api-decision-doc}}\n2. **gRPC** -- better performance but weaker tooling for our stack {{gdrive:api-decision-doc}}",
-        "citations": [
-          {"key": "gdrive:api-decision-doc", "source_ref": "beakr-source:v1:...", "stance": "support"}
-        ]
+        "body": "1. **Keep REST, add OpenAPI codegen** -- lower migration cost but doesn't solve over-fetching (api-decision.docx › p. 2)\n2. **gRPC** -- better performance but weaker tooling for our stack (api-decision.docx › p. 2)"
       },
       {
         "title": "Related Pages",
@@ -86,6 +79,6 @@ Call `accept_proposal` only after the user explicitly says to apply it.
 ## Key points
 - Use the `decision` page type; include the date (`event_start` + `date_precision`), decision maker, and alternatives
 - `sections` is a list of `{title, body}`; Beakr adds the section markers
-- Put an inline `{{key}}` token after every factual claim, and a matching citation record in that section
-- Reuse `source_ref` for sources Beakr already has; cite this conversation with `source_type: "conversation"` and `meta.excerpt`
+- Cite every factual claim inline: a source Beakr already has by the readable reference a read printed, in parentheses (Beakr stores it as that citation); this conversation as `{{conversation:<label>}}` with a matching `conversation` record in that section
+- A record in `citations` can also cite a source Beakr has by `reference` or `source_ref`
 - Link related pages with `[[Page Title]]`

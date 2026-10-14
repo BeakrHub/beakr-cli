@@ -12,7 +12,7 @@ knowledge_base(command="blame", arguments={"page": "API Design"})
 ```
 
 ### sources
-The source documents behind a page, each with the other pages that draw on it. Also accepts a source title or citation token as `page` to get that one document's entry.
+The source documents behind a page, each with the other pages that draw on it. Also accepts a source title (a cited file's name) as `page` to get that one document's entry.
 
 ```
 knowledge_base(command="sources", arguments={"page": "API Design"})
