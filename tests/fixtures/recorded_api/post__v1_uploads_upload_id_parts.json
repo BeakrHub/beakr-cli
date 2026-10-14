@@ -1,0 +1,16 @@
+{
+  "operation": "POST /v1/uploads/{upload_id}/parts",
+  "source": "synthesized from the contract's UploadSessionOut / UploadPartsResponse / UploadCompleteResponse (2026-10-12: every upload is resumable)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "upload_id": "7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70",
+    "parts": [
+      {
+        "part_number": 1,
+        "url": "https://storage.test/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/1?X-Amz-Signature=snapshot",
+        "expires_at": "2026-10-12T13:00:00Z"
+      }
+    ]
+  }
+}

@@ -1,0 +1,199 @@
+{
+  "suite": "cross_agent_handoff",
+  "description": "A correction is made in an outside agent's session (Claude Code or Codex), imported through the conversations API and compounded. A later question, asked through research and through the context route another agent would load, must use the corrected value and cite where it came from. This is the spec's 'Compounding from outside agents' evaluation. Synthetic: every organization, person and value is invented.",
+  "cases": [
+    {
+      "id": "claude-code-correction",
+      "title": "A Claude Code session corrects a buffer concentration",
+      "steps": [
+        {
+          "op": "seed_page",
+          "title": "Lysis buffer LB-3",
+          "page_type": "topic",
+          "summary": "Composition of lysis buffer LB-3.",
+          "source_date": "2026-04-01",
+          "sections": [
+            {
+              "title": "Composition",
+              "body": "Lysis buffer LB-3 uses 150 mM NaCl and 1 percent Triton X-100."
+            }
+          ]
+        },
+        {
+          "op": "import_conversation",
+          "client": "claude-code",
+          "session_id": "bench-handoff-lb3",
+          "summary": "Corrected the LB-3 salt concentration.",
+          "messages": [
+            {
+              "role": "user",
+              "content": "The LB-3 page is wrong. Since the 2026-05-12 protocol revision lysis buffer LB-3 uses 300 mM NaCl, not 150 mM. The 150 mM version lysed nuclei too slowly."
+            },
+            {
+              "role": "assistant",
+              "content": "Understood. Lysis buffer LB-3 uses 300 mM NaCl since the 2026-05-12 protocol revision, replacing the earlier 150 mM NaCl formulation because it lysed nuclei too slowly. Triton X-100 stays at 1 percent."
+            },
+            {
+              "role": "user",
+              "content": "Update protocols/lysis/lb3.md and the bench checklist so they match, then tell me what changed."
+            },
+            {
+              "role": "assistant",
+              "content": "I read protocols/lysis/lb3.md and checklists/bench-prep.md. Both listed 150 mM NaCl. I changed the NaCl line in protocols/lysis/lb3.md to 300 mM NaCl with a note citing the 2026-05-12 protocol revision, and updated the LB-3 row in checklists/bench-prep.md to 300 mM. Triton X-100 stays at 1 percent in both files. The other buffers in the checklist (LB-1, LB-2, WB-4) are unchanged."
+            }
+          ]
+        },
+        {
+          "op": "ask",
+          "label": "research",
+          "via": "research",
+          "question": "What NaCl concentration does lysis buffer LB-3 use?",
+          "checks": {
+            "must_include": [
+              [
+                "300 mM",
+                "300mM"
+              ]
+            ],
+            "require_citation": true
+          },
+          "expectation": "300 mM since the 2026-05-12 revision, citing the imported session."
+        },
+        {
+          "op": "ask",
+          "label": "context",
+          "via": "context",
+          "question": "What NaCl concentration does lysis buffer LB-3 use?",
+          "checks": {
+            "must_include": [
+              [
+                "300 mM",
+                "300mM"
+              ]
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "codex-correction",
+      "title": "A Codex session corrects a pipeline parameter",
+      "steps": [
+        {
+          "op": "seed_page",
+          "title": "Variant calling pipeline settings",
+          "page_type": "topic",
+          "summary": "Settings of the variant calling pipeline.",
+          "source_date": "2026-03-03",
+          "sections": [
+            {
+              "title": "Settings",
+              "body": "The variant calling pipeline uses a minimum base quality of 20."
+            }
+          ]
+        },
+        {
+          "op": "import_conversation",
+          "client": "codex",
+          "session_id": "bench-handoff-bq",
+          "summary": "Raised the minimum base quality.",
+          "messages": [
+            {
+              "role": "user",
+              "content": "We raised the variant calling pipeline minimum base quality to 30 in the 2026-06-02 release because quality 20 let through too many false positives in low-complexity regions."
+            },
+            {
+              "role": "assistant",
+              "content": "Recorded: the variant calling pipeline minimum base quality is 30 since the 2026-06-02 release, up from 20, to cut false positives in low-complexity regions."
+            },
+            {
+              "role": "user",
+              "content": "Change pipeline/config/variant_calling.yaml and the README so they agree with the release, and run the config tests."
+            },
+            {
+              "role": "assistant",
+              "content": "I set min_base_quality: 30 in pipeline/config/variant_calling.yaml (it was 20) and updated the README's Filtering section to say the minimum base quality is 30 since the 2026-06-02 release, with the reason: quality 20 let through too many false positives in low-complexity regions. tests/test_config.py passes (14 tests). No other thresholds changed; min_mapping_quality is still 40."
+            }
+          ]
+        },
+        {
+          "op": "ask",
+          "label": "research",
+          "via": "research",
+          "question": "What minimum base quality does the variant calling pipeline use?",
+          "checks": {
+            "must_include": [
+              [
+                "quality of 30",
+                "quality is 30",
+                "quality to 30",
+                "quality 30",
+                "30 since",
+                "is 30"
+              ]
+            ],
+            "require_citation": true
+          }
+        }
+      ]
+    },
+    {
+      "id": "claude-code-new-owner",
+      "title": "A Claude Code session records a handover",
+      "steps": [
+        {
+          "op": "seed_page",
+          "title": "Mass spectrometer MS-2",
+          "page_type": "topic",
+          "summary": "Mass spectrometer MS-2.",
+          "source_date": "2026-02-10",
+          "sections": [
+            {
+              "title": "Contact",
+              "body": "Mass spectrometer MS-2 is maintained by Dana Whitfield."
+            }
+          ]
+        },
+        {
+          "op": "import_conversation",
+          "client": "claude-code",
+          "session_id": "bench-handoff-ms2",
+          "summary": "MS-2 maintenance handover.",
+          "messages": [
+            {
+              "role": "user",
+              "content": "Note that Dana Whitfield handed mass spectrometer MS-2 maintenance to Rafael Ortiz on 2026-07-14."
+            },
+            {
+              "role": "assistant",
+              "content": "Noted: mass spectrometer MS-2 maintenance moved from Dana Whitfield to Rafael Ortiz on 2026-07-14, so Rafael Ortiz maintains MS-2 now."
+            },
+            {
+              "role": "user",
+              "content": "Update the instrument roster in ops/instruments.md and the on-call notes so people know who to ask about MS-2."
+            },
+            {
+              "role": "assistant",
+              "content": "I updated ops/instruments.md: the MS-2 row now lists Rafael Ortiz as maintenance owner from 2026-07-14, replacing Dana Whitfield, and I added the handover date to the history column. In ops/on-call.md I changed the MS-2 escalation contact to Rafael Ortiz. Dana Whitfield still owns MS-1, which I left as it was."
+            }
+          ]
+        },
+        {
+          "op": "ask",
+          "label": "research",
+          "via": "research",
+          "question": "Who maintains mass spectrometer MS-2?",
+          "checks": {
+            "must_include": [
+              [
+                "Rafael Ortiz",
+                "Ortiz"
+              ]
+            ],
+            "require_citation": true
+          }
+        }
+      ]
+    }
+  ]
+}

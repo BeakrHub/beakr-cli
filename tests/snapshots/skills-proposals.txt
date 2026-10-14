@@ -1,0 +1,58 @@
+$ beakr skills proposals --json
+> GET /v1/me/skills/proposals?limit=200
+[exit 0]
+--- stdout
+[
+  {
+    "description": "Turn an HX-01 stability export into the Helios charter's results table.",
+    "draft_files": {},
+    "draft_skill_md": "---\nname: helios-stability-readout\ndescription: Turn an HX-01 stability export into the Helios charter's results table.\n---\n\n1. Read the workbook's Summary sheet.\n2. Report percent remaining activity per compound at each time point.\n3. Flag any compound below 90% at 3 months.\n",
+    "evidence": {},
+    "first_seen_at": "2026-09-12T18:00:00Z",
+    "id": "28c2ea96-e2f8-4482-9a07-f57e87a7f2af",
+    "last_seen_at": "2026-09-30T17:48:39Z",
+    "occurrence_count": 3,
+    "source_page_ids": [
+      "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41"
+    ],
+    "source_thread_ids": [
+      "e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64"
+    ],
+    "status": "pending",
+    "title": "Helios stability readout"
+  },
+  {
+    "description": "Draft a portfolio committee decision memo from the meeting notes.",
+    "draft_files": {},
+    "draft_skill_md": "---\nname: committee-decision-memo\ndescription: Draft a portfolio committee decision memo from the meeting notes.\n---\n\n1. Name the decision, the date and who chaired.\n2. List the options and why each was kept or set aside.\n",
+    "evidence": {},
+    "first_seen_at": "2026-09-18T16:10:00Z",
+    "id": "49065a5c-fe85-451e-9777-d214525ef181",
+    "last_seen_at": "2026-10-02T10:19:03Z",
+    "occurrence_count": 2,
+    "source_page_ids": [
+      "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62"
+    ],
+    "source_thread_ids": [
+      "b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47"
+    ],
+    "status": "pending",
+    "title": "Committee decision memo"
+  }
+]
+--- stderr
+
+
+$ beakr skills proposals
+> GET /v1/me/skills/proposals?limit=200
+[exit 0]
+--- stdout
+Skill proposals (2)
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━┓
+┃Proposal ID                          ┃ Title                    ┃ Seen ┃ Status ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━┩
+│28c2ea96-e2f8-4482-9a07-f57e87a7f2af │ Helios stability readout │ 3x   │ pending│
+│49065a5c-fe85-451e-9777-d214525ef181 │ Committee decision memo  │ 2x   │ pending│
+└─────────────────────────────────────┴──────────────────────────┴──────┴────────┘
+--- stderr
+Keep one with `beakr skills approve PROPOSAL_ID`.

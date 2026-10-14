@@ -1,0 +1,26 @@
+{
+  "operation": "POST /v1/integrations/{connector_id}/sync",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 202,
+  "content_type": "application/json",
+  "body": {
+    "connector_id": "a1d5e8c2-4b7f-4e39-9c60-8f2b1d3a7e95",
+    "results": [
+      {
+        "attachment_id": "3c8e1a4f-6d92-4b07-a5e3-9f1c2d7b8e60",
+        "item_type": "folder",
+        "message": null,
+        "name": "Helios",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "result": {
+          "job_id": "c5a7e2d9-0b48-4f13-8d6a-3e9b1f7c4a20",
+          "provider": "google_drive",
+          "status": "queued",
+          "status_url": "/v1/jobs/c5a7e2d9-0b48-4f13-8d6a-3e9b1f7c4a20",
+          "task_id": "8d1f4b6a-2e97-4c35-b0a8-5f3c9e1d7b42"
+        },
+        "status": "queued"
+      }
+    ]
+  }
+}

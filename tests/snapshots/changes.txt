@@ -1,0 +1,51 @@
+$ beakr changes --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/changes?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+[
+  {
+    "actor_user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+    "agent": "claude-code",
+    "created_at": "2026-10-01T14:32:10Z",
+    "detail": {
+      "status": "pending",
+      "proposal_type": "update",
+      "source": "api",
+      "page_title": "Project Helios"
+    },
+    "id": "6b1f3e8d-2c47-4a95-b0d6-8e3f1a7c2d54",
+    "kind": "proposal.filed",
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "summary": "Adds the Q3 stability results to the charter."
+  },
+  {
+    "actor_user_id": "3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22",
+    "agent": null,
+    "created_at": "2026-09-29T09:41:37Z",
+    "detail": {
+      "source": "upload",
+      "ai_generated": false
+    },
+    "id": "0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411",
+    "kind": "file.added",
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "summary": "HX-01 stability summary.xlsx"
+  }
+]
+--- stderr
+
+
+$ beakr changes --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/changes?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+Changes (2)
+┏━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃When             ┃ Who                      ┃ What           ┃ Summary                            ┃
+┡━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│2026-10-01T14:32 │ claude-code              │ proposal.filed │ Adds the Q3 stability results to   │
+│                 │                          │                │ the charter.                       │
+│2026-09-29T09:41 │ 3f8a1d27-6c4e-4b9a-8e... │ file.added     │ HX-01 stability summary.xlsx       │
+└─────────────────┴──────────────────────────┴────────────────┴────────────────────────────────────┘
+--- stderr
+

@@ -1,0 +1,19 @@
+{
+  "operation": "POST /v1/context",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "blocks": [
+      {
+        "content": "Helios develops a thermostable enzyme candidate for the NW-200 series. Lead compound: NW-217 (selected 2026-09-18).",
+        "name": "project_profile"
+      }
+    ],
+    "changes_since": "2026-09-30T17:48:39Z",
+    "client": "claude-code",
+    "content": "## Project\n\nHelios develops a thermostable enzyme candidate for the NW-200 series. Lead compound: NW-217 (selected 2026-09-18).",
+    "format": "markdown",
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+  }
+}

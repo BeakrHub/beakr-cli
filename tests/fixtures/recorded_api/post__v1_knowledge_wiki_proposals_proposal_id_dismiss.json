@@ -1,0 +1,10 @@
+{
+  "operation": "POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss",
+  "source": "hand-authored from beakr/api/routes/knowledge.py:dismiss_proposal",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "status": "dismissed",
+    "proposal_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f"
+  }
+}

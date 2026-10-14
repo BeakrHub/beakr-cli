@@ -1,0 +1,48 @@
+$ beakr profile confirm 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> PATCH /v1/me/profile/claims/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+  {"confirm": true}
+[exit 0]
+--- stdout
+{
+  "confidence": 0.82,
+  "confirmation_state": "inferred",
+  "content": "Send the NW-217 scale-up plan to the portfolio committee.",
+  "dismissed_at": null,
+  "due_at": "2026-10-09T17:00:00Z",
+  "evidence_refs": [
+    {
+      "thread_id": "b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47",
+      "message_id": "6e2c9a14-8b3f-4d07-a5e1-3f9b2d7c4a80"
+    }
+  ],
+  "first_seen_at": "2026-09-18T15:40:00Z",
+  "id": "330bce06-2433-4268-a484-62f15e3065d2",
+  "last_seen_at": "2026-09-30T17:48:39Z",
+  "layer": "stated_commitment",
+  "migrated_memory_id": null,
+  "next_step": "Draft the scale-up plan from the HX-01 stability results.",
+  "observation_count": 2,
+  "origin": "thread_synthesis",
+  "parent_claim_id": null,
+  "profile_layer": "reminders",
+  "retired_at": "2026-10-01T12:00:00Z",
+  "retired_reason": "completed",
+  "scope": "work",
+  "section": "commitments",
+  "sensitivity": "standard",
+  "status": "completed",
+  "superseded_by_id": null,
+  "valid_from": null,
+  "valid_until": "2026-10-09T23:59:59Z"
+}
+--- stderr
+
+
+$ beakr profile confirm 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> PATCH /v1/me/profile/claims/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+  {"confirm": true}
+[exit 0]
+--- stdout
+Confirmed 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f.
+--- stderr
+

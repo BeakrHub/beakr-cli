@@ -1,0 +1,7 @@
+{
+  "operation": "GET /v1/outputs/{output_id}/export/{format}",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "text/markdown",
+  "text": "# Helios Lead Selection Brief\n\nThe portfolio committee approved NW-217 as the lead on 2026-09-30.\n\n## Sources\n\n1. helios-charter.pdf\n"
+}

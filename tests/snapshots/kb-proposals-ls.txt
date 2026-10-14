@@ -1,0 +1,48 @@
+$ beakr kb proposals ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/proposals?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&status=pending
+[exit 0]
+--- stdout
+[
+  {
+    "created_at": "2026-09-22T14:35:00Z",
+    "id": "71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68",
+    "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "page_title": "Project Helios",
+    "payload": {},
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "proposal_type": "edit",
+    "source": "health",
+    "status": "pending",
+    "summary": "Adds the Q3 stability results to the charter."
+  },
+  {
+    "created_at": "2026-10-01T09:02:00Z",
+    "id": "0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51",
+    "page_id": null,
+    "page_title": "NW-217 Tox Read-out Plan",
+    "payload": {},
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "proposal_type": "create",
+    "source": "capture",
+    "status": "pending",
+    "summary": "Creates a page for the November tox read-out on NW-217."
+  }
+]
+--- stderr
+
+
+$ beakr kb proposals ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/proposals?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&status=pending
+[exit 0]
+--- stdout
+Wiki Proposals
+┏━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ID       ┃ Type   ┃ Status  ┃ Page                     ┃ Summary                                  ┃
+┡━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│71d3b8e5 │ edit   │ pending │ Project Helios           │ Adds the Q3 stability results to the     │
+│         │        │         │                          │ charter.                                 │
+│0f4b6d82 │ create │ pending │ NW-217 Tox Read-out Plan │ Creates a page for the November tox      │
+│         │        │         │                          │ read-out on                              │
+└─────────┴────────┴─────────┴──────────────────────────┴──────────────────────────────────────────┘
+--- stderr
+

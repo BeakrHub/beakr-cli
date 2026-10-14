@@ -1,0 +1,85 @@
+$ beakr profile show --json
+> GET /v1/me/profile
+[exit 0]
+--- stdout
+[
+  {
+    "confidence": 0.95,
+    "confirmation_state": "explicit",
+    "content": "Leads Project Helios at Northwind Biosciences.",
+    "dismissed_at": null,
+    "due_at": null,
+    "evidence_refs": [
+      {
+        "thread_id": "b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47",
+        "message_id": "6e2c9a14-8b3f-4d07-a5e1-3f9b2d7c4a80"
+      }
+    ],
+    "first_seen_at": "2026-06-02T10:00:00Z",
+    "id": "bcb17e0d-98c5-4e50-a843-c5c62436a836",
+    "last_seen_at": "2026-10-01T11:58:44Z",
+    "layer": "identity",
+    "migrated_memory_id": null,
+    "next_step": null,
+    "observation_count": 6,
+    "origin": "user",
+    "parent_claim_id": null,
+    "profile_layer": "identity",
+    "retired_at": null,
+    "retired_reason": null,
+    "scope": "work",
+    "section": "identity",
+    "sensitivity": "standard",
+    "status": "active",
+    "superseded_by_id": null,
+    "valid_from": "2026-06-01T00:00:00Z",
+    "valid_until": null
+  },
+  {
+    "confidence": 0.82,
+    "confirmation_state": "inferred",
+    "content": "Send the NW-217 scale-up plan to the portfolio committee.",
+    "dismissed_at": null,
+    "due_at": "2026-10-09T17:00:00Z",
+    "evidence_refs": [
+      {
+        "thread_id": "b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47",
+        "message_id": "6e2c9a14-8b3f-4d07-a5e1-3f9b2d7c4a80"
+      }
+    ],
+    "first_seen_at": "2026-09-18T15:40:00Z",
+    "id": "1beab438-a27c-40ce-86fb-140293d46098",
+    "last_seen_at": "2026-09-30T17:48:39Z",
+    "layer": "stated_commitment",
+    "migrated_memory_id": null,
+    "next_step": "Draft the scale-up plan from the HX-01 stability results.",
+    "observation_count": 2,
+    "origin": "thread_synthesis",
+    "parent_claim_id": null,
+    "profile_layer": "reminders",
+    "retired_at": null,
+    "retired_reason": null,
+    "scope": "work",
+    "section": "commitments",
+    "sensitivity": "standard",
+    "status": "waiting",
+    "superseded_by_id": null,
+    "valid_from": null,
+    "valid_until": "2026-10-09T23:59:59Z"
+  }
+]
+--- stderr
+
+
+$ beakr profile show
+> GET /v1/me/profile
+[exit 0]
+--- stdout
+
+identity
+  Leads Project Helios at Northwind Biosciences.  (explicit, active) bcb17e0d-98c5-4e50-a843-c5c62436a836
+
+reminders
+  Send the NW-217 scale-up plan to the portfolio committee.  (inferred, waiting) 1beab438-a27c-40ce-86fb-140293d46098
+--- stderr
+

@@ -1,0 +1,11 @@
+{
+  "operation": "GET /v1/knowledge/stats",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "links": 38,
+    "pages": 24,
+    "sources": 117
+  }
+}

@@ -1,0 +1,92 @@
+$ beakr doctor --json
+> GET /v1/public/openapi.json
+> GET /v1/me
+> GET /v1/me/api-keys?limit=200
+[exit 0]
+--- stdout
+{
+  "ok": true,
+  "checks": [
+    {
+      "name": "version",
+      "status": "ok",
+      "detail": "beakr-cli 0.4.0",
+      "version": "0.4.0"
+    },
+    {
+      "name": "api",
+      "status": "ok",
+      "detail": "https://api.test (HTTP 200)",
+      "base_url": "https://api.test"
+    },
+    {
+      "name": "auth",
+      "status": "ok",
+      "detail": "Dana Whitfield via env",
+      "source": "env"
+    },
+    {
+      "name": "scopes",
+      "status": "warn",
+      "detail": "unknown"
+    },
+    {
+      "name": "project",
+      "status": "warn",
+      "detail": "this directory is not bound (beakr init)"
+    },
+    {
+      "name": "mcp",
+      "status": "warn",
+      "detail": "not registered (beakr setup)",
+      "clients": []
+    },
+    {
+      "name": "hooks",
+      "status": "warn",
+      "detail": "not installed (beakr hooks install)",
+      "hooks": {
+        "claude": {
+          "settings_path": "<TMP>/home/.claude/settings.json",
+          "installed": false,
+          "events": [],
+          "complete": false
+        },
+        "codex": {
+          "agents_md": "<TMP>/home/.codex/AGENTS.md",
+          "installed": false
+        }
+      }
+    },
+    {
+      "name": "queue",
+      "status": "ok",
+      "detail": "no pending session imports",
+      "queued": 0,
+      "max": 50,
+      "oldest_age_seconds": null,
+      "full": false,
+      "healthy": true,
+      "path": "<TMP>/home/.beakr/hook_queue"
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr doctor
+> GET /v1/public/openapi.json
+> GET /v1/me
+> GET /v1/me/api-keys?limit=200
+[exit 0]
+--- stdout
+ok    version  beakr-cli 0.4.0
+ok    api      https://api.test (HTTP 200)
+ok    auth     Dana Whitfield via env
+warn  scopes   unknown
+warn  project  this directory is not bound (beakr init)
+warn  mcp      not registered (beakr setup)
+warn  hooks    not installed (beakr hooks install)
+ok    queue    no pending session imports
+--- stderr
+

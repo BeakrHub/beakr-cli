@@ -1,0 +1,31 @@
+$ beakr keys create --name ci --scope kb:read --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --no-browser --json
+> GET /v1/me/api-keys/scopes
+[exit 0]
+--- stdout
+{
+  "url": "https://app.thebeakr.com/settings?tab=api-keys&newKey=eyJuYW1lIjoiY2kiLCJzY29wZXMiOlsia2I6cmVhZCJdLCJwcm9qZWN0X2lkcyI6WyI0ZGQyNTE1NC0wZDgwLTQ0YWItYjRjMi0xNjczMTliZmFjYjQiXSwiY2xpZW50X25hbWUiOiJiZWFrci1jbGkifQ",
+  "opened": false,
+  "request": {
+    "name": "ci",
+    "scopes": [
+      "kb:read"
+    ],
+    "project_ids": [
+      "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+    ],
+    "client_name": "beakr-cli"
+  }
+}
+--- stderr
+
+
+$ beakr keys create --name ci --scope kb:read --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --no-browser
+> GET /v1/me/api-keys/scopes
+[exit 0]
+--- stdout
+API keys are created in the Beakr web app, from a signed-in browser.
+The form is filled in with your request; review it and press Create.
+Open: https://app.thebeakr.com/settings?tab=api-keys&newKey=eyJuYW1lIjoiY2kiLCJzY29wZXMiOlsia2I6cmVhZCJdLCJwcm9qZWN0X2lkcyI6WyI0ZGQyNTE1NC0wZDgwLTQ0YWItYjRjMi0xNjczMTliZmFjYjQiXSwiY2xpZW50X25hbWUiOiJiZWFrci1jbGkifQ
+Then use it with: beakr auth login --with-api-key (paste it), or BEAKR_API_KEY.
+--- stderr
+

@@ -1,0 +1,68 @@
+$ beakr upload charter.md --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> POST /v1/uploads
+  {"content_hash": "162b6533033291adf144c73def90cf083c43b59b4318a3609bcbca4fc9ed2d6f", "content_length": 44, "content_type": "text/markdown", "ingest_to_wiki": true, "path": "charter.md", "target_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+> GET /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70
+> POST /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/parts
+  {"part_numbers": [1]}
+> PUT /uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/1?X-Amz-Signature=snapshot
+  body: 44 bytes
+> POST /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/complete
+  {"artifact_type": "doc", "parts": [{"etag": "\"snapshot-etag\"", "part_number": 1}], "title": "charter.md"}
+[exit 0]
+--- stdout
+[
+  {
+    "path": "charter.md",
+    "upload": {
+      "id": "7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70",
+      "status": "completed",
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "parent_folder_id": null,
+      "path": "charter.md",
+      "content_type": "text/markdown",
+      "content_length": 44,
+      "part_size": 5242880,
+      "part_count": 1,
+      "ingest_to_wiki": true,
+      "created_at": "2026-10-12T12:00:00Z",
+      "expires_at": "2026-10-13T12:00:00Z",
+      "uploaded_parts": [],
+      "artifact_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+      "version_id": "9c8b7a6f-5e4d-4c3b-8a29-1f0e0d0c0b0a",
+      "job_id": "3b2a1f0e-9d8c-4b7a-9654-3210fedcba98"
+    },
+    "artifact": {
+      "id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+      "path": "charter.md",
+      "title": "charter.md",
+      "folder_id": null,
+      "version_id": "9c8b7a6f-5e4d-4c3b-8a29-1f0e0d0c0b0a",
+      "job_id": "3b2a1f0e-9d8c-4b7a-9654-3210fedcba98",
+      "ingest_to_wiki": true
+    },
+    "folders": [],
+    "job_id": "3b2a1f0e-9d8c-4b7a-9654-3210fedcba98",
+    "status_url": "/v1/jobs/3b2a1f0e-9d8c-4b7a-9654-3210fedcba98",
+    "batch_status_url": "/v1/bulk/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/status"
+  }
+]
+--- stderr
+Uploading charter.md...
+
+$ beakr upload charter.md --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/uploads
+  {"content_hash": "162b6533033291adf144c73def90cf083c43b59b4318a3609bcbca4fc9ed2d6f", "content_length": 44, "content_type": "text/markdown", "ingest_to_wiki": true, "path": "charter.md", "target_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+> GET /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70
+> POST /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/parts
+  {"part_numbers": [1]}
+> PUT /uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/1?X-Amz-Signature=snapshot
+  body: 44 bytes
+> POST /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/complete
+  {"artifact_type": "doc", "parts": [{"etag": "\"snapshot-etag\"", "part_number": 1}], "title": "charter.md"}
+[exit 0]
+--- stdout
+Uploaded charter.md -> 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+1 file(s) uploaded. Indexing runs in the background.
+Wait for it: beakr jobs wait 3b2a1f0e-9d8c-4b7a-9654-3210fedcba98
+--- stderr
+Uploading charter.md...

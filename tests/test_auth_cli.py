@@ -7,8 +7,8 @@ def test_whoami_reports_environment_scope_over_stored_config(monkeypatch) -> Non
     monkeypatch.setenv("BEAKR_ORG_ID", "org-from-env")
     monkeypatch.setenv("BEAKR_PROJECT_ID", "project-from-env")
     monkeypatch.setattr(
-        "beakr_cli.commands.auth.api_get",
-        lambda _path: {
+        "beakr_cli.commands.auth._me",
+        lambda: {
             "user": {"display_name": "Sarah Chen"},
             "personal_org": {"name": "Example University"},
         },

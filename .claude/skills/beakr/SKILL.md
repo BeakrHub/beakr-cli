@@ -43,7 +43,7 @@ You are not just a read interface. When the conversation produces something dura
 
 **Etiquette:**
 - **Surface the suggestion before writing**: "This decision about X seems worth capturing — want me to propose it for your wiki?"
-- Never auto-write. Always propose, always wait for explicit OK.
+- Never auto-write. Always propose, always wait for explicit OK -- unless the write result says the user's auto-approve is on; then it is applied automatically, so do not ask them to approve it.
 - One capture offer per significant thread — don't pepper the user.
 - Cite the current session as a `conversation` source with `meta.excerpt` so it is traceable.
 
@@ -51,9 +51,10 @@ You are not just a read interface. When the conversation produces something dura
 
 | Tool | When to use |
 |------|-------------|
-| `research` | First choice for broad questions. Searches the knowledge base, documents, and connected services (Slack, Gmail, Calendar, Jira...) in one call. Returns a cited answer. |
-| `knowledge_base` | Every read over the wiki, chosen by `command`: `sections`, `grep`, `ls`, `cat`, `hover`, `links`, `references`, `timeline`, `provenance`, `blame`, `sources`, `log`, `diff`, `show`, `ontology`, `suggest_parent`, `diagnostics`, `completions`, `proposals`. |
-| `knowledge_base_write` | Every change, chosen by `action`: `edit_section`, `new`, `edit`, `find_replace`, `mv`, `archive`, `merge`, `copy`, `page_type`. Always stages a proposal. |
+| `knowledge_base` | Every read over the wiki, chosen by `command`: `sections`, `grep`, `ls`, `cat`, `hover`, `links`, `references`, `timeline`, `rows` (every map card's Facts, Connections or Findings as one table), `provenance`, `blame`, `sources`, `log`, `diff`, `show`, `ontology`, `suggest_parent`, `diagnostics`, `completions`, `proposals`. |
+| `knowledge_base_write` | Every change, chosen by `action`: `edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`, `new`, `edit`, `find_replace`, `mv`, `archive`, `merge`, `copy`, `page_type`. Always stages a proposal. On a project-map card use the three `add_*` actions to add one row or one dated finding, and `edit_rows` to change, merge or delete rows. |
+| `read_file` | The original document a citation points at. Pass the `path › place` from a Sources line (`deals/acme/memo.pdf › p. 7`), the whole `{{artifact:...}}` token, or the file id. It reads files and canvases only: for a connected item (Slack, email, calendar, Jira) use its excerpt and open its url. Long files come back in pieces (`offset`). |
+| `research` | When your client exposes it: one cited answer across the knowledge base, documents and connected services (Slack, Gmail, Calendar, Jira...). |
 | `show_proposal` / `accept_proposal` / `dismiss_proposal` | Review a staged proposal; accept only when the user explicitly asks. |
 | `list_projects` | Discover projects (including the personal one) to use as `scope`. |
 | `get_profile`, `wiki_stats`, `wiki_graph` | Org/project profile, counts, and the most-connected pages. |
@@ -69,14 +70,34 @@ knowledge_base_write(action="edit_section", scope="Team Wiki", arguments={...})
 
 There is no `search` command. Use `sections` (semantic, start here) or `grep` (literal text).
 
+## Reading evidence
+
+- **Start with `sections`.** Each hit shows the document passage (a verbatim excerpt) that supports it. Quote it directly; open the file only when the value you need is not in the excerpt.
+- **The knowledge base replaces a corpus grep.** For "every X", counts and superlatives use `ls` (by `page_type`) or `rows` (one table of every card's facts). Do not extract the documents and grep them; every document, its date and matter are already indexed.
+- **Results stay under about 6k tokens.** When `next` appears, page with it rather than re-querying.
+- **Exact wording:** `sources {page}` lists every cited passage; `read_file` with a token, a file id or a path opens the original.
+
+## Find, then verify in the file
+
+1. **Find** with the knowledge base (`sections`, `rows`, `cat`). Each Sources line names where a cited document lives and where each passage sits: `- deals/acme/memo.pdf: {{artifact:...}} › p. 7`.
+2. **Follow** that `path › place` with `read_file` (`deals/acme/memo.pdf › p. 7`, `book.xlsx › sheet 2, B4:D9`); it returns the text around that place. When the files are on your local disk, open the path there directly.
+3. **Verify** every decisive value (an amount, date, count, name) in the file before you rely on it. When the file and a card disagree, the file wins: say so, and cite the file's token.
+- **Codex:** print only the result's text, and make one Knowledge call per exec cell.
+
 ## Quick decision tree
 
 ```
-User asks a question about their org
+User asks a question about their org, a fact, a decision or a page
+  → knowledge_base sections {query}; quote the excerpt, or cat {page, section_id} on the best hit
+
+User asks a broad question and research is available
   → research(query=...)
 
-User asks about a specific fact, decision, or page
-  → knowledge_base sections {query}, then cat {page, section_id} on the best hit
+User asks for every X, a count or a superlative
+  → knowledge_base ls {page_type} or rows {table: facts, ...}
+
+User needs the exact wording or a value the excerpt lacks
+  → read_file {path: "<path> › <place>"} from the Sources line (or the {{token}})
 
 User wants an exact name, ID, or phrase
   → knowledge_base grep {query}
@@ -106,6 +127,8 @@ User wants to audit knowledge base quality
 ## Citing sources
 
 Always cite sources when presenting information from the knowledge base:
+- To people, cite inline with the readable reference a result prints (`tax-memo.docx › p. 7`, `#deals › message 2026-03-04 14:02 UTC`), linked when it has a url, or research's `[n]`
+- In writes, cite with the `{{token}}`, a read's `source_ref` or that readable reference, and only this conversation (`conversation` with `meta.excerpt`), files the user uploaded, or sources Knowledge already cites; anything else is refused `citation_not_citeable`
 - Include the page title so the user can find it
 - For `research` results, the response includes numbered citations with their `{{token}}` keys -- present them
 - An excerpt marked `(paraphrase)`, `(human asserted)`, or `(unverified)` is not a checked quote; open the source before relying on it
@@ -123,6 +146,7 @@ Always cite sources when presenting information from the knowledge base:
 ## Advanced workflows
 
 - **Deep research**: See [reference/research-workflow.md](reference/research-workflow.md)
+- **Cards or originals**: read cards first; compute from the original files when the answer needs math, exact values or a disputed source. See [reference/research-workflow.md](reference/research-workflow.md#cards-or-the-original-files)
 - **Writing pages**: See [reference/writing-pages.md](reference/writing-pages.md)
 - **Auditing quality**: See [reference/auditing.md](reference/auditing.md)
 - **Understanding provenance**: See [reference/provenance.md](reference/provenance.md)

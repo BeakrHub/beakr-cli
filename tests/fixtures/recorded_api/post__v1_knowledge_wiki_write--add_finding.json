@@ -1,0 +1,22 @@
+{
+  "operation": "POST /v1/knowledge/wiki/write",
+  "source": "recorded by beakr-engine tests/api/test_knowledge_result_shape_parity.py (tests/fixtures/knowledge_door_results.json, writes.add_finding)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "content": [
+      {
+        "text": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_findings, rev 1).\nSummary: add_finding: - **2026-06-20** · decision · Report the screen under HX-01. {{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document...\nWaiting for user approval.",
+        "type": "text"
+      }
+    ],
+    "outcome": {
+      "commit_ids": [],
+      "committed_page_ids": [],
+      "committed_revisions": {},
+      "error_code": null,
+      "protocol": "beakr.wiki_tool_outcome.v1",
+      "status": "success"
+    }
+  }
+}

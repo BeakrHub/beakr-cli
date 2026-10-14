@@ -1,0 +1,20 @@
+$ beakr kb stats --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/stats?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+{
+  "links": 38,
+  "pages": 24,
+  "sources": 117
+}
+--- stderr
+
+
+$ beakr kb stats --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/stats?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+Pages:   24
+Sources: 117
+--- stderr
+

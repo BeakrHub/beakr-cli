@@ -1,0 +1,63 @@
+$ beakr kb sources 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+[exit 0]
+--- stdout
+[
+  {
+    "source_ref": "beakr-source:v1:8e1f3a5c-7d9b-4b2e-8f04-6a1c3e5d7b92",
+    "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
+    "name": "helios-charter.pdf",
+    "filename": "helios-charter.pdf",
+    "provider": "upload",
+    "source_kind": "artifact",
+    "stance": "support",
+    "location": {
+      "file_id": "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13"
+    },
+    "evidence": {
+      "locator": "pages 2-3"
+    },
+    "section": {
+      "id": "sec_facts"
+    }
+  },
+  {
+    "source_ref": "beakr-source:v1:2c7e9a14-5b3d-4f81-a6c2-8d0e4f6b1a39",
+    "citation_key": "artifact:6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
+    "name": "NW-217 Accelerated Stability Report",
+    "filename": "NW-217 Accelerated Stability Report",
+    "provider": "upload",
+    "source_kind": "artifact",
+    "stance": "contradicts",
+    "location": {
+      "file_id": "6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37"
+    },
+    "evidence": {
+      "locator": "page 7"
+    },
+    "section": {
+      "id": "sec_facts"
+    }
+  }
+]
+--- stderr
+
+
+$ beakr kb sources 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+[exit 0]
+--- stdout
+┏━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┓
+┃# ┃ Source                                                               ┃ Citations ┃ Stance     ┃
+┡━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━┩
+│1 │ helios-charter.pdf · upload · file                                   │ 1         │ support    │
+│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13 (`beakr files download          │           │            │
+│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13`)                               │           │            │
+│2 │ NW-217 Accelerated Stability Report · upload · file                  │ 1         │ contradicts│
+│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37 (`beakr files download          │           │            │
+│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37`)                               │           │            │
+└──┴──────────────────────────────────────────────────────────────────────┴───────────┴────────────┘
+--- stderr
+

@@ -1,0 +1,16 @@
+{
+  "operation": "PATCH /v1/organizations/{org_id}/members/{user_id}",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "display_name": "Dana Whitfield",
+    "email": "dana@northwind.example",
+    "joined_at": "2025-03-14T16:20:00Z",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "revoked_at": null,
+    "role": "member",
+    "seat_type": "pro",
+    "user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11"
+  }
+}

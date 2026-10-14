@@ -1,0 +1,139 @@
+{
+  "suite": "agent_onboarding",
+  "version": "v2",
+  "description": "EVAL-571 v2, pre-registered 2026-10-10 before any run. Harder, discriminating onboarding tasks: each answer depends on team knowledge that contradicts a common default, spans two Knowledge pages, or was recently corrected. Without context the agent must find it through its Beakr tools within the turn cap. Bar, per agent: with-context task success strictly higher AND fewer Knowledge lookups per task.",
+  "cases": [
+    {
+      "id": "pellet-spin-corrected",
+      "title": "Use the corrected centrifuge settings, not the old or textbook ones",
+      "notes": "Recent correction plus a non-default value (textbook pellet spins are ~300 x g for 5 min). Checks look only at the delivered YAML.",
+      "setup": [
+        {"op": "seed_page", "title": "HEK pellet wash", "page_type": "protocol", "summary": "How the Halden lab pellets HEK cells between washes.",
+         "sections": [{"title": "Spin", "body": "Pellet HEK cells at 300 x g for 5 minutes at room temperature between washes."}]},
+        {"op": "edit_page", "title": "HEK pellet wash", "reason": "Viability dropped in August; the cell-culture group changed the spin.",
+         "sections": [{"title": "Spin", "body": "Pellet HEK cells at 450 x g for 7 minutes at 4 C between washes (changed from 300 x g, 5 minutes, room temperature in September 2026 after the August viability drop)."}]}
+      ],
+      "task": {
+        "prompt": "Write the centrifuge step for our HEK pellet wash as a YAML block with exactly the keys speed_xg, minutes and temp_c, using our lab's current settings.",
+        "checks": {
+          "code_must_include": [["speed_xg: 450"], ["minutes: 7"], ["temp_c: 4"]],
+          "code_must_not_include": ["speed_xg: 300"]
+        }
+      }
+    },
+    {
+      "id": "sev2-paging",
+      "title": "Page the right on-call person for a failed nightly run (two pages)",
+      "notes": "Needs the severity page and the rota page together.",
+      "setup": [
+        {"op": "seed_page", "title": "Incident severity levels", "page_type": "protocol", "summary": "How the data-platform team classifies incidents.",
+         "sections": [{"title": "Levels", "body": "A failed nightly sequencing run is a Sev-2 incident. A production outage of the LIMS is Sev-1."}]},
+        {"op": "seed_page", "title": "Data-platform on-call rota", "page_type": "topic", "summary": "Who gets paged for what.",
+         "sections": [{"title": "Routing", "body": "Sev-1 incidents page the primary on-call, Jonas Feld. Sev-2 incidents page the secondary on-call, Priya Nandakumar, and never the primary."}]}
+      ],
+      "task": {
+        "prompt": "Last night's sequencing run failed. Write the page I should send, addressed to the right on-call person, and say which severity it is.",
+        "checks": {
+          "must_include": [["Priya", "Nandakumar"], ["Sev-2", "Sev 2", "SEV-2", "SEV2", "Sev2", "severity 2"]]
+        }
+      }
+    },
+    {
+      "id": "notebook-file-name",
+      "title": "Name a notebook file using two conventions (non-ISO dates)",
+      "notes": "Two pages; the date convention contradicts the ISO default.",
+      "setup": [
+        {"op": "seed_page", "title": "Notebook file naming", "page_type": "protocol", "summary": "How electronic notebook files are named.",
+         "sections": [{"title": "Format", "body": "Notebook files are named <ASSAY>_<DATE>_<ANALYST INITIALS>.eln, with the date written in the lab date convention."}]},
+        {"op": "seed_page", "title": "Lab date convention", "page_type": "protocol", "summary": "How dates are written at Norrvik Bio.",
+         "sections": [{"title": "Convention", "body": "All dates in notebooks, filenames and labels are written DD.MM.YYYY (for example 07.09.2026), never ISO YYYY-MM-DD."}]}
+      ],
+      "task": {
+        "prompt": "Ines Okafor ran the KX2 assay on 3 November 2026. What should the notebook file be named under our conventions? Give just the file name and one line of reasoning.",
+        "checks": {"must_include": [["KX2_03.11.2026_IO.eln"]]}
+      }
+    },
+    {
+      "id": "antibody-vendor-switch",
+      "title": "Order from the current vendor after a switch",
+      "notes": "Recent correction supersedes the old vendor and account.",
+      "setup": [
+        {"op": "seed_page", "title": "Antibody purchasing", "page_type": "protocol", "summary": "Where the lab buys antibodies.",
+         "sections": [{"title": "Vendor", "body": "Antibodies are ordered from Abcam on account 4471."}]},
+        {"op": "edit_page", "title": "Antibody purchasing", "reason": "The Abcam contract lapsed.",
+         "sections": [{"title": "Vendor", "body": "Since September 2026 antibodies are ordered from Bio-Techne on account BT-20931. The Abcam contract (account 4471) lapsed; do not order from Abcam."}]}
+      ],
+      "task": {
+        "prompt": "Draft the purchase request line for 2 vials of anti-KX2 detection antibody from our current vendor, including our account number.",
+        "checks": {"must_include": [["Bio-Techne", "BioTechne", "Bio Techne"], ["BT-20931"]]}
+      }
+    },
+    {
+      "id": "well-index-column-major",
+      "title": "Convert a well index under a non-default ordering",
+      "notes": "Contradicts the common row-major default (which would give A10).",
+      "setup": [
+        {"op": "seed_page", "title": "Plate well indexing", "page_type": "protocol", "summary": "How our pipelines number wells on 96-well plates.",
+         "sections": [{"title": "Order", "body": "Our pipelines number wells 1-based in column-major order: index 1 is A1, 2 is B1, through 8 is H1, then 9 is A2, and so on down each column."}]}
+      ],
+      "task": {
+        "prompt": "Under our pipeline's convention, which well label is index 10 on a 96-well plate? Answer with the label and one line of reasoning.",
+        "checks": {"must_include": [["B2"]]}
+      }
+    },
+    {
+      "id": "lysis-buffer-inhibitor",
+      "title": "Write a buffer recipe that needs a lab-standard dilution (two pages)",
+      "notes": "The recipe page defers the inhibitor dilution to a standards page whose value contradicts the vendor default (1:100).",
+      "setup": [
+        {"op": "seed_page", "title": "Lysis buffer L-7", "page_type": "protocol", "summary": "Recipe for the standard lysis buffer.",
+         "sections": [{"title": "Recipe", "body": "Lysis buffer L-7 is 50 mM Tris pH 8.0, 150 mM NaCl and 1% NP-40, with protease inhibitor cocktail added at the lab-standard dilution."}]},
+        {"op": "seed_page", "title": "Lab reagent standards", "page_type": "protocol", "summary": "Lab-wide reagent dilutions.",
+         "sections": [{"title": "Protease inhibitor", "body": "Protease inhibitor cocktail is used at 1:200, not the vendor's recommended 1:100, following the March 2026 titration."}]}
+      ],
+      "task": {
+        "prompt": "Write the recipe for 10 mL of lysis buffer L-7 as a short list, including the volume of protease inhibitor cocktail to add.",
+        "checks": {
+          "must_include": [["50 uL", "50 µL", "50 μL", "50 ul", "50 µl", "50 microliters", "50 microlitres"], ["NP-40"], ["150 mM"]]
+        }
+      }
+    },
+    {
+      "id": "freezer-owner-changed",
+      "title": "Contact the current owner after a handover (two pages, corrected)",
+      "notes": "The owner is reached through a team page whose lead changed.",
+      "setup": [
+        {"op": "seed_page", "title": "Freezer maintenance", "page_type": "topic", "summary": "Who maintains the shared freezers.",
+         "sections": [{"title": "Responsibility", "body": "Freezers F-1 to F-4 are maintained by the cryo team; alarms go to the cryo team lead."}]},
+        {"op": "seed_page", "title": "Cryo team", "page_type": "topic", "summary": "The cryo team.",
+         "sections": [{"title": "Lead", "body": "The cryo team lead is Tomas Reyes."}]},
+        {"op": "edit_page", "title": "Cryo team", "reason": "Lead handover on 1 October 2026.",
+         "sections": [{"title": "Lead", "body": "The cryo team lead is Hanne Lie since 1 October 2026; Tomas Reyes moved to process development."}]}
+      ],
+      "task": {
+        "prompt": "Freezer F-3's temperature alarm went off overnight. Write the short message I should send, addressed to the person responsible.",
+        "checks": {"must_include": [["Hanne"]]}
+      }
+    },
+    {
+      "id": "dose-response-settings",
+      "title": "Use the team's curve-fit settings, not the defaults",
+      "notes": "Fixed bottom, units and significant figures differ from common defaults. Checks look only at the delivered code.",
+      "setup": [
+        {"op": "seed_page", "title": "Dose-response analysis", "page_type": "protocol", "summary": "How the team fits and reports dose-response curves.",
+         "sections": [{"title": "Fit", "body": "Dose-response curves are fit with a 4-parameter logistic model with the bottom fixed at 0 and the Hill slope free. IC50 values are reported in nM to 2 significant figures."}]}
+      ],
+      "task": {
+        "prompt": "Write a Python dict literal named FIT_SETTINGS with the keys model, bottom, units and sig_figs holding our team's dose-response fit settings.",
+        "checks": {
+          "code_must_include": [
+            ["4PL", "4-parameter", "four-parameter", "4 parameter", "four parameter", "4-param"],
+            ["\"bottom\": 0", "'bottom': 0"],
+            ["nM"],
+            ["\"sig_figs\": 2", "'sig_figs': 2"]
+          ]
+        }
+      }
+    }
+  ]
+}

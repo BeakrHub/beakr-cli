@@ -1,0 +1,10 @@
+{"type":"summary","summary":"Billing refactor","leafUuid":"x"}
+{"type":"user","sessionId":"cc-session-1","cwd":"/work/repo","timestamp":"2026-10-08T10:00:00Z","message":{"role":"user","content":"Refactor the billing client to retry on 503."}}
+{"type":"user","sessionId":"cc-session-1","cwd":"/work/repo","isMeta":true,"timestamp":"2026-10-08T10:00:01Z","message":{"role":"user","content":"Caveat: injected meta"}}
+{"type":"user","sessionId":"cc-session-1","cwd":"/work/repo","timestamp":"2026-10-08T10:00:02Z","message":{"role":"user","content":"<command-name>/clear</command-name>"}}
+{"type":"assistant","sessionId":"cc-session-1","cwd":"/work/repo","timestamp":"2026-10-08T10:00:05Z","message":{"role":"assistant","content":[{"type":"text","text":"I will add a retry loop."},{"type":"tool_use","id":"t1","name":"Edit","input":{"file_path":"/work/repo/billing.py","old_string":"a","new_string":"b"}}]}}
+{"type":"user","sessionId":"cc-session-1","cwd":"/work/repo","timestamp":"2026-10-08T10:00:06Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":"ok"}]}}
+{"type":"assistant","sessionId":"cc-session-1","cwd":"/work/repo","timestamp":"2026-10-08T10:00:07Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"Write","input":{"file_path":"/work/repo/tests/test_billing.py","content":"x"}},{"type":"tool_use","id":"t3","name":"Read","input":{"file_path":"/work/repo/README.md"}}]}}
+{"type":"assistant","sessionId":"cc-session-1","cwd":"/work/repo","isSidechain":true,"timestamp":"2026-10-08T10:00:08Z","message":{"role":"assistant","content":[{"type":"text","text":"subagent chatter"}]}}
+not json at all
+{"type":"assistant","sessionId":"cc-session-1","cwd":"/work/repo","timestamp":"2026-10-08T10:00:09Z","message":{"role":"assistant","content":[{"type":"text","text":"Done: retries on 503 with backoff."}]}}

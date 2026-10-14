@@ -1,0 +1,68 @@
+$ beakr workflows runs 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/workflows/configs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/runs?limit=20
+[exit 0]
+--- stdout
+[
+  {
+    "completed_at": "2026-10-08T15:04:37Z",
+    "config_id": "2594a964-f0c5-4afa-b171-d6d2b9183590",
+    "config_inputs": {},
+    "config_is_saved": true,
+    "config_name": "Helios weekly update",
+    "config_output_location_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "config_output_location_type": "project",
+    "created_at": "2026-10-08T15:00:00Z",
+    "error_message": null,
+    "id": "7e540d8e-5259-4c95-9ec7-ed8905d89f7a",
+    "input_overrides": {},
+    "job_id": "e6dc1929-d276-4fa2-8133-aa3d2def83bf",
+    "output_canvas_id": "017fdab2-d1b4-4168-96f5-bd0c8c91fac8",
+    "started_at": "2026-10-08T15:00:02Z",
+    "status": "completed",
+    "status_url": "/v1/jobs/e6dc1929-d276-4fa2-8133-aa3d2def83bf",
+    "template_icon": null,
+    "template_name": "Weekly Update",
+    "thread_id": "29c8fbb0-4da6-4788-b17d-77d0d883832f",
+    "triggered_by": "user",
+    "triggered_by_user_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11"
+  },
+  {
+    "completed_at": "2026-10-05T13:05:12Z",
+    "config_id": "2594a964-f0c5-4afa-b171-d6d2b9183590",
+    "config_inputs": {},
+    "config_is_saved": true,
+    "config_name": "Helios weekly update",
+    "config_output_location_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "config_output_location_type": "project",
+    "created_at": "2026-10-05T13:00:00Z",
+    "error_message": null,
+    "id": "18e3e575-0a7e-4af3-a861-437668833c03",
+    "input_overrides": {},
+    "job_id": "36699f58-fece-483a-b4fd-f0891380b5e2",
+    "output_canvas_id": "ca4a907a-41a2-4d92-b8f1-df12205d64cc",
+    "started_at": "2026-10-05T13:00:04Z",
+    "status": "completed",
+    "status_url": "/v1/jobs/36699f58-fece-483a-b4fd-f0891380b5e2",
+    "template_icon": null,
+    "template_name": "Weekly Update",
+    "thread_id": "a9a672fd-10f9-419d-aac2-aeec5924926d",
+    "triggered_by": "schedule",
+    "triggered_by_user_id": null
+  }
+]
+--- stderr
+
+
+$ beakr workflows runs 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/workflows/configs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/runs?limit=20
+[exit 0]
+--- stdout
+Runs (2)
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
+┃Run ID                ┃ Workflow             ┃ Status    ┃ Started          ┃ Output              ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
+│7e540d8e-5259-4c95-9… │ Helios weekly update │ completed │ 2026-10-08T15:00 │ 017fdab2-d1b4-4168-…│
+│18e3e575-0a7e-4af3-a… │ Helios weekly update │ completed │ 2026-10-05T13:00 │ ca4a907a-41a2-4d92-…│
+└──────────────────────┴──────────────────────┴───────────┴──────────────────┴─────────────────────┘
+--- stderr
+

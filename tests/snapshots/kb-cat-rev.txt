@@ -1,0 +1,71 @@
+$ beakr kb cat 'Project Helios' --rev 6 --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> POST /v1/knowledge/wiki/command
+  {"command": "cat", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "rev": 6, "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+[exit 0]
+--- stdout
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "# Project Helios (rev 6)\n\nNorthwind's program to select a thermostable lead from the NW-200 series.\n\n## Stability\n\nNW-217 kept 86 percent of its activity after two weeks at 40 C."
+    }
+  ],
+  "coverage": {
+    "command": "cat",
+    "complete": true,
+    "limit": 100,
+    "next_offset": null,
+    "offset": 0,
+    "returned": 1,
+    "scope": {
+      "all_readable": false,
+      "project_ids": [
+        "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+      ]
+    },
+    "status": "success",
+    "total": 1
+  },
+  "next": [
+    "Cite a row with its cite token; open its card with cat {page} for context.",
+    "Narrow with entity, attribute or page_type, or set current_only for facts."
+  ],
+  "outcome": {
+    "commit_ids": [],
+    "committed_page_ids": [],
+    "committed_revisions": {},
+    "error_code": null,
+    "protocol": "beakr.wiki_tool_outcome.v1",
+    "status": "success"
+  },
+  "sources": [
+    {
+      "citation_key": "wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877",
+      "name": "Helios HX-07 Solubility Card › Facts",
+      "section": {
+        "title": "Facts"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts"
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr kb cat 'Project Helios' --rev 6 --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> POST /v1/knowledge/wiki/command
+  {"command": "cat", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "rev": 6, "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+[exit 0]
+--- stdout
+Project Helios (rev 6)
+
+Northwind's program to select a thermostable lead from the NW-200 series.
+
+Stability
+
+NW-217 kept 86 percent of its activity after two weeks at 40 C.
+--- stderr
+

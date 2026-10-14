@@ -1,0 +1,60 @@
+{
+  "operation": "GET /v1/integrations/{connector_id}/status",
+  "source": "hand-authored from beakr/api/routes/public_integrations.py:integration_status",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "id": "e2d7a9c4-1f3b-4a6e-8c5d-9b0f2e4a6c18",
+    "provider": "gdrive:nango",
+    "label": "Northwind Research Drive",
+    "scope": "org",
+    "status": "active",
+    "health_status": "healthy",
+    "health_error": null,
+    "connection_role": "account",
+    "can_manage": true,
+    "created_at": "2026-09-14T16:20:05Z",
+    "projects": [
+      {
+        "attachment_id": "a8c3e5f7-2b4d-4e6a-9c1b-3d5f7a9b1c20",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "name": "Helios Program Shared Drive",
+        "item_type": "folder"
+      }
+    ],
+    "health_checked_at": "2026-10-01T11:45:00Z",
+    "syncs": [
+      {
+        "attachment_id": "a8c3e5f7-2b4d-4e6a-9c1b-3d5f7a9b1c20",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "name": "Helios Program Shared Drive",
+        "item_type": "folder",
+        "status": "completed",
+        "files_total": 12,
+        "files_completed": 11,
+        "files_failed": 1,
+        "files": [
+          {
+            "name": "NW-217 Lead Selection Memo.docx",
+            "status": "completed"
+          },
+          {
+            "name": "Helios Q3 Stability Results.xlsx",
+            "status": "completed"
+          },
+          {
+            "name": "Helios Assay Raw Export.zip",
+            "status": "failed"
+          }
+        ],
+        "error": null,
+        "started_at": "2026-10-01T11:30:12Z",
+        "phase": "syncing",
+        "files_expected": 12,
+        "recent_found": 9,
+        "agentic_found": 3,
+        "agentic_ran": true
+      }
+    ]
+  }
+}

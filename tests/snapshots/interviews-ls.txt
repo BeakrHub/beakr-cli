@@ -1,0 +1,206 @@
+$ beakr interviews ls --json
+> GET /v1/interview/sendables?limit=200
+> GET /v1/interview/sessions?limit=200
+> GET /v1/interview/requests?limit=200
+[exit 0]
+--- stdout
+{
+  "sent": [
+    {
+      "created_at": "2026-09-25T13:10:00Z",
+      "evidence": [
+        {
+          "chars": 18432,
+          "file": {
+            "filename": "hx-01-stability.xlsx",
+            "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "size_bytes": 96512
+          },
+          "file_note": null,
+          "id": "5d30ff7a-7a6d-4cd9-96ad-5c0cbd8574f2",
+          "title": "HX-01 stability summary",
+          "visible_to_participant": true
+        }
+      ],
+      "goals": "Capture how the HX-01 stability protocol is run and who signs off on results.",
+      "id": "15d5f231-d60b-4e7d-92ce-4fdbb83c0ee9",
+      "key_questions": [
+        "Who reviews HX-01 results before they reach the charter?"
+      ],
+      "kind": "offboarding",
+      "links": [
+        {
+          "completed_at": "2026-09-27T10:44:18Z",
+          "created_at": "2026-09-25T13:12:00Z",
+          "expires_at": "2026-10-09T13:12:00Z",
+          "has_password": false,
+          "label": "Maja Lindqvist",
+          "link_id": "d3fa50f4-86e9-4960-b1ab-1b25586fbad8",
+          "status": "completed"
+        }
+      ],
+      "supporting_info": "Maja ran the HX-01 study for NW-214, NW-217 and NW-221 through Q3.",
+      "title": "Helios stability handoff",
+      "voice": "marin"
+    },
+    {
+      "created_at": "2026-10-01T09:00:00Z",
+      "evidence": [
+        {
+          "chars": 6210,
+          "file": {
+            "filename": "helios-charter.pdf",
+            "mime_type": "application/pdf",
+            "size_bytes": 1843221
+          },
+          "file_note": null,
+          "id": "6cc18fe9-e176-4d80-bb57-7b0800ac7a59",
+          "title": "Helios charter v3",
+          "visible_to_participant": false
+        }
+      ],
+      "goals": "Record why the committee chose NW-217 over NW-214 and NW-221.",
+      "id": "913b64ec-dabf-418a-9fa0-81a511e8218e",
+      "key_questions": [
+        "What ruled out NW-214?"
+      ],
+      "kind": "explore",
+      "links": [
+        {
+          "completed_at": null,
+          "created_at": "2026-10-01T09:02:00Z",
+          "expires_at": "2026-10-15T09:02:00Z",
+          "has_password": true,
+          "label": "Portfolio committee",
+          "link_id": "5a1e7606-3546-4fb5-86e3-9c19309bebb1",
+          "status": "not_started"
+        }
+      ],
+      "supporting_info": "The committee met on 2026-09-18; Dana chaired.",
+      "title": "Lead selection rationale",
+      "voice": "marin"
+    }
+  ],
+  "sessions": [
+    {
+      "created_at": "2026-10-01T15:05:00Z",
+      "first_proposal_title": "Project Helios",
+      "last_question": "Who signs off on HX-01 results before they are added to the charter?",
+      "mode": "gap_fill",
+      "outline": "HX-01 stability protocol ownership; sign-off path; open deviations",
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "proposal_count": 1,
+      "session_id": "7097b32e-592a-445f-9bcd-a2b3e1329b4d",
+      "status": "in_progress",
+      "title": "Helios stability handoff",
+      "updated_at": "2026-10-01T15:21:33Z"
+    },
+    {
+      "created_at": "2026-09-28T09:31:00Z",
+      "first_proposal_title": "Decision: Helios Lead Selection",
+      "last_question": null,
+      "mode": "gap_fill",
+      "outline": "Lead selection criteria; why NW-214 was set aside; follow-ups",
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "proposal_count": 2,
+      "session_id": "7b2c8803-75b7-47d2-bd4b-a5e142b18e58",
+      "status": "completed",
+      "title": "Lead selection rationale",
+      "updated_at": "2026-09-28T09:58:12Z"
+    }
+  ],
+  "requests": [
+    {
+      "created_at": "2026-10-01T15:00:00Z",
+      "id": "a5c6478d-dd71-4973-85f7-36fa04f0e087",
+      "kb_version": "42.2026-10-01T14:32:10+00:00|c:3.2026-09-30T11:02:45+00:00|r:1.2026-09-29T16:20:00+00:00",
+      "mode": "gap_fill",
+      "objectives": [
+        {
+          "gap_id": "g-hx01-owner",
+          "question": "Who owns the HX-01 stability protocol now that NW-217 is the lead?",
+          "page_title": "Project Helios"
+        }
+      ],
+      "origin": "agent_surfaced",
+      "priority": 2,
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "seen": false,
+      "session_id": null,
+      "status": "pending",
+      "summary": "The charter does not say who owns the HX-01 stability protocol after the lead change.",
+      "surfaced_gaps": [
+        {
+          "gap_id": "g-hx01-owner",
+          "page_title": "Project Helios",
+          "kind": "missing_owner",
+          "summary": "No owner recorded for the HX-01 stability protocol."
+        }
+      ],
+      "title": "Project Helios",
+      "updated_at": "2026-10-01T15:00:00Z"
+    },
+    {
+      "created_at": "2026-09-28T09:30:00Z",
+      "id": "651ea5c8-f30e-429b-bdf7-f95e7bc2b01b",
+      "kb_version": "42.2026-10-01T14:32:10+00:00|c:3.2026-09-30T11:02:45+00:00|r:1.2026-09-29T16:20:00+00:00",
+      "mode": "gap_fill",
+      "objectives": [
+        {
+          "gap_id": "g-nw214-rationale",
+          "question": "Why was NW-214 set aside?",
+          "page_title": "Decision: Helios Lead Selection"
+        }
+      ],
+      "origin": "requested",
+      "priority": 1,
+      "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "seen": true,
+      "session_id": "cba4cf36-cb03-4b81-86cc-c0030f4b8d92",
+      "status": "in_progress",
+      "summary": "Record why NW-214 was set aside in favor of NW-217.",
+      "surfaced_gaps": [
+        {
+          "gap_id": "g-nw214-rationale",
+          "page_title": "Decision: Helios Lead Selection",
+          "kind": "missing_rationale",
+          "summary": "The decision page names NW-217 but not why NW-214 was dropped."
+        }
+      ],
+      "title": "Decision: Helios Lead Selection",
+      "updated_at": "2026-09-29T11:12:40Z"
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr interviews ls
+> GET /v1/interview/sendables?limit=200
+> GET /v1/interview/sessions?limit=200
+> GET /v1/interview/requests?limit=200
+[exit 0]
+--- stdout
+Sent
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━┓
+┃Interview ID                         ┃ Title                    ┃ Links ┃ Created   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━┩
+│15d5f231-d60b-4e7d-92ce-4fdbb83c0ee9 │ Helios stability handoff │ 1     │ 2026-09-25│
+│913b64ec-dabf-418a-9fa0-81a511e8218e │ Lead selection rationale │ 1     │ 2026-10-01│
+└─────────────────────────────────────┴──────────────────────────┴───────┴───────────┘
+Sessions
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃Session ID                           ┃ Title                    ┃ Status      ┃ Updated   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│7097b32e-592a-445f-9bcd-a2b3e1329b4d │ Helios stability handoff │ in_progress │ 2026-10-01│
+│7b2c8803-75b7-47d2-bd4b-a5e142b18e58 │ Lead selection rationale │ completed   │ 2026-09-28│
+└─────────────────────────────────────┴──────────────────────────┴─────────────┴───────────┘
+Waiting for you
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━┓
+┃Request ID                           ┃ Title                           ┃ From┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━┩
+│a5c6478d-dd71-4973-85f7-36fa04f0e087 │ Project Helios                  │     │
+│651ea5c8-f30e-429b-bdf7-f95e7bc2b01b │ Decision: Helios Lead Selection │     │
+└─────────────────────────────────────┴─────────────────────────────────┴─────┘
+--- stderr
+

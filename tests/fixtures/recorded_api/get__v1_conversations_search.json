@@ -1,0 +1,50 @@
+{
+  "operation": "GET /v1/conversations/search",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "id": "e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64",
+        "kind": "imported",
+        "title": "Helios lead selection follow-up",
+        "summary": "Reviewed why NW-217 was chosen and added the Q3 stability results to Project Helios.",
+        "evidence": "user: Summarize why NW-217 was chosen as the Helios lead.",
+        "score": 0.91,
+        "updated_at": "2026-10-01T12:20:00Z",
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "href": "/conversations/e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64",
+        "entities": [
+          "Project Helios",
+          "Decision: Helios Lead Selection"
+        ],
+        "findings": [
+          {
+            "proposal_id": "5a7c9e1b-3d5f-4b7a-9c1e-4f6a8b0c2d35",
+            "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+            "page_title": "Project Helios",
+            "proposal_type": "edit",
+            "status": "pending",
+            "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+          }
+        ],
+        "outputs": [],
+        "sources": [
+          {
+            "kind": "page",
+            "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+            "revision": 7
+          },
+          {
+            "kind": "file",
+            "path": "analysis/helios_stability_q3.py"
+          }
+        ]
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null,
+    "query": "lead selection"
+  }
+}

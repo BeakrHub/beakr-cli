@@ -22,6 +22,49 @@ Use this workflow when the user wants to create or update a page. Every change g
 | `overview` | Index/section pages that tie a section together. |
 | `research_note` | Ephemeral analysis, not canonical knowledge. |
 
+## Adding to a project-map card
+
+A map card has a Description, a Facts table (`| Attribute | Value | When | Evidence |`), a Connections table (`| Relation | To | When | Evidence |`) and dated Findings. Nuance stays in the value's own words. Add to it one row at a time; each is merged into the live card, so never resend a whole table:
+
+```
+knowledge_base_write(
+  action="add_fact",
+  scope="AMR surveillance",
+  arguments={
+    "page": "FR25-1187",
+    "attribute": "Cluster",
+    "value": "CLX-21 under SOP r7",
+    "when": "2026-06-02",
+    "evidence": "{{conversation:2026-10-06-clusters}}",
+    "citations": [{"key": "conversation:2026-10-06-clusters", "source_type": "conversation", "stance": "support", "meta": {"excerpt": "..."}}],
+    "rationale": "Re-clustering under SOP r7 moved the isolate.",
+  },
+)
+```
+
+Pass `rows=[{...}, ...]` to add several rows in one call; each item inherits the call's `evidence` and `when`. `sort_table` with `table` and `order_by` (e.g. `"attribute, when desc"`) orders a table and keeps it sorted on every later write. `add_connection` takes `relation` (a short verb phrase carrying any detail), `to` (the other page's title) and `when?`. `add_finding` takes `date`, `kind` (result, lesson, decision, question, correction), `text`, and optional `about`, `finding_scope` and `supersedes`: use it for a conclusion you reached, which is not a fact a source states. Keep attribute names stable so rows line up; a new value under the same attribute sits beside the old one as its history, and which one answers a question is decided by its `when` and the scope written in its value. Outside a project map these actions are refused on pages that are not cards; use `edit_section` there.
+
+### Keeping a card clean
+
+To change rows already on a card, use `edit_rows`: `old_rows` names each row as the card shows it (`{attribute, value}` or `{relation, to}`), and `rows` gives what replaces them, at the same place in the table:
+
+```
+knowledge_base_write(
+  action="edit_rows",
+  scope="AMR surveillance",
+  arguments={
+    "page": "FRP-SOP-0412",
+    "table": "facts",
+    "old_rows": [{"attribute": "Effective date", "value": "2026-06-11"},
+                 {"attribute": "Date effective", "value": "2026-06-11"}],
+    "rows": [{"attribute": "Effective date", "value": "2026-06-11"}],
+    "rationale": "One date recorded under two attribute names.",
+  },
+)
+```
+
+A new row that gives no `evidence` keeps every citation of the rows it replaces (and their `when`, when they agree), so merging is one call. Deleting rows outright, or leaving a replaced row's citation off, needs a `reason`. Rows that say the same thing become one row; values for different scopes, versions or times stay separate rows with the scope in the value; a row cited `contradicts` stays. Use `add_finding` only for what a row cannot hold: a conclusion or a longer explanation. A document whose versions people track by name gets a card per version under its own card.
+
 ## Updating an existing page (preferred)
 
 Use `edit_section` to change one section without touching the rest of the page. Read the page first (`cat {page, outline: true}`) to get section IDs. `new_section_body` replaces that section's entire body.

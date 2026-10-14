@@ -1,0 +1,6 @@
+{
+  "operation": "DELETE /v1/organizations/{org_id}/members/{user_id}",
+  "source": "synthesized",
+  "status": 204,
+  "body": null
+}

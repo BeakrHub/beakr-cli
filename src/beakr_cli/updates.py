@@ -36,7 +36,7 @@ DEFAULT_MAX_AGE = timedelta(hours=24)
 
 
 def _cache_file() -> Path:
-    return config.CONFIG_DIR / "update_check.json"
+    return config.config_dir() / "update_check.json"
 
 
 @dataclass(frozen=True)
@@ -44,6 +44,11 @@ class UpdateStatus:
     current: str
     latest: str | None
     checked_at: datetime | None
+    #: The newest release PyPI listed when it is OLDER than the running build
+    #: (a development or not-yet-published build). Never cached and never an
+    #: upgrade target; it only lets ``beakr version`` say "newer than PyPI"
+    #: instead of "PyPI could not be checked".
+    published_older: str | None = None
 
     @property
     def update_available(self) -> bool:
@@ -122,7 +127,8 @@ def get_update_status(
     latest = fetch_latest_version(timeout)
     if latest is None or _older_than_running(latest):
         # Offline, PyPI unavailable, or a stale CDN listing: keep what we last knew.
-        return UpdateStatus(__version__, cached_latest, checked_at)
+        older = latest if latest is not None and cached_latest is None else None
+        return UpdateStatus(__version__, cached_latest, checked_at, published_older=older)
     _write_cache(latest, now)
     return UpdateStatus(__version__, latest, now)
 

@@ -1,0 +1,44 @@
+$ beakr members invitations --json
+> GET /v1/invitations?limit=200
+[exit 0]
+--- stdout
+[
+  {
+    "accepted_at": null,
+    "created_at": "2026-09-30T10:00:00Z",
+    "created_by": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+    "expires_at": "2026-10-07T10:00:00Z",
+    "id": "500114c9-90da-4354-a5c2-27bcfeba84fd",
+    "invitee_email": "priya.raman@northwind.example",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "resource_id": "24409ec0-e318-4726-ba00-138b791d30bc",
+    "role_id": "3729b842-23e0-4e44-8b20-661c2a1f29a6"
+  },
+  {
+    "accepted_at": "2026-09-02T08:15:44Z",
+    "created_at": "2026-09-01T16:30:00Z",
+    "created_by": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+    "expires_at": "2026-09-08T16:30:00Z",
+    "id": "7a508964-45d3-4b47-be6e-fa8fc7877f50",
+    "invitee_email": "maja@northwind.example",
+    "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+    "resource_id": "75636ecc-2b04-4970-90d9-01546c6dc964",
+    "role_id": "d8a0d1e4-4b0c-4839-aa0f-ea4d9d35ab5b"
+  }
+]
+--- stderr
+
+
+$ beakr members invitations
+> GET /v1/invitations?limit=200
+[exit 0]
+--- stdout
+Invitations
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ID                                   ┃ Email                         ┃ Expires    ┃ Accepted  ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━━━━┩
+│500114c9-90da-4354-a5c2-27bcfeba84fd │ priya.raman@northwind.example │ 2026-10-07 │ -         │
+│7a508964-45d3-4b47-be6e-fa8fc7877f50 │ maja@northwind.example        │ 2026-09-08 │ 2026-09-02│
+└─────────────────────────────────────┴───────────────────────────────┴────────────┴───────────┘
+--- stderr
+

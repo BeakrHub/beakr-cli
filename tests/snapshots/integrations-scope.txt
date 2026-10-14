@@ -1,0 +1,25 @@
+$ beakr integrations scope 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/integrations/hosted/connectors/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/scope
+[exit 0]
+--- stdout
+{
+  "items": [
+    {
+      "id": "1Hq8Zr3Kt6Vn9Xm2Lp5Wb7Yc4Dj0Fs",
+      "name": "Helios",
+      "type": "folder"
+    }
+  ],
+  "mode": "restricted"
+}
+--- stderr
+
+
+$ beakr integrations scope 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/integrations/hosted/connectors/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/scope
+[exit 0]
+--- stdout
+5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f reads 1 selected item(s):
+  1Hq8Zr3Kt6Vn9Xm2Lp5Wb7Yc4Dj0Fs  Helios
+--- stderr
+

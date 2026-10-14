@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 from rich.console import Console
@@ -40,8 +43,7 @@ def print_table(columns: list[str], rows: list[list[str]], title: str = "") -> N
 
 
 def print_pages_table(pages: list[dict]) -> None:
-    if is_piped():
-        print_json(pages)
+    if machine_output(pages, json_out=False):
         return
     if not pages:
         err_console.print("No pages found.")
@@ -50,18 +52,19 @@ def print_pages_table(pages: list[dict]) -> None:
     columns = ["Title", "Type", "Rev", "Updated"]
     rows = []
     for p in pages:
-        rows.append([
-            p.get("title", ""),
-            p.get("page_type", ""),
-            str(p.get("revision", "")),
-            p.get("updated_at", "")[:10] if p.get("updated_at") else "",
-        ])
+        rows.append(
+            [
+                p.get("title", ""),
+                p.get("page_type", ""),
+                str(p.get("revision", "")),
+                p.get("updated_at", "")[:10] if p.get("updated_at") else "",
+            ]
+        )
     print_table(columns, rows)
 
 
 def print_search_results(results: list[dict]) -> None:
-    if is_piped():
-        print_json(results)
+    if machine_output(results, json_out=False):
         return
     if not results:
         err_console.print("No results found.")
@@ -69,17 +72,21 @@ def print_search_results(results: list[dict]) -> None:
 
     for r in results:
         title = r.get("title", "Untitled")
-        score = r.get("score", 0)
-        snippet = r.get("snippet", r.get("summary", ""))[:120]
-        console.print(f"[bold]{title}[/bold]  score={score:.2f}")
+        score = r.get("score") or 0
+        # content_snippet is the part of the page that matched (WikiSearchHit).
+        snippet = " ".join(
+            str(r.get("content_snippet") or r.get("snippet") or r.get("summary") or "").split()
+        )[:300]
+        console.print(f"[bold]{title}[/bold]  score={score:.2f}", markup=True, highlight=False)
+        if r.get("breadcrumb"):
+            console.print(f"  [dim]{r['breadcrumb']}[/dim]", highlight=False)
         if snippet:
-            console.print(f"  {snippet}")
+            console.print(f"  {snippet}", markup=False, highlight=False)
         console.print()
 
 
 def print_page(page: dict, *, content_only: bool = False) -> None:
-    if is_piped():
-        print_json(page)
+    if machine_output(page, json_out=False, lines=page_lines):
         return
     if content_only:
         print_markdown(page.get("content", ""))
@@ -89,3 +96,128 @@ def print_page(page: dict, *, content_only: bool = False) -> None:
     console.print(f"Type: {page.get('page_type', '')}  Rev: {page.get('revision', '')}")
     console.print()
     print_markdown(page.get("content", ""))
+
+
+def page_lines(page: dict) -> list[str]:
+    """A page for an agent: one summary line, then its markdown exactly as stored."""
+    from beakr_cli.compact import summary_line
+
+    head = {k: page.get(k) for k in ("id", "title", "page_type", "revision", "slug")}
+    return [summary_line(head), "", str(page.get("content") or "").rstrip()]
+
+
+def is_interactive() -> bool:
+    """True when a person can answer a prompt: never prompt when stdin is piped."""
+    return sys.stdin.isatty()
+
+
+def output_mode(json_out: bool = False) -> str:
+    """How a command prints its result: ``json``, ``compact`` or ``human``.
+
+    ``--json`` (or ``BEAKR_OUTPUT=json``) prints full objects. Otherwise a
+    terminal gets the human rendering and anything else -- an agent or a
+    script reading a pipe -- the compact one-line-per-object summary
+    (:mod:`beakr_cli.compact`). ``BEAKR_OUTPUT=compact|human`` forces either.
+    """
+    forced = os.environ.get("BEAKR_OUTPUT", "").strip().lower()
+    if json_out or forced == "json":
+        return "json"
+    if forced in ("compact", "human"):
+        return forced
+    return "compact" if is_piped() else "human"
+
+
+def machine_output(
+    data: Any,
+    *,
+    json_out: bool,
+    lines: Any = None,
+    hint: Any = None,
+) -> bool:
+    """Print ``data`` as JSON or compact lines unless a person is reading; True if printed.
+
+    For commands that render their human output inline::
+
+        if machine_output(rows, json_out=json_out):
+            return
+    """
+    mode = output_mode(json_out)
+    if mode == "json":
+        print_json(data)
+        return True
+    if mode == "compact":
+        from beakr_cli.compact import print_compact
+
+        print_compact(data, lines=lines, hint=hint)
+        return True
+    return False
+
+
+def emit(
+    data: Any,
+    *,
+    json_out: bool,
+    render: Any = None,
+    json_when_piped: bool = True,
+    lines: Any = None,
+    hint: Any = None,
+) -> None:
+    """Print ``data`` as JSON (``--json``), compact lines (not a terminal) or ``render(data)``.
+
+    ``lines(data)`` overrides the generic compact rendering and ``hint`` (a
+    string, or a function of ``data``) is printed as its ``next:`` line.
+    ``json_when_piped=False`` is for commands whose human output is a status
+    line on stderr (``rm``, ``revoke``): piped, they keep printing that line
+    (with any next-step hint) and leave stdout empty; ``--json`` still prints JSON.
+    """
+    mode = output_mode(json_out)
+    if mode == "json" or (render is None and mode == "human"):
+        print_json(data)
+        return
+    if mode == "compact" and (json_when_piped or render is None):
+        from beakr_cli.compact import print_compact
+
+        print_compact(data, lines=lines, hint=hint)
+        return
+    render(data)
+
+
+@contextmanager
+def human_output_to_stderr(enabled: bool) -> Iterator[None]:
+    """While ``enabled``, send ``console`` lines to stderr so stdout stays one JSON document.
+
+    For commands whose progress is printed by many helpers (setup, install,
+    sign-in): with ``--json`` the person still sees the progress, and a script
+    reading stdout gets only the result ``emit`` prints at the end.
+    """
+    if not enabled:
+        yield
+        return
+    previous = console.stderr
+    console.stderr = True
+    try:
+        yield
+    finally:
+        console.stderr = previous
+
+
+def page_rows(page: Any) -> list[dict[str, Any]]:
+    """The rows of one page of a public list: ``{data, next_cursor, has_more}``.
+
+    Every public list answers that envelope (C064: renderers that read the
+    retired ``threads``/``revisions``/``results``/``events`` keys printed "none"
+    for non-empty pages). A whole list an SDK helper already collected is
+    returned as it is.
+    """
+    if isinstance(page, list):
+        return page
+    if isinstance(page, dict):
+        rows = page.get("data")
+        return list(rows) if isinstance(rows, list) else []
+    return []
+
+
+def short(value: Any, width: int = 40) -> str:
+    """A table cell: stringified, single-line, and truncated."""
+    text = "" if value is None else " ".join(str(value).split())
+    return text if len(text) <= width else text[: width - 3] + "..."

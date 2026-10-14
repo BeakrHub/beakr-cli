@@ -1,0 +1,12 @@
+{
+  "operation": "POST /v1/integrations/{provider}/connect",
+  "source": "hand-authored from beakr/api/routes/public_integrations.py:connect_integration",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "provider": "google_drive",
+    "scope": "user",
+    "connect_url": "https://connect.nango.dev?session_token=nango_connect_session_4f2a9c7e1b8d4e6fa03c5b7d9e1f2a4c",
+    "expires_at": "2026-10-01T12:30:00Z"
+  }
+}

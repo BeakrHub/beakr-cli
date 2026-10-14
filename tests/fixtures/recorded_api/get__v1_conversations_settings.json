@@ -1,0 +1,11 @@
+{
+  "operation": "GET /v1/conversations/settings",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "full_text_clients": [
+      "claude_code"
+    ]
+  }
+}

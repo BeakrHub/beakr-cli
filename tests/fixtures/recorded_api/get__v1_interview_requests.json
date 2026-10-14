@@ -1,0 +1,72 @@
+{
+  "operation": "GET /v1/interview/requests",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "created_at": "2026-10-01T15:00:00Z",
+        "id": "a5c6478d-dd71-4973-85f7-36fa04f0e087",
+        "kb_version": "42.2026-10-01T14:32:10+00:00|c:3.2026-09-30T11:02:45+00:00|r:1.2026-09-29T16:20:00+00:00",
+        "mode": "gap_fill",
+        "objectives": [
+          {
+            "gap_id": "g-hx01-owner",
+            "question": "Who owns the HX-01 stability protocol now that NW-217 is the lead?",
+            "page_title": "Project Helios"
+          }
+        ],
+        "origin": "agent_surfaced",
+        "priority": 2,
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "seen": false,
+        "session_id": null,
+        "status": "pending",
+        "summary": "The charter does not say who owns the HX-01 stability protocol after the lead change.",
+        "surfaced_gaps": [
+          {
+            "gap_id": "g-hx01-owner",
+            "page_title": "Project Helios",
+            "kind": "missing_owner",
+            "summary": "No owner recorded for the HX-01 stability protocol."
+          }
+        ],
+        "title": "Project Helios",
+        "updated_at": "2026-10-01T15:00:00Z"
+      },
+      {
+        "created_at": "2026-09-28T09:30:00Z",
+        "id": "651ea5c8-f30e-429b-bdf7-f95e7bc2b01b",
+        "kb_version": "42.2026-10-01T14:32:10+00:00|c:3.2026-09-30T11:02:45+00:00|r:1.2026-09-29T16:20:00+00:00",
+        "mode": "gap_fill",
+        "objectives": [
+          {
+            "gap_id": "g-nw214-rationale",
+            "question": "Why was NW-214 set aside?",
+            "page_title": "Decision: Helios Lead Selection"
+          }
+        ],
+        "origin": "requested",
+        "priority": 1,
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "seen": true,
+        "session_id": "cba4cf36-cb03-4b81-86cc-c0030f4b8d92",
+        "status": "in_progress",
+        "summary": "Record why NW-214 was set aside in favor of NW-217.",
+        "surfaced_gaps": [
+          {
+            "gap_id": "g-nw214-rationale",
+            "page_title": "Decision: Helios Lead Selection",
+            "kind": "missing_rationale",
+            "summary": "The decision page names NW-217 but not why NW-214 was dropped."
+          }
+        ],
+        "title": "Decision: Helios Lead Selection",
+        "updated_at": "2026-09-29T11:12:40Z"
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null
+  }
+}

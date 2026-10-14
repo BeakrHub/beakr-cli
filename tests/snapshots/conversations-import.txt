@@ -1,0 +1,25 @@
+$ beakr conversations import --from-transcript session.jsonl --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> POST /v1/conversations/import
+  {"base_index": 0, "client": "claude-code", "interactive": false, "messages": [{"at": "2026-10-01T12:00:00Z", "author": "unknown", "content": "Which lead did the committee pick?", "role": "user"}, {"at": "2026-10-01T12:00:05Z", "author": "agent", "content": "NW-217.", "role": "assistant"}], "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "session_id": "s-1", "summary": "Session: Which lead did the committee pick?. First request: \"Which lead did the committee pick?\" 2 messages. (Client-side summary by beakr-cli.)", "title": "Which lead did the committee pick?"}
+[exit 0]
+--- stdout
+{
+  "session_id": "s-1",
+  "conversation_id": "e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64",
+  "imported": true,
+  "compounded": false,
+  "reason": "import only",
+  "new_messages": 2,
+  "queued": false,
+  "classification": "unknown",
+  "interactive": false
+}
+--- stderr
+
+
+$ beakr conversations import --from-transcript session.jsonl --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+Sent 0 new message(s) to conversation e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64.
+--- stderr
+

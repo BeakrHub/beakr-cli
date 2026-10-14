@@ -1,0 +1,44 @@
+$ beakr outputs history 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/outputs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/revisions?limit=20
+[exit 0]
+--- stdout
+{
+  "data": [
+    {
+      "actor_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+      "actor_name": "Dana Whitfield",
+      "actor_type": "user",
+      "created_at": "2026-10-01T12:05:00Z",
+      "id": "9e1a3c5e-7b9d-4f1a-8c3e-5a7b9d1f3c57",
+      "revision_no": 3,
+      "summary": "Tightens the recommendation paragraph."
+    },
+    {
+      "actor_id": null,
+      "actor_name": "Beakr",
+      "actor_type": "agent",
+      "created_at": "2026-10-01T12:04:00Z",
+      "id": "0f2b4d6f-8c0e-4a2b-9d4f-6b8c0e2a4d68",
+      "revision_no": 2,
+      "summary": "Drafts the brief from the Helios decision page."
+    }
+  ],
+  "has_more": false,
+  "next_cursor": null
+}
+--- stderr
+
+
+$ beakr outputs history 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/outputs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/revisions?limit=20
+[exit 0]
+--- stdout
+Revisions of 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃Revision ┃ When             ┃ By             ┃ Summary                                        ┃
+┡━━━━━━━━━╇━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│3        │ 2026-10-01T12:05 │ Dana Whitfield │ Tightens the recommendation paragraph.         │
+│2        │ 2026-10-01T12:04 │ Beakr          │ Drafts the brief from the Helios decision page.│
+└─────────┴──────────────────┴────────────────┴────────────────────────────────────────────────┘
+--- stderr
+

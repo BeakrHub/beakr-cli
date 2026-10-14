@@ -1,0 +1,16 @@
+{
+  "operation": "GET /v1/integrations/hosted/connectors/{connector_id}/scope",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "items": [
+      {
+        "id": "1Hq8Zr3Kt6Vn9Xm2Lp5Wb7Yc4Dj0Fs",
+        "name": "Helios",
+        "type": "folder"
+      }
+    ],
+    "mode": "restricted"
+  }
+}

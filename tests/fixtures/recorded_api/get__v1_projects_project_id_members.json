@@ -1,0 +1,32 @@
+{
+  "operation": "GET /v1/projects/{project_id}/members",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "email": "dana@northwind.example",
+        "inherited_from": null,
+        "joined_at": "2026-02-03T09:30:00Z",
+        "name": "Dana Whitfield",
+        "principal_id": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+        "principal_type": "user",
+        "revoked_at": null,
+        "role": "owner"
+      },
+      {
+        "email": "maja@northwind.example",
+        "inherited_from": "label:Medicinal Chemistry",
+        "joined_at": "2026-03-10T08:00:00Z",
+        "name": "Maja Lindqvist",
+        "principal_id": "3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22",
+        "principal_type": "user",
+        "revoked_at": null,
+        "role": "member"
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null
+  }
+}

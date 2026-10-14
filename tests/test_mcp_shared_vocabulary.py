@@ -35,6 +35,7 @@ SHARED_WIKI_TOOLS = {"knowledge_base", "knowledge_base_write"}
 #: shared operation, reached as knowledge_base command='proposals'. The version
 #: pair manages this installed package, not the wiki.
 SURFACE_OWN_TOOLS = {
+    "documents",
     "research",
     "list_projects",
     "get_profile",
@@ -45,6 +46,23 @@ SURFACE_OWN_TOOLS = {
     "wiki_graph",
     "beakr_version",
     "update_beakr",
+    # Developer-platform tools (mcp_tools_platform.py). None reads or writes a
+    # wiki page: context assembles session onboarding from profiles and memory,
+    # skills reads the skill library, and the conversation pair searches and
+    # imports agent sessions, which are not knowledge-base pages; the
+    # read-only org audit log is administration, not Knowledge.
+    "context",
+    "skills",
+    "conversations_search",
+    "import_conversation",
+    "org_audit_log",
+    # W8.2's eager set: read_file reads an uploaded FILE's extracted text (not a
+    # wiki page; cards are knowledge_base cat); workboard reads live agent plans,
+    # which no knowledge_base command covers; discover_tools lists this surface's
+    # own deferred tools.
+    "read_file",
+    "workboard",
+    "discover_tools",
 }
 
 

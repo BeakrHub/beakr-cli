@@ -1,0 +1,51 @@
+$ beakr interviews show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/interview/sessions/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+{
+  "created_at": "2026-10-01T15:05:00Z",
+  "feedback": {
+    "created_at": "2026-10-01T15:22:10Z",
+    "id": "6d26e81b-d395-4282-af71-7ba3a1ab57a3",
+    "note": "Good questions; it skipped the deviation log.",
+    "rating": 4,
+    "session_id": "1b643708-58db-464f-a7a6-aa562ac07bfa",
+    "updated_at": "2026-10-01T15:22:10Z"
+  },
+  "last_question": "Who signs off on HX-01 results before they are added to the charter?",
+  "mode": "gap_fill",
+  "outline": "HX-01 stability protocol ownership; sign-off path; open deviations",
+  "paused_at": "2026-10-01T15:21:33Z",
+  "prior_turns": [
+    {
+      "event_id": "98a4d67b-ada0-47f5-b792-748113fcdd43",
+      "role": "user",
+      "text": "Maja owned HX-01 through Q3; it moves to the Helios QC lead once NW-217 enters scale-up.",
+      "timestamp": "2026-10-01T15:18:02Z"
+    }
+  ],
+  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "proposal_count": 1,
+  "realtime_voice": false,
+  "recorded_answer": null,
+  "resume_inactive_seconds": 2847,
+  "resume_strategy": "acknowledge",
+  "resume_until": null,
+  "session_id": "1b643708-58db-464f-a7a6-aa562ac07bfa",
+  "status": "in_progress",
+  "title": "Helios stability handoff",
+  "turn_id": "a0b0273a-5354-4e53-b0eb-14b9366282c9",
+  "updated_at": "2026-10-01T15:21:33Z",
+  "web_access": false
+}
+--- stderr
+
+
+$ beakr interviews show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/interview/sessions/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+Helios stability handoff (in_progress, 1 Knowledge proposal(s))
+A: Maja owned HX-01 through Q3; it moves to the Helios QC lead once NW-217 enters scale-up.
+--- stderr
+

@@ -1,0 +1,9 @@
+{
+  "operation": "GET /v1/artifacts/versions/{version_id}/download-url",
+  "source": "synthesized",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "url": "https://storage.test/artifacts/helios-charter.pdf?X-Amz-Signature=snapshot"
+  }
+}

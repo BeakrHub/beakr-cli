@@ -1,0 +1,6 @@
+{
+  "operation": "DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}",
+  "source": "synthesized",
+  "status": 204,
+  "body": null
+}

@@ -6,12 +6,21 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
 jobs:
+  # Every gate in ci.yml (tests, SDK freshness against the engine contract,
+  # release versions and notes) must pass before anything is built.
+  ci:
+    uses: ./.github/workflows/ci.yml
+    secrets: inherit
+
   publish:
+    needs: ci
     runs-on: ubuntu-latest
     environment: pypi
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -19,11 +28,28 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Release tag matches the package version
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
+          if [ "$TAG" != "v$version" ]; then
+            echo "Release tag $TAG does not match pyproject version $version"
+            exit 1
+          fi
+
       - name: Install build tools
         run: pip install build
 
       - name: Build package
         run: python -m build
+
+      # A built wheel never carries [tool.uv.sources], so it declares beakr-sdk
+      # as a PyPI requirement even while this repository resolves it from git.
+      # Refuse to publish a CLI that pip could not install.
+      - name: Every requirement, beakr-sdk included, resolves from PyPI
+        run: python -m pip install --dry-run --ignore-installed --index-url https://pypi.org/simple dist/*.whl
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

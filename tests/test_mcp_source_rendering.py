@@ -27,7 +27,10 @@ from beakr_cli.mcp_server import (
 @pytest.fixture(autouse=True)
 def base_url(monkeypatch):
     monkeypatch.setenv("BEAKR_API_URL", "https://api.example.com")
-    monkeypatch.setenv("BEAKR_API_TOKEN", "test-token")
+    # BEAKR_API_KEY, not the BEAKR_API_TOKEN this used to set: nothing reads
+    # that name, so these tests silently authenticated with the developer's
+    # real saved key and failed on any machine without one.
+    monkeypatch.setenv("BEAKR_API_KEY", "test-token")
 
 
 # ---------------------------------------------------------------------------
@@ -213,9 +216,7 @@ async def test_wiki_read_returns_public_source_location_and_exact_evidence() -> 
                         },
                         "retrieval": {
                             "tool": "dropbox_download",
-                            "arguments": {
-                                "handle": "beakr://external/caller/dropbox/launch-plan"
-                            },
+                            "arguments": {"handle": "beakr://external/caller/dropbox/launch-plan"},
                         },
                         "unit_id": "must-not-leak",
                         "connector_id": "must-not-leak",

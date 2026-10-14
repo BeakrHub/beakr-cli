@@ -1,0 +1,9 @@
+{
+  "operation": "DELETE /v1/integrations/{connector_id}",
+  "source": "hand-authored from beakr/api/routes/integrations_nango.py:delete_nango_connector",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "ok": true
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "operation": "GET /v1/conversations",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "client": "claude-code",
+        "compound_status": "none",
+        "compounded_at": null,
+        "compounded_through": 0,
+        "created_at": "2026-09-30T16:05:12Z",
+        "href": null,
+        "id": "e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64",
+        "index": {
+          "entities": [
+            "Project Helios",
+            "Decision: Helios Lead Selection"
+          ],
+          "findings": [
+            {
+              "proposal_id": "d4c2b7e9-3a18-4f60-9b5d-1e7a3c8f2d06",
+              "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+              "page_title": "Project Helios",
+              "proposal_type": "update",
+              "status": "pending",
+              "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+            }
+          ],
+          "indexed_at": "2026-09-30T17:52:10Z",
+          "outputs": [],
+          "sources_read": [
+            {
+              "kind": "page",
+              "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+              "revision": 12
+            }
+          ],
+          "task_summary": "Parse the HX-01 stability export and reconcile NW-217 values with the Helios charter."
+        },
+        "kind": "imported",
+        "last_compound_result": null,
+        "message_count": 48,
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "revision": 3,
+        "session_id": "5f0d3b8e-9a21-4c76-8e4f-2b1a7d9c6e03",
+        "summary": "Added a parser for the HX-01 stability export and checked NW-217 values against the charter.",
+        "title": "Wire HX-01 stability import into the Helios pipeline",
+        "updated_at": "2026-09-30T17:48:39Z"
+      },
+      {
+        "client": "beakr",
+        "created_at": "2026-10-02T10:11:45Z",
+        "href": "/v1/assistant/threads/mine/b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47",
+        "id": "b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47",
+        "index": {
+          "entities": [
+            "Decision: Helios Lead Selection",
+            "Project Helios"
+          ],
+          "findings": [],
+          "indexed_at": "2026-10-02T10:20:00Z",
+          "outputs": [
+            {
+              "artifact_id": "8e4b2d71-3c9a-4f05-b6e8-1a7d9c2f4b30",
+              "title": "Helios lead selection memo.pdf",
+              "type": "doc",
+              "generated_at": "2026-10-02T10:18:41Z"
+            }
+          ],
+          "sources_read": [
+            {
+              "kind": "page",
+              "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+              "revision": 4
+            },
+            {
+              "kind": "document",
+              "document_id": "0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411",
+              "version_id": "54a67e61-cd7c-4b6e-817a-4bab8b6017e3"
+            }
+          ],
+          "task_summary": "Why the portfolio committee picked NW-217 over NW-214."
+        },
+        "kind": "ask_thread",
+        "message_count": 6,
+        "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "revision": null,
+        "session_id": "b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47",
+        "summary": "Why the portfolio committee picked NW-217 over NW-214.",
+        "title": "Decision: Helios Lead Selection",
+        "updated_at": "2026-10-02T10:19:03Z"
+      }
+    ],
+    "has_more": false,
+    "next_cursor": null
+  }
+}

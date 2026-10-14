@@ -1,0 +1,53 @@
+{
+  "operation": "POST /v1/knowledge/wiki/command",
+  "source": "recorded by beakr-engine tests/api/test_knowledge_result_shape_parity.py (tests/fixtures/knowledge_door_results.json, reads.rows)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "content": [
+      {
+        "text": "1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.\nKnowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.\n\n| entity | entity_type | attribute | value | when | sources | cite |\n| --- | --- | --- | --- | --- | --- | --- |\n| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |",
+        "type": "text"
+      }
+    ],
+    "coverage": {
+      "command": "rows",
+      "complete": true,
+      "limit": 100,
+      "next_offset": null,
+      "offset": 0,
+      "returned": 1,
+      "scope": {
+        "all_readable": false,
+        "project_ids": [
+          "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+        ]
+      },
+      "status": "success",
+      "total": 1
+    },
+    "next": [
+      "Cite a row with its cite token; open its card with cat {page} for context.",
+      "Narrow with entity, attribute or page_type, or set current_only for facts."
+    ],
+    "outcome": {
+      "commit_ids": [],
+      "committed_page_ids": [],
+      "committed_revisions": {},
+      "error_code": null,
+      "protocol": "beakr.wiki_tool_outcome.v1",
+      "status": "success"
+    },
+    "sources": [
+      {
+        "citation_key": "wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877",
+        "name": "Helios HX-07 Solubility Card › Facts",
+        "section": {
+          "title": "Facts"
+        },
+        "source_kind": "wiki",
+        "source_ref": "beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts"
+      }
+    ]
+  }
+}

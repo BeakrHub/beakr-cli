@@ -1,0 +1,16 @@
+{
+  "operation": "POST /v1/conversations/import",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "appended": 12,
+    "compound_queued": true,
+    "conversation_id": "e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64",
+    "created": false,
+    "message_count": 48,
+    "pending_compound": 12,
+    "revision": 3,
+    "stored": "summary"
+  }
+}

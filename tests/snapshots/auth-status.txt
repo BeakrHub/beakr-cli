@@ -1,0 +1,23 @@
+$ beakr auth status --json
+[exit 0]
+--- stdout
+{
+  "base_url": "https://api.test",
+  "org_override": null,
+  "token_backend": "file",
+  "authenticated": true,
+  "source": "env",
+  "kind": "api_key",
+  "key_prefix": "bk_live_snap"
+}
+--- stderr
+
+
+$ beakr auth status
+[exit 0]
+--- stdout
+Base URL:  https://api.test
+Signed in: yes, via BEAKR_API_KEY
+Key:       bk_live_snap...
+--- stderr
+

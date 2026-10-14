@@ -1,0 +1,234 @@
+{
+  "suite": "agent_onboarding",
+  "description": "An outside agent is given a task that needs the team's own knowledge. Each task runs twice: once with the context Beakr's session hooks inject at start, once without it (the agent can still look Knowledge up through its Beakr tools). The bar: higher task success and fewer Knowledge lookups with context.",
+  "cases": [
+    {
+      "id": "elisa-wash-config",
+      "title": "Write a wash-step config using the lab's standard buffer",
+      "setup": [
+        {
+          "op": "seed_page",
+          "title": "ELISA wash protocol",
+          "page_type": "protocol",
+          "summary": "How the Halden lab washes ELISA plates.",
+          "sections": [
+            {
+              "title": "Standard",
+              "body": "Every ELISA in the Halden lab washes plates with PBS-T (PBS with 0.05% Tween-20), four washes of 300 uL per well between each step."
+            }
+          ]
+        }
+      ],
+      "task": {
+        "prompt": "I'm setting up the plate washer for tomorrow's ELISA. Write the wash step as a short YAML block (buffer, washes, volume_ul) using our lab's standard.",
+        "checks": {
+          "must_include": [
+            [
+              "PBS-T",
+              "PBST",
+              "PBS with 0.05% Tween"
+            ],
+            [
+              "washes: 4",
+              "4 washes",
+              "four washes",
+              "washes: four"
+            ],
+            [
+              "300"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "deploy-freeze-window",
+      "title": "Schedule a release around the team's deploy freeze",
+      "setup": [
+        {
+          "op": "seed_page",
+          "title": "Release policy",
+          "page_type": "protocol",
+          "summary": "When the platform team ships.",
+          "sections": [
+            {
+              "title": "Freeze",
+              "body": "The platform team does not deploy to production from Thursday 16:00 to Monday 09:00 (Europe/Oslo). Releases go out Tuesday or Wednesday mornings after the 10:00 stand-up."
+            }
+          ]
+        }
+      ],
+      "task": {
+        "prompt": "Draft a one-paragraph plan for when to ship the billing-service release this week, following our team's deploy rules.",
+        "checks": {
+          "must_include": [
+            [
+              "Tuesday",
+              "Wednesday"
+            ],
+            [
+              "Thursday"
+            ]
+          ],
+          "must_not_include": [
+            "Friday afternoon"
+          ]
+        }
+      }
+    },
+    {
+      "id": "assay-owner-escalation",
+      "title": "Route a failing assay to the person who owns it",
+      "setup": [
+        {
+          "op": "seed_page",
+          "title": "Assay ownership",
+          "page_type": "topic",
+          "summary": "Who owns which assay at Norrvik Bio.",
+          "sections": [
+            {
+              "title": "Owners",
+              "body": "The KX2 binding assay is owned by Ines Okafor; escalations go to her first, then to the assay-dev channel. The solubility panel is owned by Tomas Reyes."
+            }
+          ]
+        }
+      ],
+      "task": {
+        "prompt": "The KX2 binding assay failed QC twice today. Write the escalation message I should send, addressed to the right owner.",
+        "checks": {
+          "must_include": [
+            [
+              "Ines",
+              "Okafor"
+            ]
+          ],
+          "must_not_include": [
+            "Tomas"
+          ]
+        }
+      }
+    },
+    {
+      "id": "naming-convention",
+      "title": "Name a new compound batch by the team's convention",
+      "setup": [
+        {
+          "op": "seed_page",
+          "title": "Batch naming convention",
+          "page_type": "protocol",
+          "summary": "How compound batches are named.",
+          "sections": [
+            {
+              "title": "Format",
+              "body": "Compound batches are named <compound>-B<two-digit batch number>-<YYMMDD of synthesis>, for example BK-7-B03-260412. Batch numbers restart per compound."
+            }
+          ]
+        }
+      ],
+      "task": {
+        "prompt": "We synthesized the fourth batch of BK-7 on 2026-05-02. What should the batch be named under our convention? Give just the name and one line of reasoning.",
+        "checks": {
+          "must_include": [
+            [
+              "BK-7-B04-260502"
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "corrected-threshold",
+      "title": "Use a corrected QC threshold, not the stale one",
+      "notes": "Scoring changed 2026-10-10 (scorer 2026-10-10.2): the stale threshold is forbidden in the delivered code (code_must_not_include), not anywhere in the answer. The task asks for a Python condition, so the code is the deliverable; under the old literal check an answer whose code used 0.5 failed for warning against the old 0.4 in prose. Earlier reports keep their original scores; rescored copies are labelled (beakr_bench.rescore). Scoring changed again 2026-10-10 (scorer 2026-10-10.3, audit C066): the delivered code must state the inclusive lower bound z_prime >= 0.5 (either operand order) and must not state z_prime >= 0.4; containing the string 0.5 is no longer enough, since z_prime > 0.5 and z_prime <= 0.5 are wrong.",
+      "setup": [
+        {
+          "op": "seed_page",
+          "title": "Plate QC thresholds",
+          "page_type": "protocol",
+          "summary": "QC acceptance thresholds for screening plates.",
+          "sections": [
+            {
+              "title": "Z-prime",
+              "body": "A screening plate passes QC when its Z-prime is at least 0.4."
+            }
+          ]
+        },
+        {
+          "op": "edit_page",
+          "title": "Plate QC thresholds",
+          "reason": "The screening committee raised the bar after the March false-positive review.",
+          "sections": [
+            {
+              "title": "Z-prime",
+              "body": "A screening plate passes QC when its Z-prime is at least 0.5 (raised from 0.4 by the screening committee in April 2026)."
+            }
+          ]
+        }
+      ],
+      "task": {
+        "prompt": "Write the QC check for our screening plates as a single Python condition on a variable named z_prime, using our current threshold.",
+        "checks": {
+          "must_include": [
+            [
+              "0.5"
+            ]
+          ],
+          "code_must_include": [
+            [
+              "0.5"
+            ]
+          ],
+          "code_must_not_include": [
+            ">= 0.4",
+            ">=0.4"
+          ],
+          "code_must_compare": [
+            {
+              "var": "z_prime",
+              "op": ">=",
+              "value": 0.5
+            }
+          ],
+          "code_must_not_compare": [
+            {
+              "var": "z_prime",
+              "op": ">=",
+              "value": 0.4
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "storage-location",
+      "title": "Find where a reagent is stored before writing a pick list",
+      "setup": [
+        {
+          "op": "seed_page",
+          "title": "Reagent storage map",
+          "page_type": "topic",
+          "summary": "Where shared reagents live.",
+          "sections": [
+            {
+              "title": "Freezers",
+              "body": "Recombinant KX2 protein is stored in freezer F-3, rack 2, at -80 C. Detection antibodies are in fridge R-1."
+            }
+          ]
+        }
+      ],
+      "task": {
+        "prompt": "Write a two-item pick list for tomorrow's binding run: recombinant KX2 protein and the detection antibody, with where each is stored.",
+        "checks": {
+          "must_include": [
+            [
+              "F-3"
+            ],
+            [
+              "R-1"
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}

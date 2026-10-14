@@ -1,0 +1,17 @@
+$ beakr profile forget 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --yes --json
+> DELETE /v1/me/profile/claims/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+{
+  "forgotten": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f"
+}
+--- stderr
+
+
+$ beakr profile forget 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --yes
+> DELETE /v1/me/profile/claims/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+Forgot 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f.
+--- stderr
+

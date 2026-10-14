@@ -1,0 +1,36 @@
+{
+  "operation": "GET /v1/conversations/{conversation_id}/freshness",
+  "source": "hand-authored from beakr/api/routes/conversation_search.py:freshness_route",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "conversation_id": "c4a1e8f2-6b3d-4f7a-9e21-8d5c0b3a7f14",
+    "indexed": true,
+    "indexed_at": "2026-10-01T11:20:00Z",
+    "fresh": false,
+    "coverage": "partial",
+    "pages_checked": 1,
+    "documents_checked": 0,
+    "changed": [
+      {
+        "kind": "page",
+        "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+        "title": "Decision: Helios Lead Selection",
+        "read_revision": 4,
+        "current_revision": 5,
+        "state": "changed"
+      }
+    ],
+    "unchecked_pages": [
+      {
+        "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+        "title": "Project Helios"
+      }
+    ],
+    "unchecked_documents": [],
+    "unchecked_sources": [],
+    "unchecked_files": [
+      "analysis/helios_stability_q3.py"
+    ]
+  }
+}

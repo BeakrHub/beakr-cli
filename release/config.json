@@ -1,0 +1,10 @@
+{
+  "package": "beakr-cli",
+  "changelog_intro": "Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`\nPython SDK).",
+  "client_notes_title": "CLI and SDK",
+  "version_files": [
+    ["pyproject.toml", "(?m)^version = \"([^\"]+)\""],
+    ["src/beakr_cli/__init__.py", "__version__ = \"([^\"]+)\""],
+    ["uv.lock", "name = \"beakr-cli\"\nversion = \"([^\"]+)\""]
+  ]
+}

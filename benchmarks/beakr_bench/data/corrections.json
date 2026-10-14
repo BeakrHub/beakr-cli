@@ -1,0 +1,45 @@
+{
+  "suite": "corrections",
+  "description": "A value is recorded, then corrected in Knowledge. Answers must give the corrected value and must not repeat the stale one, which no longer appears anywhere in the project. Synthetic: every organization, person and value is invented.",
+  "cases": [
+    {
+      "id": "binding-constant",
+      "title": "A Kd re-measured after a calibration error",
+      "steps": [
+        {"op": "seed_page", "title": "BK-7 binding to KX2", "page_type": "topic", "summary": "Binding of BK-7 to KX2.", "source_date": "2026-03-12", "sections": [
+          {"title": "Binding", "body": "BK-7 binds KX2 with a dissociation constant (Kd) of 38 nM, measured by surface plasmon resonance on 2026-03-12."}
+        ]},
+        {"op": "edit_page", "title": "BK-7 binding to KX2", "source_date": "2026-04-03", "reason": "The 2026-03-12 run used a miscalibrated chip; the re-run is authoritative.", "sections": [
+          {"title": "Binding", "body": "BK-7 binds KX2 with a dissociation constant (Kd) of 52 nM, from the surface plasmon resonance re-run of 2026-04-03 on a recalibrated chip."}
+        ]},
+        {"op": "ask", "label": "kd", "question": "What is the Kd of BK-7 for KX2?", "checks": {"must_include": [["52 nM", "52nM"]], "must_not_include": ["38 nM", "38nM"], "require_citation": true}}
+      ]
+    },
+    {
+      "id": "study-owner",
+      "title": "A study changes owner",
+      "steps": [
+        {"op": "seed_page", "title": "Stability study ST-44", "page_type": "topic", "summary": "Accelerated stability study ST-44.", "source_date": "2026-02-01", "sections": [
+          {"title": "Ownership", "body": "Stability study ST-44 is owned by Priya Raman in the formulation group."}
+        ]},
+        {"op": "edit_page", "title": "Stability study ST-44", "source_date": "2026-05-06", "reason": "Ownership moved when Priya Raman changed teams.", "sections": [
+          {"title": "Ownership", "body": "Stability study ST-44 is owned by Tomas Ekberg in the formulation group since 2026-05-06."}
+        ]},
+        {"op": "ask", "label": "owner", "question": "Who owns stability study ST-44?", "checks": {"must_include": [["Tomas Ekberg", "Ekberg"]], "must_not_include": ["Priya Raman"], "require_citation": true}}
+      ]
+    },
+    {
+      "id": "moved-milestone",
+      "title": "A milestone date is moved",
+      "steps": [
+        {"op": "seed_page", "title": "IND filing milestone", "page_type": "topic", "summary": "Target date for the KX2 program IND filing.", "source_date": "2026-01-15", "sections": [
+          {"title": "Target", "body": "The KX2 program targets its IND filing for 2026-09-30."}
+        ]},
+        {"op": "edit_page", "title": "IND filing milestone", "source_date": "2026-06-10", "reason": "The tox study extension moved the filing.", "sections": [
+          {"title": "Target", "body": "The KX2 program targets its IND filing for 2026-11-16, after the toxicology study was extended by six weeks."}
+        ]},
+        {"op": "ask", "label": "ind-date", "question": "When is the KX2 program IND filing targeted?", "checks": {"must_include": [["2026-11-16", "November 16", "16 November"]], "must_not_include": ["2026-09-30", "September 30"], "require_citation": true}}
+      ]
+    }
+  ]
+}

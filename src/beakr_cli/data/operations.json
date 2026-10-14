@@ -1,0 +1,5313 @@
+{
+ "operations": [
+  {
+   "action": "whoami",
+   "anonymous": false,
+   "area": "account",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/me",
+   "paginated": false,
+   "path": "/v1/me",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Get the signed-in person"
+  },
+  {
+   "action": "create-api-key",
+   "anonymous": false,
+   "area": "api-keys",
+   "body": {
+    "fields": [
+     {
+      "description": "The client this key is for, recorded on the key for attribution: `beakr-cli`, `claude-code`, `codex`, `sdk-python`, `web`, or a name of your own. Required; 1 to 120 characters.",
+      "name": "client_name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Days until it expires.",
+      "name": "expires_in_days",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "default": "default",
+      "description": "Name of the api key.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "A key that never expires; only when the org allows non-expiring keys.",
+      "name": "never_expires",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Ids of the projects it covers.",
+      "multiple": true,
+      "name": "project_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The permission scopes it grants.",
+      "multiple": true,
+      "name": "scopes",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/me/api-keys",
+   "paginated": false,
+   "path": "/v1/me/api-keys",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Create an API key"
+  },
+  {
+   "action": "list-api-keys",
+   "anonymous": false,
+   "area": "api-keys",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/me/api-keys",
+   "paginated": true,
+   "path": "/v1/me/api-keys",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": null,
+   "summary": "List API keys"
+  },
+  {
+   "action": "list-scopes",
+   "anonymous": true,
+   "area": "api-keys",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/me/api-keys/scopes",
+   "paginated": false,
+   "path": "/v1/me/api-keys/scopes",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "List API key scopes"
+  },
+  {
+   "action": "revoke-api-key",
+   "anonymous": false,
+   "area": "api-keys",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/me/api-keys/{key_id}",
+   "paginated": false,
+   "path": "/v1/me/api-keys/{key_id}",
+   "path_params": [
+    {
+     "name": "key_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": null,
+   "summary": "Revoke an API key"
+  },
+  {
+   "action": "agent-context",
+   "anonymous": false,
+   "area": "conversations",
+   "body": {
+    "fields": [
+     {
+      "default": 24000,
+      "description": "Most characters of context to return (2,000 to 100,000).",
+      "name": "budget_chars",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "default": "markdown",
+      "description": "Format: one of `json`, `markdown`, `claude_md`, `agents_md`.",
+      "enum": [
+       "json",
+       "markdown",
+       "claude_md",
+       "agents_md"
+      ],
+      "name": "format",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the project it belongs to, or the project to act in.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The question.",
+      "name": "question",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/context",
+   "paginated": false,
+   "path": "/v1/context",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "agent:run",
+   "summary": "Get context for an agent session"
+  },
+  {
+   "action": "compound",
+   "anonymous": false,
+   "area": "conversations",
+   "body": {
+    "fields": [
+     {
+      "description": "Id of the conversation.",
+      "name": "conversation_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/compound",
+   "paginated": false,
+   "path": "/v1/compound",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "conversations:write",
+   "summary": "Compound a conversation into Knowledge"
+  },
+  {
+   "action": "delete-conversation",
+   "anonymous": false,
+   "area": "conversations",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/conversations/{conversation_id}",
+   "paginated": false,
+   "path": "/v1/conversations/{conversation_id}",
+   "path_params": [
+    {
+     "name": "conversation_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "conversations:write",
+   "summary": "Delete an imported conversation"
+  },
+  {
+   "action": "get-conversation",
+   "anonymous": false,
+   "area": "conversations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/conversations/{conversation_id}",
+   "paginated": false,
+   "path": "/v1/conversations/{conversation_id}",
+   "path_params": [
+    {
+     "name": "conversation_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "conversations:read",
+   "summary": "Get a conversation"
+  },
+  {
+   "action": "import-conversation",
+   "anonymous": false,
+   "area": "conversations",
+   "body": {
+    "fields": [
+     {
+      "description": "Index of the first message in this batch, for an incremental import.",
+      "name": "base_index",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "The agent the session came from. `chatgpt-export` (a session from a ChatGPT data export) is stored as `chatgpt`.",
+      "enum": [
+       "claude-code",
+       "codex",
+       "chatgpt",
+       "chatgpt-export",
+       "claude",
+       "generic"
+      ],
+      "name": "client",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Also run the conversation through capture, so what it learned can reach Knowledge.",
+      "name": "compound",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Files the session read or changed.",
+      "multiple": true,
+      "name": "files_touched",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Hold this batch's text, for a bounded time, for a compound requested later, without queuing one now.",
+      "name": "hold_text",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": false,
+      "description": "Whether a person was present in the session (it never makes it count as evidence by itself).",
+      "name": "interactive",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The messages.",
+      "name": "messages",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Id of the project it belongs to, or the project to act in.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the session.",
+      "name": "session_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Knowledge sources the session read, for freshness checks.",
+      "name": "sources_read",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Keep the messages' full text. Omitted: follow your full-text setting for this client (`GET /v1/conversations/settings`); true or false overrides it for this import.",
+      "name": "store_full_text",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "What the session was about, kept instead of the transcript. Required with `messages` unless `store_full_text`, `compound` or `hold_text` is set or the conversation already has one (`422 summary_required`).",
+      "name": "summary",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Title of the import.",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The tools the session called and how often, counted from the transcript: the session's totals so far (a later import's larger count replaces a smaller one).",
+      "name": "tools_used",
+      "required": false,
+      "type": "object"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/conversations/import",
+   "paginated": false,
+   "path": "/v1/conversations/import",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "conversations:write",
+   "summary": "Import an agent conversation"
+  },
+  {
+   "action": "list-conversations",
+   "anonymous": false,
+   "area": "conversations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/conversations",
+   "paginated": true,
+   "path": "/v1/conversations",
+   "path_params": [],
+   "query": [
+    {
+     "name": "client",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": true,
+     "description": "Also list your Beakr chats (`kind: ask_thread`), with the same `index` an imported session has. They are left out when `client` or `project_id` is given.",
+     "name": "include_threads",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "q",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "conversations:read",
+   "summary": "List conversations"
+  },
+  {
+   "action": "search",
+   "anonymous": false,
+   "area": "conversations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/conversations/search",
+   "paginated": true,
+   "path": "/v1/conversations/search",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": true,
+     "description": "Also search your Beakr chats by title.",
+     "name": "include_threads",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200 (default 50).",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "default": "all",
+     "description": "all: every word must appear (search syntax). any: a natural-language question; ranked by how many of its words match.",
+     "enum": [
+      "all",
+      "any"
+     ],
+     "name": "match",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "q",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "conversations:read",
+   "summary": "Search your conversations"
+  },
+  {
+   "action": "list-end-user-tokens",
+   "anonymous": false,
+   "area": "end-user-tokens",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/auth/end-user-tokens",
+   "paginated": true,
+   "path": "/v1/auth/end-user-tokens",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "Only the tokens minted for this end user.",
+     "name": "subject",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": null,
+   "summary": "List end-user tokens"
+  },
+  {
+   "action": "mint-end-user-token",
+   "anonymous": false,
+   "area": "end-user-tokens",
+   "body": {
+    "fields": [
+     {
+      "description": "Mint the token for this external user instead (`user_id` from `POST /v1/organizations/{org_id}/external-users`). The token then acts as that user: its conversations, runs, memories and interview links are its own, and its label and project memberships decide which projects it reaches. Give either `external_user_id`, or `subject` with `project_ids`.",
+      "name": "external_user_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The projects the token may reach. Each must be one your credential can read and, if your credential is limited to projects, one of those. Required with `subject`; omit it with `external_user_id`.",
+      "multiple": true,
+      "name": "project_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The scopes the token carries; each must be one your credential holds (`GET /v1/me/api-keys/scopes` lists the vocabulary).",
+      "multiple": true,
+      "name": "scopes",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Your own id for the end user this token is for (an id from your system, not a Beakr user). Recorded on the token and in the audit trail; 1 to 200 characters. Required with `project_ids`; omit it with `external_user_id`.",
+      "name": "subject",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": 900,
+      "description": "Seconds until the token expires: 900 (15 minutes) by default, 3600 at most. There is no refresh token; mint a new token instead.",
+      "name": "ttl_seconds",
+      "required": false,
+      "type": "integer"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/auth/end-user-tokens",
+   "paginated": false,
+   "path": "/v1/auth/end-user-tokens",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Mint an end-user token"
+  },
+  {
+   "action": "revoke-end-user-token",
+   "anonymous": false,
+   "area": "end-user-tokens",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/auth/end-user-tokens/{token_id}",
+   "paginated": false,
+   "path": "/v1/auth/end-user-tokens/{token_id}",
+   "path_params": [
+    {
+     "name": "token_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": null,
+   "summary": "Revoke an end-user token"
+  },
+  {
+   "action": "create-external-user",
+   "anonymous": false,
+   "area": "external-users",
+   "body": {
+    "fields": [
+     {
+      "description": "Your own id for this end user (an id from your system), unique among the external users the calling service account created (each service account has its own ids); 1 to 200 characters.",
+      "name": "external_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Your own key-value data about the user, returned as given; at most 16 KB as JSON. Beakr does not interpret it.",
+      "name": "metadata",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Display name shown in member lists; defaults to `external_id`.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/organizations/{org_id}/external-users",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/external-users",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Create an external user"
+  },
+  {
+   "action": "delete-external-user",
+   "anonymous": false,
+   "area": "external-users",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/organizations/{org_id}/external-users/{user_id}",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/external-users/{user_id}",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "user_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "members:admin",
+   "summary": "Delete an external user"
+  },
+  {
+   "action": "get-external-user",
+   "anonymous": false,
+   "area": "external-users",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations/{org_id}/external-users/{user_id}",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/external-users/{user_id}",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "user_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Get an external user"
+  },
+  {
+   "action": "list-external-users",
+   "anonymous": false,
+   "area": "external-users",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations/{org_id}/external-users",
+   "paginated": true,
+   "path": "/v1/organizations/{org_id}/external-users",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Only the external user with this id of yours.",
+     "name": "external_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "List external users"
+  },
+  {
+   "action": "update-external-user",
+   "anonymous": false,
+   "area": "external-users",
+   "body": {
+    "fields": [
+     {
+      "description": "Replaces the metadata as a whole; omit to keep the current metadata.",
+      "name": "metadata",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "A new display name; omit to keep the current one.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/organizations/{org_id}/external-users/{user_id}",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/external-users/{user_id}",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "user_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Update an external user"
+  },
+  {
+   "action": "create-knowledge-from-artifact",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/artifacts/{artifact_id}/knowledge",
+   "paginated": false,
+   "path": "/v1/artifacts/{artifact_id}/knowledge",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Compile a file into Knowledge"
+  },
+  {
+   "action": "delete-artifact",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/artifacts/{artifact_id}",
+   "paginated": false,
+   "path": "/v1/artifacts/{artifact_id}",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "uploads:write",
+   "summary": "Delete a file"
+  },
+  {
+   "action": "get-artifact",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/artifacts/{artifact_id}",
+   "paginated": false,
+   "path": "/v1/artifacts/{artifact_id}",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a file"
+  },
+  {
+   "action": "get-artifact-content",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/artifacts/{artifact_id}/content",
+   "paginated": false,
+   "path": "/v1/artifacts/{artifact_id}/content",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a file's content"
+  },
+  {
+   "action": "list-artifacts",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/artifacts",
+   "paginated": true,
+   "path": "/v1/artifacts",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "Exclude artifacts that are present in any folder. Useful for project root views.",
+     "name": "exclude_foldered",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": false,
+     "description": "Exclude unpromoted files and canvases that are owned by chat threads",
+     "name": "exclude_thread_outputs",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Filter to artifacts in a specific folder",
+     "name": "folder_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Deprecated; use project_id",
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Accessible artifact IDs to include in addition to the other scope filters. Used for outputs referenced by a thread message but originally owned elsewhere.",
+     "multiple": true,
+     "name": "include_artifact_ids",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Filter to artifacts in projects connected to this label",
+     "name": "label_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "default": false,
+     "description": "Skip per-row permission checks and index status for faster response",
+     "name": "lite",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Filter to artifacts attached to a specific project",
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Case-insensitive search across title, description, and artifact type",
+     "name": "search",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "updated_at",
+     "description": "Sort field: updated_at, created_at, title, size_bytes, artifact_type",
+     "name": "sort_by",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "desc",
+     "description": "Sort direction: asc or desc",
+     "name": "sort_dir",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Filter to outputs generated by a specific assistant thread",
+     "name": "thread_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "Filter to files and canvases generated by chat threads",
+     "name": "thread_outputs",
+     "required": false,
+     "type": "boolean"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List files"
+  },
+  {
+   "action": "move-artifact",
+   "anonymous": false,
+   "area": "files",
+   "body": {
+    "fields": [
+     {
+      "description": "Id of the new home project.",
+      "name": "new_home_project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Id of the new home space.",
+      "name": "new_home_space_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/artifacts/{artifact_id}/move",
+   "paginated": false,
+   "path": "/v1/artifacts/{artifact_id}/move",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Move a file to another project"
+  },
+  {
+   "action": "read-file",
+   "anonymous": false,
+   "area": "files",
+   "body": {
+    "fields": [
+     {
+      "default": 20000,
+      "description": "The most characters to return (a unit's window is at most 6,000).",
+      "name": "max_chars",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "default": 0,
+      "description": "Without a unit: the first character to return (at most 100,000,000; past the end of the text the window is empty). Ignored with a unit.",
+      "name": "offset",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "The file to read (an upload or a canvas): its id or a version id, a citation token from a Knowledge read ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}) are not stored as files and are refused.",
+      "name": "reference",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/artifacts/read",
+   "paginated": false,
+   "path": "/v1/artifacts/read",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Read a file's text"
+  },
+  {
+   "action": "update-artifact",
+   "anonymous": false,
+   "area": "files",
+   "body": {
+    "fields": [
+     {
+      "description": "Optional new artifact type.",
+      "enum": [
+       "doc",
+       "dataset",
+       "table",
+       "figure",
+       "image",
+       "video",
+       "audio",
+       "notebook",
+       "code_bundle",
+       "model",
+       "protocol",
+       "result",
+       "report",
+       "publication",
+       "note",
+       "transcript",
+       "json",
+       "analysis",
+       "hypothesis",
+       "conclusion",
+       "scientific_data"
+      ],
+      "name": "artifact_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Optional new description for the artifact.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Optional new title for the artifact.",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/artifacts/{artifact_id}",
+   "paginated": false,
+   "path": "/v1/artifacts/{artifact_id}",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Update a file"
+  },
+  {
+   "action": "create-folder",
+   "anonymous": false,
+   "area": "folders",
+   "body": {
+    "fields": [
+     {
+      "description": "Description of the folder, in plain text.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the group.",
+      "name": "group_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Name of the folder.",
+      "name": "name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Id of the parent folder.",
+      "name": "parent_folder_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the project it belongs to, or the project to act in.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/folders",
+   "paginated": false,
+   "path": "/v1/folders",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Create a folder"
+  },
+  {
+   "action": "delete-folder",
+   "anonymous": false,
+   "area": "folders",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/folders/{folder_id}",
+   "paginated": false,
+   "path": "/v1/folders/{folder_id}",
+   "path_params": [
+    {
+     "name": "folder_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Delete a folder"
+  },
+  {
+   "action": "get-folder",
+   "anonymous": false,
+   "area": "folders",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/folders/{folder_id}",
+   "paginated": false,
+   "path": "/v1/folders/{folder_id}",
+   "path_params": [
+    {
+     "name": "folder_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a folder"
+  },
+  {
+   "action": "list-folder-resources",
+   "anonymous": false,
+   "area": "folders",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/folders/{folder_id}/resources",
+   "paginated": true,
+   "path": "/v1/folders/{folder_id}/resources",
+   "path_params": [
+    {
+     "name": "folder_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List a folder's files"
+  },
+  {
+   "action": "list-folders",
+   "anonymous": false,
+   "area": "folders",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/folders",
+   "paginated": true,
+   "path": "/v1/folders",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Deprecated; use project_id",
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "Filter by parent folder (use 'root' for root-only)",
+     "name": "parent_folder_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Filter by project",
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "If true, only return root-level folders",
+     "name": "root_only",
+     "required": false,
+     "type": "boolean"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List folders"
+  },
+  {
+   "action": "update-folder",
+   "anonymous": false,
+   "area": "folders",
+   "body": {
+    "fields": [
+     {
+      "description": "Description of the folder, in plain text.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Name of the folder.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the parent folder.",
+      "name": "parent_folder_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/folders/{folder_id}",
+   "paginated": false,
+   "path": "/v1/folders/{folder_id}",
+   "path_params": [
+    {
+     "name": "folder_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Update a folder"
+  },
+  {
+   "action": "call-integration-tool",
+   "anonymous": false,
+   "area": "integrations",
+   "body": {
+    "fields": [
+     {
+      "description": "The tool's arguments, as its `input_schema` describes them.",
+      "name": "arguments",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Run against this connected account only. Needed when the caller has more than one account of the tool's integration and the arguments do not name one.",
+      "name": "connector_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/integrations/tools/{tool_name}/call",
+   "paginated": false,
+   "path": "/v1/integrations/tools/{tool_name}/call",
+   "path_params": [
+    {
+     "name": "tool_name",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "integrations:read",
+   "summary": "Call an integration tool"
+  },
+  {
+   "action": "connect-integration",
+   "anonymous": false,
+   "area": "integrations",
+   "body": {
+    "fields": [
+     {
+      "default": "user",
+      "description": "The scope it applies to. One of `user`, `org`.",
+      "enum": [
+       "user",
+       "org"
+      ],
+      "name": "scope",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/integrations/{provider}/connect",
+   "paginated": false,
+   "path": "/v1/integrations/{provider}/connect",
+   "path_params": [
+    {
+     "name": "provider",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "integrations:admin",
+   "summary": "Get a connect link"
+  },
+  {
+   "action": "disconnect-integration",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/integrations/{connector_id}",
+   "paginated": false,
+   "path": "/v1/integrations/{connector_id}",
+   "path_params": [
+    {
+     "name": "connector_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "integrations:admin",
+   "summary": "Disconnect an integration"
+  },
+  {
+   "action": "integration-status",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/integrations/{connector_id}/status",
+   "paginated": false,
+   "path": "/v1/integrations/{connector_id}/status",
+   "path_params": [
+    {
+     "name": "connector_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "integrations:read",
+   "summary": "Get an integration's status"
+  },
+  {
+   "action": "list-integration-tools",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/integrations/tools",
+   "paginated": true,
+   "path": "/v1/integrations/tools",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Only tools for this connected account.",
+     "name": "connector_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "Only this integration's tools (as `GET /v1/integrations` names it).",
+     "name": "provider",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "integrations:read",
+   "summary": "List integration tools"
+  },
+  {
+   "action": "list-integrations",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/integrations",
+   "paginated": true,
+   "path": "/v1/integrations",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "integrations:read",
+   "summary": "List connected integrations"
+  },
+  {
+   "action": "create-interview-link",
+   "anonymous": false,
+   "area": "interviews",
+   "body": {
+    "fields": [
+     {
+      "description": "When the link stops working (ISO 8601 with a time zone), between 5 minutes and 90 days from now. Defaults to 14 days from now. A participant who has finished keeps their result.",
+      "name": "expires_at",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "What the interview should find out. The interviewer steers toward it. Give a goal, questions, or both.",
+      "name": "goal",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Key questions to cover, in order.",
+      "multiple": true,
+      "name": "questions",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Who the link is for. A label only: Beakr never contacts them.",
+      "name": "recipient",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "A short name for the interview, shown to the participant.",
+      "name": "title",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/interview/links",
+   "paginated": false,
+   "path": "/v1/interview/links",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:write",
+   "summary": "Create an interview link"
+  },
+  {
+   "action": "create-link",
+   "anonymous": false,
+   "area": "interviews",
+   "body": {
+    "fields": [
+     {
+      "default": 14,
+      "description": "Days until it expires.",
+      "name": "expires_in_days",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Who it is for (display only).",
+      "name": "label",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Password the participant must enter (at least 8 characters).",
+      "name": "password",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/interview/sendables/{sendable_id}/links",
+   "paginated": false,
+   "path": "/v1/interview/sendables/{sendable_id}/links",
+   "path_params": [
+    {
+     "name": "sendable_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:write",
+   "summary": "Add a link to an interview"
+  },
+  {
+   "action": "create-sendable-interview",
+   "anonymous": false,
+   "area": "interviews",
+   "body": {
+    "fields": [
+     {
+      "description": "Ids of the evidence artifacts.",
+      "multiple": true,
+      "name": "evidence_artifact_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "What the interview should learn.",
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Questions the interview must cover.",
+      "multiple": true,
+      "name": "key_questions",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "blank",
+      "description": "What kind of sendable interview this is. One of `blank`, `explore`, `brainstorm`, `offboarding`, `procedural`.",
+      "enum": [
+       "blank",
+       "explore",
+       "brainstorm",
+       "offboarding",
+       "procedural"
+      ],
+      "name": "kind",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Background the interviewer may use.",
+      "name": "supporting_info",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Title of the sendable interview.",
+      "name": "title",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Ids of the visible evidence artifacts.",
+      "multiple": true,
+      "name": "visible_evidence_artifact_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "marin",
+      "description": "Voice: one of `marin`, `cedar`, `alloy`, `ash`, `ballad`, `coral`, `echo`, `sage`, `shimmer`, `verse`.",
+      "enum": [
+       "marin",
+       "cedar",
+       "alloy",
+       "ash",
+       "ballad",
+       "coral",
+       "echo",
+       "sage",
+       "shimmer",
+       "verse"
+      ],
+      "name": "voice",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/interview/sendables",
+   "paginated": false,
+   "path": "/v1/interview/sendables",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:write",
+   "summary": "Create a sendable interview"
+  },
+  {
+   "action": "link-result",
+   "anonymous": false,
+   "area": "interviews",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/interview/sendables/links/{link_id}/result",
+   "paginated": false,
+   "path": "/v1/interview/sendables/links/{link_id}/result",
+   "path_params": [
+    {
+     "name": "link_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:read",
+   "summary": "Get an interview link's result"
+  },
+  {
+   "action": "list-sendable-interviews",
+   "anonymous": false,
+   "area": "interviews",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/interview/sendables",
+   "paginated": true,
+   "path": "/v1/interview/sendables",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "interviews:read",
+   "summary": "List sendable interviews"
+  },
+  {
+   "action": "revoke-link",
+   "anonymous": false,
+   "area": "interviews",
+   "body": null,
+   "destructive": true,
+   "method": "POST",
+   "op": "POST /v1/interview/sendables/links/{link_id}/revoke",
+   "paginated": false,
+   "path": "/v1/interview/sendables/links/{link_id}/revoke",
+   "path_params": [
+    {
+     "name": "link_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "interviews:write",
+   "summary": "Revoke an interview link"
+  },
+  {
+   "action": "send-link-to-knowledge",
+   "anonymous": false,
+   "area": "interviews",
+   "body": {
+    "fields": [
+     {
+      "description": "Ids of the projects it covers.",
+      "multiple": true,
+      "name": "project_ids",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/interview/sendables/links/{link_id}/knowledge",
+   "paginated": false,
+   "path": "/v1/interview/sendables/links/{link_id}/knowledge",
+   "path_params": [
+    {
+     "name": "link_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:write",
+   "summary": "Send an interview to Knowledge"
+  },
+  {
+   "action": "get-job",
+   "anonymous": false,
+   "area": "jobs",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/jobs/{job_id}",
+   "paginated": false,
+   "path": "/v1/jobs/{job_id}",
+   "path_params": [
+    {
+     "name": "job_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Get a job's status"
+  },
+  {
+   "action": "accept-proposal",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/accept",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/accept",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Accept a Knowledge proposal"
+  },
+  {
+   "action": "create-proposal",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The action taken or requested.",
+      "name": "action",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The wiki proposal's content.",
+      "name": "content",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Pages to copy, for a `copy` proposal.",
+      "name": "copy_items",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Id of the group.",
+      "name": "group_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": true,
+      "description": "Whether to include children.",
+      "name": "include_children",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Title or id of the page the proposal changes.",
+      "name": "page",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Other names the page should answer to.",
+      "multiple": true,
+      "name": "page_aliases",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "topic",
+      "description": "The Knowledge page type.",
+      "name": "page_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The pages.",
+      "multiple": true,
+      "name": "pages",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Title or id of the page to place it under.",
+      "name": "parent",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the parent page.",
+      "name": "parent_page_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The changes, as patches.",
+      "name": "patches",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Id of the project it belongs to, or the project to act in.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "Why the change is right, shown to the reviewer.",
+      "name": "rationale",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Exact text replacements, for a `find_replace` proposal.",
+      "name": "replacements",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Sections to write, each with its heading and body.",
+      "name": "sections",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "default": "",
+      "description": "A short summary.",
+      "name": "summary",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Title of the wiki proposal.",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Create a Knowledge proposal"
+  },
+  {
+   "action": "dismiss-proposal",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Dismiss a Knowledge proposal"
+  },
+  {
+   "action": "documents",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document.",
+      "name": "arguments",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Search indexed text, read a document window, or list files.",
+      "enum": [
+       "grep",
+       "read",
+       "ls"
+      ],
+      "name": "command",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Limit to this project. Required for project-restricted credentials.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/documents",
+   "paginated": false,
+   "path": "/v1/knowledge/documents",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Search and read original documents"
+  },
+  {
+   "action": "get-proposal",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/proposals/{proposal_id}",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a Knowledge proposal"
+  },
+  {
+   "action": "get-wiki-page",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/pages/{page_id}",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/pages/{page_id}",
+   "path_params": [
+    {
+     "name": "page_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a Knowledge page"
+  },
+  {
+   "action": "get-wiki-page-by-title",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/pages/by-title",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/pages/by-title",
+   "path_params": [],
+   "query": [
+    {
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "label_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Page title to resolve (current or previous).",
+     "name": "title",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a Knowledge page by title"
+  },
+  {
+   "action": "get-wiki-page-revisions",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/pages/{page_id}/revisions",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/pages/{page_id}/revisions",
+   "path_params": [
+    {
+     "name": "page_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List a page's revisions"
+  },
+  {
+   "action": "get-wiki-page-sources",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/pages/{page_id}/sources",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/pages/{page_id}/sources",
+   "path_params": [
+    {
+     "name": "page_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List a page's sources"
+  },
+  {
+   "action": "list-proposals",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/proposals",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/proposals",
+   "path_params": [],
+   "query": [
+    {
+     "name": "batch_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "label_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Restrict to one proposal source. Omitted, a pending listing hides the sources reviewed elsewhere (an interview's proposals are reviewed on that interview's wrap-up, not in this queue).",
+     "name": "source",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "pending",
+     "name": "status",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List Knowledge proposals"
+  },
+  {
+   "action": "list-wiki-pages",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/pages",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/pages",
+   "path_params": [],
+   "query": [
+    {
+     "default": false,
+     "description": "If true, return pages across all scopes (not just org-root)",
+     "name": "all",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": false,
+     "description": "If true, return only archived (deleted) pages",
+     "name": "archived",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "label_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "default": false,
+     "description": "If true, return only org-level pages (not in any space/project)",
+     "name": "org_only",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "name": "page_type",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Filter to children of this page",
+     "name": "parent_page_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "If true, return only root pages (no parent)",
+     "name": "roots_only",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Sort by: title (default), updated_at, created_at",
+     "name": "sort_by",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List Knowledge pages"
+  },
+  {
+   "action": "research",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Research one project. A project-restricted credential must pass one of its projects. Omitted, research covers every project you can see and your connected integrations.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The question to answer.",
+      "name": "query",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/research",
+   "paginated": false,
+   "path": "/v1/knowledge/research",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Research a question"
+  },
+  {
+   "action": "run-wiki-command",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Keyset cursor for provenance: return only the sections that follow this section id in page order. Pass the last section id of the previous window to walk the whole page.",
+      "name": "after_section",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "sources: the second half of the keyset cursor, paired with after_title. Sources are ordered by (title, source_id), so a window boundary can fall inside a run of records that share a title -- Invoice.pdf on a matter page -- and a title-only cursor would skip the whole run. Copy the value the previous window's trailer printed.",
+      "name": "after_source_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Keyset cursor for ls, grep and sources: return only rows whose title sorts after this value. Pass the last title of the previous window to walk a full population. Required for any complete enumeration -- one window is never proof that nothing else matches. For sources, pass after_source_id alongside it: titles repeat, and a title-only cursor cannot reach past a run of files sharing one.",
+      "name": "after_title",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "rows: Attribute, Relation or kind containing this.",
+      "name": "attribute",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The command to run. `help` returns the guidance for every command or action, or for one with `topic`.",
+      "enum": [
+       "ls",
+       "cat",
+       "grep",
+       "sections",
+       "log",
+       "blame",
+       "diff",
+       "show",
+       "sources",
+       "provenance",
+       "links",
+       "timeline",
+       "rows",
+       "ontology",
+       "hover",
+       "references",
+       "diagnostics",
+       "completions",
+       "proposals",
+       "suggest_parent",
+       "help"
+      ],
+      "name": "command",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "For suggest_parent: the draft body of the page you are about to create. Any [[Page Title]] links in it are the strongest evidence of where the page belongs, so pass the draft whenever you have one.",
+      "name": "content",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line.",
+      "name": "context_lines",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "rows, facts: the latest When per entity and Attribute.",
+      "name": "current_only",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "rows: reverse the order.",
+      "name": "descending",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "On `cat` only (ignored by every other command, which is always compact): `full` returns every source record with its excerpt instead of one record per cited document, held to the same response budget; the records that do not fit are paged with `source_offset`.",
+      "enum": [
+       "full"
+      ],
+      "name": "detail",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "End date YYYY-MM-DD (for timeline).",
+      "name": "end_date",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "rows: card titles containing this.",
+      "name": "entity",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Timeline only. Events with approximate/estimated dates (date_precision=approx) are included by default. Set false to restrict the chronology to confident (day/month/year) dated events only.",
+      "name": "include_approx",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "If true, timeline returns each section's full markdown content. Automatically enabled when timeline_query is set.",
+      "name": "include_content",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "rows: add each row's cited passage (at most 50 rows).",
+      "name": "include_evidence",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "If true, ontology includes proposed page types as well as active types.",
+      "name": "include_proposed",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Max results. rows: rows per window (default 100, max 500). ls: pages per window (default 100, max 500). grep: pages per window (default 20, max 200). sources: source records per window (default 60, max 400). provenance: sections per window (default 12, max 200). Every window is ordered; use after_title (ls/grep/sources) or after_section (provenance) to continue past one.",
+      "name": "limit",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "cat only. Read an exact line range, `start-end` or a single line, 1-indexed and inclusive -- what grep's `section:line` addresses point at. Prefer `section_id` when the hit sits inside a marked section; use this for a long section, or a page with no section markers, instead of opening the whole page.",
+      "name": "lines",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "grep only. Snippets kept per page (default 10, max 200). Every match is addressed in the result regardless; this controls how many also carry their text. Raise it to enumerate a term ACROSS pages in one call -- every version of a component, every date a decision moved -- where the alternative is opening each page in turn. For everything on ONE page, reading that page is usually simpler.",
+      "name": "matches_per_page",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "grep mode: text (default literal substring), regex, history (search across revisions, like git log -S), or semantic section-embedding page discovery. When text finds nothing, the term may simply be phrased differently -- retry semantic or `sections` rather than concluding the KB lacks it.",
+      "enum": [
+       "semantic",
+       "text",
+       "regex",
+       "history"
+      ],
+      "name": "mode",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names.",
+      "name": "offset",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first.",
+      "name": "order_by",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "cat only. Return the page's section list (ids, titles, sizes, citation counts) without any prose. Use this to find which section to read or edit.",
+      "name": "outline",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Page reference: slug, title, UUID, or a wiki citation key emitted by ls (wiki:8f3a0c21, {{wiki:8f3a0c21}}, or its bare 8-character hex key).",
+      "name": "page",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Filter results by page type, e.g. 'person', 'initiative', 'organization', 'decision' (for sections, grep, ls, timeline; for links, the type of the linking pages). For suggest_parent it is not a filter but the type of the page being placed, which orders equally-evidenced candidates by affinity; it is read from the page itself when one is named. Use `ontology` to see the active types.",
+      "name": "page_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For ls: list only the direct children of this page (slug, title, UUID, or wiki citation key from ls). Use it to walk the tree one level at a time instead of relying on the truncated index in the prompt.",
+      "name": "parent",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Title prefix (for completions).",
+      "name": "prefix",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query.",
+      "name": "query",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For links: keep only linking cards whose Connections row to this page states a relation containing this text (case-insensitive), e.g. 'annex of', 'measured'.",
+      "name": "relation",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Revision number (for cat --rev, show, diff start).",
+      "name": "rev",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Second revision number (for diff end). Defaults to current.",
+      "name": "rev2",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Project name or id to read in. Omitted, a read covers every project you can see (a project-restricted credential: its own projects).",
+      "name": "scope",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take.",
+      "name": "section_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Sort order for ls: title (default tree), updated_at, created_at (newest first).",
+      "enum": [
+       "title",
+       "updated_at",
+       "created_at"
+      ],
+      "name": "sort_by",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "With `detail: full` on `cat`, the first source record to return; a page cut to the response budget names the next offset in `next`.",
+      "name": "source_offset",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "provenance: how many citing sources to show per section (default 5, max 50). Contradicting and qualifying sources are listed first, so a dispute is never the entry that falls off the end.",
+      "name": "sources_per_section",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Start date YYYY-MM-DD (for timeline).",
+      "name": "start_date",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For proposals: 'pending' (default, awaiting approval) or 'dismissed' (the user rejected them).",
+      "enum": [
+       "pending",
+       "dismissed"
+      ],
+      "name": "status",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "rows: which card table (default facts).",
+      "enum": [
+       "facts",
+       "connections",
+       "findings"
+      ],
+      "name": "table",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Semantic filter for timeline events. Uses the reranker to surface events relevant to a concept, person, or topic \u2014 results are still returned in chronological order. Combine with start_date/end_date to narrow the window. Example: 'decisions about authentication', 'Marcus Ortiz', 'infrastructure'.",
+      "name": "timeline_query",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For suggest_parent: the title of a page that does not exist yet. Use this instead of `page` when asking where a page you are about to create should be filed.",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "With `help`: one command or action to describe instead of all of them.",
+      "name": "topic",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/command",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/command",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Run a Knowledge read command"
+  },
+  {
+   "action": "run-wiki-write",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "add_finding: other pages it bears on.",
+      "multiple": true,
+      "name": "about",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What to propose. Prefer edit_section when updating an existing page. `help` returns the guidance for every command or action, or for one with `topic`.",
+      "enum": [
+       "edit_section",
+       "edit",
+       "find_replace",
+       "new",
+       "mv",
+       "archive",
+       "merge",
+       "add_fact",
+       "add_connection",
+       "add_finding",
+       "sort_table",
+       "edit_rows",
+       "copy",
+       "flag",
+       "page_type",
+       "help"
+      ],
+      "name": "action",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "edit_section only. Place a newly created section after this existing section id. Omit to place it at the top.",
+      "name": "after",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Synonyms for this page type (action=page_type).",
+      "multiple": true,
+      "name": "aliases",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_fact: the property, named stably; no date in it.",
+      "name": "attribute",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The page to KEEP (for merge). The other page is archived and its titles become aliases here.",
+      "name": "canonical",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Section-level citation records for the inline {{key}} tokens in new_section_body (for edit_section): a list of {key, source_ref, stance, meta} objects, the same shape sections[].citations takes. Supply these whenever the new body makes a claim from a source -- a token with no record here is stored as a bare pointer that carries no excerpt and can never be re-anchored or verified.",
+      "name": "citations",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "flag: the review type. ambiguity = confused or unsure what it means or whose it is; contradiction = sources disagree; unverifiable = cannot confirm, needs validation; likely_error = looks wrong.",
+      "enum": [
+       "ambiguity",
+       "contradiction",
+       "unverifiable",
+       "likely_error"
+      ],
+      "name": "concern",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Optional live project-work declaration. On your first write, include the complete pages you expect to read and write so concurrent Knowledge agents can avoid overlap. Later writes omit it; to extend the plan, send only the new entries -- what was already declared is kept. This is an ephemeral lease, not durable Knowledge.",
+      "name": "coordination",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "add_finding: when it was reached, YYYY-MM-DD.",
+      "name": "date",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Ontology description for action=page_type.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "flag: what you checked -- the sources, what conflicted -- and why it did not settle it.",
+      "name": "details",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Alias for page when action=merge: the page to archive.",
+      "name": "duplicate",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What changed and why, for 'edit'/'edit_section'/'find_replace'/'mv'/'merge'/'archive'. A commit message. It is recorded with the revision and does NOT overwrite the page's summary. Ignored on 'new'.",
+      "name": "edit_note",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "edit_rows: several edits in one call, each {old_rows, rows, reason}.",
+      "name": "edits",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "add_*: the {{key}} token of each source that states it.",
+      "name": "evidence",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Example page titles that would use the proposed page type.",
+      "multiple": true,
+      "name": "example_titles",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_finding: what it holds for, if limited.",
+      "name": "finding_scope",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For copy and archive: also include child pages (default true).",
+      "name": "include_children",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Ontology key for action=page_type, e.g. disease.",
+      "name": "key",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_finding.",
+      "enum": [
+       "result",
+       "lesson",
+       "decision",
+       "question",
+       "correction"
+      ],
+      "name": "kind",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Human label for action=page_type, e.g. Disease.",
+      "name": "label",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For merge: the ORDERED section list the surviving page should lead with, drawn from both pages -- e.g. [\"canonical:sec_overview\", \"duplicate:sec_findings\"]. Duplicate-sourced sections are moved across whole (prose, citations, dates and embeddings intact) before the duplicate is archived; canonical-sourced ones are only reordered. Sections you do not name are safe: an unnamed canonical section keeps its place after the listed ones, and an unnamed duplicate section is archived with its page. Moving a section preserves its verified citations; rewriting the same text onto the canonical does not.",
+      "multiple": true,
+      "name": "merge_sections",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Optional metadata fields implied by the page type.",
+      "name": "metadata_schema",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Same-project page moves to bundle with this proposal. For action=mv, this can be the whole proposal and each item may use a different parent. These obey the proposal scope and cannot move pages across projects.",
+      "name": "moves",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "THE ENTIRE NEW BODY of the section (for edit_section). A section runs from its <!-- sec:ID --> marker to the NEXT marker, so it includes every ## and ### heading under it. Whatever you send REPLACES ALL OF IT: subsections you do not retype are DELETED, not merged, and their citations and dates go with them. Read the section first and send back everything you are keeping. To split an over-long section, create the new sections FIRST (a new section_id plus section_title, and after=<this section id>) and move the prose into them, THEN shrink this one. Include all inline citation tokens; the <!-- sec:ID --> marker is prepended automatically if omitted. The section's OWN heading is not part of the body -- it is kept as it is, or set with section_title -- so you do not need to retype it. A leading heading that restates the title or is no deeper than the section's own heading is read as its title; a deeper heading remains a subsection in the body.",
+      "name": "new_section_body",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value} or {relation, to}, or the row copied from cat.",
+      "name": "old_rows",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "sort_table: columns first to last, e.g. 'attribute, when desc'.",
+      "name": "order_by",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Page slug, title, UUID, or wiki citation key from ls (for edit_section, edit, mv, archive, copy; for merge this is the DUPLICATE that gets archived). Slugs/titles resolve inside scope; UUIDs and citation keys identify an exact visible to you page.",
+      "name": "page",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Alternative titles for the page: on action=new, for the page being created; on action=edit with no sections or patches, names added to an existing page without rewriting its body. These become resolvable page-title aliases; do not use page-type synonyms here.",
+      "multiple": true,
+      "name": "page_aliases",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "For edit/edit_section: replace the page description shown in search and navigation. State the current topic/status, not an edit note. Omit to preserve it.",
+      "name": "page_summary",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Page type key (for new). Use knowledge_base ontology first. If no active page type fits, propose action=page_type before using it.",
+      "name": "page_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Multiple page refs (for mv, archive, copy). Batches all listed pages into a single proposal. For copy, include_children controls whether children follow.",
+      "multiple": true,
+      "name": "pages",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "New parent page slug/ID (for mv, new).",
+      "name": "parent",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Incremental edits to apply to the current page content (for edit). Use instead of content for small changes. Patches apply sequentially. Two levels: replace_text (literal or regex find/replace) and section-level ops (replace_section, append_section, delete_section, insert_after, move_section) targeting <!-- sec:ID --> markers. To REORDER sections use move_section, never a full-page rewrite: a rewrite moves the prose under every citation on the page and demotes each verified anchor, while move_section keeps every section's id and therefore its citations, dates and embeddings.",
+      "name": "patches",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Why this suggestion is being made. Required for wiki change proposals; for page_type, explain why an existing type is insufficient.",
+      "name": "rationale",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "edit_rows: why, kept with the revision; required to delete rows or drop a citation. flag: the decision a person must make, in one or two sentences.",
+      "name": "reason",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_connection: a short verb phrase carrying any detail, e.g. 'Part of'.",
+      "name": "relation",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Other page types this type commonly relates to.",
+      "multiple": true,
+      "name": "relationships",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Find/replace pairs (for find_replace). Multiple replacements are applied to the same pages and batched into one proposal. If multiple replacements touch the same page, they are all applied together.",
+      "name": "replacements",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Section headings every page of this type should carry, in reading order. This is the page FORMAT for the class -- what makes two pages of one type look like siblings. Name the sections a reader would expect to find, not the ones this particular source happens to fill.",
+      "multiple": true,
+      "name": "required_sections",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_*: several rows in one call, each an object with that action's fields; fields it omits (evidence, when) come from the call. edit_rows: the rows that replace old_rows (empty deletes them); evidence left out keeps theirs.",
+      "name": "rows",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Project name or id to read in. Omitted, a read covers every project you can see (a project-restricted credential: its own projects).",
+      "name": "scope",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Section ID from the <!-- sec:ID --> marker (for edit_section). Read the page first to find available section IDs.",
+      "name": "section_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Event dating for this one section (for edit_section): {event_start, event_end, date_precision}, the same fields sections[] takes per section. date_precision is one of day, month, quarter, year, approx. Dates are section-scoped -- there is no page-level date -- so a section whose subject is a datable event should carry it here or it will not appear on any timeline. Omitting every temporal field preserves the stored tuple; clear_event_date removes it explicitly.",
+      "name": "section_meta",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "The section's heading (for edit_section). With a section_id that does not exist yet it ADDS the section; use `after` to place it. On a section that already exists it RENAMES the heading. Omit it and the current heading is kept -- a body with no '## ' line does NOT mean the section has no title. Prefer edit_section over rewriting the whole page with action=edit -- a full-page write regenerates every section and demotes citations that did not move.",
+      "name": "section_title",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "THE PAGE, as an ordered list of {title, body} objects (for new, edit). Pass sections, not content: the <!-- sec:ID --> markers, the section ids and the ordering are written for you, so a marker cannot be missed or malformed and no prose can end up outside a section. For edit, this REPLACES the entire page body: read the page first and include every section you want to keep, because every omitted section is deleted. Use edit_section instead when changing one section. Optionally give a section an explicit id to keep an existing one, plus event_start/event_end/date_precision.",
+      "name": "sections",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Source project name/ID for copy when source pages are given as slugs or titles. Omit when copying by page UUID.",
+      "name": "source_scope",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The PAGE TOPIC: a one-line description of what the page is about, shown in search results and the index. Never a note about your edit -- use edit_note for that. On an edit this is still accepted as a change note for backward compatibility, but edit_note is the correct name.",
+      "name": "summary",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_finding: date or opening words of the finding it replaces.",
+      "name": "supersedes",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "sort_table / edit_rows: which table.",
+      "enum": [
+       "facts",
+       "connections"
+      ],
+      "name": "table",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_finding: the finding in one or two sentences.",
+      "name": "text",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Page title (for new) or new title (for edit rename, mv).",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_connection: the other page's title.",
+      "name": "to",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "With `help`: one command or action to describe instead of all of them.",
+      "name": "topic",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Scope for action=page_type. Project is default; global requires admin review.",
+      "enum": [
+       "global",
+       "org",
+       "project"
+      ],
+      "name": "type_scope",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_fact: the statement as the source gives it, qualifiers included.",
+      "name": "value",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "add_fact / add_connection: when it happened or held: YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY, '~' if approximate.",
+      "name": "when",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "When not to use this page type (action=page_type).",
+      "name": "when_not_to_use",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "When to use this page type (action=page_type).",
+      "name": "when_to_use",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/write",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/write",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Propose a Knowledge change"
+  },
+  {
+   "action": "search-wiki-pages",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/search",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/search",
+   "path_params": [],
+   "query": [
+    {
+     "default": false,
+     "description": "If true, search all accessible project Knowledge scopes.",
+     "name": "all",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Opaque cursor from a previous page.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "label_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200 (default 50).",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "q",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Search Knowledge pages"
+  },
+  {
+   "action": "add-label-member",
+   "anonymous": false,
+   "area": "labels",
+   "body": {
+    "fields": [
+     {
+      "default": "member",
+      "description": "The role it grants or holds.",
+      "name": "role",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the person it belongs to or concerns.",
+      "name": "user_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/labels/{label_id}/members",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}/members",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Add a label member"
+  },
+  {
+   "action": "attach-label-project",
+   "anonymous": false,
+   "area": "labels",
+   "body": {
+    "fields": [
+     {
+      "description": "Id of the project it belongs to, or the project to act in.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": "viewer",
+      "description": "The role it grants or holds.",
+      "name": "role",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/labels/{label_id}/projects",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}/projects",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Add a project to a label"
+  },
+  {
+   "action": "create-label",
+   "anonymous": false,
+   "area": "labels",
+   "body": {
+    "fields": [
+     {
+      "description": "Display color.",
+      "name": "color",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Description of the label, in plain text.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Name of the label.",
+      "name": "name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Settings, as key-value pairs.",
+      "name": "settings",
+      "required": false,
+      "type": "object"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/labels",
+   "paginated": false,
+   "path": "/v1/labels",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Create a label"
+  },
+  {
+   "action": "delete-label",
+   "anonymous": false,
+   "area": "labels",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/labels/{label_id}",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "projects:admin",
+   "summary": "Delete a label"
+  },
+  {
+   "action": "detach-label-project",
+   "anonymous": false,
+   "area": "labels",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/labels/{label_id}/projects/{project_id}",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}/projects/{project_id}",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "projects:admin",
+   "summary": "Remove a project from a label"
+  },
+  {
+   "action": "get-label",
+   "anonymous": false,
+   "area": "labels",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/labels/{label_id}",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a label"
+  },
+  {
+   "action": "list-label-members",
+   "anonymous": false,
+   "area": "labels",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/labels/{label_id}/members",
+   "paginated": true,
+   "path": "/v1/labels/{label_id}/members",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List label members"
+  },
+  {
+   "action": "list-label-projects",
+   "anonymous": false,
+   "area": "labels",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/labels/{label_id}/projects",
+   "paginated": true,
+   "path": "/v1/labels/{label_id}/projects",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List label projects"
+  },
+  {
+   "action": "list-labels",
+   "anonymous": false,
+   "area": "labels",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/labels",
+   "paginated": true,
+   "path": "/v1/labels",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List labels"
+  },
+  {
+   "action": "remove-label-member",
+   "anonymous": false,
+   "area": "labels",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/labels/{label_id}/members/{user_id}",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}/members/{user_id}",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "user_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "projects:admin",
+   "summary": "Remove a label member"
+  },
+  {
+   "action": "update-label",
+   "anonymous": false,
+   "area": "labels",
+   "body": {
+    "fields": [
+     {
+      "description": "Display color.",
+      "name": "color",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Description of the label, in plain text.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Name of the label.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Settings, as key-value pairs.",
+      "name": "settings",
+      "required": false,
+      "type": "object"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/labels/{label_id}",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Update a label"
+  },
+  {
+   "action": "update-label-project",
+   "anonymous": false,
+   "area": "labels",
+   "body": {
+    "fields": [
+     {
+      "default": "viewer",
+      "description": "The role it grants or holds.",
+      "name": "role",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/labels/{label_id}/projects/{project_id}",
+   "paginated": false,
+   "path": "/v1/labels/{label_id}/projects/{project_id}",
+   "path_params": [
+    {
+     "name": "label_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Update a label's project"
+  },
+  {
+   "action": "public-openapi",
+   "anonymous": true,
+   "area": "openapi",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/public/openapi.json",
+   "paginated": false,
+   "path": "/v1/public/openapi.json",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Get the OpenAPI document"
+  },
+  {
+   "action": "add-member",
+   "anonymous": false,
+   "area": "organizations",
+   "body": {
+    "fields": [
+     {
+      "description": "The role it grants or holds. One of `owner`, `admin`, `member`, `viewer`, `guest`.",
+      "enum": [
+       "owner",
+       "admin",
+       "member",
+       "viewer",
+       "guest"
+      ],
+      "name": "role",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the person it belongs to or concerns.",
+      "name": "user_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/organizations/{org_id}/members",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/members",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Add an organization member"
+  },
+  {
+   "action": "get-active-org",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/me/organization",
+   "paginated": false,
+   "path": "/v1/me/organization",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Get your active organization"
+  },
+  {
+   "action": "get-org",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations/{org_id}",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get an organization"
+  },
+  {
+   "action": "list-members",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations/{org_id}/members",
+   "paginated": true,
+   "path": "/v1/organizations/{org_id}/members",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List organization members"
+  },
+  {
+   "action": "list-orgs",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations",
+   "paginated": true,
+   "path": "/v1/organizations",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List your organizations"
+  },
+  {
+   "action": "remove-member",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/organizations/{org_id}/members/{user_id}",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/members/{user_id}",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "user_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "members:admin",
+   "summary": "Remove an organization member"
+  },
+  {
+   "action": "update-member-role",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/organizations/{org_id}/members/{user_id}",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/members/{user_id}",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "user_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "enum": [
+      "owner",
+      "admin",
+      "member",
+      "viewer",
+      "guest"
+     ],
+     "name": "new_role",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Change a member's role"
+  },
+  {
+   "action": "add-member",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Id of the principal (person, group, service account ...) it applies to.",
+      "name": "principal_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "What kind of principal `principal_id` names. One of `user`, `group`, `org`, `service`, `link`.",
+      "enum": [
+       "user",
+       "group",
+       "org",
+       "service",
+       "link"
+      ],
+      "name": "principal_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "member",
+      "description": "The role it grants or holds.",
+      "name": "role",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/members",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/members",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Add a project member"
+  },
+  {
+   "action": "create-project",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Optional long-form project description.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Legacy space (group) this project belongs to. New projects should omit this and remain standalone.",
+      "name": "group_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Human-readable project name.",
+      "name": "name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "List of tags stored in `projects.tags`.",
+      "multiple": true,
+      "name": "tags",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects",
+   "paginated": false,
+   "path": "/v1/projects",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Create a project"
+  },
+  {
+   "action": "create-project-membership-invitation",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "default": 30,
+      "description": "Days until it expires.",
+      "name": "expires_in_days",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Email address of the person invited.",
+      "name": "invitee_email",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The role it grants or holds. One of `owner`, `admin`, `member`, `viewer`, `guest`.",
+      "enum": [
+       "owner",
+       "admin",
+       "member",
+       "viewer",
+       "guest"
+      ],
+      "name": "role",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/invite",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/invite",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Invite someone by email"
+  },
+  {
+   "action": "delete-project",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/projects/{project_id}",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "projects:admin",
+   "summary": "Delete a project"
+  },
+  {
+   "action": "get-project",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a project"
+  },
+  {
+   "action": "list-members",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/members",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/members",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List project members"
+  },
+  {
+   "action": "list-project-pending-invitations",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/pending-invitations",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/pending-invitations",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List pending invitations"
+  },
+  {
+   "action": "list-projects",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects",
+   "paginated": true,
+   "path": "/v1/projects",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Deprecated; use project or label filters",
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "default": false,
+     "name": "member_only",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Filter by owner user ID",
+     "name": "owner_user_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List projects"
+  },
+  {
+   "action": "remove-member",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/members/{principal_type}/{principal_id}",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "enum": [
+      "user",
+      "group",
+      "org",
+      "service",
+      "link"
+     ],
+     "name": "principal_type",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "principal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "projects:admin",
+   "summary": "Remove a project member"
+  },
+  {
+   "action": "revoke-project-membership-invitation",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/projects/{project_id}/pending-invitations/{invitation_id}",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/pending-invitations/{invitation_id}",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "invitation_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "projects:admin",
+   "summary": "Revoke a pending invitation"
+  },
+  {
+   "action": "update-project",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Optional updated project description.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Deprecated: the space (group) to move the project to.",
+      "name": "group_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Optional updated project name.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Optional lifecycle status for the project.",
+      "enum": [
+       "active",
+       "archived"
+      ],
+      "name": "status",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Optional replacement tag list.",
+      "multiple": true,
+      "name": "tags",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/projects/{project_id}",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Update a project"
+  },
+  {
+   "action": "cancel-run",
+   "anonymous": false,
+   "area": "runs",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/runs/{run_id}/cancel",
+   "paginated": false,
+   "path": "/v1/runs/{run_id}/cancel",
+   "path_params": [
+    {
+     "name": "run_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "agent:run",
+   "summary": "Cancel a run"
+  },
+  {
+   "action": "get-run-status",
+   "anonymous": false,
+   "area": "runs",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/runs/{run_id}",
+   "paginated": false,
+   "path": "/v1/runs/{run_id}",
+   "path_params": [
+    {
+     "name": "run_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "agent:run",
+   "summary": "Get a run's status"
+  },
+  {
+   "action": "start-chat-run",
+   "anonymous": false,
+   "area": "runs",
+   "body": {
+    "fields": [
+     {
+      "description": "The person's decision on a gated action: `{type: approve|reject, message?, tool_call_id?}`. Resumes the paused run.",
+      "name": "approval_decision",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Decisions for several gated actions at once; anything not approved is treated as rejected.",
+      "name": "approval_decisions",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Context from the client, such as the page the person is on.",
+      "name": "client_context",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Agent engine to run; null lets the server choose. Honored only if enabled for the organization.",
+      "name": "engine",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Model to use when the preferred one is unavailable.",
+      "name": "fallback_model",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Ids of files to give the agent with this message, as returned by an upload. Each must be a file you can read; the run reads them the way files attached in Beakr's chat are read. Not allowed when resuming a paused run.",
+      "multiple": true,
+      "name": "files",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the project that holds it.",
+      "name": "home_project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Client-generated key (a UUID) so a retried request starts one run.",
+      "name": "idempotency_key",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Pause after each step for the person to approve.",
+      "name": "interactive_mode",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": false,
+      "description": "Whether it is ask user response.",
+      "name": "is_ask_user_response",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": "",
+      "description": "A human-readable message.",
+      "name": "message",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Which mode it runs in. One of `free`, `quick`, `deep`, `extreme`, `custom`, `auto`, `auto_free`, `profile_builder`.",
+      "enum": [
+       "free",
+       "quick",
+       "deep",
+       "extreme",
+       "custom",
+       "auto",
+       "auto_free",
+       "profile_builder"
+      ],
+      "name": "mode",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Model name.",
+      "name": "model",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Models to use instead of the defaults, by role.",
+      "name": "model_overrides",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "The user's decision on a Plan Mode (propose_plan) interrupt. Typed + validated at the API boundary so a malformed decision is rejected (fail closed) rather than silently treated as approval: ``edit`` must carry a non-empty ``steps`` list, and ``type`` must be one of the three known values.",
+      "name": "plan_decision",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Propose a plan for approval before acting.",
+      "name": "plan_mode",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Marks a run that sets up a knowledge profile.",
+      "name": "profile_builder_meta",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Unified scope selection for /ask and workflows. The scope is organized into three independent \"lanes\": 1. Artifacts lane: projects, labels, artifacts (internal documents) 2. Integrations lane: external integrations (GDrive, Dropbox, etc.) 3. Databases lane: public API databases (PubMed, OpenAlex, etc.) Each lane operates independently - selecting/deselecting items in one lane does not affect the others. The resolver handles defaults per lane based on context.",
+      "name": "scope",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Ids of the skills.",
+      "multiple": true,
+      "name": "skill_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Id of the thread.",
+      "name": "thread_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "IANA time zone name, such as `America/New_York`.",
+      "name": "timezone",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Input values, when the run executes a workflow.",
+      "name": "workflow_inputs",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Id of the workflow template.",
+      "name": "workflow_template_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/runs",
+   "paginated": false,
+   "path": "/v1/runs",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "agent:run",
+   "summary": "Start an agent run"
+  },
+  {
+   "action": "stream-run-events",
+   "anonymous": false,
+   "area": "runs",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/runs/{run_id}/events",
+   "paginated": false,
+   "path": "/v1/runs/{run_id}/events",
+   "path_params": [
+    {
+     "name": "run_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "name": "last_event_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "sse",
+   "scope": "agent:run",
+   "summary": "Stream a run's events"
+  },
+  {
+   "action": "create-service-account",
+   "anonymous": false,
+   "area": "service-accounts",
+   "body": {
+    "fields": [
+     {
+      "description": "Name of the service account.",
+      "name": "name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": "member",
+      "description": "The role it grants or holds. One of `member`, `admin`, `viewer`.",
+      "enum": [
+       "member",
+       "admin",
+       "viewer"
+      ],
+      "name": "role",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/organizations/{org_id}/service-accounts",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/service-accounts",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Create a service account"
+  },
+  {
+   "action": "disable-service-account",
+   "anonymous": false,
+   "area": "service-accounts",
+   "body": null,
+   "destructive": true,
+   "method": "POST",
+   "op": "POST /v1/organizations/{org_id}/service-accounts/{account_id}/disable",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/service-accounts/{account_id}/disable",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "account_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Disable a service account"
+  },
+  {
+   "action": "list-service-accounts",
+   "anonymous": false,
+   "area": "service-accounts",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations/{org_id}/service-accounts",
+   "paginated": true,
+   "path": "/v1/organizations/{org_id}/service-accounts",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "List service accounts"
+  },
+  {
+   "action": "mint-service-account-key",
+   "anonymous": false,
+   "area": "service-accounts",
+   "body": {
+    "fields": [
+     {
+      "description": "The client this service account key is for (a CI system, `sdk-python`, an integration name), recorded on the key for attribution. Required.",
+      "name": "client_name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": 90,
+      "description": "Days until it expires.",
+      "name": "expires_in_days",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "default": "service key",
+      "description": "Name of the service key.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Ids of the projects it covers.",
+      "multiple": true,
+      "name": "project_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The permission scopes it grants.",
+      "multiple": true,
+      "name": "scopes",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/organizations/{org_id}/service-accounts/{account_id}/keys",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/service-accounts/{account_id}/keys",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "account_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Mint a service account key"
+  },
+  {
+   "action": "get-thread-detail",
+   "anonymous": false,
+   "area": "threads",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/threads/{thread_id}",
+   "paginated": false,
+   "path": "/v1/threads/{thread_id}",
+   "path_params": [
+    {
+     "name": "thread_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "name": "before_created_at",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "before_message_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "conversations:read",
+   "summary": "Get a thread you can see"
+  },
+  {
+   "action": "list-my-threads",
+   "anonymous": false,
+   "area": "threads",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/me/threads",
+   "paginated": true,
+   "path": "/v1/me/threads",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Deprecated; use project_ids",
+     "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "Filter to threads attached to specific projects",
+     "multiple": true,
+     "name": "project_ids",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Search thread titles",
+     "name": "q",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "conversations:read",
+   "summary": "List your threads"
+  },
+  {
+   "action": "list-shared-threads",
+   "anonymous": false,
+   "area": "threads",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/threads",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/threads",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "name": "space_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "conversations:read",
+   "summary": "List threads shared to a project"
+  },
+  {
+   "action": "abort-upload",
+   "anonymous": false,
+   "area": "uploads",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/uploads/{upload_id}",
+   "paginated": false,
+   "path": "/v1/uploads/{upload_id}",
+   "path_params": [
+    {
+     "name": "upload_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Abort an upload"
+  },
+  {
+   "action": "complete-bulk-upload",
+   "anonymous": false,
+   "area": "uploads",
+   "body": {
+    "fields": [
+     {
+      "description": "Id of the batch.",
+      "name": "batch_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The files.",
+      "name": "files",
+      "required": true,
+      "type": "object"
+     },
+     {
+      "default": false,
+      "description": "Whether to compile uploaded files into Knowledge.",
+      "name": "ingest_to_wiki",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": "upload",
+      "description": "Provenance hint for all files in this batch (e.g. 'upload', 'capture').",
+      "name": "source",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/bulk/complete",
+   "paginated": false,
+   "path": "/v1/bulk/complete",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Complete a bulk upload"
+  },
+  {
+   "action": "complete-upload",
+   "anonymous": false,
+   "area": "uploads",
+   "body": {
+    "fields": [
+     {
+      "description": "Kind of file.",
+      "enum": [
+       "doc",
+       "dataset",
+       "table",
+       "figure",
+       "image",
+       "video",
+       "audio",
+       "notebook",
+       "code_bundle",
+       "model",
+       "protocol",
+       "result",
+       "report",
+       "publication",
+       "note",
+       "transcript",
+       "json",
+       "analysis",
+       "hypothesis",
+       "conclusion",
+       "scientific_data"
+      ],
+      "name": "artifact_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Description of the upload complete, in plain text.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The parts.",
+      "name": "parts",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "The file's path relative to the folder it was uploaded from on the caller's machine, when it differs from the upload's `path`. It does not place the file; Knowledge reads name the file by it (`location.display_path`).",
+      "name": "relative_path",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Defaults to the file name",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/uploads/{upload_id}/complete",
+   "paginated": false,
+   "path": "/v1/uploads/{upload_id}/complete",
+   "path_params": [
+    {
+     "name": "upload_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Complete an upload"
+  },
+  {
+   "action": "create-upload",
+   "anonymous": false,
+   "area": "uploads",
+   "body": {
+    "fields": [
+     {
+      "description": "Lowercase SHA-256 hex digest of the whole file",
+      "name": "content_hash",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Exact size of the file in bytes",
+      "name": "content_length",
+      "required": true,
+      "type": "integer"
+     },
+     {
+      "default": "application/octet-stream",
+      "description": "MIME type of the content.",
+      "name": "content_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": true,
+      "description": "Whether the file is compiled into Knowledge",
+      "name": "ingest_to_wiki",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Folder in that project to place the file (and its path) under",
+      "name": "parent_folder_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Bytes per part (every part but the last). Omit for the server's choice.",
+      "name": "part_size",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "File name, optionally with folders ('reports/2026/q3.pdf'); missing folders are created when the upload completes",
+      "name": "path",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Project the file lands in",
+      "name": "target_project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/uploads",
+   "paginated": false,
+   "path": "/v1/uploads",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Start an upload"
+  },
+  {
+   "action": "get-bulk-upload-status",
+   "anonymous": false,
+   "area": "uploads",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/bulk/{batch_id}/status",
+   "paginated": false,
+   "path": "/v1/bulk/{batch_id}/status",
+   "path_params": [
+    {
+     "name": "batch_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a bulk upload's status"
+  },
+  {
+   "action": "get-download-url",
+   "anonymous": false,
+   "area": "uploads",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/artifacts/versions/{version_id}/download-url",
+   "paginated": false,
+   "path": "/v1/artifacts/versions/{version_id}/download-url",
+   "path_params": [
+    {
+     "description": "ArtifactVersion ID to download",
+     "name": "version_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "default": false,
+     "description": "If true, use inline disposition (view in browser); else attachment (download)",
+     "name": "inline",
+     "required": false,
+     "type": "boolean"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a file download link"
+  },
+  {
+   "action": "get-upload",
+   "anonymous": false,
+   "area": "uploads",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/uploads/{upload_id}",
+   "paginated": false,
+   "path": "/v1/uploads/{upload_id}",
+   "path_params": [
+    {
+     "name": "upload_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get an upload"
+  },
+  {
+   "action": "prepare-bulk-upload",
+   "anonymous": false,
+   "area": "uploads",
+   "body": {
+    "fields": [
+     {
+      "description": "The files.",
+      "name": "files",
+      "required": true,
+      "type": "object"
+     },
+     {
+      "description": "Optional folder to upload into",
+      "name": "parent_folder_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Project to upload into",
+      "name": "target_project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/bulk/prepare",
+   "paginated": false,
+   "path": "/v1/bulk/prepare",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Prepare a bulk upload"
+  },
+  {
+   "action": "presign-upload-parts",
+   "anonymous": false,
+   "area": "uploads",
+   "body": {
+    "fields": [
+     {
+      "description": "1-based part numbers",
+      "multiple": true,
+      "name": "part_numbers",
+      "required": true,
+      "type": "integer"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/uploads/{upload_id}/parts",
+   "paginated": false,
+   "path": "/v1/uploads/{upload_id}/parts",
+   "path_params": [
+    {
+     "name": "upload_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Get upload part URLs"
+  }
+ ],
+ "source": "docs/api/public-openapi.json",
+ "version": "1.0.0"
+}

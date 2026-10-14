@@ -1,0 +1,41 @@
+$ beakr kb timeline --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/timeline?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+[
+  {
+    "date_precision": "quarter",
+    "event_end": "2026-09-30",
+    "event_id": "b5d7f9a1-3c5e-4f7a-9b1d-2e4f6a8c0d13",
+    "event_start": "2026-07-01",
+    "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "page_title": "Project Helios",
+    "page_type": "project",
+    "section_id": "sec_9q3t7w",
+    "title": "Q3 thermostability panel"
+  },
+  {
+    "date_precision": "day",
+    "event_end": null,
+    "event_id": "c6e8a0b2-4d6f-4a8b-8c2e-3f5a7b9d1e24",
+    "event_start": "2026-09-30",
+    "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+    "page_title": "Decision: Helios Lead Selection",
+    "page_type": "decision",
+    "section_id": "sec_4k8m2p",
+    "title": "Committee selects NW-217 as lead"
+  }
+]
+--- stderr
+
+
+$ beakr kb timeline --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/timeline?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+2026-07-01 -- 2026-09-30 (quarter)    Q3 thermostability panel
+  Page: Project Helios
+2026-09-30    Committee selects NW-217 as lead
+  Page: Decision: Helios Lead Selection
+--- stderr
+

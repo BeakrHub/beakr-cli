@@ -1,0 +1,16 @@
+{
+  "operation": "POST /v1/workflows/schedule/preview",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "cron": "0 9 * * 1",
+    "human_readable": "Every Monday at 9:00",
+    "timezone": "America/New_York",
+    "upcoming_runs": [
+      "2026-10-12T13:00:00Z",
+      "2026-10-19T13:00:00Z",
+      "2026-10-26T13:00:00Z"
+    ]
+  }
+}

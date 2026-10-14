@@ -1,0 +1,6 @@
+{
+  "operation": "DELETE /v1/conversations/{conversation_id}",
+  "source": "synthesized",
+  "status": 204,
+  "body": null
+}

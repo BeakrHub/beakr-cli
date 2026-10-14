@@ -1,0 +1,63 @@
+$ beakr kb ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/pages?limit=200&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+[
+  {
+    "created_at": "2026-08-21T10:12:00Z",
+    "has_children": true,
+    "hit_count": 42,
+    "hit_rate": 1.4,
+    "id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "incoming_link_count": 6,
+    "last_hit_at": "2026-10-01T11:48:00Z",
+    "page_type": "project",
+    "parent_page_id": "c41e8a26-93d7-4b5f-a2e8-6f1d0b7c3a95",
+    "previous_titles": [
+      "Helios Program"
+    ],
+    "revision": 7,
+    "search_hit_count": 29,
+    "summary": "Northwind's program to select a thermostable lead from the NW-200 series; NW-217 is the current lead.",
+    "temperature": "hot",
+    "title": "Project Helios",
+    "updated_at": "2026-09-30T17:02:00Z",
+    "view_hit_count": 13
+  },
+  {
+    "created_at": "2026-09-30T16:40:00Z",
+    "has_children": false,
+    "hit_count": 9,
+    "hit_rate": 0.9,
+    "id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
+    "incoming_link_count": 2,
+    "last_hit_at": "2026-10-01T09:15:00Z",
+    "page_type": "decision",
+    "parent_page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "previous_titles": [
+      "Decision: Helios Lead Candidate"
+    ],
+    "revision": 2,
+    "search_hit_count": 6,
+    "summary": "The portfolio committee selected NW-217 as the Helios lead on 2026-09-30.",
+    "temperature": "warm",
+    "title": "Decision: Helios Lead Selection",
+    "updated_at": "2026-10-01T08:30:00Z",
+    "view_hit_count": 3
+  }
+]
+--- stderr
+
+
+$ beakr kb ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages?limit=200&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━┳━━━━━━━━━━━┓
+┃Title                           ┃ Type     ┃ Rev ┃ Updated   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━╇━━━━━━━━━━━┩
+│Project Helios                  │ project  │ 7   │ 2026-09-30│
+│Decision: Helios Lead Selection │ decision │ 2   │ 2026-10-01│
+└────────────────────────────────┴──────────┴─────┴───────────┘
+--- stderr
+

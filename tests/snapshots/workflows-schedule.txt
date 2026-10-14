@@ -1,0 +1,79 @@
+$ beakr workflows schedule 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f '0 9 * * 1' --json
+> POST /v1/workflows/schedule/preview
+  {"count": 3, "cron": "0 9 * * 1"}
+> PATCH /v1/workflows/configs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+  {"schedule_cron": "0 9 * * 1", "schedule_enabled": true}
+[exit 0]
+--- stdout
+{
+  "created_at": "2026-08-31T10:00:00Z",
+  "created_by": "7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11",
+  "dashboard_enabled": false,
+  "dashboard_output_mode": "new_each_run",
+  "dashboard_settings": {
+    "context_action": {},
+    "max_items": 1,
+    "show_icon": true,
+    "show_subtitle": true,
+    "sort_by": "created_at"
+  },
+  "dashboard_template_spec": {},
+  "id": "6922f9a1-c15d-4c25-8f38-766a7e0cfaf2",
+  "inputs": {},
+  "is_pinned": false,
+  "is_saved": true,
+  "last_run_at": "2026-10-05T13:00:04Z",
+  "last_run_id": "397387b5-5df9-4590-9b1a-90a1479bbce8",
+  "last_run_status": "completed",
+  "last_scheduled_run_at": "2026-10-05T13:00:00Z",
+  "latest_template_version": "1.0.0",
+  "meta": {
+    "document_output": {
+      "field_mappings": {},
+      "format": "docx",
+      "template_id": "5a3d9b83-da1e-4031-afbc-dc6dd8bffbbf",
+      "title": "Helios weekly update",
+      "version_id": "92987179-8b81-428a-8c52-5682e5d023ec"
+    },
+    "interactive_mode": false,
+    "max_turns": 1,
+    "mode": "free",
+    "model_overrides": {},
+    "skill_ids": [
+      "890fda3b-a0e6-4475-9848-cc9ebfac7d71"
+    ]
+  },
+  "name": "Helios weekly update",
+  "next_run_at": "2026-10-12T13:00:00Z",
+  "org_id": "0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01",
+  "output_canvas_type": "dashboard",
+  "output_format": "docx",
+  "output_location_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "output_location_type": "project",
+  "persistent_dashboard_canvas_id": "a03c9ae6-9b4f-40bd-883f-f6e649e2e0f9",
+  "run_count": 3,
+  "schedule": {},
+  "schedule_cron": "0 9 * * 1",
+  "schedule_enabled": true,
+  "schedule_timezone": "America/New_York",
+  "template_definition": {},
+  "template_icon": null,
+  "template_id": "00b3843c-786e-46fd-84f6-552722bbebe6",
+  "template_name": "Weekly Update",
+  "template_version": "1.0.0",
+  "update_available": false,
+  "updated_at": "2026-10-11T12:00:00Z"
+}
+--- stderr
+
+
+$ beakr workflows schedule 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f '0 9 * * 1'
+> POST /v1/workflows/schedule/preview
+  {"count": 3, "cron": "0 9 * * 1"}
+> PATCH /v1/workflows/configs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+  {"schedule_cron": "0 9 * * 1", "schedule_enabled": true}
+[exit 0]
+--- stdout
+5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f runs Every Monday at 9:00 (next: 2026-10-12T13:00:00Z, 2026-10-19T13:00:00Z, 2026-10-26T13:00:00Z)
+--- stderr
+

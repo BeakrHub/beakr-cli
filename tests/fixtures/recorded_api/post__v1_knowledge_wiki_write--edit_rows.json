@@ -1,0 +1,22 @@
+{
+  "operation": "POST /v1/knowledge/wiki/write",
+  "source": "recorded by beakr-engine tests/api/test_knowledge_result_shape_parity.py (tests/fixtures/knowledge_door_results.json, writes.edit_rows)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "content": [
+      {
+        "text": "Proposed section edit to \"Helios HX-07 Solubility Card\" (section: sec_facts, rev 1).\nSummary: edit_rows: 1 facts rows -> 1 (The plate log shows a third plate.)\nWaiting for user approval.",
+        "type": "text"
+      }
+    ],
+    "outcome": {
+      "commit_ids": [],
+      "committed_page_ids": [],
+      "committed_revisions": {},
+      "error_code": null,
+      "protocol": "beakr.wiki_tool_outcome.v1",
+      "status": "success"
+    }
+  }
+}

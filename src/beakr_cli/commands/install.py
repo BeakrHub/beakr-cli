@@ -14,6 +14,7 @@ from pathlib import Path
 import typer
 
 from beakr_cli.output import console, err_console
+from beakr_cli.prompts import confirm_if_interactive
 
 
 class Client(str, Enum):
@@ -245,8 +246,7 @@ def _write_project_mcp_json(beakr: str, force: bool) -> None:
     servers = data.setdefault("mcpServers", {})
     if "beakr" in servers and not force:
         err_console.print(
-            f"[yellow]Claude:[/yellow] MCP already registered in {path} "
-            "(use --force to overwrite)"
+            f"[yellow]Claude:[/yellow] MCP already registered in {path} (use --force to overwrite)"
         )
         return
     servers["beakr"] = {"command": beakr, "args": ["mcp"]}
@@ -413,73 +413,80 @@ def _identity_summary(data: dict) -> str:
     return f"{name} in {org_name}"
 
 
-def _prompt_and_save_new_key() -> None:
-    from beakr_cli import config as beakr_config
-    from beakr_cli.client import api_get
+def _sign_in_new() -> None:
+    """Sign in through the browser, the default since 0.4.0.
 
-    console.print("\n[bold]Beakr authentication[/bold]")
-    console.print("Get an API key at [cyan]https://thebeakr.com/settings/api-keys[/cyan]")
-    api_key = typer.prompt("API key", hide_input=True)
-    beakr_config.set_key("api_key", api_key)
-    if not beakr_config.get("api_url"):
-        beakr_config.set_key("api_url", "https://api.thebeakr.com")
+    Pasting a key is still possible with ``beakr auth login --with-api-key`` or
+    ``$BEAKR_API_KEY``; setup no longer asks for one because a browser login
+    works for SSO-only orgs and needs no key to be created first.
+    """
+    from beakr_sdk.credentials import resolve_base_url
+
+    from beakr_cli.commands.auth import _login_with_oauth
+
+    console.print("\n[bold]Beakr sign-in[/bold]")
+    console.print("[dim]To use an API key instead, run: beakr auth login --with-api-key[/dim]")
+    _login_with_oauth(resolve_base_url(), open_browser=sys.stdin.isatty(), device=False)
+
+
+def _verified_identity() -> str | None:
+    """Who the current credential signs in as, or None when it does not verify."""
+    from beakr_cli.sdk import get_sdk
 
     try:
-        data = api_get("/v1/me")
-    except Exception as exc:
-        beakr_config.delete_key("api_key")
-        err_console.print(f"[red]Auth failed:[/red] {exc}")
-        raise typer.Exit(1) from exc
-    console.print(f"Authenticated as [bold]{_identity_summary(data)}[/bold]")
+        with get_sdk() as sdk:
+            return _identity_summary(sdk.me.get())
+    except (Exception, SystemExit):
+        return None
 
 
 def _maybe_auth() -> None:
-    """Confirm or replace an existing API key, or prompt for a new one."""
+    """Keep a working sign-in (env key, browser login, saved key) or create one."""
+    from beakr_sdk.credentials import TokenStore
+
     from beakr_cli import config as beakr_config
-    from beakr_cli.client import api_get
 
     env_key = os.environ.get("BEAKR_API_KEY")
-    config_key = beakr_config.get("api_key")
+    # A browser sign-in or a saved API key: both live in the token store (an
+    # older CLI's key in config.json is moved there on read).
+    beakr_config.migrate_secrets()
+    stored = TokenStore().load()
 
-    # 1. Env var wins — verify and announce, don't prompt.
+    # 1. Env var wins -- verify and announce, don't prompt.
     if env_key:
-        try:
-            data = api_get("/v1/me")
-            console.print(
-                f"Using [bold]$BEAKR_API_KEY[/bold] ([dim]{_identity_summary(data)}[/dim])"
-            )
-        except Exception as exc:
-            err_console.print(f"[red]$BEAKR_API_KEY didn't verify:[/red] {exc}")
-            raise typer.Exit(1) from exc
+        identity = _verified_identity()
+        if identity is None:
+            err_console.print("[red]$BEAKR_API_KEY didn't verify.[/red]")
+            raise typer.Exit(3)
+        console.print(f"Using [bold]$BEAKR_API_KEY[/bold] ([dim]{identity}[/dim])")
         return
 
-    # 2. Stored key — verify, then ask whether to keep using it.
-    if config_key:
-        try:
-            data = api_get("/v1/me")
-            identity = _identity_summary(data)
-        except Exception:
+    # 2. A browser login or saved key -- verify, then ask whether to keep it.
+    if stored is not None:
+        label = "API key" if stored.is_api_key else "browser sign-in"
+        identity = _verified_identity()
+        if identity is None:
             err_console.print(
-                "[yellow]Existing API key didn't verify; let's get a new one.[/yellow]"
+                f"[yellow]Existing {label} didn't verify; let's sign in again.[/yellow]"
             )
-            beakr_config.delete_key("api_key")
-            _prompt_and_save_new_key()
+            TokenStore().clear()
+            _sign_in_new()
             return
 
-        # Non-interactive (piped/CI): keep the existing verified key silently.
+        # Non-interactive (piped/CI): keep the existing verified credential silently.
         if not sys.stdin.isatty():
-            console.print(f"Using existing API key ([dim]{identity}[/dim])")
+            console.print(f"Using existing {label} ([dim]{identity}[/dim])")
             return
 
-        console.print(f"\nExisting API key found for [bold]{identity}[/bold].")
-        if typer.confirm("Use this key?", default=True):
+        console.print(f"\nExisting {label} found for [bold]{identity}[/bold].")
+        if confirm_if_interactive("Keep using it?", default=True):
             return
-        beakr_config.delete_key("api_key")
-        _prompt_and_save_new_key()
+        TokenStore().clear()
+        _sign_in_new()
         return
 
-    # 3. Nothing configured — full prompt path.
-    _prompt_and_save_new_key()
+    # 3. Nothing configured -- sign in.
+    _sign_in_new()
 
 
 # ---------------------------------------------------------------------------
@@ -515,7 +522,8 @@ def install_command(
     scope: Scope,
     uninstall: bool,
     force: bool,
-) -> None:
+) -> dict[str, object]:
+    """Install (or remove) the skills and slash commands; return what was done."""
     targets = _resolve_targets(client)
     if not targets:
         err_console.print(
@@ -540,6 +548,11 @@ def install_command(
         console.print(
             "\n[dim]Restart Claude Code / Codex if the skill doesn't appear immediately.[/dim]"
         )
+    return {
+        "action": "uninstall" if uninstall else "install",
+        "clients": targets,
+        "scope": scope.value,
+    }
 
 
 def setup_command(
@@ -550,8 +563,13 @@ def setup_command(
     skip_mcp: bool,
     uninstall: bool,
     force: bool,
-) -> None:
-    """Auth + skills + MCP registration in one shot."""
+    hooks: bool | None = None,
+) -> dict[str, object]:
+    """Auth + skills + MCP registration + session hooks in one shot; return what was done.
+
+    ``hooks`` is the ``--hooks/--no-hooks`` flag: True installs, False skips,
+    None asks when interactive and skips otherwise.
+    """
     targets = _resolve_targets(client)
     if not targets:
         err_console.print(
@@ -571,7 +589,21 @@ def setup_command(
                 _uninstall_codex(scope)
                 if not skip_mcp:
                     _unregister_codex_mcp()
-        return
+        # Setup installs the session hooks at user level whatever the scope,
+        # so uninstalling at either scope removes them too: an uninstall must
+        # never leave automatic capture running (audit C074). Only Beakr's own
+        # hooks and AGENTS.md block go; anything else is left as it was.
+        from beakr_cli.commands.hooks import uninstall_hooks_during_setup
+
+        uninstall_hooks_during_setup(targets)
+        return {
+            "action": "uninstall",
+            "clients": targets,
+            "scope": scope.value,
+            "skills": True,
+            "mcp": not skip_mcp,
+            "hooks": True,
+        }
 
     if not skip_auth:
         _maybe_auth()
@@ -590,5 +622,19 @@ def setup_command(
             elif c == "codex":
                 _register_codex_mcp(force, scope)
 
+    from beakr_cli.commands.hooks import install_hooks_during_setup
+
+    install_hooks_during_setup(targets, hooks)
+
     console.print("\n[bold green]Done.[/bold green]")
     console.print("Restart Claude Code / Codex to load the MCP server and skills.")
+    return {
+        "action": "install",
+        "clients": targets,
+        "scope": scope.value,
+        "auth": not skip_auth,
+        "skills": not skip_skills,
+        "mcp": not skip_mcp,
+        # The --hooks/--no-hooks flag as given; None means "asked when interactive".
+        "hooks": hooks,
+    }
