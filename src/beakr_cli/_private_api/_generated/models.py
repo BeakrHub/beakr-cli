@@ -123,7 +123,6 @@ __all__ = [
 
 class ApiError(TypedDict):
     """Why the request failed and how to correct it."""
-
     #: Stable machine-readable error code (see the errors guide); branch on this, not on `message`.
     code: str
     #: Structured context for this error; `{}` when there is none. A validation error lists ever...
@@ -138,7 +137,6 @@ class ApiError(TypedDict):
 
 class ArtifactVersionOut(TypedDict):
     """Serialized representation of an artifact version. Attributes: id: Unique identifier for..."""
-
     #: Identifier of the artifact that owns the version.
     artifact_id: str
     #: Optional integrity hash for deduplication.
@@ -161,7 +159,6 @@ class ArtifactVersionOut(TypedDict):
 
 class ArtifactVersionOutPage(TypedDict):
     """ArtifactVersionOutPage"""
-
     #: The items on this page.
     data: list[ArtifactVersionOut]
     #: Whether another page follows.
@@ -172,7 +169,6 @@ class ArtifactVersionOutPage(TypedDict):
 
 class AuditEventOut(TypedDict):
     """AuditEventOut"""
-
     #: The action taken or requested.
     action: str
     #: Id of the actor user.
@@ -193,7 +189,6 @@ class AuditEventOut(TypedDict):
 
 class AuditPage(TypedDict):
     """AuditPage"""
-
     #: The items on this page.
     data: list[AuditEventOut]
     #: Whether another page follows.
@@ -204,7 +199,6 @@ class AuditPage(TypedDict):
 
 class AuthConfigResponse(TypedDict):
     """AuthConfigResponse"""
-
     #: The public OAuth client the CLI signs in as.
     client_id: str
     #: The Clerk instance that issues CLI sign-in tokens (its issuer URL). Its endpoints are in...
@@ -217,7 +211,6 @@ class AuthConfigResponse(TypedDict):
 
 class AuthPolicyIn(TypedDict):
     """AuthPolicyIn"""
-
     #: Whether to allow non expiring keys.
     allow_non_expiring_keys: NotRequired[bool | None]
     #: Whether to allow personal keys.
@@ -234,7 +227,6 @@ class AuthPolicyIn(TypedDict):
 
 class CanvasOut(TypedDict):
     """Response model for canvas operations."""
-
     #: Id of the canvas template.
     canvas_template_id: NotRequired[str | None]
     #: Whether the document template has a newer version than the one this output renders with;...
@@ -262,7 +254,7 @@ class CanvasOut(TypedDict):
     #: Whether the output follows Knowledge as it changes.
     knowledge_autosync: NotRequired[bool]
     #: Native document format: one of `docx`, `pptx`, `pdf`.
-    native_document_format: NotRequired[Literal["docx", "pptx", "pdf"] | None]
+    native_document_format: NotRequired[Literal['docx', 'pptx', 'pdf'] | None]
     #: Revision of the native document file the output was built from.
     native_document_revision: NotRequired[str | None]
     #: Revision number.
@@ -289,7 +281,6 @@ class CanvasOut(TypedDict):
 
 class CanvasRevisionContent(TypedDict):
     """CanvasRevisionContent"""
-
     #: The canvas revision content's content.
     content: str
     #: Revision no.
@@ -298,7 +289,6 @@ class CanvasRevisionContent(TypedDict):
 
 class ChangeItem(TypedDict):
     """ChangeItem"""
-
     #: Id of the actor user.
     actor_user_id: NotRequired[str | None]
     #: The agent that made the change, as it declared itself (`X-Beakr-Agent`).
@@ -319,7 +309,6 @@ class ChangeItem(TypedDict):
 
 class ChangesPage(TypedDict):
     """ChangesPage"""
-
     #: The items on this page.
     data: list[ChangeItem]
     #: Whether another page follows.
@@ -330,7 +319,6 @@ class ChangesPage(TypedDict):
 
 class ConflictSource(TypedDict):
     """ConflictSource"""
-
     #: Key to cite it with.
     citation_key: str
     #: The quoted passage.
@@ -343,7 +331,6 @@ class ConflictSource(TypedDict):
 
 class ConnectorScope(TypedDict):
     """ConnectorScope"""
-
     #: The items.
     items: NotRequired[list[ConnectorScopeItemOut] | None]
     #: Which mode it runs in.
@@ -352,7 +339,6 @@ class ConnectorScope(TypedDict):
 
 class ConnectorScopeItem(TypedDict):
     """A single item in a connector's default scope restriction. Attributes: id: Provider-spec..."""
-
     #: Provider-specific identifier for the item.
     id: str
     #: Display name.
@@ -367,7 +353,6 @@ class ConnectorScopeItem(TypedDict):
 
 class ConnectorScopeItemOut(TypedDict):
     """ConnectorScopeItemOut"""
-
     #: Unique id of this connector scope item.
     id: str
     #: Name of the connector scope item.
@@ -378,32 +363,26 @@ class ConnectorScopeItemOut(TypedDict):
 
 class ConnectorScopeUpdate(TypedDict):
     """Request payload for setting or updating a connector's default scope. Attributes: mode:..."""
-
     #: Required when mode='restricted'. List of allowed items.
     items: NotRequired[list[ConnectorScopeItem] | None]
     #: 'all' (full access) or 'restricted' (only listed items).
-    mode: Literal["all", "restricted"]
+    mode: Literal['all', 'restricted']
 
 
 class ConversationSettings(TypedDict):
     """ConversationSettings"""
-
     #: The clients whose imports keep the messages' full text by default. Every other client's i...
     full_text_clients: list[str]
 
 
 class ConversationSettingsIn(TypedDict):
     """ConversationSettingsIn"""
-
     #: The clients whose imports keep the messages' full text by default. Every other client's i...
-    full_text_clients: list[
-        Literal["claude-code", "codex", "chatgpt", "chatgpt-export", "claude", "generic"]
-    ]
+    full_text_clients: list[Literal['claude-code', 'codex', 'chatgpt', 'chatgpt-export', 'claude', 'generic']]
 
 
 class CoreOrganizationEntry(TypedDict):
     """A key organization to track."""
-
     #: Id of the entity.
     entity_id: NotRequired[str | None]
     #: Name of the core organization entry.
@@ -416,7 +395,6 @@ class CoreOrganizationEntry(TypedDict):
 
 class CorePersonEntry(TypedDict):
     """A key person to track."""
-
     #: Id of the entity.
     entity_id: NotRequired[str | None]
     #: Name of the core person entry.
@@ -429,7 +407,6 @@ class CorePersonEntry(TypedDict):
 
 class CoreTopicEntry(TypedDict):
     """A key topic/concept to track."""
-
     #: Id of the entity.
     entity_id: NotRequired[str | None]
     #: Name of the core topic entry.
@@ -440,7 +417,6 @@ class CoreTopicEntry(TypedDict):
 
 class CreateInterviewRequestBody(TypedDict):
     """Ask one person for an interview."""
-
     #: The date the answers are wanted by (YYYY-MM-DD). Shown to the recipient; it does not clos...
     due: NotRequired[str | None]
     #: What the interview should find out. Give goals, questions, or both.
@@ -459,7 +435,6 @@ class CreateInterviewRequestBody(TypedDict):
 
 class DashboardSettings(TypedDict):
     """Settings for dashboard widget display. Attributes: max_items: Maximum items to show in..."""
-
     #: Custom action for items (label and action type).
     context_action: NotRequired[dict[str, str] | None]
     #: Maximum items to show in the widget.
@@ -469,12 +444,11 @@ class DashboardSettings(TypedDict):
     #: Whether to show subtitle.
     show_subtitle: NotRequired[bool]
     #: How to sort items ('created_at', 'sort_order').
-    sort_by: NotRequired[Literal["created_at", "sort_order"]]
+    sort_by: NotRequired[Literal['created_at', 'sort_order']]
 
 
 class ErrorEnvelope(TypedDict):
     """The body of every JSON error response."""
-
     #: Legacy error detail kept for existing clients; read `error` instead.
     detail: NotRequired[Any]
     #: What went wrong.
@@ -483,7 +457,6 @@ class ErrorEnvelope(TypedDict):
 
 class ImportBundleIn(TypedDict):
     """Import a full SKILL.md folder bundle (Anthropic / Hermes / Codex / OpenAI)."""
-
     #: The files.
     files: dict[str, str]
     #: Slug to use if the bundle does not declare one.
@@ -496,7 +469,6 @@ class ImportBundleIn(TypedDict):
 
 class IntegrationSyncResult(TypedDict):
     """One attached source in an integration sync: started (with its job) or why not."""
-
     #: Id of the attachment.
     attachment_id: str
     #: Item type.
@@ -515,7 +487,6 @@ class IntegrationSyncResult(TypedDict):
 
 class IntegrationSyncStarted(TypedDict):
     """IntegrationSyncStarted"""
-
     #: Id of the connector.
     connector_id: str
     #: The results.
@@ -524,7 +495,6 @@ class IntegrationSyncStarted(TypedDict):
 
 class InterviewFeedback(TypedDict):
     """One interview's feedback."""
-
     #: When it was created (ISO 8601, UTC).
     created_at: str
     #: Unique id of this interview feedback.
@@ -541,7 +511,6 @@ class InterviewFeedback(TypedDict):
 
 class InterviewMakerRequest(TypedDict):
     """InterviewMakerRequest"""
-
     #: The interview as drafted so far.
     draft: NotRequired[MakerDraftIn]
     #: Ids of the evidence artifacts.
@@ -554,7 +523,6 @@ class InterviewMakerRequest(TypedDict):
 
 class InterviewMakerResponse(TypedDict):
     """InterviewMakerResponse"""
-
     #: Only the fields the maker proposes to change; `key_questions` replaces the whole list.
     changes: dict[str, Any]
     #: Attached files still being read, which the maker could not use yet.
@@ -565,7 +533,6 @@ class InterviewMakerResponse(TypedDict):
 
 class InterviewRecipient(TypedDict):
     """Who to interview: exactly one of ``user_id`` or ``email``."""
-
     #: Anyone, addressed by email. Beakr creates a sendable interview and a link for them and em...
     email: NotRequired[str | None]
     #: A member of the caller's organization. The request lands in their interview inbox (`GET /...
@@ -574,13 +541,12 @@ class InterviewRecipient(TypedDict):
 
 class InterviewRequestCreated(TypedDict):
     """The interview request that was created, and how it reached the recipient."""
-
     #: `inbox`: the request is in the member's interview inbox. `email`: a link was made for the...
-    delivery: Literal["inbox", "email"]
+    delivery: Literal['inbox', 'email']
     #: The date the answers are wanted by, if given.
     due: NotRequired[str | None]
     #: For an email recipient: `queued` (handed to Beakr's mailer), or `unconfirmed` (a retry re...
-    email_status: NotRequired[Literal["queued", "unconfirmed"] | None]
+    email_status: NotRequired[Literal['queued', 'unconfirmed'] | None]
     #: When the emailed link stops working. Null for a member recipient.
     expires_at: NotRequired[str | None]
     #: Id of the recipient's link; read its result with `GET /v1/interview/sendables/links/{link...
@@ -605,7 +571,6 @@ class InterviewRequestCreated(TypedDict):
 
 class InterviewRequestOut(TypedDict):
     """One pending interview in the triage queue — a trigger's seeded interview the user can s..."""
-
     #: When it was created (ISO 8601, UTC).
     created_at: str
     #: The date the person who asked wants the answers by, if given.
@@ -646,7 +611,6 @@ class InterviewRequestOut(TypedDict):
 
 class InterviewRequestsResponse(TypedDict):
     """One page of the caller's pending interview requests (highest priority first)."""
-
     #: The items on this page.
     data: list[InterviewRequestOut]
     #: Whether another page follows.
@@ -657,11 +621,10 @@ class InterviewRequestsResponse(TypedDict):
 
 class InterviewResumeTurn(TypedDict):
     """One prior citable conversation turn restored for the interviewee."""
-
     #: Id of the event.
     event_id: str
     #: The role it grants or holds. One of `interviewer`, `user`.
-    role: Literal["interviewer", "user"]
+    role: Literal['interviewer', 'user']
     #: The text.
     text: str
     #: When the turn was said.
@@ -670,7 +633,6 @@ class InterviewResumeTurn(TypedDict):
 
 class InterviewSessionState(TypedDict):
     """A single session's resume state: where the interview is and whether it is still going,..."""
-
     #: When it was created (ISO 8601, UTC).
     created_at: str
     #: The interviewee's feedback on this interview, if left.
@@ -696,13 +658,13 @@ class InterviewSessionState(TypedDict):
     #: Seconds since the session was last active.
     resume_inactive_seconds: NotRequired[int]
     #: Resume strategy: one of `restart`, `acknowledge`, `recap`, `offboarding_recap`.
-    resume_strategy: NotRequired[Literal["restart", "acknowledge", "recap", "offboarding_recap"]]
+    resume_strategy: NotRequired[Literal['restart', 'acknowledge', 'recap', 'offboarding_recap']]
     #: Until when an interrupted upload can resume.
     resume_until: NotRequired[str | None]
     #: Id of the session.
     session_id: str
     #: Current status of the interview session state. One of `in_progress`, `completed`.
-    status: Literal["in_progress", "completed"]
+    status: Literal['in_progress', 'completed']
     #: Title of the interview session state.
     title: NotRequired[str | None]
     #: The server-issued id required to answer/close last_question.
@@ -715,7 +677,6 @@ class InterviewSessionState(TypedDict):
 
 class InterviewSessionSummary(TypedDict):
     """One row of the sessions home: enough to resume an in-progress interview or revisit a co..."""
-
     #: When it was created (ISO 8601, UTC).
     created_at: str
     #: The first proposal's page title — a free fallback title for an untitled (e.g. open) inter...
@@ -733,7 +694,7 @@ class InterviewSessionSummary(TypedDict):
     #: Id of the session.
     session_id: str
     #: Current status of the interview session. One of `in_progress`, `completed`.
-    status: Literal["in_progress", "completed"]
+    status: Literal['in_progress', 'completed']
     #: Clean display label, if one was set (else fall back to outline).
     title: NotRequired[str | None]
     #: When it last changed (ISO 8601, UTC).
@@ -742,7 +703,6 @@ class InterviewSessionSummary(TypedDict):
 
 class InterviewSessionsResponse(TypedDict):
     """One page of the caller's interview sessions, newest activity first (the sessions home)."""
-
     #: The items on this page.
     data: list[InterviewSessionSummary]
     #: Whether another page follows.
@@ -753,7 +713,6 @@ class InterviewSessionsResponse(TypedDict):
 
 class InvitationCreate(TypedDict):
     """Schema for creating a new invitation."""
-
     #: Days until it expires.
     expires_in_days: NotRequired[int]
     #: Email address of the person invited.
@@ -766,7 +725,6 @@ class InvitationCreate(TypedDict):
 
 class InvitationCreateResponse(TypedDict):
     """Response for invitation creation, includes the token to send to invitee."""
-
     #: When it was accepted (ISO 8601, UTC), or null.
     accepted_at: str | None
     #: When it was created (ISO 8601, UTC).
@@ -793,7 +751,6 @@ class InvitationCreateResponse(TypedDict):
 
 class InvitationOut(TypedDict):
     """Serialized invitation details returned by the API. Attributes: id: Invitation identifie..."""
-
     #: When the invitation was accepted (null if pending).
     accepted_at: str | None
     #: When the invitation was created.
@@ -816,7 +773,6 @@ class InvitationOut(TypedDict):
 
 class InvitationOutPage(TypedDict):
     """InvitationOutPage"""
-
     #: The items on this page.
     data: list[InvitationOut]
     #: Whether another page follows.
@@ -827,7 +783,6 @@ class InvitationOutPage(TypedDict):
 
 class KGProfileCreate(TypedDict):
     """Create an org or project profile."""
-
     #: Key organizations Knowledge should track.
     core_organizations: NotRequired[list[CoreOrganizationEntry]]
     #: Key people Knowledge should track.
@@ -862,7 +817,6 @@ class KGProfileCreate(TypedDict):
 
 class KGProfileOut(TypedDict):
     """Profile response."""
-
     #: Key organizations Knowledge should track.
     core_organizations: list[CoreOrganizationEntry]
     #: Key people Knowledge should track.
@@ -905,7 +859,6 @@ class KGProfileOut(TypedDict):
 
 class KnowledgeConflict(TypedDict):
     """KnowledgeConflict"""
-
     #: Sources that contradict the statement.
     contradicting: list[ConflictSource]
     #: Id of the page.
@@ -922,7 +875,6 @@ class KnowledgeConflict(TypedDict):
 
 class KnowledgeConflictsPage(TypedDict):
     """KnowledgeConflictsPage"""
-
     #: How complete this result is: returned and total counts, and whether more exist.
     coverage: KnowledgeResourceCoverage
     #: The items on this page.
@@ -937,7 +889,6 @@ class KnowledgeConflictsPage(TypedDict):
 
 class KnowledgeResourceCoverage(TypedDict):
     """KnowledgeResourceCoverage"""
-
     #: The read command this coverage describes.
     command: str
     #: Whether every matching result was returned.
@@ -960,7 +911,6 @@ class KnowledgeResourceCoverage(TypedDict):
 
 class KnowledgeResourceScope(TypedDict):
     """KnowledgeResourceScope"""
-
     #: Whether the read covered everything the caller can read, not chosen projects.
     all_readable: bool
     #: Ids of the projects it covers.
@@ -969,7 +919,6 @@ class KnowledgeResourceScope(TypedDict):
 
 class LibrarySkillCardOut(TypedDict):
     """Installed skill card: metadata only, no SKILL.md body or scripts. This is the default s..."""
-
     #: When it was created (ISO 8601, UTC).
     created_at: str
     #: Description of the library skill card, in plain text.
@@ -998,7 +947,6 @@ class LibrarySkillCardOut(TypedDict):
 
 class LibrarySkillCardOutPage(TypedDict):
     """LibrarySkillCardOutPage"""
-
     #: The items on this page.
     data: list[LibrarySkillCardOut]
     #: Whether another page follows.
@@ -1009,7 +957,6 @@ class LibrarySkillCardOutPage(TypedDict):
 
 class LibrarySkillOut(TypedDict):
     """Installed skill with full knowledge."""
-
     #: When it was created (ISO 8601, UTC).
     created_at: str
     #: Description of the library skill, in plain text.
@@ -1042,7 +989,6 @@ class LibrarySkillOut(TypedDict):
 
 class LibrarySkillOutPage(TypedDict):
     """LibrarySkillOutPage"""
-
     #: The items on this page.
     data: list[LibrarySkillOut]
     #: Whether another page follows.
@@ -1053,13 +999,12 @@ class LibrarySkillOutPage(TypedDict):
 
 class MakerDraftIn(TypedDict):
     """MakerDraftIn"""
-
     #: What it aims to achieve.
     goals: NotRequired[str]
     #: Questions the interview must cover.
     key_questions: NotRequired[list[str]]
     #: What kind of maker draft this is. One of `blank`, `explore`, `brainstorm`, `offboarding`,...
-    kind: NotRequired[Literal["blank", "explore", "brainstorm", "offboarding", "procedural"]]
+    kind: NotRequired[Literal['blank', 'explore', 'brainstorm', 'offboarding', 'procedural']]
     #: Background the interviewer may use.
     supporting_info: NotRequired[str]
     #: Title of the maker draft.
@@ -1068,16 +1013,14 @@ class MakerDraftIn(TypedDict):
 
 class MakerTurnIn(TypedDict):
     """MakerTurnIn"""
-
     #: The role it grants or holds. One of `person`, `maker`.
-    role: Literal["person", "maker"]
+    role: Literal['person', 'maker']
     #: The text.
     text: str
 
 
 class MinedSkillProposalOut(TypedDict):
     """MinedSkillProposalOut"""
-
     #: Description of the mined skill proposal, in plain text.
     description: str | None
     #: The proposed skill's files, keyed by path.
@@ -1106,7 +1049,6 @@ class MinedSkillProposalOut(TypedDict):
 
 class MinedSkillProposalOutPage(TypedDict):
     """MinedSkillProposalOutPage"""
-
     #: The items on this page.
     data: list[MinedSkillProposalOut]
     #: Whether another page follows.
@@ -1117,7 +1059,6 @@ class MinedSkillProposalOutPage(TypedDict):
 
 class OrgCredentialOut(TypedDict):
     """OrgCredentialOut"""
-
     #: Name of the client application.
     client_name: NotRequired[str | None]
     #: When it was created (ISO 8601, UTC).
@@ -1144,7 +1085,6 @@ class OrgCredentialOut(TypedDict):
 
 class OrgCredentialPage(TypedDict):
     """OrgCredentialPage"""
-
     #: The items on this page.
     data: list[OrgCredentialOut]
     #: Whether another page follows.
@@ -1155,7 +1095,6 @@ class OrgCredentialPage(TypedDict):
 
 class OutputSourceReadOut(TypedDict):
     """One source an agent run had read when it wrote an output."""
-
     #: Id of the file, for a file.
     artifact_id: NotRequired[str | None]
     #: Id of the file version: the one the read recorded, else the file's current version when t...
@@ -1179,16 +1118,15 @@ class OutputSourceReadOut(TypedDict):
     #: Id of the connector item version read, for a connected source.
     unit_version_id: NotRequired[str | None]
     #: How the version fields were known: `read` when the run recorded the version it read, `cur...
-    version_basis: NotRequired[Literal["read", "current_at_generation"] | None]
+    version_basis: NotRequired[Literal['read', 'current_at_generation'] | None]
 
 
 class PersonalMemoryOut(TypedDict):
     """One memory row as returned by the API. Keep in sync with the model."""
-
     #: Activation: one of `always`, `contextual`.
-    activation: Literal["always", "contextual"]
+    activation: Literal['always', 'contextual']
     #: Applies to: one of `ask`, `workflow`, `wiki`, `all`.
-    applies_to: Literal["ask", "workflow", "wiki", "all"]
+    applies_to: Literal['ask', 'workflow', 'wiki', 'all']
     #: The personal memory's content.
     content: str
     #: When it was created (ISO 8601, UTC).
@@ -1206,7 +1144,7 @@ class PersonalMemoryOut(TypedDict):
     #: Why the memory is no longer valid, if it is not.
     invalid_reason: str | None
     #: What kind of personal memory this is. One of `lesson`, `preference`, `fact`.
-    kind: Literal["lesson", "preference", "fact"]
+    kind: Literal['lesson', 'preference', 'fact']
     #: When it was last injected (ISO 8601, UTC), or null.
     last_injected_at: str | None
     #: When it was last used, or null if never.
@@ -1229,7 +1167,6 @@ class PersonalMemoryOut(TypedDict):
 
 class PersonalMemoryOutPage(TypedDict):
     """PersonalMemoryOutPage"""
-
     #: The items on this page.
     data: list[PersonalMemoryOut]
     #: Whether another page follows.
@@ -1240,23 +1177,20 @@ class PersonalMemoryOutPage(TypedDict):
 
 class ProfileChangesOut(TypedDict):
     """The claims after the changes, in the order of the request."""
-
     #: One claim per change, in request order. An `edit` returns the corrected claim, which has...
     claims: list[UserProfileClaimOut]
 
 
 class ProfileChangesRequest(TypedDict):
     """Changes to apply together: all of them, or none."""
-
     #: The changes, applied in order (1 to 100). Each claim may appear once.
     changes: list[ProfileClaimChange]
 
 
 class ProfileClaimChange(TypedDict):
     """One change to one of the caller's profile claims."""
-
     #: `confirm` marks the claim right; `dismiss` marks it wrong (it stays visible as dismissed...
-    action: Literal["confirm", "dismiss", "edit", "restore"]
+    action: Literal['confirm', 'dismiss', 'edit', 'restore']
     #: The claim to change.
     claim_id: str
     #: With `edit`: the claim's new wording.
@@ -1264,14 +1198,13 @@ class ProfileClaimChange(TypedDict):
     #: With `edit`, on current work only: what happens next; null clears it.
     next_step: NotRequired[str | None]
     #: With `edit`: `self`, `work` or `organization`.
-    scope: NotRequired[Literal["self", "work", "organization"] | None]
+    scope: NotRequired[Literal['self', 'work', 'organization'] | None]
     #: With `edit`, on current work only: `active`, `waiting`, `completed` or `cancelled`.
-    status: NotRequired[Literal["active", "waiting", "completed", "cancelled"] | None]
+    status: NotRequired[Literal['active', 'waiting', 'completed', 'cancelled'] | None]
 
 
 class RevisionOut(TypedDict):
     """Response model for canvas revisions."""
-
     #: Id of the actor.
     actor_id: NotRequired[str | None]
     #: Name of the actor.
@@ -1290,7 +1223,6 @@ class RevisionOut(TypedDict):
 
 class RevisionOutPage(TypedDict):
     """RevisionOutPage"""
-
     #: The items on this page.
     data: list[RevisionOut]
     #: Whether another page follows.
@@ -1301,7 +1233,6 @@ class RevisionOutPage(TypedDict):
 
 class SchedulePreviewRequest(TypedDict):
     """Request payload for previewing schedule run times. Attributes: cron: 5-field cron expre..."""
-
     #: Number of upcoming runs to preview (max 20).
     count: NotRequired[int]
     #: 5-field cron expression (e.g. "0 9 * * 1" for Monday 9am).
@@ -1312,7 +1243,6 @@ class SchedulePreviewRequest(TypedDict):
 
 class SchedulePreviewResponse(TypedDict):
     """Response with upcoming scheduled run times. Attributes: cron: The cron expression used...."""
-
     #: The cron expression used.
     cron: str
     #: Human-readable schedule description.
@@ -1325,7 +1255,6 @@ class SchedulePreviewResponse(TypedDict):
 
 class SkillBundleOut(TypedDict):
     """SkillBundleOut"""
-
     #: Number of file.
     file_count: int
     #: The files.
@@ -1340,7 +1269,6 @@ class SkillBundleOut(TypedDict):
 
 class SkillBundleReplaceIn(TypedDict):
     """SkillBundleReplaceIn"""
-
     #: The bundle's `files_sha256` when you read it. If the skill has changed since, the write i...
     expected_sha256: NotRequired[str | None]
     #: The files.
@@ -1353,14 +1281,12 @@ class SkillBundleReplaceIn(TypedDict):
 
 class SkillFileContentIn(TypedDict):
     """SkillFileContentIn"""
-
     #: The skill file content's content.
     content: str
 
 
 class SkillFileWriteOut(TypedDict):
     """SkillFileWriteOut"""
-
     #: Path where it lives.
     path: str
     #: Id of the skill.
@@ -1369,7 +1295,6 @@ class SkillFileWriteOut(TypedDict):
 
 class SkillScriptOut(TypedDict):
     """SkillScriptOut"""
-
     #: The skill script's content.
     content: str
     #: Description of the skill script, in plain text.
@@ -1380,7 +1305,6 @@ class SkillScriptOut(TypedDict):
 
 class SourceOut(TypedDict):
     """Response model for citation sources. Uses stable keys (e.g., "pmid:12345678", "rag:abc1..."""
-
     #: Id of the artifact.
     artifact_id: NotRequired[str | None]
     #: Id of the artifact version.
@@ -1407,7 +1331,6 @@ class SourceOut(TypedDict):
 
 class SourceSyncQueued(TypedDict):
     """SourceSyncQueued"""
-
     #: Id of the background job; read it at `status_url`.
     job_id: str
     #: The service it comes from.
@@ -1422,14 +1345,12 @@ class SourceSyncQueued(TypedDict):
 
 class UndoRunRequest(TypedDict):
     """UndoRunRequest"""
-
     #: Report what would be undone without changing it.
     dry_run: NotRequired[bool]
 
 
 class UndoRunResult(TypedDict):
     """UndoRunResult"""
-
     #: Changes that later work built on, reported instead of overwritten.
     conflicts: list[dict[str, Any]]
     #: Ids of pending proposals the undo dismissed.
@@ -1450,7 +1371,6 @@ class UndoRunResult(TypedDict):
 
 class UserProfileClaimOut(TypedDict):
     """UserProfileClaimOut"""
-
     #: How sure the learning step was of the claim, from 0 to 1.
     confidence: float
     #: Where the claim came from and its review: `explicit`, `confirmed`, `inferred` or `disputed`.
@@ -1470,19 +1390,7 @@ class UserProfileClaimOut(TypedDict):
     #: When it was last seen.
     last_seen_at: str
     #: Layer: one of `identity`, `taste`, `interaction_preference`, `authored_voice`, `working_p...
-    layer: Literal[
-        "identity",
-        "taste",
-        "interaction_preference",
-        "authored_voice",
-        "working_preference",
-        "behavioral_pattern",
-        "autonomy_calibration",
-        "value",
-        "care_about",
-        "current_arc",
-        "stated_commitment",
-    ]
+    layer: Literal['identity', 'taste', 'interaction_preference', 'authored_voice', 'working_preference', 'behavioral_pattern', 'autonomy_calibration', 'value', 'care_about', 'current_arc', 'stated_commitment']
     #: Id of the migrated memory.
     migrated_memory_id: str | None
     #: Suggested next step.
@@ -1494,31 +1402,19 @@ class UserProfileClaimOut(TypedDict):
     #: Id of the parent claim.
     parent_claim_id: str | None
     #: The profile layer the claim belongs to: `identity`, `goals`, `arcs`, `reminders`, `prefer...
-    profile_layer: NotRequired[
-        Literal["identity", "goals", "arcs", "reminders", "preferences", "patterns"]
-    ]
+    profile_layer: NotRequired[Literal['identity', 'goals', 'arcs', 'reminders', 'preferences', 'patterns']]
     #: When it was retired (ISO 8601, UTC), or null.
     retired_at: str | None
     #: Why the claim was retired; null while it is active.
     retired_reason: str | None
     #: The scope it applies to. One of `self`, `work`, `organization`.
-    scope: Literal["self", "work", "organization"]
+    scope: Literal['self', 'work', 'organization']
     #: Section: one of `identity`, `goals`, `current_work`, `short_term_preference`, `commitment...
-    section: NotRequired[
-        Literal[
-            "identity",
-            "goals",
-            "current_work",
-            "short_term_preference",
-            "commitments",
-            "patterns",
-            "other",
-        ]
-    ]
+    section: NotRequired[Literal['identity', 'goals', 'current_work', 'short_term_preference', 'commitments', 'patterns', 'other']]
     #: How sensitive the claim is, which limits where it is shown.
     sensitivity: str
     #: Current status of the user profile claim. One of `active`, `waiting`, `completed`, `cance...
-    status: Literal["active", "waiting", "completed", "cancelled"]
+    status: Literal['active', 'waiting', 'completed', 'cancelled']
     #: Id of the superseded by.
     superseded_by_id: str | None
     #: When the claim starts to hold, if dated.
@@ -1529,7 +1425,6 @@ class UserProfileClaimOut(TypedDict):
 
 class UserProfileClaimOutPage(TypedDict):
     """UserProfileClaimOutPage"""
-
     #: The items on this page.
     data: list[UserProfileClaimOut]
     #: Whether another page follows.
@@ -1540,7 +1435,6 @@ class UserProfileClaimOutPage(TypedDict):
 
 class UserProfileClaimUpdate(TypedDict):
     """UserProfileClaimUpdate"""
-
     #: Set true to confirm it.
     confirm: NotRequired[bool]
     #: The user profile claim's content.
@@ -1552,14 +1446,13 @@ class UserProfileClaimUpdate(TypedDict):
     #: Set true to return it to review.
     restore: NotRequired[bool]
     #: The scope it applies to. One of `self`, `work`, `organization`.
-    scope: NotRequired[Literal["self", "work", "organization"] | None]
+    scope: NotRequired[Literal['self', 'work', 'organization'] | None]
     #: Current status of the user profile claim. One of `active`, `waiting`, `completed`, `cance...
-    status: NotRequired[Literal["active", "waiting", "completed", "cancelled"] | None]
+    status: NotRequired[Literal['active', 'waiting', 'completed', 'cancelled'] | None]
 
 
 class ValidationIssue(TypedDict):
     """One field that failed validation."""
-
     #: Where the field is: the request part (`body`, `query`, `path`, `header`) followed by the...
     loc: list[str | int]
     #: What is wrong with the field.
@@ -1570,7 +1463,6 @@ class ValidationIssue(TypedDict):
 
 class WikiBacklink(TypedDict):
     """WikiBacklink"""
-
     #: Unique id of this wiki backlink.
     id: str
     #: A short summary.
@@ -1581,7 +1473,6 @@ class WikiBacklink(TypedDict):
 
 class WikiBacklinks(TypedDict):
     """WikiBacklinks"""
-
     #: The items on this page.
     data: list[WikiBacklink]
     #: Whether another page follows.
@@ -1592,14 +1483,12 @@ class WikiBacklinks(TypedDict):
 
 class WikiBlame(TypedDict):
     """WikiBlame"""
-
     #: Blame.
     blame: list[WikiBlameLine]
 
 
 class WikiBlameLine(TypedDict):
     """WikiBlameLine"""
-
     #: When it was created (ISO 8601, UTC).
     created_at: NotRequired[str | None]
     #: Index.
@@ -1618,7 +1507,6 @@ class WikiBlameLine(TypedDict):
 
 class WikiGraph(TypedDict):
     """WikiGraph"""
-
     #: Edges.
     edges: list[WikiGraphEdge]
     #: Nodes.
@@ -1626,19 +1514,15 @@ class WikiGraph(TypedDict):
 
 
 #: WikiGraphEdge
-WikiGraphEdge = TypedDict(
-    "WikiGraphEdge",
-    {
-        "from": "NotRequired[str | None]",
-        "to": "NotRequired[str | None]",
-        "type": "NotRequired[str | None]",
-    },
-)
+WikiGraphEdge = TypedDict("WikiGraphEdge", {
+    'from': 'NotRequired[str | None]',
+    'to': 'NotRequired[str | None]',
+    'type': 'NotRequired[str | None]',
+})
 
 
 class WikiGraphNode(TypedDict):
     """WikiGraphNode"""
-
     #: Unique id of this wiki graph node.
     id: str
     #: Display label.
@@ -1657,14 +1541,12 @@ class WikiGraphNode(TypedDict):
 
 class WikiSectionProvenance(TypedDict):
     """WikiSectionProvenance"""
-
     #: Provenance.
     provenance: dict[str, Any]
 
 
 class WikiStatsOut(TypedDict):
     """Knowledge statistics for the current scope. `links` counts resolved links the caller ca..."""
-
     #: The links.
     links: NotRequired[int]
     #: The pages.
@@ -1675,7 +1557,6 @@ class WikiStatsOut(TypedDict):
 
 class WikiTimeline(TypedDict):
     """WikiTimeline"""
-
     #: The items on this page.
     data: list[WikiTimelineEvent]
     #: Whether another page follows.
@@ -1686,7 +1567,6 @@ class WikiTimeline(TypedDict):
 
 class WikiTimelineEvent(TypedDict):
     """WikiTimelineEvent"""
-
     #: Date precision.
     date_precision: NotRequired[str | None]
     #: Event end.
@@ -1709,7 +1589,6 @@ class WikiTimelineEvent(TypedDict):
 
 class WorkflowAIGenerateRequest(TypedDict):
     """Request payload for AI-assisted workflow generation. Attributes: description: Natural l..."""
-
     #: Natural language description of what the workflow should do.
     description: str
     #: Base64-encoded example output file (optional).
@@ -1722,7 +1601,6 @@ class WorkflowAIGenerateRequest(TypedDict):
 
 class WorkflowAIGenerateResponse(TypedDict):
     """Response from AI workflow generation. Attributes: template: The generated template defi..."""
-
     #: AI confidence score (0-1).
     confidence: float
     #: Suggestions for improving the workflow.
@@ -1733,11 +1611,10 @@ class WorkflowAIGenerateResponse(TypedDict):
 
 class WorkflowConfigCreate(TypedDict):
     """A workflow config to create from a template."""
-
     #: Whether this config produces dashboard widget items.
     dashboard_enabled: NotRequired[bool]
     #: Dashboard output mode: one of `new_each_run`, `update_existing`.
-    dashboard_output_mode: NotRequired[Literal["new_each_run", "update_existing"] | None]
+    dashboard_output_mode: NotRequired[Literal['new_each_run', 'update_existing'] | None]
     #: Display settings for the dashboard widget.
     dashboard_settings: NotRequired[DashboardSettings | None]
     #: Layout of the dashboard it fills, as JSON.
@@ -1753,15 +1630,13 @@ class WorkflowConfigCreate(TypedDict):
     #: Display name (auto-generated from template if not provided).
     name: NotRequired[str | None]
     #: Kind of output it writes.
-    output_canvas_type: NotRequired[Literal["dashboard"] | None]
+    output_canvas_type: NotRequired[Literal['dashboard'] | None]
     #: Output format: one of `pdf`, `docx`, `xlsx`, `html`, `markdown`, `txt`, `json`.
-    output_format: NotRequired[
-        Literal["pdf", "docx", "xlsx", "html", "markdown", "txt", "json"] | None
-    ]
+    output_format: NotRequired[Literal['pdf', 'docx', 'xlsx', 'html', 'markdown', 'txt', 'json'] | None]
     #: UUID of output destination.
     output_location_id: NotRequired[str | None]
     #: Where output goes: `project`. The older value `user` (the personal library) is still acce...
-    output_location_type: NotRequired[Literal["project", "user"] | None]
+    output_location_type: NotRequired[Literal['project', 'user'] | None]
     #: Optional schedule configuration.
     schedule: NotRequired[dict[str, Any] | None]
     #: Cron expression for when it runs.
@@ -1776,7 +1651,6 @@ class WorkflowConfigCreate(TypedDict):
 
 class WorkflowConfigOut(TypedDict):
     """Serialized representation of a workflow config. Configs can be ephemeral (is_saved=fals..."""
-
     #: When created.
     created_at: str
     #: UUID of user who created the config.
@@ -1784,7 +1658,7 @@ class WorkflowConfigOut(TypedDict):
     #: Whether this config produces dashboard widget items.
     dashboard_enabled: NotRequired[bool]
     #: Dashboard output mode: one of `new_each_run`, `update_existing`.
-    dashboard_output_mode: NotRequired[Literal["new_each_run", "update_existing"] | None]
+    dashboard_output_mode: NotRequired[Literal['new_each_run', 'update_existing'] | None]
     #: Display settings for the dashboard widget.
     dashboard_settings: NotRequired[DashboardSettings | None]
     #: Layout of the dashboard it fills, as JSON.
@@ -1816,7 +1690,7 @@ class WorkflowConfigOut(TypedDict):
     #: Organization UUID.
     org_id: str
     #: Kind of output it writes.
-    output_canvas_type: NotRequired[Literal["dashboard"] | None]
+    output_canvas_type: NotRequired[Literal['dashboard'] | None]
     #: Format of the run's output: `pdf`, `docx`, `xlsx`, `html`, `markdown`, `txt` or `json`.
     output_format: NotRequired[str | None]
     #: UUID of output destination.
@@ -1853,7 +1727,6 @@ class WorkflowConfigOut(TypedDict):
 
 class WorkflowConfigOutPage(TypedDict):
     """WorkflowConfigOutPage"""
-
     #: The items on this page.
     data: list[WorkflowConfigOut]
     #: Whether another page follows.
@@ -1864,11 +1737,10 @@ class WorkflowConfigOutPage(TypedDict):
 
 class WorkflowConfigUpdate(TypedDict):
     """Fields to change on a workflow config; omitted fields are kept."""
-
     #: Enable/disable dashboard widget production.
     dashboard_enabled: NotRequired[bool | None]
     #: Dashboard output mode: one of `new_each_run`, `update_existing`.
-    dashboard_output_mode: NotRequired[Literal["new_each_run", "update_existing"] | None]
+    dashboard_output_mode: NotRequired[Literal['new_each_run', 'update_existing'] | None]
     #: Updated dashboard display settings.
     dashboard_settings: NotRequired[DashboardSettings | None]
     #: Layout of the dashboard it fills, as JSON.
@@ -1882,15 +1754,13 @@ class WorkflowConfigUpdate(TypedDict):
     #: Updated name.
     name: NotRequired[str | None]
     #: Kind of output it writes.
-    output_canvas_type: NotRequired[Literal["dashboard"] | None]
+    output_canvas_type: NotRequired[Literal['dashboard'] | None]
     #: Updated output format (pdf, docx, xlsx, etc.).
-    output_format: NotRequired[
-        Literal["pdf", "docx", "xlsx", "html", "markdown", "txt", "json"] | None
-    ]
+    output_format: NotRequired[Literal['pdf', 'docx', 'xlsx', 'html', 'markdown', 'txt', 'json'] | None]
     #: Updated output location ID.
     output_location_id: NotRequired[str | None]
     #: Where output goes: `project`. The older value `user` is still accepted; `space` is refuse...
-    output_location_type: NotRequired[Literal["project", "user"] | None]
+    output_location_type: NotRequired[Literal['project', 'user'] | None]
     #: Updated schedule configuration (deprecated, use schedule_cron).
     schedule: NotRequired[dict[str, Any] | None]
     #: Cron expression (5-field format, e.g. "0 9 * * 1").
@@ -1903,11 +1773,10 @@ class WorkflowConfigUpdate(TypedDict):
 
 class WorkflowDocumentOutput(TypedDict):
     """WorkflowDocumentOutput"""
-
     #: Which run outputs fill which document template fields.
     field_mappings: NotRequired[dict[str, str]]
     #: Format: one of `docx`, `pdf`, `pptx`.
-    format: NotRequired[Literal["docx", "pdf", "pptx"]]
+    format: NotRequired[Literal['docx', 'pdf', 'pptx']]
     #: Id of the template.
     template_id: str
     #: Title of the workflow document output.
@@ -1918,7 +1787,6 @@ class WorkflowDocumentOutput(TypedDict):
 
 class WorkflowMeta(TypedDict):
     """Run settings for a workflow, kept on its config. Every field is optional; null means us..."""
-
     #: The document the workflow writes its result into, if any.
     document_output: NotRequired[WorkflowDocumentOutput | None]
     #: Pause after each step for confirmation (ignored by scheduled runs).
@@ -1926,7 +1794,7 @@ class WorkflowMeta(TypedDict):
     #: Most agent turns a run may take; otherwise the chosen tier's limit applies.
     max_turns: NotRequired[int | None]
     #: Which mode it runs in. One of `free`, `quick`, `deep`, `extreme`, `custom`.
-    mode: NotRequired[Literal["free", "quick", "deep", "extreme", "custom"] | None]
+    mode: NotRequired[Literal['free', 'quick', 'deep', 'extreme', 'custom'] | None]
     #: Models to use instead of the defaults, by role.
     model_overrides: NotRequired[dict[str, str] | None]
     #: Ids of the skills.
@@ -1935,14 +1803,12 @@ class WorkflowMeta(TypedDict):
 
 class WorkflowRunCreate(TypedDict):
     """Request payload for starting a workflow run. Attributes: input_overrides: Input values..."""
-
     #: Input values to override config inputs.
     input_overrides: NotRequired[dict[str, Any]]
 
 
 class WorkflowRunOut(TypedDict):
     """Serialized representation of a workflow run. Attributes: id: Unique identifier. config_..."""
-
     #: When execution finished.
     completed_at: NotRequired[str | None]
     #: FK to the config (always present).
@@ -1972,7 +1838,7 @@ class WorkflowRunOut(TypedDict):
     #: When execution started.
     started_at: NotRequired[str | None]
     #: Current status (pending, running, completed, failed, cancelled).
-    status: Literal["pending", "running", "completed", "failed", "cancelled"]
+    status: Literal['pending', 'running', 'completed', 'failed', 'cancelled']
     #: Where to read the background job's progress (`GET /v1/jobs/{job_id}`).
     status_url: str
     #: Icon of the template.
@@ -1982,14 +1848,13 @@ class WorkflowRunOut(TypedDict):
     #: Id of the thread.
     thread_id: NotRequired[str | None]
     #: What triggered the run.
-    triggered_by: Literal["user", "schedule", "api", "agent"]
+    triggered_by: Literal['user', 'schedule', 'api', 'agent']
     #: User who triggered.
     triggered_by_user_id: NotRequired[str | None]
 
 
 class WorkflowRunOutPage(TypedDict):
     """WorkflowRunOutPage"""
-
     #: The items on this page.
     data: list[WorkflowRunOut]
     #: Whether another page follows.
@@ -2000,7 +1865,6 @@ class WorkflowRunOutPage(TypedDict):
 
 class WorkflowTemplateOut(TypedDict):
     """Serialized representation of a workflow template. Attributes: id: Unique identifier for..."""
-
     #: Whether this template was AI-generated.
     ai_generated: NotRequired[bool]
     #: Category for organization.
@@ -2028,7 +1892,7 @@ class WorkflowTemplateOut(TypedDict):
     #: UUID of owner (None for system).
     owner_id: NotRequired[str | None]
     #: Who owns this ('system', 'org', 'group', 'user').
-    owner_type: Literal["system", "org", "group", "user"]
+    owner_type: Literal['system', 'org', 'group', 'user']
     #: Whether the current user pinned this template.
     pinned: NotRequired[bool]
     #: Id of the project it belongs to, or the project to act in.
@@ -2048,12 +1912,11 @@ class WorkflowTemplateOut(TypedDict):
     #: The template's version.
     version_number: NotRequired[int]
     #: Access level ('public', 'org', 'private').
-    visibility: Literal["public", "org", "project", "private"]
+    visibility: Literal['public', 'org', 'project', 'private']
 
 
 class WorkflowTemplateOutPage(TypedDict):
     """WorkflowTemplateOutPage"""
-
     #: The items on this page.
     data: list[WorkflowTemplateOut]
     #: Whether another page follows.
@@ -2064,7 +1927,6 @@ class WorkflowTemplateOutPage(TypedDict):
 
 class WorkflowTemplateRefineRequest(TypedDict):
     """Request payload for refining an AI-generated workflow template. Attributes: current_tem..."""
-
     #: The current template definition to refine.
     current_template: dict[str, Any]
     #: Natural language instruction for how to modify the template.
@@ -2075,7 +1937,6 @@ class WorkflowTemplateRefineRequest(TypedDict):
 
 class WorkflowTemplateRefineResponse(TypedDict):
     """Response from AI template refinement. Attributes: template: The refined template defini..."""
-
     #: Description of changes made.
     changes_made: NotRequired[list[str]]
     #: AI confidence score (0-1).
@@ -2086,4 +1947,4 @@ class WorkflowTemplateRefineResponse(TypedDict):
     template: dict[str, Any]
 
 
-MembershipRole: TypeAlias = Literal["owner", "admin", "member", "viewer", "guest"]
+MembershipRole: TypeAlias = Literal['owner', 'admin', 'member', 'viewer', 'guest']

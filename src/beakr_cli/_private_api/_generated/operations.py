@@ -25,6 +25,7 @@ __all__ = [
 _TYPING_NAMES = (Any, Literal, Mapping, UUID, m, multipart_body)
 
 
+
 #: Every private operation: ``<area>.<method>`` -> (HTTP method, contract path).
 OPERATIONS: dict[str, tuple[str, str]] = {
     "artifacts.list_artifact_versions": ("GET", "/v1/artifacts/{artifact_id}/versions"),
@@ -33,14 +34,8 @@ OPERATIONS: dict[str, tuple[str, str]] = {
     "conversations.get_conversation_settings": ("GET", "/v1/conversations/settings"),
     "conversations.put_conversation_settings": ("PUT", "/v1/conversations/settings"),
     "conversations.freshness": ("GET", "/v1/conversations/{conversation_id}/freshness"),
-    "integrations.get_connector_scope": (
-        "GET",
-        "/v1/integrations/hosted/connectors/{connector_id}/scope",
-    ),
-    "integrations.update_connector_scope": (
-        "PUT",
-        "/v1/integrations/hosted/connectors/{connector_id}/scope",
-    ),
+    "integrations.get_connector_scope": ("GET", "/v1/integrations/hosted/connectors/{connector_id}/scope"),
+    "integrations.update_connector_scope": ("PUT", "/v1/integrations/hosted/connectors/{connector_id}/scope"),
     "integrations.integration_coverage": ("GET", "/v1/integrations/{connector_id}/coverage"),
     "integrations.sync_integration": ("POST", "/v1/integrations/{connector_id}/sync"),
     "interview.list_requests": ("GET", "/v1/interview/requests"),
@@ -60,10 +55,7 @@ OPERATIONS: dict[str, tuple[str, str]] = {
     "knowledge.get_wiki_graph": ("GET", "/v1/knowledge/wiki/graph"),
     "knowledge.get_wiki_page_backlinks": ("GET", "/v1/knowledge/wiki/pages/{page_id}/backlinks"),
     "knowledge.get_wiki_page_blame": ("GET", "/v1/knowledge/wiki/pages/{page_id}/blame"),
-    "knowledge.get_wiki_section_provenance": (
-        "GET",
-        "/v1/knowledge/wiki/pages/{page_id}/section-provenance",
-    ),
+    "knowledge.get_wiki_section_provenance": ("GET", "/v1/knowledge/wiki/pages/{page_id}/section-provenance"),
     "knowledge.get_wiki_timeline": ("GET", "/v1/knowledge/wiki/timeline"),
     "knowledge.get_wiki_work_board": ("GET", "/v1/knowledge/wiki/work-board"),
     "personal_memory.list_personal_memory": ("GET", "/v1/me/memories"),
@@ -83,17 +75,11 @@ OPERATIONS: dict[str, tuple[str, str]] = {
     "org_admin.get_auth_policy": ("GET", "/v1/organizations/{org_id}/auth-policy"),
     "org_admin.put_auth_policy": ("PUT", "/v1/organizations/{org_id}/auth-policy"),
     "org_admin.list_org_credentials": ("GET", "/v1/organizations/{org_id}/credentials"),
-    "org_admin.revoke_org_credential": (
-        "DELETE",
-        "/v1/organizations/{org_id}/credentials/{kind}/{credential_id}",
-    ),
+    "org_admin.revoke_org_credential": ("DELETE", "/v1/organizations/{org_id}/credentials/{kind}/{credential_id}"),
     "canvas.get_canvas": ("GET", "/v1/outputs/{output_id}"),
     "canvas.export_canvas": ("GET", "/v1/outputs/{output_id}/export/{format}"),
     "canvas.get_canvas_revisions": ("GET", "/v1/outputs/{output_id}/revisions"),
-    "canvas.get_canvas_revision_content": (
-        "GET",
-        "/v1/outputs/{output_id}/revisions/{revision_no}/content",
-    ),
+    "canvas.get_canvas_revision_content": ("GET", "/v1/outputs/{output_id}/revisions/{revision_no}/content"),
     "trace.get_trace": ("GET", "/v1/trace/{kind}/{item_id}"),
     "usage.get_usage": ("GET", "/v1/usage"),
     "workflows.ai_generate_workflow": ("POST", "/v1/workflows/ai/generate"),
@@ -140,7 +126,7 @@ def build_knowledge_list_changes(
     project_id: str | None = None,
     user_id: str | None = None,
     agent: str | None = None,
-    kind: list[Literal["knowledge.commit", "proposal.filed", "file.added"]] | None = None,
+    kind: list[Literal['knowledge.commit', 'proposal.filed', 'file.added']] | None = None,
     limit: int | None = None,
     cursor: str | None = None,
 ) -> ListCall[m.ChangeItem]:
@@ -148,16 +134,7 @@ def build_knowledge_list_changes(
     return ListCall(
         "GET",
         "/v1/changes",
-        params={
-            "since": since,
-            "until": until,
-            "project_id": project_id,
-            "user_id": user_id,
-            "agent": agent,
-            "kind": kind,
-            "limit": limit,
-            "cursor": cursor,
-        },
+        params={"since": since, "until": until, "project_id": project_id, "user_id": user_id, "agent": agent, "kind": kind, "limit": limit, "cursor": cursor},
     )
 
 
@@ -410,14 +387,7 @@ def build_knowledge_get_wiki_graph(
     return Call(
         "GET",
         "/v1/knowledge/wiki/graph",
-        params={
-            "group_id": group_id,
-            "project_id": project_id,
-            "label_id": label_id,
-            "org_only": org_only,
-            "max_nodes": max_nodes,
-            "focus_page_id": focus_page_id,
-        },
+        params={"group_id": group_id, "project_id": project_id, "label_id": label_id, "org_only": org_only, "max_nodes": max_nodes, "focus_page_id": focus_page_id},
     )
 
 
@@ -469,17 +439,7 @@ def build_knowledge_get_wiki_timeline(
     return ListCall(
         "GET",
         "/v1/knowledge/wiki/timeline",
-        params={
-            "group_id": group_id,
-            "project_id": project_id,
-            "q": q,
-            "start_date": start_date,
-            "end_date": end_date,
-            "page_type": page_type,
-            "include_content": include_content,
-            "cursor": cursor,
-            "limit": limit,
-        },
+        params={"group_id": group_id, "project_id": project_id, "q": q, "start_date": start_date, "end_date": end_date, "page_type": page_type, "include_content": include_content, "cursor": cursor, "limit": limit},
     )
 
 
@@ -498,8 +458,8 @@ def build_knowledge_get_wiki_work_board(
 
 def build_personal_memory_list_personal_memory(
     *,
-    kind: Literal["lesson", "preference", "fact"] | None = None,
-    applies_to: Literal["ask", "workflow", "wiki", "all"] | None = None,
+    kind: Literal['lesson', 'preference', 'fact'] | None = None,
+    applies_to: Literal['ask', 'workflow', 'wiki', 'all'] | None = None,
     include_invalid: bool | None = None,
     cursor: str | None = None,
     limit: int | None = None,
@@ -508,13 +468,7 @@ def build_personal_memory_list_personal_memory(
     return ListCall(
         "GET",
         "/v1/me/memories",
-        params={
-            "kind": kind,
-            "applies_to": applies_to,
-            "include_invalid": include_invalid,
-            "cursor": cursor,
-            "limit": limit,
-        },
+        params={"kind": kind, "applies_to": applies_to, "include_invalid": include_invalid, "cursor": cursor, "limit": limit},
     )
 
 
@@ -530,27 +484,7 @@ def build_personal_memory_delete_personal_memory(memory_id: str | UUID) -> Call[
 def build_personal_memory_list_user_profile_claims(
     *,
     include_inactive: bool | None = None,
-    layer: list[
-        Literal[
-            "identity",
-            "goals",
-            "arcs",
-            "reminders",
-            "preferences",
-            "patterns",
-            "taste",
-            "interaction_preference",
-            "authored_voice",
-            "working_preference",
-            "behavioral_pattern",
-            "autonomy_calibration",
-            "value",
-            "care_about",
-            "current_arc",
-            "stated_commitment",
-        ]
-    ]
-    | None = None,
+    layer: list[Literal['identity', 'goals', 'arcs', 'reminders', 'preferences', 'patterns', 'taste', 'interaction_preference', 'authored_voice', 'working_preference', 'behavioral_pattern', 'autonomy_calibration', 'value', 'care_about', 'current_arc', 'stated_commitment']] | None = None,
     cursor: str | None = None,
     limit: int | None = None,
 ) -> ListCall[m.UserProfileClaimOut]:
@@ -558,12 +492,7 @@ def build_personal_memory_list_user_profile_claims(
     return ListCall(
         "GET",
         "/v1/me/profile",
-        params={
-            "include_inactive": include_inactive,
-            "layer": layer,
-            "cursor": cursor,
-            "limit": limit,
-        },
+        params={"include_inactive": include_inactive, "layer": layer, "cursor": cursor, "limit": limit},
     )
 
 
@@ -765,19 +694,14 @@ def build_canvas_export_canvas(
     *,
     template_id: str | None = None,
     theme_overrides: str | None = None,
-    sources: Literal["appendix", "none"] | None = None,
+    sources: Literal['appendix', 'none'] | None = None,
     draft: bool | None = None,
 ) -> Call[bytes]:
     """GET /v1/outputs/{output_id}/export/{format}"""
     return Call(
         "GET",
         f"/v1/outputs/{_seg(output_id)}/export/{_seg(format)}",
-        params={
-            "template_id": template_id,
-            "theme_overrides": theme_overrides,
-            "sources": sources,
-            "draft": draft,
-        },
+        params={"template_id": template_id, "theme_overrides": theme_overrides, "sources": sources, "draft": draft},
         response="bytes",
     )
 
@@ -811,7 +735,7 @@ def build_trace_get_trace(
     kind: str,
     item_id: str | UUID,
     *,
-    table: Literal["facts", "connections", "findings"] | None = None,
+    table: Literal['facts', 'connections', 'findings'] | None = None,
     row: str | None = None,
     value: str | None = None,
 ) -> Call[dict[str, Any]]:
@@ -825,10 +749,10 @@ def build_trace_get_trace(
 
 def build_usage_get_usage(
     *,
-    group_by: Literal["key", "project", "model", "day"] | None = None,
+    group_by: Literal['key', 'project', 'model', 'day'] | None = None,
     from_: str | None = None,
     to: str | None = None,
-    scope: Literal["self", "org"] | None = None,
+    scope: Literal['self', 'org'] | None = None,
 ) -> Call[dict[str, Any]]:
     """GET /v1/usage"""
     return Call(
@@ -980,14 +904,7 @@ def build_workflows_list_templates(
     return ListCall(
         "GET",
         "/v1/workflows/templates",
-        params={
-            "category": category,
-            "visibility": visibility,
-            "include_deprecated": include_deprecated,
-            "project_id": project_id,
-            "cursor": cursor,
-            "limit": limit,
-        },
+        params={"category": category, "visibility": visibility, "include_deprecated": include_deprecated, "project_id": project_id, "cursor": cursor, "limit": limit},
     )
 
 
@@ -1002,9 +919,7 @@ class ArtifactsApi(Resource):
         limit: int | None = None,
     ) -> m.ArtifactVersionOutPage:
         """GET /v1/artifacts/{artifact_id}/versions (List an artifact's versions)"""
-        return self._run(
-            build_artifacts_list_artifact_versions(artifact_id, cursor=cursor, limit=limit)
-        )
+        return self._run(build_artifacts_list_artifact_versions(artifact_id, cursor=cursor, limit=limit))
 
     def list_artifact_versions_all(
         self,
@@ -1038,20 +953,11 @@ class CanvasApi(Resource):
         *,
         template_id: str | None = None,
         theme_overrides: str | None = None,
-        sources: Literal["appendix", "none"] | None = None,
+        sources: Literal['appendix', 'none'] | None = None,
         draft: bool | None = None,
     ) -> bytes:
         """GET /v1/outputs/{output_id}/export/{format} (Export canvas to PDF, DOCX, XLSX, PPTX, Markdown or HTML)"""
-        return self._run(
-            build_canvas_export_canvas(
-                output_id,
-                format,
-                template_id=template_id,
-                theme_overrides=theme_overrides,
-                sources=sources,
-                draft=draft,
-            )
-        )
+        return self._run(build_canvas_export_canvas(output_id, format, template_id=template_id, theme_overrides=theme_overrides, sources=sources, draft=draft))
 
     def get_canvas_revisions(
         self,
@@ -1163,9 +1069,7 @@ class InterviewApi(Resource):
         limit: int | None = None,
     ) -> m.InterviewSessionsResponse:
         """GET /v1/interview/sessions (List your interviews)"""
-        return self._run(
-            build_interview_list_sessions(project_id=project_id, cursor=cursor, limit=limit)
-        )
+        return self._run(build_interview_list_sessions(project_id=project_id, cursor=cursor, limit=limit))
 
     def list_sessions_all(
         self,
@@ -1200,11 +1104,7 @@ class InvitationsApi(Resource):
         limit: int | None = None,
     ) -> m.InvitationOutPage:
         """GET /v1/invitations (List pending invitations)"""
-        return self._run(
-            build_invitations_list_pending_invitations(
-                resource_id=resource_id, cursor=cursor, limit=limit
-            )
-        )
+        return self._run(build_invitations_list_pending_invitations(resource_id=resource_id, cursor=cursor, limit=limit))
 
     def list_pending_invitations_all(
         self,
@@ -1213,9 +1113,7 @@ class InvitationsApi(Resource):
         limit: int | None = None,
     ) -> Iterator[m.InvitationOut]:
         """Every item of GET /v1/invitations, following its cursor."""
-        return self._iter(
-            build_invitations_list_pending_invitations(resource_id=resource_id, limit=limit)
-        )
+        return self._iter(build_invitations_list_pending_invitations(resource_id=resource_id, limit=limit))
 
     def create_invitation(self, *, body: m.InvitationCreate) -> m.InvitationCreateResponse:
         """POST /v1/invitations (Create an invitation)"""
@@ -1237,23 +1135,12 @@ class KnowledgeApi(Resource):
         project_id: str | None = None,
         user_id: str | None = None,
         agent: str | None = None,
-        kind: list[Literal["knowledge.commit", "proposal.filed", "file.added"]] | None = None,
+        kind: list[Literal['knowledge.commit', 'proposal.filed', 'file.added']] | None = None,
         limit: int | None = None,
         cursor: str | None = None,
     ) -> m.ChangesPage:
         """GET /v1/changes (What changed, newest first: Knowledge commits, proposals and files, with who made each)"""
-        return self._run(
-            build_knowledge_list_changes(
-                since=since,
-                until=until,
-                project_id=project_id,
-                user_id=user_id,
-                agent=agent,
-                kind=kind,
-                limit=limit,
-                cursor=cursor,
-            )
-        )
+        return self._run(build_knowledge_list_changes(since=since, until=until, project_id=project_id, user_id=user_id, agent=agent, kind=kind, limit=limit, cursor=cursor))
 
     def list_changes_all(
         self,
@@ -1263,21 +1150,11 @@ class KnowledgeApi(Resource):
         project_id: str | None = None,
         user_id: str | None = None,
         agent: str | None = None,
-        kind: list[Literal["knowledge.commit", "proposal.filed", "file.added"]] | None = None,
+        kind: list[Literal['knowledge.commit', 'proposal.filed', 'file.added']] | None = None,
         limit: int | None = None,
     ) -> Iterator[m.ChangeItem]:
         """Every item of GET /v1/changes, following its cursor."""
-        return self._iter(
-            build_knowledge_list_changes(
-                since=since,
-                until=until,
-                project_id=project_id,
-                user_id=user_id,
-                agent=agent,
-                kind=kind,
-                limit=limit,
-            )
-        )
+        return self._iter(build_knowledge_list_changes(since=since, until=until, project_id=project_id, user_id=user_id, agent=agent, kind=kind, limit=limit))
 
     def list_knowledge_conflicts(
         self,
@@ -1287,9 +1164,7 @@ class KnowledgeApi(Resource):
         limit: int | None = None,
     ) -> m.KnowledgeConflictsPage:
         """GET /v1/knowledge/conflicts (Card sections a source contradicts: the open disagreements in Knowledge)"""
-        return self._run(
-            build_knowledge_list_knowledge_conflicts(scope=scope, cursor=cursor, limit=limit)
-        )
+        return self._run(build_knowledge_list_knowledge_conflicts(scope=scope, cursor=cursor, limit=limit))
 
     def list_knowledge_conflicts_all(
         self,
@@ -1329,9 +1204,7 @@ class KnowledgeApi(Resource):
         label_id: str | None = None,
     ) -> m.WikiStatsOut:
         """GET /v1/knowledge/stats (Get wiki statistics for the current scope)"""
-        return self._run(
-            build_knowledge_get_stats(group_id=group_id, project_id=project_id, label_id=label_id)
-        )
+        return self._run(build_knowledge_get_stats(group_id=group_id, project_id=project_id, label_id=label_id))
 
     def get_wiki_graph(
         self,
@@ -1344,16 +1217,7 @@ class KnowledgeApi(Resource):
         focus_page_id: str | None = None,
     ) -> m.WikiGraph:
         """GET /v1/knowledge/wiki/graph (Get wiki graph data (nodes + edges) for visualization)"""
-        return self._run(
-            build_knowledge_get_wiki_graph(
-                group_id=group_id,
-                project_id=project_id,
-                label_id=label_id,
-                org_only=org_only,
-                max_nodes=max_nodes,
-                focus_page_id=focus_page_id,
-            )
-        )
+        return self._run(build_knowledge_get_wiki_graph(group_id=group_id, project_id=project_id, label_id=label_id, org_only=org_only, max_nodes=max_nodes, focus_page_id=focus_page_id))
 
     def get_wiki_page_backlinks(
         self,
@@ -1363,9 +1227,7 @@ class KnowledgeApi(Resource):
         limit: int | None = None,
     ) -> m.WikiBacklinks:
         """GET /v1/knowledge/wiki/pages/{page_id}/backlinks (Get pages that link to this wiki page, by title)"""
-        return self._run(
-            build_knowledge_get_wiki_page_backlinks(page_id, cursor=cursor, limit=limit)
-        )
+        return self._run(build_knowledge_get_wiki_page_backlinks(page_id, cursor=cursor, limit=limit))
 
     def get_wiki_page_backlinks_all(
         self,
@@ -1398,19 +1260,7 @@ class KnowledgeApi(Resource):
         limit: int | None = None,
     ) -> m.WikiTimeline:
         """GET /v1/knowledge/wiki/timeline (Query temporal events across the wiki by date range, optionally filtered by keyword)"""
-        return self._run(
-            build_knowledge_get_wiki_timeline(
-                group_id=group_id,
-                project_id=project_id,
-                q=q,
-                start_date=start_date,
-                end_date=end_date,
-                page_type=page_type,
-                include_content=include_content,
-                cursor=cursor,
-                limit=limit,
-            )
-        )
+        return self._run(build_knowledge_get_wiki_timeline(group_id=group_id, project_id=project_id, q=q, start_date=start_date, end_date=end_date, page_type=page_type, include_content=include_content, cursor=cursor, limit=limit))
 
     def get_wiki_timeline_all(
         self,
@@ -1425,18 +1275,7 @@ class KnowledgeApi(Resource):
         limit: int | None = None,
     ) -> Iterator[m.WikiTimelineEvent]:
         """Every item of GET /v1/knowledge/wiki/timeline, following its cursor."""
-        return self._iter(
-            build_knowledge_get_wiki_timeline(
-                group_id=group_id,
-                project_id=project_id,
-                q=q,
-                start_date=start_date,
-                end_date=end_date,
-                page_type=page_type,
-                include_content=include_content,
-                limit=limit,
-            )
-        )
+        return self._iter(build_knowledge_get_wiki_timeline(group_id=group_id, project_id=project_id, q=q, start_date=start_date, end_date=end_date, page_type=page_type, include_content=include_content, limit=limit))
 
     def get_wiki_work_board(
         self,
@@ -1445,9 +1284,7 @@ class KnowledgeApi(Resource):
         label_id: str | None = None,
     ) -> dict[str, Any]:
         """GET /v1/knowledge/wiki/work-board (Show live, ephemeral Knowledge-agent plans in ONE chosen project or label scope)"""
-        return self._run(
-            build_knowledge_get_wiki_work_board(project_id=project_id, label_id=label_id)
-        )
+        return self._run(build_knowledge_get_wiki_work_board(project_id=project_id, label_id=label_id))
 
 
 class OrgAdminApi(Resource):
@@ -1462,9 +1299,7 @@ class OrgAdminApi(Resource):
         limit: int | None = None,
     ) -> m.AuditPage:
         """GET /v1/organizations/{org_id}/audit (The organization's audit trail, newest first, one page at a time)"""
-        return self._run(
-            build_org_admin_org_audit_log(org_id, before=before, cursor=cursor, limit=limit)
-        )
+        return self._run(build_org_admin_org_audit_log(org_id, before=before, cursor=cursor, limit=limit))
 
     def org_audit_log_all(
         self,
@@ -1519,37 +1354,25 @@ class PersonalMemoryApi(Resource):
     def list_personal_memory(
         self,
         *,
-        kind: Literal["lesson", "preference", "fact"] | None = None,
-        applies_to: Literal["ask", "workflow", "wiki", "all"] | None = None,
+        kind: Literal['lesson', 'preference', 'fact'] | None = None,
+        applies_to: Literal['ask', 'workflow', 'wiki', 'all'] | None = None,
         include_invalid: bool | None = None,
         cursor: str | None = None,
         limit: int | None = None,
     ) -> m.PersonalMemoryOutPage:
         """GET /v1/me/memories (List the current user's personal memories, newest first)"""
-        return self._run(
-            build_personal_memory_list_personal_memory(
-                kind=kind,
-                applies_to=applies_to,
-                include_invalid=include_invalid,
-                cursor=cursor,
-                limit=limit,
-            )
-        )
+        return self._run(build_personal_memory_list_personal_memory(kind=kind, applies_to=applies_to, include_invalid=include_invalid, cursor=cursor, limit=limit))
 
     def list_personal_memory_all(
         self,
         *,
-        kind: Literal["lesson", "preference", "fact"] | None = None,
-        applies_to: Literal["ask", "workflow", "wiki", "all"] | None = None,
+        kind: Literal['lesson', 'preference', 'fact'] | None = None,
+        applies_to: Literal['ask', 'workflow', 'wiki', 'all'] | None = None,
         include_invalid: bool | None = None,
         limit: int | None = None,
     ) -> Iterator[m.PersonalMemoryOut]:
         """Every item of GET /v1/me/memories, following its cursor."""
-        return self._iter(
-            build_personal_memory_list_personal_memory(
-                kind=kind, applies_to=applies_to, include_invalid=include_invalid, limit=limit
-            )
-        )
+        return self._iter(build_personal_memory_list_personal_memory(kind=kind, applies_to=applies_to, include_invalid=include_invalid, limit=limit))
 
     def delete_personal_memory(self, memory_id: str | UUID) -> None:
         """DELETE /v1/me/memories/{memory_id} (Permanently forget a memory and block automatic relearning)"""
@@ -1559,70 +1382,22 @@ class PersonalMemoryApi(Resource):
         self,
         *,
         include_inactive: bool | None = None,
-        layer: list[
-            Literal[
-                "identity",
-                "goals",
-                "arcs",
-                "reminders",
-                "preferences",
-                "patterns",
-                "taste",
-                "interaction_preference",
-                "authored_voice",
-                "working_preference",
-                "behavioral_pattern",
-                "autonomy_calibration",
-                "value",
-                "care_about",
-                "current_arc",
-                "stated_commitment",
-            ]
-        ]
-        | None = None,
+        layer: list[Literal['identity', 'goals', 'arcs', 'reminders', 'preferences', 'patterns', 'taste', 'interaction_preference', 'authored_voice', 'working_preference', 'behavioral_pattern', 'autonomy_calibration', 'value', 'care_about', 'current_arc', 'stated_commitment']] | None = None,
         cursor: str | None = None,
         limit: int | None = None,
     ) -> m.UserProfileClaimOutPage:
         """GET /v1/me/profile (Show the evidence-backed profile the agents currently use)"""
-        return self._run(
-            build_personal_memory_list_user_profile_claims(
-                include_inactive=include_inactive, layer=layer, cursor=cursor, limit=limit
-            )
-        )
+        return self._run(build_personal_memory_list_user_profile_claims(include_inactive=include_inactive, layer=layer, cursor=cursor, limit=limit))
 
     def list_user_profile_claims_all(
         self,
         *,
         include_inactive: bool | None = None,
-        layer: list[
-            Literal[
-                "identity",
-                "goals",
-                "arcs",
-                "reminders",
-                "preferences",
-                "patterns",
-                "taste",
-                "interaction_preference",
-                "authored_voice",
-                "working_preference",
-                "behavioral_pattern",
-                "autonomy_calibration",
-                "value",
-                "care_about",
-                "current_arc",
-                "stated_commitment",
-            ]
-        ]
-        | None = None,
+        layer: list[Literal['identity', 'goals', 'arcs', 'reminders', 'preferences', 'patterns', 'taste', 'interaction_preference', 'authored_voice', 'working_preference', 'behavioral_pattern', 'autonomy_calibration', 'value', 'care_about', 'current_arc', 'stated_commitment']] | None = None,
         limit: int | None = None,
     ) -> Iterator[m.UserProfileClaimOut]:
         """Every item of GET /v1/me/profile, following its cursor."""
-        return self._iter(
-            build_personal_memory_list_user_profile_claims(
-                include_inactive=include_inactive, layer=layer, limit=limit
-            )
-        )
+        return self._iter(build_personal_memory_list_user_profile_claims(include_inactive=include_inactive, layer=layer, limit=limit))
 
     def apply_user_profile_changes(self, *, body: m.ProfileChangesRequest) -> m.ProfileChangesOut:
         """PATCH /v1/me/profile (Confirm, dismiss, edit or restore several of your profile claims at once)"""
@@ -1657,11 +1432,7 @@ class SkillsApi(Resource):
         limit: int | None = None,
     ) -> m.LibrarySkillOutPage | m.LibrarySkillCardOutPage:
         """GET /v1/me/skills/library (List your skill library)"""
-        return self._run(
-            build_skills_list_library_skills(
-                include_content=include_content, cursor=cursor, limit=limit
-            )
-        )
+        return self._run(build_skills_list_library_skills(include_content=include_content, cursor=cursor, limit=limit))
 
     def list_library_skills_all(
         self,
@@ -1670,9 +1441,7 @@ class SkillsApi(Resource):
         limit: int | None = None,
     ) -> Iterator[dict[str, Any]]:
         """Every item of GET /v1/me/skills/library, following its cursor."""
-        return self._iter(
-            build_skills_list_library_skills(include_content=include_content, limit=limit)
-        )
+        return self._iter(build_skills_list_library_skills(include_content=include_content, limit=limit))
 
     def list_mined_skill_proposals(
         self,
@@ -1682,9 +1451,7 @@ class SkillsApi(Resource):
         limit: int | None = None,
     ) -> m.MinedSkillProposalOutPage:
         """GET /v1/me/skills/proposals (List skills Beakr inferred from repeated, successful work patterns, most recent first)"""
-        return self._run(
-            build_skills_list_mined_skill_proposals(status=status, cursor=cursor, limit=limit)
-        )
+        return self._run(build_skills_list_mined_skill_proposals(status=status, cursor=cursor, limit=limit))
 
     def list_mined_skill_proposals_all(
         self,
@@ -1736,7 +1503,7 @@ class TraceApi(Resource):
         kind: str,
         item_id: str | UUID,
         *,
-        table: Literal["facts", "connections", "findings"] | None = None,
+        table: Literal['facts', 'connections', 'findings'] | None = None,
         row: str | None = None,
         value: str | None = None,
     ) -> dict[str, Any]:
@@ -1750,10 +1517,10 @@ class UsageApi(Resource):
     def get_usage(
         self,
         *,
-        group_by: Literal["key", "project", "model", "day"] | None = None,
+        group_by: Literal['key', 'project', 'model', 'day'] | None = None,
         from_: str | None = None,
         to: str | None = None,
-        scope: Literal["self", "org"] | None = None,
+        scope: Literal['self', 'org'] | None = None,
     ) -> dict[str, Any]:
         """GET /v1/usage (Model usage (calls, cost, tokens) grouped by key, project, model or day)"""
         return self._run(build_usage_get_usage(group_by=group_by, from_=from_, to=to, scope=scope))
@@ -1787,11 +1554,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowConfigOutPage:
         """GET /v1/workflows/configs (List workflow configs)"""
-        return self._run(
-            build_workflows_list_configs(
-                is_saved=is_saved, template_id=template_id, cursor=cursor, limit=limit
-            )
-        )
+        return self._run(build_workflows_list_configs(is_saved=is_saved, template_id=template_id, cursor=cursor, limit=limit))
 
     def list_configs_all(
         self,
@@ -1801,9 +1564,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> Iterator[m.WorkflowConfigOut]:
         """Every item of GET /v1/workflows/configs, following its cursor."""
-        return self._iter(
-            build_workflows_list_configs(is_saved=is_saved, template_id=template_id, limit=limit)
-        )
+        return self._iter(build_workflows_list_configs(is_saved=is_saved, template_id=template_id, limit=limit))
 
     def create_config(self, *, body: m.WorkflowConfigCreate) -> m.WorkflowConfigOut:
         """POST /v1/workflows/configs (Create a new workflow config)"""
@@ -1831,11 +1592,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowRunOutPage:
         """GET /v1/workflows/configs/{config_id}/runs (List workflow runs for a specific config, newest first)"""
-        return self._run(
-            build_workflows_list_runs_for_config(
-                config_id, status=status, cursor=cursor, limit=limit
-            )
-        )
+        return self._run(build_workflows_list_runs_for_config(config_id, status=status, cursor=cursor, limit=limit))
 
     def list_runs_for_config_all(
         self,
@@ -1845,9 +1602,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> Iterator[m.WorkflowRunOut]:
         """Every item of GET /v1/workflows/configs/{config_id}/runs, following its cursor."""
-        return self._iter(
-            build_workflows_list_runs_for_config(config_id, status=status, limit=limit)
-        )
+        return self._iter(build_workflows_list_runs_for_config(config_id, status=status, limit=limit))
 
     def list_runs(
         self,
@@ -1858,11 +1613,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowRunOutPage:
         """GET /v1/workflows/runs (List workflow runs, newest first)"""
-        return self._run(
-            build_workflows_list_runs(
-                config_id=config_id, status=status, cursor=cursor, limit=limit
-            )
-        )
+        return self._run(build_workflows_list_runs(config_id=config_id, status=status, cursor=cursor, limit=limit))
 
     def list_runs_all(
         self,
@@ -1872,9 +1623,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> Iterator[m.WorkflowRunOut]:
         """Every item of GET /v1/workflows/runs, following its cursor."""
-        return self._iter(
-            build_workflows_list_runs(config_id=config_id, status=status, limit=limit)
-        )
+        return self._iter(build_workflows_list_runs(config_id=config_id, status=status, limit=limit))
 
     def get_run(self, run_id: str | UUID) -> m.WorkflowRunOut:
         """GET /v1/workflows/runs/{run_id} (Get a workflow run by ID)"""
@@ -1895,16 +1644,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowTemplateOutPage:
         """GET /v1/workflows/templates (List workflow templates)"""
-        return self._run(
-            build_workflows_list_templates(
-                category=category,
-                visibility=visibility,
-                include_deprecated=include_deprecated,
-                project_id=project_id,
-                cursor=cursor,
-                limit=limit,
-            )
-        )
+        return self._run(build_workflows_list_templates(category=category, visibility=visibility, include_deprecated=include_deprecated, project_id=project_id, cursor=cursor, limit=limit))
 
     def list_templates_all(
         self,
@@ -1916,15 +1656,7 @@ class WorkflowsApi(Resource):
         limit: int | None = None,
     ) -> Iterator[m.WorkflowTemplateOut]:
         """Every item of GET /v1/workflows/templates, following its cursor."""
-        return self._iter(
-            build_workflows_list_templates(
-                category=category,
-                visibility=visibility,
-                include_deprecated=include_deprecated,
-                project_id=project_id,
-                limit=limit,
-            )
-        )
+        return self._iter(build_workflows_list_templates(category=category, visibility=visibility, include_deprecated=include_deprecated, project_id=project_id, limit=limit))
 
 
 class AsyncArtifactsApi(Resource):
@@ -1938,9 +1670,7 @@ class AsyncArtifactsApi(Resource):
         limit: int | None = None,
     ) -> m.ArtifactVersionOutPage:
         """GET /v1/artifacts/{artifact_id}/versions (List an artifact's versions)"""
-        return await self._run(
-            build_artifacts_list_artifact_versions(artifact_id, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_artifacts_list_artifact_versions(artifact_id, cursor=cursor, limit=limit))
 
     def list_artifact_versions_all(
         self,
@@ -1974,20 +1704,11 @@ class AsyncCanvasApi(Resource):
         *,
         template_id: str | None = None,
         theme_overrides: str | None = None,
-        sources: Literal["appendix", "none"] | None = None,
+        sources: Literal['appendix', 'none'] | None = None,
         draft: bool | None = None,
     ) -> bytes:
         """GET /v1/outputs/{output_id}/export/{format} (Export canvas to PDF, DOCX, XLSX, PPTX, Markdown or HTML)"""
-        return await self._run(
-            build_canvas_export_canvas(
-                output_id,
-                format,
-                template_id=template_id,
-                theme_overrides=theme_overrides,
-                sources=sources,
-                draft=draft,
-            )
-        )
+        return await self._run(build_canvas_export_canvas(output_id, format, template_id=template_id, theme_overrides=theme_overrides, sources=sources, draft=draft))
 
     async def get_canvas_revisions(
         self,
@@ -1997,9 +1718,7 @@ class AsyncCanvasApi(Resource):
         limit: int | None = None,
     ) -> m.RevisionOutPage:
         """GET /v1/outputs/{output_id}/revisions (Get revision history for a canvas)"""
-        return await self._run(
-            build_canvas_get_canvas_revisions(output_id, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_canvas_get_canvas_revisions(output_id, cursor=cursor, limit=limit))
 
     def get_canvas_revisions_all(
         self,
@@ -2066,9 +1785,7 @@ class AsyncIntegrationsApi(Resource):
         project_id: str | None = None,
     ) -> m.IntegrationSyncStarted:
         """POST /v1/integrations/{connector_id}/sync (Sync every project source fed by this integration (or one project's))"""
-        return await self._run(
-            build_integrations_sync_integration(connector_id, project_id=project_id)
-        )
+        return await self._run(build_integrations_sync_integration(connector_id, project_id=project_id))
 
 
 class AsyncInterviewApi(Resource):
@@ -2107,9 +1824,7 @@ class AsyncInterviewApi(Resource):
         limit: int | None = None,
     ) -> m.InterviewSessionsResponse:
         """GET /v1/interview/sessions (List your interviews)"""
-        return await self._run(
-            build_interview_list_sessions(project_id=project_id, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_interview_list_sessions(project_id=project_id, cursor=cursor, limit=limit))
 
     def list_sessions_all(
         self,
@@ -2148,11 +1863,7 @@ class AsyncInvitationsApi(Resource):
         limit: int | None = None,
     ) -> m.InvitationOutPage:
         """GET /v1/invitations (List pending invitations)"""
-        return await self._run(
-            build_invitations_list_pending_invitations(
-                resource_id=resource_id, cursor=cursor, limit=limit
-            )
-        )
+        return await self._run(build_invitations_list_pending_invitations(resource_id=resource_id, cursor=cursor, limit=limit))
 
     def list_pending_invitations_all(
         self,
@@ -2161,9 +1872,7 @@ class AsyncInvitationsApi(Resource):
         limit: int | None = None,
     ) -> AsyncIterator[m.InvitationOut]:
         """Every item of GET /v1/invitations, following its cursor."""
-        return self._iter(
-            build_invitations_list_pending_invitations(resource_id=resource_id, limit=limit)
-        )
+        return self._iter(build_invitations_list_pending_invitations(resource_id=resource_id, limit=limit))
 
     async def create_invitation(self, *, body: m.InvitationCreate) -> m.InvitationCreateResponse:
         """POST /v1/invitations (Create an invitation)"""
@@ -2185,23 +1894,12 @@ class AsyncKnowledgeApi(Resource):
         project_id: str | None = None,
         user_id: str | None = None,
         agent: str | None = None,
-        kind: list[Literal["knowledge.commit", "proposal.filed", "file.added"]] | None = None,
+        kind: list[Literal['knowledge.commit', 'proposal.filed', 'file.added']] | None = None,
         limit: int | None = None,
         cursor: str | None = None,
     ) -> m.ChangesPage:
         """GET /v1/changes (What changed, newest first: Knowledge commits, proposals and files, with who made each)"""
-        return await self._run(
-            build_knowledge_list_changes(
-                since=since,
-                until=until,
-                project_id=project_id,
-                user_id=user_id,
-                agent=agent,
-                kind=kind,
-                limit=limit,
-                cursor=cursor,
-            )
-        )
+        return await self._run(build_knowledge_list_changes(since=since, until=until, project_id=project_id, user_id=user_id, agent=agent, kind=kind, limit=limit, cursor=cursor))
 
     def list_changes_all(
         self,
@@ -2211,21 +1909,11 @@ class AsyncKnowledgeApi(Resource):
         project_id: str | None = None,
         user_id: str | None = None,
         agent: str | None = None,
-        kind: list[Literal["knowledge.commit", "proposal.filed", "file.added"]] | None = None,
+        kind: list[Literal['knowledge.commit', 'proposal.filed', 'file.added']] | None = None,
         limit: int | None = None,
     ) -> AsyncIterator[m.ChangeItem]:
         """Every item of GET /v1/changes, following its cursor."""
-        return self._iter(
-            build_knowledge_list_changes(
-                since=since,
-                until=until,
-                project_id=project_id,
-                user_id=user_id,
-                agent=agent,
-                kind=kind,
-                limit=limit,
-            )
-        )
+        return self._iter(build_knowledge_list_changes(since=since, until=until, project_id=project_id, user_id=user_id, agent=agent, kind=kind, limit=limit))
 
     async def list_knowledge_conflicts(
         self,
@@ -2235,9 +1923,7 @@ class AsyncKnowledgeApi(Resource):
         limit: int | None = None,
     ) -> m.KnowledgeConflictsPage:
         """GET /v1/knowledge/conflicts (Card sections a source contradicts: the open disagreements in Knowledge)"""
-        return await self._run(
-            build_knowledge_list_knowledge_conflicts(scope=scope, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_knowledge_list_knowledge_conflicts(scope=scope, cursor=cursor, limit=limit))
 
     def list_knowledge_conflicts_all(
         self,
@@ -2277,9 +1963,7 @@ class AsyncKnowledgeApi(Resource):
         label_id: str | None = None,
     ) -> m.WikiStatsOut:
         """GET /v1/knowledge/stats (Get wiki statistics for the current scope)"""
-        return await self._run(
-            build_knowledge_get_stats(group_id=group_id, project_id=project_id, label_id=label_id)
-        )
+        return await self._run(build_knowledge_get_stats(group_id=group_id, project_id=project_id, label_id=label_id))
 
     async def get_wiki_graph(
         self,
@@ -2292,16 +1976,7 @@ class AsyncKnowledgeApi(Resource):
         focus_page_id: str | None = None,
     ) -> m.WikiGraph:
         """GET /v1/knowledge/wiki/graph (Get wiki graph data (nodes + edges) for visualization)"""
-        return await self._run(
-            build_knowledge_get_wiki_graph(
-                group_id=group_id,
-                project_id=project_id,
-                label_id=label_id,
-                org_only=org_only,
-                max_nodes=max_nodes,
-                focus_page_id=focus_page_id,
-            )
-        )
+        return await self._run(build_knowledge_get_wiki_graph(group_id=group_id, project_id=project_id, label_id=label_id, org_only=org_only, max_nodes=max_nodes, focus_page_id=focus_page_id))
 
     async def get_wiki_page_backlinks(
         self,
@@ -2311,9 +1986,7 @@ class AsyncKnowledgeApi(Resource):
         limit: int | None = None,
     ) -> m.WikiBacklinks:
         """GET /v1/knowledge/wiki/pages/{page_id}/backlinks (Get pages that link to this wiki page, by title)"""
-        return await self._run(
-            build_knowledge_get_wiki_page_backlinks(page_id, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_knowledge_get_wiki_page_backlinks(page_id, cursor=cursor, limit=limit))
 
     def get_wiki_page_backlinks_all(
         self,
@@ -2346,19 +2019,7 @@ class AsyncKnowledgeApi(Resource):
         limit: int | None = None,
     ) -> m.WikiTimeline:
         """GET /v1/knowledge/wiki/timeline (Query temporal events across the wiki by date range, optionally filtered by keyword)"""
-        return await self._run(
-            build_knowledge_get_wiki_timeline(
-                group_id=group_id,
-                project_id=project_id,
-                q=q,
-                start_date=start_date,
-                end_date=end_date,
-                page_type=page_type,
-                include_content=include_content,
-                cursor=cursor,
-                limit=limit,
-            )
-        )
+        return await self._run(build_knowledge_get_wiki_timeline(group_id=group_id, project_id=project_id, q=q, start_date=start_date, end_date=end_date, page_type=page_type, include_content=include_content, cursor=cursor, limit=limit))
 
     def get_wiki_timeline_all(
         self,
@@ -2373,18 +2034,7 @@ class AsyncKnowledgeApi(Resource):
         limit: int | None = None,
     ) -> AsyncIterator[m.WikiTimelineEvent]:
         """Every item of GET /v1/knowledge/wiki/timeline, following its cursor."""
-        return self._iter(
-            build_knowledge_get_wiki_timeline(
-                group_id=group_id,
-                project_id=project_id,
-                q=q,
-                start_date=start_date,
-                end_date=end_date,
-                page_type=page_type,
-                include_content=include_content,
-                limit=limit,
-            )
-        )
+        return self._iter(build_knowledge_get_wiki_timeline(group_id=group_id, project_id=project_id, q=q, start_date=start_date, end_date=end_date, page_type=page_type, include_content=include_content, limit=limit))
 
     async def get_wiki_work_board(
         self,
@@ -2393,9 +2043,7 @@ class AsyncKnowledgeApi(Resource):
         label_id: str | None = None,
     ) -> dict[str, Any]:
         """GET /v1/knowledge/wiki/work-board (Show live, ephemeral Knowledge-agent plans in ONE chosen project or label scope)"""
-        return await self._run(
-            build_knowledge_get_wiki_work_board(project_id=project_id, label_id=label_id)
-        )
+        return await self._run(build_knowledge_get_wiki_work_board(project_id=project_id, label_id=label_id))
 
 
 class AsyncOrgAdminApi(Resource):
@@ -2410,9 +2058,7 @@ class AsyncOrgAdminApi(Resource):
         limit: int | None = None,
     ) -> m.AuditPage:
         """GET /v1/organizations/{org_id}/audit (The organization's audit trail, newest first, one page at a time)"""
-        return await self._run(
-            build_org_admin_org_audit_log(org_id, before=before, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_org_admin_org_audit_log(org_id, before=before, cursor=cursor, limit=limit))
 
     def org_audit_log_all(
         self,
@@ -2440,9 +2086,7 @@ class AsyncOrgAdminApi(Resource):
         limit: int | None = None,
     ) -> m.OrgCredentialPage:
         """GET /v1/organizations/{org_id}/credentials (Every live API key and CLI/agent token in the organization)"""
-        return await self._run(
-            build_org_admin_list_org_credentials(org_id, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_org_admin_list_org_credentials(org_id, cursor=cursor, limit=limit))
 
     def list_org_credentials_all(
         self,
@@ -2469,37 +2113,25 @@ class AsyncPersonalMemoryApi(Resource):
     async def list_personal_memory(
         self,
         *,
-        kind: Literal["lesson", "preference", "fact"] | None = None,
-        applies_to: Literal["ask", "workflow", "wiki", "all"] | None = None,
+        kind: Literal['lesson', 'preference', 'fact'] | None = None,
+        applies_to: Literal['ask', 'workflow', 'wiki', 'all'] | None = None,
         include_invalid: bool | None = None,
         cursor: str | None = None,
         limit: int | None = None,
     ) -> m.PersonalMemoryOutPage:
         """GET /v1/me/memories (List the current user's personal memories, newest first)"""
-        return await self._run(
-            build_personal_memory_list_personal_memory(
-                kind=kind,
-                applies_to=applies_to,
-                include_invalid=include_invalid,
-                cursor=cursor,
-                limit=limit,
-            )
-        )
+        return await self._run(build_personal_memory_list_personal_memory(kind=kind, applies_to=applies_to, include_invalid=include_invalid, cursor=cursor, limit=limit))
 
     def list_personal_memory_all(
         self,
         *,
-        kind: Literal["lesson", "preference", "fact"] | None = None,
-        applies_to: Literal["ask", "workflow", "wiki", "all"] | None = None,
+        kind: Literal['lesson', 'preference', 'fact'] | None = None,
+        applies_to: Literal['ask', 'workflow', 'wiki', 'all'] | None = None,
         include_invalid: bool | None = None,
         limit: int | None = None,
     ) -> AsyncIterator[m.PersonalMemoryOut]:
         """Every item of GET /v1/me/memories, following its cursor."""
-        return self._iter(
-            build_personal_memory_list_personal_memory(
-                kind=kind, applies_to=applies_to, include_invalid=include_invalid, limit=limit
-            )
-        )
+        return self._iter(build_personal_memory_list_personal_memory(kind=kind, applies_to=applies_to, include_invalid=include_invalid, limit=limit))
 
     async def delete_personal_memory(self, memory_id: str | UUID) -> None:
         """DELETE /v1/me/memories/{memory_id} (Permanently forget a memory and block automatic relearning)"""
@@ -2509,70 +2141,22 @@ class AsyncPersonalMemoryApi(Resource):
         self,
         *,
         include_inactive: bool | None = None,
-        layer: list[
-            Literal[
-                "identity",
-                "goals",
-                "arcs",
-                "reminders",
-                "preferences",
-                "patterns",
-                "taste",
-                "interaction_preference",
-                "authored_voice",
-                "working_preference",
-                "behavioral_pattern",
-                "autonomy_calibration",
-                "value",
-                "care_about",
-                "current_arc",
-                "stated_commitment",
-            ]
-        ]
-        | None = None,
+        layer: list[Literal['identity', 'goals', 'arcs', 'reminders', 'preferences', 'patterns', 'taste', 'interaction_preference', 'authored_voice', 'working_preference', 'behavioral_pattern', 'autonomy_calibration', 'value', 'care_about', 'current_arc', 'stated_commitment']] | None = None,
         cursor: str | None = None,
         limit: int | None = None,
     ) -> m.UserProfileClaimOutPage:
         """GET /v1/me/profile (Show the evidence-backed profile the agents currently use)"""
-        return await self._run(
-            build_personal_memory_list_user_profile_claims(
-                include_inactive=include_inactive, layer=layer, cursor=cursor, limit=limit
-            )
-        )
+        return await self._run(build_personal_memory_list_user_profile_claims(include_inactive=include_inactive, layer=layer, cursor=cursor, limit=limit))
 
     def list_user_profile_claims_all(
         self,
         *,
         include_inactive: bool | None = None,
-        layer: list[
-            Literal[
-                "identity",
-                "goals",
-                "arcs",
-                "reminders",
-                "preferences",
-                "patterns",
-                "taste",
-                "interaction_preference",
-                "authored_voice",
-                "working_preference",
-                "behavioral_pattern",
-                "autonomy_calibration",
-                "value",
-                "care_about",
-                "current_arc",
-                "stated_commitment",
-            ]
-        ]
-        | None = None,
+        layer: list[Literal['identity', 'goals', 'arcs', 'reminders', 'preferences', 'patterns', 'taste', 'interaction_preference', 'authored_voice', 'working_preference', 'behavioral_pattern', 'autonomy_calibration', 'value', 'care_about', 'current_arc', 'stated_commitment']] | None = None,
         limit: int | None = None,
     ) -> AsyncIterator[m.UserProfileClaimOut]:
         """Every item of GET /v1/me/profile, following its cursor."""
-        return self._iter(
-            build_personal_memory_list_user_profile_claims(
-                include_inactive=include_inactive, layer=layer, limit=limit
-            )
-        )
+        return self._iter(build_personal_memory_list_user_profile_claims(include_inactive=include_inactive, layer=layer, limit=limit))
 
     async def apply_user_profile_changes(
         self,
@@ -2611,11 +2195,7 @@ class AsyncSkillsApi(Resource):
         limit: int | None = None,
     ) -> m.LibrarySkillOutPage | m.LibrarySkillCardOutPage:
         """GET /v1/me/skills/library (List your skill library)"""
-        return await self._run(
-            build_skills_list_library_skills(
-                include_content=include_content, cursor=cursor, limit=limit
-            )
-        )
+        return await self._run(build_skills_list_library_skills(include_content=include_content, cursor=cursor, limit=limit))
 
     def list_library_skills_all(
         self,
@@ -2624,9 +2204,7 @@ class AsyncSkillsApi(Resource):
         limit: int | None = None,
     ) -> AsyncIterator[dict[str, Any]]:
         """Every item of GET /v1/me/skills/library, following its cursor."""
-        return self._iter(
-            build_skills_list_library_skills(include_content=include_content, limit=limit)
-        )
+        return self._iter(build_skills_list_library_skills(include_content=include_content, limit=limit))
 
     async def list_mined_skill_proposals(
         self,
@@ -2636,9 +2214,7 @@ class AsyncSkillsApi(Resource):
         limit: int | None = None,
     ) -> m.MinedSkillProposalOutPage:
         """GET /v1/me/skills/proposals (List skills Beakr inferred from repeated, successful work patterns, most recent first)"""
-        return await self._run(
-            build_skills_list_mined_skill_proposals(status=status, cursor=cursor, limit=limit)
-        )
+        return await self._run(build_skills_list_mined_skill_proposals(status=status, cursor=cursor, limit=limit))
 
     def list_mined_skill_proposals_all(
         self,
@@ -2690,14 +2266,12 @@ class AsyncTraceApi(Resource):
         kind: str,
         item_id: str | UUID,
         *,
-        table: Literal["facts", "connections", "findings"] | None = None,
+        table: Literal['facts', 'connections', 'findings'] | None = None,
         row: str | None = None,
         value: str | None = None,
     ) -> dict[str, Any]:
         """GET /v1/trace/{kind}/{item_id} (How a page, output, run or one Knowledge row was made: inputs, runs, actors and versions)"""
-        return await self._run(
-            build_trace_get_trace(kind, item_id, table=table, row=row, value=value)
-        )
+        return await self._run(build_trace_get_trace(kind, item_id, table=table, row=row, value=value))
 
 
 class AsyncUsageApi(Resource):
@@ -2706,15 +2280,13 @@ class AsyncUsageApi(Resource):
     async def get_usage(
         self,
         *,
-        group_by: Literal["key", "project", "model", "day"] | None = None,
+        group_by: Literal['key', 'project', 'model', 'day'] | None = None,
         from_: str | None = None,
         to: str | None = None,
-        scope: Literal["self", "org"] | None = None,
+        scope: Literal['self', 'org'] | None = None,
     ) -> dict[str, Any]:
         """GET /v1/usage (Model usage (calls, cost, tokens) grouped by key, project, model or day)"""
-        return await self._run(
-            build_usage_get_usage(group_by=group_by, from_=from_, to=to, scope=scope)
-        )
+        return await self._run(build_usage_get_usage(group_by=group_by, from_=from_, to=to, scope=scope))
 
 
 class AsyncWorkflowsApi(Resource):
@@ -2745,11 +2317,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowConfigOutPage:
         """GET /v1/workflows/configs (List workflow configs)"""
-        return await self._run(
-            build_workflows_list_configs(
-                is_saved=is_saved, template_id=template_id, cursor=cursor, limit=limit
-            )
-        )
+        return await self._run(build_workflows_list_configs(is_saved=is_saved, template_id=template_id, cursor=cursor, limit=limit))
 
     def list_configs_all(
         self,
@@ -2759,9 +2327,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> AsyncIterator[m.WorkflowConfigOut]:
         """Every item of GET /v1/workflows/configs, following its cursor."""
-        return self._iter(
-            build_workflows_list_configs(is_saved=is_saved, template_id=template_id, limit=limit)
-        )
+        return self._iter(build_workflows_list_configs(is_saved=is_saved, template_id=template_id, limit=limit))
 
     async def create_config(self, *, body: m.WorkflowConfigCreate) -> m.WorkflowConfigOut:
         """POST /v1/workflows/configs (Create a new workflow config)"""
@@ -2794,11 +2360,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowRunOutPage:
         """GET /v1/workflows/configs/{config_id}/runs (List workflow runs for a specific config, newest first)"""
-        return await self._run(
-            build_workflows_list_runs_for_config(
-                config_id, status=status, cursor=cursor, limit=limit
-            )
-        )
+        return await self._run(build_workflows_list_runs_for_config(config_id, status=status, cursor=cursor, limit=limit))
 
     def list_runs_for_config_all(
         self,
@@ -2808,9 +2370,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> AsyncIterator[m.WorkflowRunOut]:
         """Every item of GET /v1/workflows/configs/{config_id}/runs, following its cursor."""
-        return self._iter(
-            build_workflows_list_runs_for_config(config_id, status=status, limit=limit)
-        )
+        return self._iter(build_workflows_list_runs_for_config(config_id, status=status, limit=limit))
 
     async def list_runs(
         self,
@@ -2821,11 +2381,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowRunOutPage:
         """GET /v1/workflows/runs (List workflow runs, newest first)"""
-        return await self._run(
-            build_workflows_list_runs(
-                config_id=config_id, status=status, cursor=cursor, limit=limit
-            )
-        )
+        return await self._run(build_workflows_list_runs(config_id=config_id, status=status, cursor=cursor, limit=limit))
 
     def list_runs_all(
         self,
@@ -2835,9 +2391,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> AsyncIterator[m.WorkflowRunOut]:
         """Every item of GET /v1/workflows/runs, following its cursor."""
-        return self._iter(
-            build_workflows_list_runs(config_id=config_id, status=status, limit=limit)
-        )
+        return self._iter(build_workflows_list_runs(config_id=config_id, status=status, limit=limit))
 
     async def get_run(self, run_id: str | UUID) -> m.WorkflowRunOut:
         """GET /v1/workflows/runs/{run_id} (Get a workflow run by ID)"""
@@ -2862,16 +2416,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> m.WorkflowTemplateOutPage:
         """GET /v1/workflows/templates (List workflow templates)"""
-        return await self._run(
-            build_workflows_list_templates(
-                category=category,
-                visibility=visibility,
-                include_deprecated=include_deprecated,
-                project_id=project_id,
-                cursor=cursor,
-                limit=limit,
-            )
-        )
+        return await self._run(build_workflows_list_templates(category=category, visibility=visibility, include_deprecated=include_deprecated, project_id=project_id, cursor=cursor, limit=limit))
 
     def list_templates_all(
         self,
@@ -2883,15 +2428,7 @@ class AsyncWorkflowsApi(Resource):
         limit: int | None = None,
     ) -> AsyncIterator[m.WorkflowTemplateOut]:
         """Every item of GET /v1/workflows/templates, following its cursor."""
-        return self._iter(
-            build_workflows_list_templates(
-                category=category,
-                visibility=visibility,
-                include_deprecated=include_deprecated,
-                project_id=project_id,
-                limit=limit,
-            )
-        )
+        return self._iter(build_workflows_list_templates(category=category, visibility=visibility, include_deprecated=include_deprecated, project_id=project_id, limit=limit))
 
 
 class BeakrApi:
