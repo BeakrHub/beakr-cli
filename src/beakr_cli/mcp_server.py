@@ -16,6 +16,7 @@ from beakr_cli import tool_surface
 
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
+from beakr_cli.mcp_knowledge_status import knowledge_notice
 from beakr_cli.scope import scope_params
 from beakr_cli.updates import (
     detect_install,
@@ -373,7 +374,9 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
     from beakr_cli.mcp_tools_platform import _cursor, _page_of, _page_result, _page_size
 
     page = await _call_api(
-        lambda sdk: sdk.api.projects.list_projects(cursor=_cursor(cursor), limit=_page_size(limit))
+        lambda sdk: sdk.api.projects.list_projects(
+            cursor=_cursor(cursor), limit=_page_size(limit), include_knowledge=True
+        )
     )
     rows, has_more, next_cursor = _page_of(page, "data", "projects")
     lines = []
@@ -383,8 +386,12 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         project_type = p.get("project_type", "standard")
         desc = p.get("description", "") or ""
         lines.append(f"- {name} ({project_type}, id: {pid}){f' -- {desc}' if desc else ''}")
+    listed = "\n".join(lines) if lines else "No projects found."
+    # Which listed projects' Knowledge is still building or has failed files,
+    # the same notice the hosted server appends.
+    notice = knowledge_notice(rows[:50])
     return _page_result(
-        "\n".join(lines) if lines else "No projects found.",
+        f"{listed}\n\n{notice}" if notice else listed,
         tool="list_projects",
         returned=min(len(rows), 50),
         has_more=has_more,

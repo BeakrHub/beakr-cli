@@ -7,13 +7,16 @@ from typing import Any
 
 import typer
 
+from beakr_cli.commands import project_knowledge
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import CAPTURE_FIELD, LEARNING_FIELD, read_binding, write_binding
 from beakr_cli.project_ref import find_project, project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, prompt_choice, require_interactive
 from beakr_cli.sdk import get_sdk
 
-app = typer.Typer(help="List, create, archive and delete projects.")
+app = typer.Typer(
+    help="List, create, archive and delete projects; check and retry their Knowledge."
+)
 
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 
@@ -271,5 +274,6 @@ def init_command(
 
 
 def register(root: typer.Typer) -> None:
+    project_knowledge.register(app)
     root.add_typer(app, name="projects")
     root.command("init")(init_command)

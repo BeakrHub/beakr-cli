@@ -1741,6 +1741,18 @@
             "title": "Id",
             "type": "string"
           },
+          "knowledge_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the file is in reaching the project's Knowledge: `queued`, `running`, `created`, `failed`, `stale`, `incomplete` or `skipped`; null when Knowledge was not requested for it.",
+            "title": "Knowledge Status"
+          },
           "path": {
             "description": "Path where it lives.",
             "title": "Path",
@@ -1871,6 +1883,61 @@
           }
         },
         "title": "ArtifactUpdate",
+        "type": "object"
+      },
+      "BatchKnowledgeSummary": {
+        "description": "How a batch's files are doing in reaching the project's Knowledge.",
+        "properties": {
+          "created": {
+            "default": 0,
+            "description": "Files added to Knowledge.",
+            "title": "Created",
+            "type": "integer"
+          },
+          "failed": {
+            "default": 0,
+            "description": "Files whose attempt to reach Knowledge failed.",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "not_requested": {
+            "default": 0,
+            "description": "Files uploaded without asking for Knowledge.",
+            "title": "Not Requested",
+            "type": "integer"
+          },
+          "other": {
+            "default": 0,
+            "description": "Files in Knowledge that need another pass (`stale` or `incomplete`).",
+            "title": "Other",
+            "type": "integer"
+          },
+          "queued": {
+            "default": 0,
+            "description": "Files waiting to be added to Knowledge.",
+            "title": "Queued",
+            "type": "integer"
+          },
+          "ready": {
+            "default": true,
+            "description": "True when none of the batch's files is queued or running for Knowledge.",
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "running": {
+            "default": 0,
+            "description": "Files being added to Knowledge right now.",
+            "title": "Running",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "description": "Files that finished without producing Knowledge (nothing to add).",
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "title": "BatchKnowledgeSummary",
         "type": "object"
       },
       "BlockedOrgJoinOut": {
@@ -2214,6 +2281,17 @@
             "format": "uuid",
             "title": "Batch Id",
             "type": "string"
+          },
+          "knowledge": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BatchKnowledgeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The batch's files in Knowledge, counted from each file's `knowledge_status`; null before any file is created."
           },
           "status": {
             "description": "Current status of the bulk status.",
@@ -5736,6 +5814,231 @@
         "title": "KnowledgeCoverage",
         "type": "object"
       },
+      "KnowledgeFailedFile": {
+        "description": "One file whose latest attempt to reach the project's Knowledge failed.",
+        "properties": {
+          "artifact_id": {
+            "description": "Id of the file.",
+            "examples": [
+              "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+            ],
+            "format": "uuid",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "error_code": {
+            "description": "Why it failed: `processing_failed` (the file could not be read), `timed_out`, `concurrent_update` (another Knowledge update ran at the same time) or `compile_failed` (anything else).",
+            "enum": [
+              "processing_failed",
+              "timed_out",
+              "concurrent_update",
+              "compile_failed"
+            ],
+            "title": "Error Code",
+            "type": "string"
+          },
+          "failed_at": {
+            "description": "When the attempt that failed started.",
+            "format": "date-time",
+            "title": "Failed At",
+            "type": "string"
+          },
+          "filename": {
+            "description": "The file's name.",
+            "title": "Filename",
+            "type": "string"
+          },
+          "path": {
+            "description": "The file's path in the project, folders included, as Knowledge reads and `POST /v1/artifacts/read` name it; its name when it sits in no folder.",
+            "title": "Path",
+            "type": "string"
+          },
+          "reason": {
+            "description": "One sentence describing `error_code`, safe to show to a person.",
+            "title": "Reason",
+            "type": "string"
+          },
+          "retryable": {
+            "description": "Whether you may retry this file (`POST /v1/projects/{project_id}/knowledge/retry-failed`): you can edit it. Every failure code is worth a retry.",
+            "title": "Retryable",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "filename",
+          "path",
+          "error_code",
+          "reason",
+          "failed_at",
+          "retryable"
+        ],
+        "title": "KnowledgeFailedFile",
+        "type": "object"
+      },
+      "KnowledgeFailedFilePage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeFailedFile"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "KnowledgeFailedFilePage",
+        "type": "object"
+      },
+      "KnowledgeRetryFileResult": {
+        "description": "What a retry did with one file.",
+        "properties": {
+          "artifact_id": {
+            "description": "Id of the file.",
+            "examples": [
+              "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+            ],
+            "format": "uuid",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "`queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt did not fail; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it failed but cannot be retried now; see `reason`).",
+            "enum": [
+              "queued",
+              "already_queued",
+              "not_failed",
+              "not_found",
+              "skipped"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a `skipped` file was not retried.",
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "outcome"
+        ],
+        "title": "KnowledgeRetryFileResult",
+        "type": "object"
+      },
+      "KnowledgeRetryRequest": {
+        "description": "Which failed files to send to Knowledge again.",
+        "properties": {
+          "artifact_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 500,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Files to retry, up to 500. Omit to retry every failed file in the project (up to 500 per call; `has_more` says when more remain).",
+            "title": "Artifact Ids"
+          }
+        },
+        "title": "KnowledgeRetryRequest",
+        "type": "object"
+      },
+      "KnowledgeRetryResponse": {
+        "description": "The result of retrying a project's failed files.",
+        "properties": {
+          "already_queued": {
+            "default": 0,
+            "description": "Files already queued or running; left alone.",
+            "title": "Already Queued",
+            "type": "integer"
+          },
+          "files": {
+            "description": "Each file this call considered, with what happened to it.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeRetryFileResult"
+            },
+            "title": "Files",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "True when every failed file was requested and more failed files remain than one call retries; call again once these finish.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "not_failed": {
+            "default": 0,
+            "description": "Named files whose latest attempt did not fail.",
+            "title": "Not Failed",
+            "type": "integer"
+          },
+          "not_found": {
+            "default": 0,
+            "description": "Named files not found in the project.",
+            "title": "Not Found",
+            "type": "integer"
+          },
+          "queued": {
+            "default": 0,
+            "description": "Files sent to Knowledge again.",
+            "title": "Queued",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "description": "Failed files that could not be retried now.",
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "title": "KnowledgeRetryResponse",
+        "type": "object"
+      },
       "KnowledgeScope": {
         "properties": {
           "all_readable": {
@@ -8362,6 +8665,131 @@
         "title": "ProjectCreate",
         "type": "object"
       },
+      "ProjectKnowledgeActivity": {
+        "description": "Whether a project's Knowledge is still being built, and how many files failed.\n\nCounted over the caller's readable files, with the same per-file status as\n``GET /v1/projects/{project_id}/knowledge-summary``, which has the full\npicture (coverage, and the failed files with their reasons).",
+        "properties": {
+          "failed": {
+            "default": 0,
+            "description": "Files whose latest attempt to be added to Knowledge failed.",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "queued": {
+            "default": 0,
+            "description": "Files waiting to be added to Knowledge.",
+            "title": "Queued",
+            "type": "integer"
+          },
+          "ready": {
+            "default": true,
+            "description": "True when nothing is queued or running for Knowledge.",
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "running": {
+            "default": 0,
+            "description": "Files being added to Knowledge right now.",
+            "title": "Running",
+            "type": "integer"
+          }
+        },
+        "title": "ProjectKnowledgeActivity",
+        "type": "object"
+      },
+      "ProjectKnowledgeStatusResponse": {
+        "description": "A project's Knowledge status: coverage counts, readiness and the files that failed.\n\nCounts cover the files the caller can read. ``queued``, ``running`` and\n``failed`` break the coverage counts down further: ``queued + running`` is\n``syncing``, and ``failed`` is part of ``eligible``.",
+        "properties": {
+          "eligible": {
+            "default": 0,
+            "description": "How many qualify.",
+            "title": "Eligible",
+            "type": "integer"
+          },
+          "failed": {
+            "default": 0,
+            "description": "Files whose latest attempt to be added to Knowledge failed (a subset of `eligible`).",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "failed_files": {
+            "description": "The most recently failed files, newest first (up to `failed_limit`).",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeFailedFile"
+            },
+            "title": "Failed Files",
+            "type": "array"
+          },
+          "failed_files_next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to `GET /v1/projects/{project_id}/knowledge/failed-files` for the failed files after these; null when `failed_files` holds them all.",
+            "title": "Failed Files Next Cursor"
+          },
+          "knowledge_skipped": {
+            "default": 0,
+            "description": "Files that finished processing without producing Knowledge (a subset of `synced`).",
+            "title": "Knowledge Skipped",
+            "type": "integer"
+          },
+          "oldest_pending_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Time of the oldest pending (ISO 8601, UTC).",
+            "title": "Oldest Pending At"
+          },
+          "queued": {
+            "default": 0,
+            "description": "Files waiting for their turn to be added to Knowledge.",
+            "title": "Queued",
+            "type": "integer"
+          },
+          "ready": {
+            "default": true,
+            "description": "True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed files do not make it false; check `failed`.",
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "running": {
+            "default": 0,
+            "description": "Files being added to Knowledge right now.",
+            "title": "Running",
+            "type": "integer"
+          },
+          "synced": {
+            "default": 0,
+            "description": "Files in the project already compiled into Knowledge.",
+            "title": "Synced",
+            "type": "integer"
+          },
+          "syncing": {
+            "default": 0,
+            "description": "Files in the project still being compiled into Knowledge (`queued` plus `running`).",
+            "title": "Syncing",
+            "type": "integer"
+          },
+          "total": {
+            "default": 0,
+            "description": "The total count.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "title": "ProjectKnowledgeStatusResponse",
+        "type": "object"
+      },
       "ProjectMemberAdd": {
         "examples": [
           {
@@ -8691,6 +9119,17 @@
             "description": "True when more than one user/access subject can reach the project.",
             "title": "Is Shared",
             "type": "boolean"
+          },
+          "knowledge": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectKnowledgeActivity"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Knowledge build state, present only when the list was asked for it with `include_knowledge=true`."
           },
           "member_count": {
             "default": 1,
@@ -24005,6 +24444,18 @@
             }
           },
           {
+            "description": "Add each project's Knowledge build state (`knowledge`): files queued, running and failed, and whether it is ready.",
+            "in": "query",
+            "name": "include_knowledge",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Add each project's Knowledge build state (`knowledge`): files queued, running and failed, and whether it is ready.",
+              "title": "Include Knowledge",
+              "type": "boolean"
+            }
+          },
+          {
             "description": "Opaque cursor from a previous page's `next_cursor`.",
             "in": "query",
             "name": "cursor",
@@ -24463,6 +24914,292 @@
           "projects"
         ],
         "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/knowledge-summary": {
+      "get": {
+        "description": "A project's Knowledge status: whether it is ready, its coverage, and what failed.\n\nReadable by anyone with VIEWER access to the project, because the Files tab\nshows the coverage sentence to everyone who can open it. Queueing the work\n(POST /project-knowledge) still requires member access. The counts are\nscoped to the caller's own readable files, so a viewer is told about\ncoverage of exactly the files they could open themselves.\n\nA project that does not exist and one the caller cannot read are the same\n404, so the route is not an existence oracle. (The web app treats this 404\nand the 403 it used to answer alike.)",
+        "operationId": "get_project_knowledge_status_route_v1_projects__project_id__knowledge_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "How many failed files to include in `failed_files`, newest first.",
+            "in": "query",
+            "name": "failed_limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "description": "How many failed files to include in `failed_files`, newest first.",
+              "maximum": 200,
+              "minimum": 0,
+              "title": "Failed Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a project's Knowledge status",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-replaces": "/v1/artifacts/project-knowledge-summary",
+        "x-beakr-scope": "projects:read"
+      }
+    },
+    "/v1/projects/{project_id}/knowledge/failed-files": {
+      "get": {
+        "description": "Files in the project whose latest attempt to reach Knowledge failed, newest first.\n\nEach says why in a public code and sentence, and whether you may retry it.\nCovers the files you can read; a project you cannot read is a 404.",
+        "operationId": "list_knowledge_failed_files_route_v1_projects__project_id__knowledge_failed_files_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeFailedFilePage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List failed Knowledge files",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "projects:read"
+      }
+    },
+    "/v1/projects/{project_id}/knowledge/retry-failed": {
+      "post": {
+        "description": "Send the project's failed files to Knowledge again: all of them, or the ones named.\n\nSafe to repeat. A file already queued or running is left alone, and one\nwhose latest attempt did not fail is never re-sent, so calling this again\nbefore the retried files finish queues nothing new. Needs permission to add\nfiles to the project; a project you cannot read is a 404.",
+        "operationId": "retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/KnowledgeRetryRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeRetryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Retry failed Knowledge files",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "uploads:write"
       }
     },
     "/v1/projects/{project_id}/members": {

@@ -158,6 +158,9 @@ SOURCES = (
             # The hosted MCP server's renderer: the stdio server must answer in
             # the envelope it builds (test_mcp_envelope_parity).
             "beakr/api/mcp_remote/render.py",
+            # The Knowledge notice the hosted list_projects appends: the stdio
+            # server carries a copy (test_mcp_knowledge_status_matches_engine).
+            "beakr/api/mcp_remote/knowledge_status.py",
             # The compatibility rules scripts/contract_compat.py vendors.
             "beakr/api/public/compat.py",
         ),

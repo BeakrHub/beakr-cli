@@ -1,0 +1,52 @@
+$ beakr projects status --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/knowledge-summary?failed_limit=20
+[exit 0]
+--- stdout
+{
+  "total": 42,
+  "eligible": 5,
+  "syncing": 4,
+  "synced": 33,
+  "knowledge_skipped": 1,
+  "oldest_pending_at": "2026-10-14T08:30:00Z",
+  "queued": 3,
+  "running": 1,
+  "failed": 2,
+  "ready": false,
+  "failed_files": [
+    {
+      "artifact_id": "6e9422f6-04ea-41a2-87c1-d41ed1f62713",
+      "filename": "NW-217 stability report.pdf",
+      "path": "Stability/NW-217 stability report.pdf",
+      "error_code": "processing_failed",
+      "reason": "The file could not be read, so nothing from it was added to Knowledge.",
+      "failed_at": "2026-10-14T09:12:00Z",
+      "retryable": true
+    },
+    {
+      "artifact_id": "2b7c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4",
+      "filename": "Assay plate map.xlsx",
+      "path": "Assays/Assay plate map.xlsx",
+      "error_code": "timed_out",
+      "reason": "Adding the file to Knowledge timed out before anything was written.",
+      "failed_at": "2026-10-14T08:40:00Z",
+      "retryable": true
+    }
+  ],
+  "failed_files_next_cursor": null
+}
+--- stderr
+
+
+$ beakr projects status --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/knowledge-summary?failed_limit=20
+[exit 0]
+--- stdout
+Knowledge: compiling (1 running, 3 queued)
+Files: 42 files, 33 processed (1 with nothing to add), 3 not sent or out of date
+Failed (2):
+  Stability/NW-217 stability report.pdf  processing_failed  The file could not be read, so nothing from it was added to Knowledge.  (6e9422f6-04ea-41a2-87c1-d41ed1f62713)
+  Assays/Assay plate map.xlsx  timed_out  Adding the file to Knowledge timed out before anything was written.  (2b7c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4)
+Retry them: beakr projects retry -P 4dd25154-0d80-44ab-b4c2-167319bfacb4
+--- stderr
+

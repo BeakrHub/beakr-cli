@@ -4135,6 +4135,72 @@
    "summary": "Get a project"
   },
   {
+   "action": "get-project-knowledge-status",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/knowledge-summary",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge-summary",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "default": 20,
+     "description": "How many failed files to include in `failed_files`, newest first.",
+     "name": "failed_limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a project's Knowledge status"
+  },
+  {
+   "action": "list-knowledge-failed-files",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/knowledge/failed-files",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/knowledge/failed-files",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List failed Knowledge files"
+  },
+  {
    "action": "list-members",
    "anonymous": false,
    "area": "projects",
@@ -4231,6 +4297,13 @@
      "type": "string"
     },
     {
+     "default": false,
+     "description": "Add each project's Knowledge build state (`knowledge`): files queued, running and failed, and whether it is ready.",
+     "name": "include_knowledge",
+     "required": false,
+     "type": "boolean"
+    },
+    {
      "default": 50,
      "description": "Page size, 1 to 200.",
      "name": "limit",
@@ -4292,6 +4365,41 @@
    "response": "none",
    "scope": "projects:admin",
    "summary": "Remove a project member"
+  },
+  {
+   "action": "retry-failed-knowledge",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Files to retry, up to 500. Omit to retry every failed file in the project (up to 500 per call; `has_more` says when more remain).",
+      "multiple": true,
+      "name": "artifact_ids",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/knowledge/retry-failed",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge/retry-failed",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Retry failed Knowledge files"
   },
   {
    "action": "revoke-project-membership-invitation",

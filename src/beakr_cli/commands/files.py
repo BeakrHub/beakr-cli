@@ -64,8 +64,19 @@ def upload_command(
         help="Wait until every file is indexed (searchable); Knowledge pages compile "
         "afterwards, usually within a few minutes. Exit 1 if any indexing job failed.",
     ),
+    wait_knowledge: bool = typer.Option(
+        False,
+        "--wait-knowledge",
+        help="Wait until every file is indexed and the project's Knowledge is ready "
+        "(nothing queued or running), printing progress. Exit 1 if any file failed to "
+        "index or to reach Knowledge; `beakr projects retry` sends failed files again.",
+    ),
     timeout: float = typer.Option(
-        900.0, "--timeout", min=1, help="With --wait: seconds to wait for each file."
+        900.0,
+        "--timeout",
+        min=1,
+        help="With --wait: seconds to wait for each file; with --wait-knowledge, also "
+        "for Knowledge.",
     ),
     json_out: bool = _json_opt,
 ) -> None:
@@ -77,6 +88,10 @@ def upload_command(
     pass to ``--resume``.
     """
     ingest = not no_knowledge
+    if wait_knowledge and not ingest:
+        err_console.print("--wait-knowledge waits for Knowledge; --no-knowledge keeps it out.")
+        raise typer.Exit(2)
+    wait = wait or wait_knowledge
     if resume is not None:
         if len(paths) != 1 or not paths[0].is_file():
             err_console.print("--resume takes exactly one file: the one that was interrupted.")
@@ -132,6 +147,12 @@ def upload_command(
             if row.get("job_id") in states:
                 row["job"] = states[str(row["job_id"])]
     waited = wait and bool(job_ids)
+    knowledge_failed: list[dict[str, Any]] = []
+    knowledge_settled = False
+    if wait_knowledge and project_id and all_succeeded(list(states.values()) if waited else []):
+        knowledge_failed, knowledge_settled = _wait_for_uploaded_knowledge(
+            results, str(project_id), timeout=timeout
+        )
 
     def render(rows: list[dict[str, Any]]) -> None:
         for row in rows:
@@ -141,7 +162,13 @@ def upload_command(
                 f"Uploaded {row['path']} -> {artifact.get('id')}"
                 + (f" ({status})" if status else "")
             )
-        if waited:
+        if knowledge_settled:
+            note = (
+                f"{len(knowledge_failed)} failed to reach Knowledge."
+                if knowledge_failed
+                else "Indexed and in Knowledge."
+            )
+        elif waited:
             note = _KNOWLEDGE_NOTE.format(project=project_id or "<project>")
         elif ingest:
             note = "Indexing runs in the background."
@@ -151,6 +178,21 @@ def upload_command(
         if ingest and job_ids and not waited:
             console.print(f"[dim]Wait for it: beakr jobs wait {' '.join(job_ids)}[/dim]")
 
+    if wait_knowledge:
+        failed_ids = {str(row.get("artifact_id")) for row in knowledge_failed}
+        for row in results:
+            file_id = str((row.get("artifact") or {}).get("id") or "")
+            failure = next(
+                (f for f in knowledge_failed if str(f.get("artifact_id")) == file_id), None
+            )
+            if failure is not None:
+                row["knowledge"] = {
+                    "status": "failed",
+                    "error_code": failure.get("error_code"),
+                    "reason": failure.get("reason"),
+                }
+            elif knowledge_settled and file_id not in failed_ids:
+                row["knowledge"] = {"status": "ready"}
     emit(
         results,
         json_out=json_out,
@@ -162,10 +204,45 @@ def upload_command(
             waited=waited,
             failed=waited and not all_succeeded(list(states.values())),
             project_id=project_id,
+            knowledge_failed=bool(knowledge_failed),
+            knowledge_settled=knowledge_settled,
         ),
     )
     if waited and not all_succeeded(list(states.values())):
         raise typer.Exit(1)
+    if wait_knowledge and (knowledge_failed or not knowledge_settled):
+        raise typer.Exit(1)
+
+
+def _wait_for_uploaded_knowledge(
+    results: list[dict[str, Any]], project_id: str, *, timeout: float
+) -> tuple[list[dict[str, Any]], bool]:
+    """Wait for the project's Knowledge; return the uploaded files that failed, and if it settled.
+
+    The project status is the read: the uploaded files are ready when nothing
+    in the project is queued or running, which also waits out any other files
+    compiling at the same time. Failures are reported only for these files.
+    """
+    from beakr_cli.commands.project_knowledge import (
+        failed_among,
+        failed_file_line,
+        wait_for_knowledge,
+    )
+
+    uploaded = {
+        str((row.get("artifact") or {}).get("id"))
+        for row in results
+        if (row.get("artifact") or {}).get("id")
+    }
+    err_console.print("Waiting for Knowledge...")
+    with get_sdk(timeout=300.0) as sdk:
+        status = wait_for_knowledge(sdk, project_id, timeout=timeout)
+        if status is None:
+            return [], False
+        failed = failed_among(sdk, project_id, status, uploaded)
+    for row in failed:
+        err_console.print(f"Failed: {failed_file_line(row)}", highlight=False, markup=False)
+    return failed, True
 
 
 #: What --wait waited for, and what still happens after it.
@@ -176,8 +253,19 @@ _KNOWLEDGE_NOTE = (
 
 
 def _upload_hint(
-    job_ids: list[str], *, ingest: bool, waited: bool, failed: bool, project_id: str | None
+    job_ids: list[str],
+    *,
+    ingest: bool,
+    waited: bool,
+    failed: bool,
+    project_id: str | None,
+    knowledge_failed: bool = False,
+    knowledge_settled: bool = False,
 ) -> str | None:
+    if knowledge_failed:
+        return f"beakr projects retry -P {project_id or '<project>'}"
+    if knowledge_settled:
+        return f"beakr kb ls -P {project_id or '<project>'}"
     if not ingest or not job_ids or failed:
         return None
     if waited:
@@ -186,7 +274,7 @@ def _upload_hint(
 
 
 def _upload_lines(rows: list[dict[str, Any]]) -> list[str]:
-    """``file_id<TAB>path<TAB>job=JOB_ID[<TAB>status=...]`` per uploaded file."""
+    """``file_id<TAB>path<TAB>job=JOB_ID[<TAB>status=...][<TAB>knowledge=...]`` per file."""
     lines = []
     for row in rows:
         artifact = row.get("artifact") or {}
@@ -199,6 +287,11 @@ def _upload_lines(rows: list[dict[str, Any]]) -> list[str]:
         error = job.get("error")
         if isinstance(error, dict) and (error.get("message") or error.get("code")):
             columns.append(f"error={error.get('message') or error.get('code')}")
+        knowledge = row.get("knowledge") or {}
+        if knowledge.get("status"):
+            columns.append(f"knowledge={knowledge['status']}")
+        if knowledge.get("error_code"):
+            columns.append(f"knowledge_error={knowledge['error_code']}")
         lines.append("\t".join(columns))
     return lines
 
