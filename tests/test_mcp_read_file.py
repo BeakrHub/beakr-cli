@@ -1,6 +1,6 @@
 """``read_file`` opens the document a Knowledge citation names, at the cited place.
 
-ROOT CAUSE (Harvey LAB traces, 2026-10-13: all ~79 read_file calls returned
+ROOT CAUSE (agent evaluation traces: all ~79 read_file calls returned
 ``Not found`` or ``(characters 0-0 of 0)``): agents passed the uuid inside a
 citation token, which is the cited VERSION, and the extraction view the tool read
 served its text page by page. The tool then grew a version-to-file lookup and a
@@ -35,7 +35,7 @@ _CAT = json.loads((Path(__file__).parent / "fixtures" / "knowledge_door_results.
 TOKEN = re.findall(r"\{\{artifact:[0-9a-f-]{36}-[^}]+\}\}", _CAT["content"])[0]
 VERSION = re.search(r"[0-9a-f-]{36}", TOKEN).group(0)
 FILE_ID = "6f1c2d3e-4a5b-4c6d-8e7f-901234567890"
-PATH = "matters/1026-00003/Closing/charter.pdf"
+PATH = "deals/acme/closing/charter.pdf"
 
 
 @pytest.fixture(autouse=True)

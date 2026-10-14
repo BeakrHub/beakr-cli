@@ -3,8 +3,7 @@
 Every tool here builds the shared result dict (``{content, coverage, next,
 sources?, ...}``, :mod:`beakr_cli.mcp_result`). The server used to declare an
 ``outputSchema`` and send that dict twice: serialized as JSON in a text block,
-and again as ``structuredContent``. Measured on the Harvey LAB traces
-(scratchpad/dogfood/excerpt-tuning.md, 2026-10-13), that doubled every
+and again as ``structuredContent``. Measured on agent evaluation traces, that doubled every
 Knowledge result: Codex printed both copies into an exec cell it then cut at
 about 10k tokens, and Claude Code refused 41% of results for being over its
 ~50k-character limit. Neither client gave the model anything from the second
@@ -175,7 +174,7 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
 
     The path leads and each token is followed by its place, so ``<path> › <unit>``
     -- what ``read_file`` opens -- sits next to the token a writer cites. On the
-    Harvey runs, tokens rewritten to ``path#part`` made Codex about twice as fast;
+    evaluation runs, tokens rewritten to ``path#part`` made Codex about twice as fast;
     the token stays because writes cite it.
     """
     record = entry["record"]
