@@ -34,6 +34,15 @@ def test_every_tool_uses_the_shared_description_and_tier(monkeypatch):
         assert (tool.meta or {}).get(key) == tool_surface.tier(tool.name), tool.name
 
 
+def test_published_research_guidance_preserves_question_scope():
+    # Updating the Python docstring has no effect: registration takes the
+    # shared description. Assert what an actual tools/list client receives.
+    research = next(tool for tool in _listed() if tool.name == "research")
+    assert "original wording" in research.description
+    assert "exact field or taxonomy label" in research.description
+    assert "complete population coverage" in research.description
+
+
 def test_by_default_this_server_lists_exactly_the_eager_set():
     """W8.2: the small set is the default listing (C042); the rest is discovered."""
     assert [tool.name for tool in _listed()] == tool_surface.eager_tools()
@@ -47,15 +56,14 @@ def test_all_mode_lists_exactly_the_stdio_surface(monkeypatch):
 def test_the_knowledge_tools_are_compact_and_point_at_help_for_asks_full_text():
     # The MCP surfaces carry a compact chooser plus the command index (about
     # 1,000 tokens, down from ~2,600 per session; the engine stack added the
-    # verbatim-excerpt and read_file guidance, then the outside-caller defaults
-    # and how to cite a source to people and in writes); Ask's full description
-    # is one call away as `command: "help"` / `action: "help"` (dogfood row 18).
+    # verbatim-excerpt and read_file guidance); Ask's full description is one
+    # call away as `command: "help"` / `action: "help"` (dogfood row 18).
     read = tool_surface.description("knowledge_base")
     write = tool_surface.description("knowledge_base_write")
     assert "sections: START HERE" in read
     assert "help {topic?}" in read
     assert "What Beakr's own agent is told" not in read + write
-    assert len(read) // 4 < 1_050 and len(write) // 4 < 1_050
+    assert len(read) // 4 < 1050 and len(write) // 4 < 1050
 
 
 def test_the_eager_set_is_the_engines_small_set():

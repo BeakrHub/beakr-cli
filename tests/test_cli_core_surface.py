@@ -328,7 +328,7 @@ def test_end_user_tokens_mint_for_an_external_user():
             "end-user-tokens",
             "mint",
             "--external-user",
-            "5b1f6c2e-8d3a-4e7b-9c1d-2a3b4c5d6e7f",
+            "6f1c2d3e-4a5b-4c6d-8e7f-901234567890",
             "-s",
             "kb:read",
             "--json",
@@ -336,7 +336,7 @@ def test_end_user_tokens_mint_for_an_external_user():
     )
     assert result.exit_code == 0, result.output
     assert _body(mint) == {
-        "external_user_id": "5b1f6c2e-8d3a-4e7b-9c1d-2a3b4c5d6e7f",
+        "external_user_id": "6f1c2d3e-4a5b-4c6d-8e7f-901234567890",
         "scopes": ["kb:read"],
     }
 

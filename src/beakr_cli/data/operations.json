@@ -2090,6 +2090,51 @@
    "summary": "Dismiss a Knowledge proposal"
   },
   {
+   "action": "documents",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document.",
+      "name": "arguments",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Search indexed text, read a document window, or list files.",
+      "enum": [
+       "grep",
+       "read",
+       "ls"
+      ],
+      "name": "command",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "Limit to this project. Required for project-restricted credentials.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/documents",
+   "paginated": false,
+   "path": "/v1/knowledge/documents",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Search and read original documents"
+  },
+  {
    "action": "get-proposal",
    "anonymous": false,
    "area": "knowledge",

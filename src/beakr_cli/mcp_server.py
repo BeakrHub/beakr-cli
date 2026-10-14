@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import re
+import time
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -26,19 +28,17 @@ _INSTRUCTIONS = (
     "Beakr is the team's organizational memory: decisions, processes, ownership and "
     "dated events, so 'why did we do X' is one search away.\n\n"
     "Answer questions about the user's org with citations. Start with knowledge_base "
-    "command='sections': each hit shows the document passage (a verbatim excerpt) that "
-    "supports it; quote it directly, and open the file only when the value you need is "
-    "not in the excerpt. For 'every X', counts and superlatives use 'ls' (by page_type) "
-    "or 'rows' (every card's facts as one table); do not extract the corpus and grep it, "
-    "the knowledge base already indexes every document. Results stay under about 6k "
-    "tokens; when 'next' appears, page with it rather than re-querying. Exact wording: "
+    "command='sections' to find relevant cited sections. Check the excerpt's fidelity "
+    "before quoting it, and open the source when a deciding detail is missing. For "
+    "'every X', counts and superlatives use 'ls' (by page_type) or 'rows' to compare "
+    "cards, then inspect coverage: compilation, scan and result limits can omit records. "
+    "An absent row or graph link does not establish absence from the source documents. "
+    "When 'next' appears, follow it; a card scan cap requires narrower searches, "
+    "whereas row offset only pages rows already found. Exact wording: "
     "command='sources' {page} lists every cited passage. Each Sources line names where a "
-    "document lives and where each cited passage sits (path › p. 7): read_file with that "
-    "path › place, a {{artifact:...}} token or a file id opens the original there. Check a "
-    "decisive value in the file; when the file and a card disagree, the file wins. In "
-    "answers to people, cite inline with the readable reference a result prints "
-    "(tax-memo.docx › p. 7, #deals › message 2026-03-04 14:02 UTC), linked when it has a "
-    "url, or research's [n]. In a "
+    "document lives and where each cited passage sits (path#p. 7): read_file with that "
+    "path#place, a {{artifact:...}} token or a file id opens the original there. Check a "
+    "decisive value in the file; when the file and a card disagree, the file wins. In a "
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
     "available it gives one cited answer across the wiki, documents and connected "
@@ -55,10 +55,8 @@ _INSTRUCTIONS = (
     "itself: do not ask for approval or call accept_proposal. Cite this chat as a "
     "'conversation' source with meta.excerpt. Put a {{key}} citation token after each "
     "factual claim in a section body and list the same sources in sections[].citations "
-    "with a stance; cite with the {{token}}, a read's source_ref or its readable "
-    "reference, and only this conversation, files the user uploaded, or sources Knowledge "
-    "already cites (anything else is refused citation_not_citeable). Never invent Beakr's "
-    "internal ids.\n\n"
+    "with a stance; reuse a read's source_ref there and never invent Beakr's internal "
+    "ids.\n\n"
     "Evidence: an excerpt marked (paraphrase) is the compiler's wording, (human asserted) "
     "was supplied by a person, and (unverified) was never checked against the source -- "
     "open the source before quoting one or resting a conclusion on it. 'at:' locates the "
@@ -323,11 +321,9 @@ def _wiki_result(result: dict) -> dict:
         **({"error_code": outcome["error_code"]} if outcome.get("error_code") else {}),
         # A read's coverage and next-step hints, as the engine sent them
         # (beakr/engines/tools/graph/kb_result_coverage.py in beakr-engine).
-        **(
-            {"coverage": result["coverage"], "next": list(result.get("next") or [])}
-            if isinstance(result.get("coverage"), dict)
-            else {}
-        ),
+        **({"coverage": result["coverage"]} if isinstance(result.get("coverage"), dict) else {}),
+        # Older compact API responses report truncation only through next.
+        "next": list(result.get("next") or []),
     }
 
 
@@ -590,6 +586,25 @@ _GRAPH_MAX_NODES = 30
 # ---------------------------------------------------------------------------
 
 
+@mcp.tool(**tool_surface.tool_kwargs("documents"))
+async def documents(
+    command: str, arguments: dict[str, Any] | None = None, project: str | None = None
+) -> dict:
+    """Search original indexed text or read a document window, within a project."""
+    scoped = await _project_by_name_or_id(project)
+    data = await _call_api(
+        lambda sdk: sdk.knowledge.documents(command, project_id=scoped, **(arguments or {}))
+    )
+    return {
+        "content": data.get("content", ""),
+        "sources": [
+            _public_source(source, citation_key=key)
+            for key, source in (data.get("sources") or {}).items()
+        ],
+        "status": "error" if data.get("is_error") else "ok",
+    }
+
+
 @mcp.tool(**tool_surface.tool_kwargs("research"))
 async def research(
     query: str,
@@ -604,6 +619,13 @@ async def research(
     produce a grounded, cited answer. Use this as the primary tool for
     answering questions about the organization.
 
+    Preserve the user's question and scope when delegating: pass their original
+    wording, adding context only when needed. Do not silently restrict a broad
+    concept to an exact taxonomy label. For counts, averages, all/none claims,
+    inspect checked/not_checked coverage: citations support the listed evidence
+    but do not establish that every qualifying record was found. Resolve material
+    population gaps before presenting a result as exhaustive.
+
     Use this for questions like:
     - "What did we decide about X?"
     - "Who is working on Y?"
@@ -616,11 +638,25 @@ async def research(
         project: Optional project ID to scope the search.
         project_id: Deprecated alias for project.
     """
+    from beakr_cli.research_metadata import (
+        attach_research_metadata,
+        record_failed_research,
+        with_cited_labels,
+    )
+
     scoped = await _project_by_name_or_id(project, project_id)
-    data = await _call_api(lambda sdk: sdk.knowledge.research(query, project_id=scoped))
+    started = time.monotonic()
+    try:
+        data = await _call_api(lambda sdk: sdk.knowledge.research(query, project_id=scoped))
+    except (Exception, asyncio.CancelledError) as exc:
+        record_failed_research(exc, time.monotonic() - started)
+        raise
+
+    data = with_cited_labels(data)
+
     citations = data.get("citations")
     if isinstance(citations, list) and isinstance(data.get("text"), str):
-        return _research_from_citations(data, citations)
+        return attach_research_metadata(_research_from_citations(data, citations), data)
 
     # An engine without the public answer form (no `text` / `citations`).
     # Format the response: replace {{key}} tokens with [N] numbered refs, one
@@ -682,19 +718,22 @@ async def research(
     if meta:
         lines.append(f"\n{' | '.join(meta)}")
 
-    return {
-        "content": "\n".join(lines),
-        # Only the sources the answer cites, in citation order: the researcher
-        # returns everything it read (69 records, ~16k tokens, for a two-citation
-        # answer on the dogfood instance), which the [n] legend never shows.
-        "sources": [
-            _public_source(sources[key], citation_key=key)
-            for key in seen_keys
-            if isinstance(sources.get(key), dict)
-        ],
-        "confidence": confidence or None,
-        "gaps": gaps or None,
-    }
+    return attach_research_metadata(
+        {
+            "content": "\n".join(lines),
+            # Only the sources the answer cites, in citation order: the researcher
+            # returns everything it read (69 records, ~16k tokens, for a two-citation
+            # answer on the dogfood instance), which the [n] legend never shows.
+            "sources": [
+                _public_source(sources[key], citation_key=key)
+                for key in seen_keys
+                if isinstance(sources.get(key), dict)
+            ],
+            "confidence": confidence or None,
+            "gaps": gaps or None,
+        },
+        data,
+    )
 
 
 def _numbered_sources(citations: list[dict]) -> list[str]:

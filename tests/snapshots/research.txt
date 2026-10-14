@@ -53,5 +53,6 @@ Sources:
   [1] helios-charter.pdf
 
 Confidence: high | Gaps: The November tox read-out is not yet in Knowledge.
+Research usage: {"cost_usd": 0.0412, "duration_s": 18.4, "turns": 4}
 --- stderr
 Researching...

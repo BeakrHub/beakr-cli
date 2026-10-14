@@ -4,47 +4,19 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (unreleased)
+## beakr-cli 0.4.0 (2026-10-14)
 
-### CLI and MCP server
+### Changes
 
-- `read_file` (stdio MCP) reads through `POST /v1/artifacts/read`: it takes a
-  file id, version id, citation token or path (`artifact_id` or `path`), with
-  `#<unit>` for the window around one place, and its header names
-  `path#place`. A path naming several files lists them.
-- The Knowledge Sources list leads each document with its path and follows each
-  token with its place (`- deals/acme/memo.pdf: {{token}} #p. 7`), byte for
-  byte as the hosted server renders it.
-- `beakr upload` records where each file sat (`relative_path`): a folder's files
-  their path from the folder's parent, with or without `--no-mirror`, and a file
-  given as a relative path with directories that path.
-- `beakr kb sections` drops `--detail`, which the API now applies to `cat` only.
-- The bundled skill adds the working method: find with the knowledge base,
-  follow `path#place` with `read_file`, verify decisive values in the file.
-- `research` (stdio MCP), `beakr research` and `beakr kb research` render a
-  current engine's answer form: `text` with each cited document numbered once,
-  one `citations` record per document with brief excerpts, and `next` when
-  excerpts were trimmed. The stdio result is the hosted MCP server's, byte for
-  byte, and every Sources list is held to the hosted 8,000-character budget
-  with a "+N more sources" line. An older engine's answer renders as before.
-- A refused `research` call (stdio MCP) answers with the API's
-  `{status, error_code, message, fix}`, as the hosted server does, for example
-  `credits_exhausted` (429) or `research_timeout` (504); out-of-credits is no
-  longer retried first.
-- References print a source and its place with ` › ` (`memo.pdf › p. 7`,
-  `#deals › message 2026-03-04 14:02 UTC`), as the hosted server does;
-  `read_file` takes that form (and still `#`) and reads files and canvases
-  only; a connected item is read from its excerpt and url. The server
-  instructions and the bundled skill say how to cite: the readable
-  reference to people, and in writes only this conversation, the user's own
-  uploads or sources Knowledge already cites.
-- `beakr external-users show|edit|rm` and `beakr end-user-tokens mint
-  --external-user` take the external user's `user_id` and refuse an
-  `external_id` (unique only per creating service account) with the
-  `beakr external-users ls --external-id` command that finds it.
-- `beakr mcp` waits up to 170s for a call (was 90s), and research from any
-  command waits up to 170s (the SDK's research timeout): the engine allows
-  research up to 150s.
+- `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
+  and lists (`ls`) original indexed files. It requires `projects:read`; a
+  project-restricted credential must supply one of its authorized projects.
+  The feature returns 404 until enabled. Scan notices identify incomplete results.
+- `POST /v1/knowledge/research` supports an optional research engine with
+  `checked`, `not_checked`, `stopped_early`, `subtasks`, `engine`, `lead_model`,
+  and `sources_consulted` fields. Its optional stronger lead shares the same
+  project restrictions. The caller rate limit is now 30 requests per minute;
+  concurrent-run and usage limits still apply.
 
 ### Documented surface
 
@@ -68,7 +40,10 @@ Each release lists the public API changes it supports, taken from the API change
   `gaps`, `turns`, `duration_s` and `cost_usd`; `ConversationImported`
   `created`, `appended`, `pending_compound`, `compound_queued` and `stored`;
   `IntegrationOut` `connection_role` and `health_status`; and the Knowledge page,
-  search and revision fields. Behavior is unchanged.
+  search and revision fields. Fields that are never null no longer say they
+  can be: `expires_at` on `UploadSessionOut`, `UploadPartUrl`,
+  `BulkPrepareResponse`, `CreatedLinkOut` and `SendableLinkOut`, and `error` on
+  `ErrorEnvelope` and `FailedFileOut`. Behavior is unchanged.
 - **Documented Knowledge request bodies.** `POST /v1/knowledge/research`
   (`query`, optional `project_id`), `POST /v1/knowledge/wiki/command` (`command`
   and its arguments, flat, plus `scope`, `detail` and `help` with `topic`) and
@@ -189,7 +164,7 @@ Each release lists the public API changes it supports, taken from the API change
 - Clerk OAuth tokens act as the person in the organization the request names
   (`X-Org-Id`, else their active organization), within the token's scopes, and
   only in an organization the person is a member of. An `X-Org-Id` that names no
-  organization answers `404 not_found` rather than falling back to the active
+  organization answers `404 unknown_organization` rather than falling back to the active
   organization. A Clerk OAuth token that is malformed or refused is not
   verified again for a short while, and an address that keeps presenting
   refused tokens answers `429 rate_limited` with `Retry-After`.
@@ -710,7 +685,7 @@ Each release lists the public API changes it supports, taken from the API change
 - **The CLI carries its own private client.** The Python SDK now ships only
   the documented contract. The few undocumented routes the CLI and `beakr mcp`
   call are generated into `beakr_cli._private_api` from the engine's internal
-  contract, filtered to a reviewed `operations.allowlist` (65 operations); a
+  contract, filtered to a reviewed `operations.allowlist` (67 operations); a
   test fails when a call site and the list disagree.
 - **Sign-in through your organization's OAuth issuer.** `beakr auth login`
   opens the issuer's sign-in page (Clerk for the hosted API, named by
@@ -726,8 +701,8 @@ Each release lists the public API changes it supports, taken from the API change
   `beakr org audit|scim|oauth-clients|retention`,
   `beakr projects trash|restore|purge`, project and organization profile
   claims, and creating, changing, reviewing and syncing project, organization
-  and integration skills (and `beakr skills ls --scope`) are not in this
-  release.
+  and integration skills (and `beakr skills ls --scope`) are parked with the
+  engine routes behind them, on the `parked/dev-friendly-full` branch.
   `beakr skills ls`, `sync` and `edit` work on your own library. The
   `org_audit_log` agent tool takes only `limit`, `before` and `cursor`.
 - **A smaller, documented surface.** The CLI, both SDKs and `beakr api` now
@@ -745,8 +720,10 @@ Each release lists the public API changes it supports, taken from the API change
   commands still answer for existing scripts and the web app, without a
   stability promise; the hosted and `beakr mcp` tool sets are unchanged.
 - **Python SDK.** `Beakr` and `AsyncBeakr` attach only the documented
-  resources, and `beakr.api` is generated from the documented contract; it
-  sends no request outside it.
+  resources, and `beakr.api` is generated from the documented contract. The
+  code over undocumented routes moved to the private `beakr_sdk._internal`
+  package (with `beakr_sdk.webhooks`, now `beakr_sdk._internal.webhooks`);
+  it is not exported and not supported for use outside the CLI.
   `interviews.create_link(sendable_id, ...)` is now `interviews.link_for`.
 - **TypeScript SDK.** `Beakr` exposes the same documented resources; the
   webhook helpers and the device-flow, usage, events, exports, imports,
@@ -870,18 +847,3 @@ Each release lists the public API changes it supports, taken from the API change
   `--sso-connection` and `--no-sso-connections`, and `require_sso` /
   `sso_connections` in `org.policy.set` (both SDKs), are removed; the API
   refuses `require_sso`, and enterprise SSO is configured per organization.
-
-## 0.3.3 (2026-10-14)
-
-Security fix. Upgrade with `beakr update` or `uv tool upgrade beakr-cli`.
-
-- The API key saved by `beakr auth login` and `beakr install` lives in
-  `~/.beakr/config.json`. Earlier releases created `~/.beakr` and that file
-  with default permissions (usually readable by every user on the machine).
-  0.3.3 creates the directory `0700` and the file `0600`, writes the file
-  atomically so the key is never briefly readable, and tightens a directory and
-  file an earlier release created the first time it reads them.
-- No other behavior changes; 0.3.3 talks to the same API as 0.3.2.
-
-If other people have accounts on a machine where you used an earlier release,
-consider revoking that API key in the Beakr web app and logging in with a new one.

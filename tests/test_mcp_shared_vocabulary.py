@@ -35,6 +35,7 @@ SHARED_WIKI_TOOLS = {"knowledge_base", "knowledge_base_write"}
 #: shared operation, reached as knowledge_base command='proposals'. The version
 #: pair manages this installed package, not the wiki.
 SURFACE_OWN_TOOLS = {
+    "documents",
     "research",
     "list_projects",
     "get_profile",

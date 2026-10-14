@@ -65,6 +65,18 @@ def render(tool: str, body: dict[str, Any]) -> str:
     """The one text block a tool's result is sent as."""
     text = str(body.get("content") or "").rstrip()
     parts = [text] if text else []
+    # Text is the only payload the model receives. Dropping coverage here made
+    # incomplete scans look exhaustive, even when the backend reported otherwise.
+    coverage = body.get("coverage") or {}
+    if isinstance(coverage, dict) and (
+        coverage.get("complete") is False
+        or coverage.get("has_more")
+        or coverage.get("truncated")
+        or coverage.get("next_cursor") is not None
+    ):
+        parts.append("Coverage: " + json.dumps(coverage, ensure_ascii=False, default=str))
+    if tool == "research" and body.get("research_usage"):
+        parts.append("Research usage: " + json.dumps(body["research_usage"], ensure_ascii=False))
     sources = body.get("sources")
     if tool in _SOURCE_LISTING_TOOLS and isinstance(sources, list) and sources:
         listing = sources_block(sources)

@@ -1,6 +1,6 @@
 """``read_file`` opens the document a Knowledge citation names, at the cited place.
 
-ROOT CAUSE (agent evaluation traces, 2026-10-13: all ~79 read_file calls returned
+ROOT CAUSE (Harvey LAB traces, 2026-10-13: all ~79 read_file calls returned
 ``Not found`` or ``(characters 0-0 of 0)``): agents passed the uuid inside a
 citation token, which is the cited VERSION, and the extraction view the tool read
 served its text page by page. The tool then grew a version-to-file lookup and a
@@ -8,7 +8,7 @@ page walk, and still could not open a file by the path a Sources line printed.
 
 Now one documented route resolves and reads every reference a Knowledge read
 hands out (``POST /v1/artifacts/read``): a file id, a version id, a citation
-token, or the file's path, each optionally with `` › <unit>`` (``memo.pdf › p. 7``).
+token, or the file's path, each optionally with ``#<unit>`` (``memo.pdf#p. 7``).
 These tests pin that every form is exactly one call to that route, that the
 header names ``path#unit`` (the form read_file takes back), and that failures
 answer as the hosted server does.
@@ -106,7 +106,7 @@ async def test_a_unit_read_names_path_and_place_and_the_next_page():
             unit={"locator": "p. 7", "found": True, "page": 7, "page_count": 9},
             text="Page seven: NW-217 is the lead.",
             has_more=True,
-            next_reference=f"{PATH} › p. 8",
+            next_reference=f"{PATH}#p. 8",
         )
     )
     text = await _read({"path": f"{PATH}#p. 7"})
@@ -114,7 +114,7 @@ async def test_a_unit_read_names_path_and_place_and_the_next_page():
         f"{PATH} › p. 7 (page 7 of 9, characters 0-31 of 900; file {FILE_ID} version {VERSION})"
     )
     assert "NW-217 is the lead." in text
-    assert f"Next page: call read_file with '{PATH} › p. 8'." in text
+    assert f"Next page: call read_file with '{PATH}#p. 8'." in text
 
 
 @respx.mock

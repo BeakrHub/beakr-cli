@@ -11,10 +11,20 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=268088e85f60f1c2ed8346259870a0cacbbf14460b52c9f7e21b255ee8fec37d changelog sha256=41bd0d0ccaa468d0228c9cf12be064408fdbb07cf299fec2be3c3023030db16c -->
+<!-- contract-stamp: public-openapi sha256=052db8f1fbbb0e0aba302245f8209a5131ad5a2ca4c422cfcab64d8741e79e03 changelog sha256=e2d5dc6dc75b25e7a999dd1b03cb66d38cc7c49f7dfeff691650831becd0dd40 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
+  and lists (`ls`) original indexed files. It requires `projects:read`; a
+  project-restricted credential must supply one of its authorized projects.
+  The feature returns 404 until enabled. Scan notices identify incomplete results.
+- `POST /v1/knowledge/research` supports an optional research engine with
+  `checked`, `not_checked`, `stopped_early`, `subtasks`, `engine`, `lead_model`,
+  and `sources_consulted` fields. Its optional stronger lead shares the same
+  project restrictions. The caller rate limit is now 30 requests per minute;
+  concurrent-run and usage limits still apply.
 
 ### Documented surface
 
@@ -38,7 +48,10 @@ The first public version.
   `gaps`, `turns`, `duration_s` and `cost_usd`; `ConversationImported`
   `created`, `appended`, `pending_compound`, `compound_queued` and `stored`;
   `IntegrationOut` `connection_role` and `health_status`; and the Knowledge page,
-  search and revision fields. Behavior is unchanged.
+  search and revision fields. Fields that are never null no longer say they
+  can be: `expires_at` on `UploadSessionOut`, `UploadPartUrl`,
+  `BulkPrepareResponse`, `CreatedLinkOut` and `SendableLinkOut`, and `error` on
+  `ErrorEnvelope` and `FailedFileOut`. Behavior is unchanged.
 - **Documented Knowledge request bodies.** `POST /v1/knowledge/research`
   (`query`, optional `project_id`), `POST /v1/knowledge/wiki/command` (`command`
   and its arguments, flat, plus `scope`, `detail` and `help` with `topic`) and
@@ -159,7 +172,7 @@ The first public version.
 - Clerk OAuth tokens act as the person in the organization the request names
   (`X-Org-Id`, else their active organization), within the token's scopes, and
   only in an organization the person is a member of. An `X-Org-Id` that names no
-  organization answers `404 not_found` rather than falling back to the active
+  organization answers `404 unknown_organization` rather than falling back to the active
   organization. A Clerk OAuth token that is malformed or refused is not
   verified again for a short while, and an address that keeps presenting
   refused tokens answers `429 rate_limited` with `Retry-After`.
