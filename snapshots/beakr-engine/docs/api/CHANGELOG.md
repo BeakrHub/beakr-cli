@@ -11,10 +11,26 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=052db8f1fbbb0e0aba302245f8209a5131ad5a2ca4c422cfcab64d8741e79e03 changelog sha256=e2d5dc6dc75b25e7a999dd1b03cb66d38cc7c49f7dfeff691650831becd0dd40 -->
+<!-- contract-stamp: public-openapi sha256=1b9b3be9b739b90c45f54abb2b5c9311160da92391d0cc663f0cec762528be1b changelog sha256=f914be2315eec414acb85e4894ae3ddfcd7f624a1d2c707bce8cd801df87b13e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- Clarify research response metadata for examined evidence, subtasks, early stops,
+  engine and lead model, and source-revert counts for commits, applied changes and
+  conflicts. Response fields and behavior are unchanged.
+
+- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` now accepts
+  API keys with `kb:write`. Project-restricted keys must name an allowed
+  `project_id`. For uploaded files, pass `artifact` and a version UUID; undo
+  versions newest first. File bytes are retained. Inspect `status`, `skipped`,
+  `conflicts`, and `proposals`: a blocked result may have applied some changes
+  while preserving later edits that conflict with the undo.
+  `conflict_details` identifies each conflicting change by `commit_id`,
+  `change_id`, `page_id`, and `reason` for headless review. `page_ids` continues
+  to list only pages successfully changed by the revert. Supply `Idempotency-Key`
+  to replay the original outcome on retries for 24 hours. Reusing the key with
+  a different `project_id` returns 409.
 
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
