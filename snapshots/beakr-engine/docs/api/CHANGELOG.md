@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d9bbb4332bfa5937bf0ef2e8af47ed90c304c238fab2240e3b99a6ac55d7fdab changelog sha256=c8298b2108b22e287e7fbc11cd787db8fb63bcdebdfa8c3dbe28a7411ab9285d -->
+<!-- contract-stamp: public-openapi sha256=88d385982db0bcb8262ca8cf3dcc065e5eec3b9c89459e345b8c7a4059586254 changelog sha256=f57616f030a944c380dd9b4c9fb296ec9a1f0d7fd76f50dcc666c3321bc8f79d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -82,6 +82,18 @@ The first public version.
   results name citations the same readable way. `ResearchResult` fields `checked`, `not_checked`,
   `sources_consulted`, `subtasks`, `stopped_early`, `engine` and `lead_model`
   now say what they hold.
+- `POST /v1/knowledge/wiki/command` supports continuing a chronological timeline without
+  `timeline_query` using `cursor`. Timeline coverage distinguishes dated candidates
+  examined (`scanned`) from results shown, reports whether an unqueried scan reached
+  the end (`scan_complete`), and supplies `next_cursor` when another chronological
+  window remains. Repeat the same filters when continuing. Semantic queries select
+  relevant sections first and remain non-exhaustive; they do not return a cursor.
+  Command guidance also states that the `rows` query is a literal substring filter.
+  Compact/full source-sidecar Knowledge reads can report `coverage.truncated` when
+  their response budget omits text; other reads may omit this field.
+- `POST /v1/knowledge/research` now documents what its coverage reports, subtask
+  count, early-stop indicator, engine and lead-model fields mean. Response behavior
+  is unchanged.
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
   project-restricted credential must supply one of its authorized projects.
