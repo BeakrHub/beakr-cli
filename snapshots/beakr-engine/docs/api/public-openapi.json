@@ -12174,6 +12174,18 @@
             ],
             "description": "Cursor for the next older page of messages; absent when the response was not paged."
           },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the conversation started: null for the web app or the API, or slack, email or text when the person messaged Beakr there.",
+            "title": "Origin"
+          },
           "profile_builder_meta": {
             "anyOf": [
               {
@@ -12470,6 +12482,18 @@
             ],
             "description": "Models to use instead of the defaults, by role.",
             "title": "Model Overrides"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the conversation started: null for the web app or the API, or slack, email or text when the person messaged Beakr there.",
+            "title": "Origin"
           },
           "project_ids": {
             "default": [],

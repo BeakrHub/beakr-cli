@@ -11,11 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d9bbb4332bfa5937bf0ef2e8af47ed90c304c238fab2240e3b99a6ac55d7fdab changelog sha256=c8298b2108b22e287e7fbc11cd787db8fb63bcdebdfa8c3dbe28a7411ab9285d -->
+<!-- contract-stamp: public-openapi sha256=aee0350e5a53c92e261a64364cacbf23660c8c3a7fa6a270c0f5dba20ef75ee4 changelog sha256=b6bfbe1f7e7c16072da76b0b9b03b1ee1b2c0edbfbfe39c8a896bad4b69782a2 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack`, `email`
+  or `text` for one a person started by messaging Beakr there.
 - `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
   as a duplicate of one already in the same place: the `artifact_index` job is
   `failed` with `error.code` `duplicate` and `error.duplicate_of`
