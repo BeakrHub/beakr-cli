@@ -17,6 +17,7 @@ envelope.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, TypeVar
 
@@ -45,8 +46,22 @@ def error_fields(response: httpx.Response) -> dict[str, str | None]:
     except ValueError:
         body = None
     error = body.get("error") if isinstance(body, dict) else None
+    candidates = [
+        error.get("request_id") if isinstance(error, dict) else None,
+        response.headers.get("x-request-id"),
+    ]
+    request_id = next(
+        (
+            v
+            for v in candidates
+            if isinstance(v, str) and re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", v)
+        ),
+        None,
+    )
+    correlation = {"request_id": request_id} if request_id else {}
     if isinstance(error, dict) and error.get("message"):
         return {
+            **correlation,
             "error_code": str(error["code"]) if error.get("code") else None,
             "message": str(error["message"]),
             "fix": str(error["fix"]) if error.get("fix") else None,
@@ -58,7 +73,7 @@ def error_fields(response: httpx.Response) -> dict[str, str | None]:
         message = detail
     else:
         message = f"HTTP {response.status_code} from {response.request.url.path}"
-    return {"error_code": None, "message": message, "fix": None}
+    return {"error_code": None, "message": message, "fix": None, **correlation}
 
 
 def describe_error(response: httpx.Response) -> str:
@@ -66,7 +81,8 @@ def describe_error(response: httpx.Response) -> str:
     fields = error_fields(response)
     code = fields["error_code"]
     text = f"{fields['message']} ({code})" if code else str(fields["message"])
-    return f"{text} To fix: {fields['fix']}" if fields["fix"] else text
+    text = f"{text} To fix: {fields['fix']}" if fields["fix"] else text
+    return f"{text} (request_id: {fields['request_id']})" if fields.get("request_id") else text
 
 
 async def call_api(request: Callable[[AsyncBeakr], Awaitable[T]]) -> T:

@@ -4,6 +4,12 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## Unreleased
+
+- Preserve API request IDs in MCP error results and readable API error messages,
+  including gateway responses that provide only `X-Request-ID`. This makes a
+  failed call traceable without retrying it solely to obtain diagnostics.
+
 ## beakr-cli 0.4.0 (2026-10-14)
 
 ### Changes

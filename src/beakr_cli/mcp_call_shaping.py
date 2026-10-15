@@ -127,4 +127,7 @@ def compact_error(tool: str, body: dict[str, Any]) -> dict[str, Any]:
     compact["message"] = message or "The call failed."
     if fix:
         compact["fix"] = fix
+    request_id = body.get("request_id")
+    if isinstance(request_id, str) and re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", request_id):
+        compact["request_id"] = request_id
     return compact
