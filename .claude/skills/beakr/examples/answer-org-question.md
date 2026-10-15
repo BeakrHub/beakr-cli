@@ -12,7 +12,7 @@ Call `research` with the question:
 research(query="who owns the onboarding flow")
 ```
 
-The response returns a cited answer mentioning Sarah Chen [1] and the pages it drew on.
+The response returns a cited answer mentioning Sarah Chen (Onboarding › Owner) and the pages it drew on.
 
 ### Step 2: Verify if needed
 If the user wants more detail, find the exact section and read just that:

@@ -208,11 +208,12 @@ def test_a_compact_records_sources_footer_matches_the_hosted_one(hosted_render) 
     assert "Kd was 38 nM in triplicate." in stdio
 
 
-def test_sources_lines_lead_with_the_path_and_each_tokens_place(hosted_render) -> None:
+def test_sources_lines_lead_with_the_path_and_every_cited_place(hosted_render) -> None:
     # Each passage says where it sits (``unit_locator``) and each document where it
-    # lives (``display_path``), so the footer shows ``path: {{token}} › p. 7`` --
-    # ``path#p. 7`` is what read_file opens. The stdio copy must match the hosted
-    # renderer byte for byte, compact excerpts included.
+    # lives (``display_path``), so the footer shows ``path › p. 7, p. 9`` -- what
+    # read_file opens -- with no citation tokens: the text cites by readable
+    # reference. The stdio copy must match the hosted renderer byte for byte,
+    # compact excerpts included.
     from beakr_sdk.sources import public_source
 
     from beakr_cli.mcp_render import render
@@ -232,11 +233,12 @@ def test_sources_lines_lead_with_the_path_and_each_tokens_place(hosted_render) -
         ],
         "cited_passages": 2,
     }
-    body = {"content": "Rent {{artifact:v1-u1}}", "sources": [public_source(raw)]}
+    body = {"content": "Rent (memo.pdf › p. 7)", "sources": [public_source(raw)]}
     stdio = render("knowledge_base", body)
     assert stdio == hosted_render.render("knowledge_base", body)
     assert (
-        "- deals/acme/memo.pdf: {{artifact:v1-u1}} › p. 7 {{artifact:v1-u2}} › p. 9 · "
+        "- deals/acme/memo.pdf › p. 7, p. 9 · "
         "read_file 11111111-1111-1111-1111-111111111111 · 2 passages cited"
     ) in stdio
+    assert "{{" not in stdio
     assert '  "Rent is $5."' in stdio

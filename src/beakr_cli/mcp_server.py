@@ -35,9 +35,10 @@ _INSTRUCTIONS = (
     "An absent row or graph link does not establish absence from the source documents. "
     "When 'next' appears, follow it; a card scan cap requires narrower searches, "
     "whereas row offset only pages rows already found. Exact wording: "
-    "command='sources' {page} lists every cited passage. Each Sources line names where a "
-    "document lives and where each cited passage sits (path#p. 7): read_file with that "
-    "path#place, a {{artifact:...}} token or a file id opens the original there. Check a "
+    "command='sources' {page} lists every cited passage. Each citation reads as the "
+    "document and the place in it, in parentheses (memo.pdf \u203a p. 7), and each Sources "
+    "line names where a document lives and every place cited in it: read_file with that "
+    "path \u203a place or a file id opens the original there. Check a "
     "decisive value in the file; when the file and a card disagree, the file wins. In a "
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
@@ -53,10 +54,11 @@ _INSTRUCTIONS = (
     "knowledge_base_write only stages a PROPOSAL: call accept_proposal only when the user "
     "asks to accept that proposal. If the result says auto-approve is on, Beakr applies it "
     "itself: do not ask for approval or call accept_proposal. Cite this chat as a "
-    "'conversation' source with meta.excerpt. Put a {{key}} citation token after each "
-    "factual claim in a section body and list the same sources in sections[].citations "
-    "with a stance; reuse a read's source_ref there and never invent Beakr's internal "
-    "ids.\n\n"
+    "'conversation' source keyed conversation:<label> with meta.excerpt, and put "
+    "{{conversation:<label>}} after the claim it supports. Cite a source Knowledge has "
+    "inline with the readable reference a read printed, in parentheses after the claim "
+    "(memo.pdf \u203a p. 7, Page Title \u203a Section): Beakr stores it as that citation. "
+    "In answers to people cite inline the same way. Never invent Beakr's internal ids.\n\n"
     "Evidence: an excerpt marked (paraphrase) is the compiler's wording, (human asserted) "
     "was supplied by a person, and (unverified) was never checked against the source -- "
     "open the source before quoting one or resting a conclusion on it. 'at:' locates the "
@@ -302,9 +304,19 @@ def _result_text(result: dict) -> str:
 def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
     """Keep only the public source contract; never forward backend row fields.
 
-    The one shape the SDK, the CLI and this server share (``beakr_sdk.sources``).
+    The one shape the SDK, the CLI and this server share (``beakr_sdk.sources``),
+    plus what a Knowledge read adds to name its citations readably: every place
+    the text cites in the document (``cited_places``) and the name it uses for
+    it when that is not ``filename`` (``reference``), as the hosted server's
+    ``formatting.public_source`` keeps them.
     """
-    return _shared_public_source(source, citation_key=citation_key)
+    item = _shared_public_source(source, citation_key=citation_key)
+    places = [str(place) for place in source.get("cited_places") or [] if place]
+    if places:
+        item["cited_places"] = places
+    if source.get("reference"):
+        item["reference"] = str(source["reference"])
+    return item
 
 
 def _wiki_result(result: dict) -> dict:
@@ -346,6 +358,12 @@ def _research_document(key: str, source: dict) -> str:
 #: leaving a reader to infer that an unmarked quote and a "(paraphrase)" one
 #: carry the same weight.
 _SOURCE_NOTE = (
+    "\nCite with the readable reference in parentheses (memo.pdf \u203a p. 7); a Knowledge "
+    "write accepts it as reference, or the source_ref above. Open the document "
+    "(read_file, or its url) before quoting it or resting a conclusion on it."
+)
+#: The note under an older engine's answer, whose Sources list still names tokens.
+_TOKEN_SOURCE_NOTE = (
     "\nCite with the {{token}}. An excerpt marked (paraphrase) is the compiler's "
     "wording, one marked (human asserted) was supplied by a person, and one marked "
     "(unverified) was never checked against the source -- "
@@ -706,7 +724,7 @@ async def research(
             # prose, and without the verdict a compiler paraphrase is
             # indistinguishable from a checked quote.
             lines.extend(_source_lines(src, indent="      ", excerpt_chars=_LIST_EXCERPT_CHARS))
-        lines.append(_SOURCE_NOTE)
+        lines.append(_TOKEN_SOURCE_NOTE)
 
     confidence = data.get("confidence", "")
     gaps = data.get("gaps", "")
@@ -736,44 +754,29 @@ async def research(
     )
 
 
-def _numbered_sources(citations: list[dict]) -> list[str]:
-    """``Sources:`` then ``[n]`` and one entry per cited document, within ``SOURCES_CHARS``.
+def _sources_listing(citations: list[dict]) -> list[str]:
+    """``Sources (N documents):`` then one entry per cited document, within ``SOURCES_CHARS``.
 
-    The hosted server's ``formatting._numbered_sources``: the same Sources list
-    a Knowledge read shows, numbered as the answer's ``[n]`` and capped alike.
+    The hosted server's ``formatting._sources_listing``: the same Sources list a
+    Knowledge read shows, keyed by document, with no citation tokens.
     """
     from beakr_cli import mcp_render
 
-    lines = ["\n---\nSources:"]
-    used = 0
-    for number, record in enumerate(citations, 1):
-        block = mcp_render.sources_block([record]).splitlines()[1:]
-        if not block:
-            continue
-        block[0] = f"[{number}] " + block[0].removeprefix("- ")
-        size = sum(len(line) + 1 for line in block)
-        if number > 1 and used + size > mcp_render.SOURCES_CHARS:
-            lines.append(
-                f"+{len(citations) - number + 1} more sources: knowledge_base command='sources' "
-                "with a citation token reads one."
-            )
-            break
-        lines.extend(block)
-        used += size
-    return lines
+    block = mcp_render.sources_block([_public_source(record) for record in citations])
+    return ["\n---\n" + block] if block else []
 
 
 def _research_from_citations(data: dict, citations: list) -> dict:
     """A research answer in the engine's public form, rendered as the hosted server does.
 
-    The engine already numbers each cited document once in ``text`` and keeps
-    one record per document in ``citations`` (brief excerpts); ``next`` says
-    how to read what it trimmed. Byte for byte the hosted
-    ``formatting.research`` (tests/test_research_rendering.py).
+    The engine already shows each citation in ``text`` as its readable reference
+    (``memo.pdf › p. 7``) and keeps one record per document in ``citations``
+    (brief excerpts); ``next`` says how to read what it trimmed. Byte for byte
+    the hosted ``formatting.research`` (tests/test_research_rendering.py).
     """
     lines = [data["text"]] if data["text"] else []
     if citations:
-        lines.extend(_numbered_sources(citations))
+        lines.extend(_sources_listing(citations))
         lines.append(_SOURCE_NOTE)
     meta = [
         f"{label}: {data[k]}"

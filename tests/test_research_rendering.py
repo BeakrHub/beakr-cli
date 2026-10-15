@@ -1,7 +1,7 @@
 """Research answers in the engine's public form render as the hosted MCP server renders them.
 
 The engine's ``POST /v1/knowledge/research`` now answers with ``text`` (each
-cited document numbered once as ``[n]``), ``citations`` (one record per
+citation shown as its readable reference, ``(memo.pdf › p. 7)``), ``citations`` (one record per
 document, brief excerpts) and, when it trimmed excerpts, ``next``. Root cause
 this guards: the stdio server and ``beakr research`` read only the older
 ``answer`` / ``sources`` form, so against a current engine they printed no
@@ -33,7 +33,7 @@ API = "https://api.test"
 
 def _many_citations() -> dict:
     return {
-        "text": "Answer [1] and [200].",
+        "text": "Answer (Report 0.pdf) and (Report 199.pdf).",
         "citations": [
             {
                 "citation_key": f"artifact:v{n}-u1",
@@ -50,7 +50,8 @@ def _many_citations() -> dict:
 
 def _two_documents() -> dict:
     return {
-        "text": "The lead is NW-217 [1], confirmed in the March review [2].",
+        "text": "The lead is NW-217 (Lead selection.pdf), confirmed in the March review "
+        "(March review).",
         "citations": [
             {
                 "citation_key": "artifact:v1-u3",
@@ -83,11 +84,12 @@ def _stdio(data: dict) -> dict:
     )
 
 
-def test_sources_are_numbered_once_per_document_and_capped() -> None:
+def test_sources_are_listed_once_per_document_and_capped() -> None:
     text = _stdio(_many_citations())["content"]
-    assert text.startswith("Answer [1] and [200].")
-    assert "[1] Reports/Report 0.pdf: {{artifact:v0-u1}}" in text
-    listing = text.split("Sources:", 1)[1]
+    assert text.startswith("Answer (Report 0.pdf) and (Report 199.pdf).")
+    assert "- Reports/Report 0.pdf · read_file f0" in text
+    assert "{{" not in text
+    listing = text.split("Sources (", 1)[1]
     assert len(listing) < mcp_render.SOURCES_CHARS + 2_000
     assert re.search(r"\+\d+ more sources: knowledge_base command='sources'", listing)
 
@@ -130,12 +132,15 @@ def test_the_stdio_result_is_the_hosted_one_byte_for_byte(data) -> None:
     assert json.loads(json.dumps(_stdio(data))) == json.loads(hosted.stdout)
 
 
-def test_research_lines_number_the_documents_and_cap_the_list() -> None:
+def test_research_lines_list_the_documents_and_cap_the_list() -> None:
+    # The text cites by readable reference, so the list has no numbers to match.
     lines = research_lines(_two_documents())
-    assert lines[0] == "The lead is NW-217 [1], confirmed in the March review [2]."
+    assert lines[0] == (
+        "The lead is NW-217 (Lead selection.pdf), confirmed in the March review (March review)."
+    )
     sources = lines[lines.index("sources:") + 1 :]
-    assert sources[0].startswith("[1]\tLead selection.pdf")
-    assert sources[1].startswith("[2]\t")
+    assert sources[0].startswith("-\tLead selection.pdf")
+    assert sources[1].startswith("-\t")
     assert "next:" in lines
     many = research_lines(_many_citations())
     listed = many[many.index("sources:") + 1 :]
@@ -151,9 +156,15 @@ def test_beakr_research_prints_text_sources_and_next(monkeypatch) -> None:
     respx.post(f"{API}/v1/knowledge/research").respond(200, json=_two_documents())
     result = CliRunner().invoke(app, ["research", "Which lead?"])
     assert result.exit_code == 0, result.output
-    assert "NW-217 [1]" in result.output
-    assert "[1] Lead selection.pdf" in result.output
+    assert "NW-217 (Lead selection.pdf)" in result.output
+    assert "- Lead selection.pdf" in result.output
     assert "reads the full excerpt" in result.output
+
+
+def test_an_engine_that_still_numbers_its_text_gets_a_numbered_list() -> None:
+    numbered = {**_two_documents(), "text": "The lead is NW-217 [1], confirmed [2]."}
+    sources = research_lines(numbered)[research_lines(numbered).index("sources:") + 1 :]
+    assert sources[0].startswith("[1]\tLead selection.pdf")
 
 
 def test_an_older_engines_answer_still_renders() -> None:

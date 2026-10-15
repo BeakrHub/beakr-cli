@@ -8,6 +8,31 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Knowledge reads (`POST /v1/knowledge/wiki/command`: `sections`, `cat`, `grep`,
+  `rows`, `sources` and the rest) and answers (`POST /v1/knowledge/research`
+  `text`, and a finished run's `answer.text`) no longer show
+  `{{key}}` citation tokens. Each citation reads as its readable reference in
+  parentheses: `Base rent is $48,000 per year (memo.pdf › p. 7).`, several
+  passages of one document `(memo.pdf › p. 7, p. 9)`, a Slack message
+  `(#deals › message 2026-03-04 14:02 UTC)`, an email
+  `(Q3 budget · from ana@example.com · 2026-03-01 14:02)`, an issue `(PROJ-12)`,
+  a Knowledge page `(Page Title › Section)`. Research `text` uses this form in
+  place of `[1]`, `[2]`; the raw `answer` keeps its tokens. Source records gain
+  `cited_places` (every place the text cites in the document) and `reference`
+  (the name the text uses, when it is not `filename` or `name`). `citation_key`
+  is unchanged. `POST /v1/knowledge/wiki/write` accepts every reference a read
+  prints as a citation's `reference`, Knowledge pages (`Page Title › Section`)
+  included; a short file name that several readable files share resolves to the
+  one Knowledge cites. A write's prose may cite inline the same way: a
+  reference in parentheses after a claim (`Rent is $5 (memo.pdf › p. 7).`) is
+  stored as that citation, and one that names nothing the caller may cite is
+  refused with `citation_not_citeable`. A `conversation`, `agent_note` or
+  `user_note` citation may carry a `key` in its own namespace
+  (`conversation:call-with-ana`) and be cited inline as `{{conversation:call-with-ana}}`.
+  `POST /v1/knowledge/documents` results and `POST /v1/knowledge/wiki/write`
+  results name citations the same readable way. `ResearchResult` fields `checked`, `not_checked`,
+  `sources_consulted`, `subtasks`, `stopped_early`, `engine` and `lead_model`
+  now say what they hold.
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
   project-restricted credential must supply one of its authorized projects.
@@ -847,3 +872,9 @@ Each release lists the public API changes it supports, taken from the API change
   `--sso-connection` and `--no-sso-connections`, and `require_sso` /
   `sso_connections` in `org.policy.set` (both SDKs), are removed; the API
   refuses `require_sso`, and enterprise SSO is configured per organization.
+- **Readable citations in the stdio MCP server.** `beakr mcp` renders Knowledge
+  reads and research answers as the hosted MCP server does: each citation is
+  its readable reference in parentheses (`(memo.pdf › p. 7)`), and the Sources
+  list is keyed by document with every place cited in it, never by `{{key}}`
+  tokens. `beakr research` prints a plain list of cited documents when the
+  answer cites by reference, and a numbered one when an engine still numbers it.

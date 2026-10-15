@@ -7,12 +7,14 @@ reference in order of first use, and the answer is followed by a ``Sources:``
 list with one line per number, so the three commands render citations the same
 way.
 
-A research answer from a current engine comes already numbered: ``text`` cites
-each document once as ``[n]``, ``citations[n-1]`` is that document's record
-(brief excerpts), and ``next`` says how to read what was trimmed. Its Sources
-list is held to the hosted MCP server's ``SOURCES_CHARS``, with a line saying
-how many sources were left out. An older engine's ``answer``/``sources`` form is
-numbered here as before.
+A research answer from a current engine comes already readable: ``text`` cites
+each passage by its readable reference in parentheses (``(memo.pdf › p. 7)``),
+``citations`` holds one record per cited document (brief excerpts), and ``next``
+says how to read what was trimmed. Its Sources list, one line per document, is
+held to the hosted MCP server's ``SOURCES_CHARS``, with a line saying how many
+sources were left out. An engine that still numbered ``text`` as ``[n]`` gets
+a numbered list, and an older engine's ``answer``/``sources`` form is numbered
+here as before.
 """
 
 from __future__ import annotations
@@ -35,14 +37,27 @@ def research_citations(data: dict[str, Any]) -> list[dict[str, Any]] | None:
     return None
 
 
-def numbered_citations(citations: list[dict[str, Any]], separator: str = " ") -> list[str]:
-    """``[n] where`` per cited document, within ``SOURCES_CHARS``, then how many were left out."""
+#: ``[3]``: a citation an engine numbered before citations read as references.
+_NUMBERED = re.compile(r"\[\d+\]")
+
+
+def numbered_citations(
+    citations: list[dict[str, Any]], separator: str = " ", *, text: str | None = None
+) -> list[str]:
+    """``[n] where`` per cited document, within ``SOURCES_CHARS``, then how many were left out.
+
+    When ``text`` cites by readable reference rather than ``[n]`` (a current
+    engine), each line is ``-`` and where the document lives: there is no number
+    for it to match.
+    """
     from beakr_sdk.sources import public_source, source_where
 
+    numbered = text is None or bool(_NUMBERED.search(text))
     lines: list[str] = []
     used = 0
     for number, record in enumerate(citations, 1):
-        line = f"[{number}]{separator}{source_where(public_source(record))}"
+        mark = f"[{number}]" if numbered else "-"
+        line = f"{mark}{separator}{source_where(public_source(record))}"
         if number > 1 and used + len(line) + 1 > SOURCES_CHARS:
             lines.append(f"+{len(citations) - number + 1} more sources (--json lists them all)")
             break
@@ -106,7 +121,7 @@ def _research_details(data: dict[str, Any]) -> list[str]:
 
 
 def research_lines(data: dict[str, Any]) -> list[str]:
-    """A research answer for an agent: the text with ``[n]`` citations, then one
+    """A research answer for an agent: the text with its citations, then one
     line per cited source saying where it lives (no terminal formatting)."""
     from beakr_sdk.sources import public_source, source_where
 
@@ -117,7 +132,11 @@ def research_lines(data: dict[str, Any]) -> list[str]:
     if citations is not None:
         lines = [str(data["text"]).rstrip()]
         if citations:
-            lines += ["", "sources:", *numbered_citations(citations, separator="\t")]
+            lines += [
+                "",
+                "sources:",
+                *numbered_citations(citations, separator="\t", text=str(data["text"])),
+            ]
         if data.get("next"):
             lines += ["", "next:", *(str(hint) for hint in data["next"])]
         details = [f"{k}={data[k]}" for k in ("confidence", "gaps") if data.get(k)]
@@ -142,11 +161,11 @@ def research_lines(data: dict[str, Any]) -> list[str]:
 
 
 def print_research_result(data: dict[str, Any]) -> None:
-    """A ``POST /v1/knowledge/research`` answer: text, numbered sources, confidence, gaps.
+    """A ``POST /v1/knowledge/research`` answer: text, its sources, confidence, gaps.
 
-    A current engine sends ``text`` already numbered with one ``citations``
-    record per document; an older one sends ``answer`` with ``{{key}}`` tokens
-    and ``sources`` keyed by citation key, numbered here.
+    A current engine sends readable ``text`` with one ``citations`` record per
+    document; an older one sends ``answer`` with ``{{key}}`` tokens and
+    ``sources`` keyed by citation key, numbered here.
     """
     from beakr_cli.research_metadata import with_cited_labels
 
@@ -157,7 +176,7 @@ def print_research_result(data: dict[str, Any]) -> None:
             print_markdown(str(data["text"]))
         if citations:
             console.print("\n[bold]Sources:[/bold]")
-            for line in numbered_citations(citations):
+            for line in numbered_citations(citations, text=str(data["text"])):
                 console.print(f"  {line}", highlight=False, markup=False, soft_wrap=True)
         for hint in data.get("next") or []:
             console.print(f"\n{hint}", style="dim", highlight=False, markup=False)

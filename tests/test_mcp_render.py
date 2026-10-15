@@ -45,12 +45,12 @@ def test_sources_list_names_each_document_once_with_its_file_and_one_excerpt():
         "evidence": {"excerpt": "x" * 1000},
     }
     second = {**passage, "citation_key": "artifact:v1-u2", "evidence": {"excerpt": "later"}}
-    text = render(
-        "knowledge_base", {"content": "Body {{artifact:v1-u1}}", "sources": [passage, second]}
-    )
+    text = render("knowledge_base", {"content": "Body (charter.pdf)", "sources": [passage, second]})
     sources = text.split("Sources (1 document):", 1)[1]
-    # The path leads; ``upload`` is left out (the read_file id says Beakr holds it).
-    assert "- charter.pdf: {{artifact:v1-u1}} {{artifact:v1-u2}} · read_file f-1" in sources
+    # The path leads; ``upload`` is left out (the read_file id says Beakr holds it),
+    # and no citation token is listed: the text cites by readable reference.
+    assert "- charter.pdf · read_file f-1" in sources
+    assert "{{" not in sources
     excerpt = sources.split('"', 2)[1]
     assert len(excerpt) <= EXCERPT_CHARS and "later" not in sources
 
@@ -88,7 +88,7 @@ def test_hints_are_added_once():
     )
 
 
-def test_each_token_is_followed_by_where_its_passage_sits():
+def test_the_path_is_followed_by_every_place_cited_in_it():
     record = {
         "citation_key": "artifact:v1-u1",
         "filename": "book.xlsx",
@@ -102,6 +102,6 @@ def test_each_token_is_followed_by_where_its_passage_sits():
     }
     text = render("knowledge_base", {"content": "x", "sources": [record]})
     assert (
-        "- Finance/2026/book.xlsx: {{artifact:v1-u1}} › sheet 2, B4:D9 {{artifact:v1-u3}} "
-        "› sheet 3 · google_drive · https://drive.example/book"
+        "- Finance/2026/book.xlsx › sheet 2, B4:D9, sheet 3 · google_drive · "
+        "https://drive.example/book"
     ) in text

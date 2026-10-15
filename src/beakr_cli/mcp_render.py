@@ -13,11 +13,13 @@ So a result is sent once, as text a model reads directly:
 
 - the tool's ``content``, exactly as the engine rendered it;
 - for the Knowledge tools, a compact ``Sources`` list: one line per cited
-  document (its ``{{token}}``s each with where that passage sits -- ``p. 7``,
-  ``slide 3``, ``sheet 2, B4:D9`` --, where the document lives -- its path, or
-  a connector item's place in its service --, provider, the file id that
-  ``read_file`` opens) with one verbatim excerpt of at most
-  :data:`EXCERPT_CHARS`, capped at :data:`SOURCES_CHARS` in all;
+  document (where it lives -- its path, or a connector item's place in its
+  service --, every place cited in it -- ``p. 7``, ``slide 3``, ``sheet 2,
+  B4:D9`` --, provider, url, the file id that ``read_file`` opens, and the
+  ``source_ref`` a write cites) with one verbatim excerpt of at most
+  :data:`EXCERPT_CHARS`, capped at :data:`SOURCES_CHARS` in all. No citation
+  tokens: the text cites each passage by its readable reference
+  (``memo.pdf › p. 7``);
 - the ``next`` hints when the result is incomplete or names a follow-up.
 
 No ``outputSchema`` is declared, so no client expects ``structuredContent``
@@ -40,11 +42,12 @@ LOCATION_SEPARATOR = " › "
 #: The whole Sources list stays under this; the rest is one ``sources`` call away.
 SOURCES_CHARS = 8_000
 
-#: Citation tokens listed per document before "+N more".
-TOKENS_PER_DOCUMENT = 4
+#: Cited places listed per document before "+N more".
+PLACES_PER_DOCUMENT = 6
 
-#: Tools whose ``content`` names sources only by ``{{token}}``, so the list says
-#: what each token is. ``research`` renders its own numbered Sources in content.
+#: Tools whose ``content`` names sources only by their readable reference, so
+#: the list says where each document lives and how to open and cite it.
+#: ``research`` renders its own Sources list in content.
 _SOURCE_LISTING_TOOLS = frozenset({"knowledge_base", "knowledge_base_write"})
 
 #: The provider of a file uploaded to Beakr (the engine's ``public_sources.UPLOAD_PROVIDER``).
@@ -97,34 +100,37 @@ def _document_key(record: dict[str, Any]) -> str:
 
 
 def sources_block(sources: list[Any]) -> str:
-    """``Sources (N documents, M Knowledge pages):`` then one entry per cited source."""
+    """``Sources (N documents, M Knowledge pages):`` then one entry per cited document.
+
+    No citation tokens: the text names each citation by its readable reference
+    (``memo.pdf › p. 7``), and this list says, once per document, where it
+    lives, every place cited in it, and how to open (``read_file``) and cite
+    (``source_ref``) it.
+    """
     documents: dict[str, dict[str, Any]] = {}
     for record in sources:
         if not isinstance(record, dict):
             continue
         entry = documents.setdefault(
-            _document_key(record), {"record": record, "tokens": [], "units": {}, "excerpt": None}
+            _document_key(record), {"record": record, "places": [], "excerpt": None}
         )
-        # A full record carries one passage (``evidence``); a compact one carries
-        # its document's passages as ``excerpts``, each with its own token. Each
-        # passage says where it sits in the document (``unit_locator``).
-        passages = [
-            (
-                record.get("citation_key"),
-                (record.get("evidence") or {}).get("excerpt"),
-                (record.get("location") or {}).get("unit_locator"),
-            ),
-            *(
-                (excerpt.get("citation_key"), excerpt.get("text"), excerpt.get("unit_locator"))
-                for excerpt in record.get("excerpts") or []
-                if isinstance(excerpt, dict)
-            ),
+        # A full record carries one passage (``evidence``) and its place; a
+        # compact one carries its document's places (``cited_places``) and some
+        # of its passages as ``excerpts``, each with its own place.
+        location = record.get("location") or {}
+        excerpts = [e for e in record.get("excerpts") or [] if isinstance(e, dict)]
+        places = [
+            location.get("unit_locator"),
+            *(record.get("cited_places") or []),
+            *(excerpt.get("unit_locator") for excerpt in excerpts),
         ]
-        for key, excerpt, unit in passages:
-            if key and str(key) not in entry["tokens"]:
-                entry["tokens"].append(str(key))
-            if key and unit:
-                entry["units"].setdefault(str(key), str(unit))
+        for place in places:
+            if place and str(place) not in entry["places"]:
+                entry["places"].append(str(place))
+        for excerpt in [
+            (record.get("evidence") or {}).get("excerpt"),
+            *(excerpt.get("text") for excerpt in excerpts),
+        ]:
             if excerpt and entry["excerpt"] is None:
                 entry["excerpt"] = excerpt
     if not documents:
@@ -170,23 +176,19 @@ def _count_label(entries: list[dict[str, Any]]) -> str:
 
 
 def _document_lines(entry: dict[str, Any]) -> list[str]:
-    """``- <path>: {{token}} #<unit> ... · read_file <id>``, then one excerpt.
+    """``- <path> › <places> · read_file <id> · source_ref <ref>``, then one excerpt.
 
-    The path leads and each token is followed by its place, so ``<path> › <unit>``
-    -- what ``read_file`` opens -- sits next to the token a writer cites. On the
-    evaluation runs, tokens rewritten to ``path#part`` made Codex about twice as fast;
-    the token stays because writes cite it.
+    The path leads and every cited place follows it, so ``<path> › <place>`` --
+    what ``read_file`` opens and a write cites as ``reference`` -- reads as one
+    piece. On evaluation runs, citations rewritten to ``path#part`` made Codex
+    about twice as fast as tokens did.
     """
     record = entry["record"]
     location = record.get("location") or {}
-    tokens = entry["tokens"]
-    units = entry.get("units") or {}
-    shown = " ".join(
-        f"{{{{{t}}}}}" + (f" › {units[t]}" if units.get(t) else "")
-        for t in tokens[:TOKENS_PER_DOCUMENT]
-    )
-    if len(tokens) > TOKENS_PER_DOCUMENT:
-        shown += f" +{len(tokens) - TOKENS_PER_DOCUMENT} more"
+    places = entry.get("places") or []
+    shown = ", ".join(places[:PLACES_PER_DOCUMENT])
+    if len(places) > PLACES_PER_DOCUMENT:
+        shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
     # Where the source lives: a Beakr file's drive path, a connector file's path
     # in its service, or a connector item's place there.
     name = str(
@@ -203,8 +205,11 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     passages = record.get("cited_passages")
     if isinstance(passages, int) and passages > 1:
         where.append(f"{passages} passages cited")
+    if record.get("source_ref"):
+        where.append(f"source_ref {record['source_ref']}")
     tail = f" · {' · '.join(where)}" if where else ""
-    lines = [f"- {name}: {shown}{tail}".rstrip()]
+    head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
+    lines = [f"- {head}{tail}".rstrip()]
     if entry["excerpt"]:
         lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"')
     return lines
