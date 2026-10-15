@@ -142,6 +142,26 @@ def finish(result: Any, *, tool: str, cut_hint: str | None = None) -> dict[str, 
         hint = cut_hint or CUT_HINTS.get(tool, _DEFAULT_CUT_HINT)
         if hint not in hints:
             hints.insert(0, hint)
+    if (
+        tool == "knowledge_base"
+        and coverage.get("command") == "timeline"
+        and _capped_at(text, limit)
+    ):
+        # The backend cursor advances past its entire window, including events
+        # lost to our text cap. Do not offer that cursor or a partial event as
+        # evidence. Replay the original request so the unseen tail is recoverable.
+        body["upstream_coverage"] = dict(coverage)
+        coverage.update(returned=0, complete=False, truncated=True, next_cursor=None)
+        coverage["next_offset"] = None
+        text = (
+            "Timeline window exceeded the response text limit; no event evidence is "
+            "shown. Replay the original request with a smaller limit and the same "
+            "input cursor (omit cursor if the original request had none). Do not "
+            "advance to the backend's next cursor: it skips events not shown here. "
+            "For a single oversized event, set include_content=false, then read its "
+            "cited page or section separately."
+        )
+        hints = ["Replay this window before advancing; preserve the original filters and query."]
     body["content"] = text
     body["coverage"] = coverage
     body["next"] = hints
