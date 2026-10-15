@@ -53,7 +53,7 @@ You are not just a read interface. When the conversation produces something dura
 |------|-------------|
 | `knowledge_base` | Every read over the wiki, chosen by `command`: `sections`, `grep`, `ls`, `cat`, `hover`, `links`, `references`, `timeline`, `rows` (every map card's Facts, Connections or Findings as one table), `provenance`, `blame`, `sources`, `log`, `diff`, `show`, `ontology`, `suggest_parent`, `diagnostics`, `completions`, `proposals`. |
 | `knowledge_base_write` | Every change, chosen by `action`: `edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`, `new`, `edit`, `find_replace`, `mv`, `archive`, `merge`, `copy`, `page_type`. Always stages a proposal. On a project-map card use the three `add_*` actions to add one row or one dated finding, and `edit_rows` to change, merge or delete rows. |
-| `read_file` | The original document a citation points at. Pass the citation's readable reference (`memo.pdf › p. 7`), the `path › place` from a Sources line (`deals/acme/memo.pdf › p. 7`), or the file id. It reads files and canvases only: for a connected item (Slack, email, calendar, Jira) use its excerpt and open its url. Long files come back in pieces (`offset`). |
+| `read_file` | A file's text. Pass the Sources `citation_key` for the exact cited version, or a readable reference (`memo.pdf › p. 7`), `path › place`, version id, or file id. References/file ids may follow the current version after a file changes. Connected items are not files: use their excerpt and url. Long files come back in pieces (`offset`). |
 | `research` | When your client exposes it: one cited answer across the knowledge base, documents and connected services (Slack, Gmail, Calendar, Jira...). |
 | `show_proposal` / `accept_proposal` / `dismiss_proposal` | Review a staged proposal; accept only when the user explicitly asks. |
 | `list_projects` | Discover projects (including the personal one) to use as `scope`. |
@@ -75,12 +75,12 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 - **Start with `sections`.** Each hit shows the document passage (a verbatim excerpt) that supports it. Quote it directly; open the file only when the value you need is not in the excerpt.
 - **The knowledge base replaces a corpus grep.** For "every X", counts and superlatives use `ls` (by `page_type`) or `rows` (one table of every card's facts). Do not extract the documents and grep them; every document, its date and matter are already indexed.
 - **Results stay under about 6k tokens.** When `next` appears, page with it rather than re-querying.
-- **Exact wording:** `sources {page}` lists every cited passage; `read_file` with a citation's reference, a file id or a path opens the original.
+- **Exact wording:** `sources {page}` lists every cited passage; use its `citation_key` with `read_file` for the exact cited version. A readable reference, file id or path may follow a newer version after the file changes.
 
 ## Find, then verify in the file
 
-1. **Find** with the knowledge base (`sections`, `rows`, `cat`). Each citation reads as the document and the place in it, in parentheses: `Base rent is $48,000 per year (memo.pdf › p. 7).` Each Sources line names where a cited document lives, every place cited in it, its `read_file` id and its `source_ref`: `- deals/acme/memo.pdf › p. 7, p. 9 · read_file <id> · source_ref <ref>`.
-2. **Follow** that `path › place` with `read_file` (`deals/acme/memo.pdf › p. 7`, `book.xlsx › sheet 2, B4:D9`); it returns the text around that place. When the files are on your local disk, open the path there directly.
+1. **Find** with the knowledge base (`sections`, `rows`, `cat`). Each citation reads as the document and place in parentheses: `Base rent is $48,000 per year (memo.pdf › p. 7).` Each Sources line names where the document lives, every cited place, its version-pinned `citation_key`, `read_file` id and `source_ref`: `- deals/acme/memo.pdf › p. 7, p. 9 · read_file <id> · citation_key <key> · source_ref <ref>`.
+2. **Follow** `citation_key` with `read_file` when you need the exact cited version. A `path › place` is convenient when the file has not changed (`deals/acme/memo.pdf › p. 7`, `book.xlsx › sheet 2, B4:D9`). When files are local, open the path directly.
 3. **Verify** every decisive value (an amount, date, count, name) in the file before you rely on it. When the file and a card disagree, the file wins: say so, and cite the file by its reference.
 - **Codex:** print only the result's text, and make one Knowledge call per exec cell.
 
@@ -97,7 +97,7 @@ User asks for every X, a count or a superlative
   → knowledge_base ls {page_type} or rows {table: facts, ...}
 
 User needs the exact wording or a value the excerpt lacks
-  → read_file {path: "<path> › <place>"} from the Sources line (or the citation's reference)
+  → read_file {path: "<citation_key>"} for the exact cited version (or use `<path> › <place>` when current)
 
 User wants an exact name, ID, or phrase
   → knowledge_base grep {query}

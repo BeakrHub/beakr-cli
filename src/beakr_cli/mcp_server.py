@@ -37,8 +37,9 @@ _INSTRUCTIONS = (
     "whereas row offset only pages rows already found. Exact wording: "
     "command='sources' {page} lists every cited passage. Each citation reads as the "
     "document and the place in it, in parentheses (memo.pdf \u203a p. 7), and each Sources "
-    "line names where a document lives and every place cited in it: read_file with that "
-    "path \u203a place or a file id opens the original there. Check a "
+    "line names where a document lives and every place cited in it, plus its citation_key. "
+    "Use that key with read_file for the exact cited version; a path \u203a place or file id "
+    "may follow a newer version after the file changes. Check a "
     "decisive value in the file; when the file and a card disagree, the file wins. In a "
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
@@ -342,12 +343,22 @@ def _wiki_result(result: dict) -> dict:
 #: A span token's passage suffix: ``artifact:<version>-u3`` is passage 3 of the
 #: document ``artifact:<version>``.
 _SPAN_SUFFIX = re.compile(r"-u\d+$")
+_VERSION_KEY = re.compile(
+    r"^(?P<kind>artifact|unit):(?P<id>[0-9a-fA-F]{8}-[0-9a-fA-F-]{27})"
+)
 
 
 def _research_document(key: str, source: dict) -> str:
     """What makes two cited passages the same document in a research answer."""
     meta = source.get("meta") or {}
-    for name in ("artifact_id", "file_id", "artifact_version_id"):
+    for name in ("artifact_version_id", "unit_version_id"):
+        value = source.get(name) or meta.get(name) or (source.get("location") or {}).get(name)
+        if value:
+            return f"{name}:{value}"
+    match = _VERSION_KEY.match(key)
+    if match:
+        return f"{match.group('kind')}:{match.group('id')}"
+    for name in ("artifact_id", "unit_id", "file_id"):
         value = source.get(name) or meta.get(name) or (source.get("location") or {}).get(name)
         if value:
             return f"{name}:{value}"
@@ -358,9 +369,10 @@ def _research_document(key: str, source: dict) -> str:
 #: leaving a reader to infer that an unmarked quote and a "(paraphrase)" one
 #: carry the same weight.
 _SOURCE_NOTE = (
-    "\nCite with the readable reference in parentheses (memo.pdf \u203a p. 7); a Knowledge "
-    "write accepts it as reference, or the source_ref above. Open the document "
-    "(read_file, or its url) before quoting it or resting a conclusion on it."
+    "\nCite people with the readable reference in parentheses (memo.pdf \u203a p. 7); a "
+    "Knowledge write accepts it as reference, or the source_ref above. Use citation_key "
+    "with read_file for the exact cited version, especially when the source changed. Open "
+    "the document (read_file, or its url) before quoting it or resting a conclusion on it."
 )
 #: The note under an older engine's answer, whose Sources list still names tokens.
 _TOKEN_SOURCE_NOTE = (

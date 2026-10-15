@@ -1,57 +1,70 @@
-"""What the stdio MCP server sends back for a tool call: one text block.
+"""What the hosted MCP server sends back for a tool call: one text block.
 
-Every tool here builds the shared result dict (``{content, coverage, next,
-sources?, ...}``, :mod:`beakr_cli.mcp_result`). The server used to declare an
-``outputSchema`` and send that dict twice: serialized as JSON in a text block,
-and again as ``structuredContent``. Measured on agent evaluation traces, that doubled every
-Knowledge result: Codex printed both copies into an exec cell it then cut at
-about 10k tokens, and Claude Code refused 41% of results for being over its
+Every tool builds the shared result dict (``{content, coverage, next, sources?,
+...}``, :func:`beakr.api.mcp_remote.formatting.finish`). The server used to send
+that dict twice: serialized as JSON in a text block, and again as
+``structuredContent``. Measured on agent evaluation traces (2026-10-13), that
+doubled every Knowledge result: Codex printed both copies into an exec cell it
+then cut at about 10k tokens, and Claude Code refused results over its
 ~50k-character limit. Neither client gave the model anything from the second
 copy that the first did not already hold.
 
-So a result is sent once, as text a model reads directly:
+So a result is sent once, as text a model reads directly, exactly as beakr-cli's
+stdio server renders it (``beakr_cli.mcp_render``; its parity test asserts the
+stdio text equals :func:`render` of the hosted dict):
 
 - the tool's ``content``, exactly as the engine rendered it;
 - for the Knowledge tools, a compact ``Sources`` list: one line per cited
   document (where it lives -- its path, or a connector item's place in its
   service --, every place cited in it -- ``p. 7``, ``slide 3``, ``sheet 2,
   B4:D9`` --, provider, url, the file id that ``read_file`` opens, and the
-  ``source_ref`` a write cites) with one verbatim excerpt of at most
-  :data:`EXCERPT_CHARS`, capped at :data:`SOURCES_CHARS` in all. No citation
-  tokens: the text cites each passage by its readable reference
+  ``source_ref`` a write cites, and the plain ``citation_key`` that pins the
+  exact cited version/passage) with one verbatim excerpt of at most
+  :data:`EXCERPT_CHARS`, capped at :data:`SOURCES_CHARS` in all. No inline
+  ``{{token}}`` markers: the text cites each passage by its readable reference
   (``memo.pdf › p. 7``);
 - the ``next`` hints when the result is incomplete or names a follow-up.
 
-No ``outputSchema`` is declared, so no client expects ``structuredContent``
-(the MCP spec requires it whenever a schema is declared). Errors are the same
-one block: ``{status, error_code, message, fix}`` as compact JSON.
+No tool declares an ``outputSchema``, so no client expects ``structuredContent``
+(the MCP spec requires it whenever a schema is declared). Errors are one block
+too: ``{status, error_code, message, fix}`` as compact JSON.
 """
 
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
-#: Verbatim excerpt shown per cited document. 300 characters held 87-90% of
-#: the evidence answers used (excerpt-tuning.md, Q3).
-EXCERPT_CHARS = 300
+#: The provider of a file Beakr holds itself. Equals
+#: ``beakr.services.public_sources.UPLOAD_PROVIDER``; repeated here because this
+#: module must import nothing from ``beakr`` (beakr-cli loads it standalone for
+#: its parity test). tests/unit/test_mcp_render_standalone.py checks both.
+UPLOAD_PROVIDER = "upload"
 
-# Shared with the hosted renderer and its file-read formatter.
-LOCATION_SEPARATOR = " › "
+#: Between a source and the place inside it (``memo.pdf › p. 7``). Equals
+#: ``beakr.services.source_locations.unit_locator.LOCATION_SEPARATOR``; repeated
+#: for the same standalone reason as ``UPLOAD_PROVIDER``.
+LOCATION_SEPARATOR = " \u203a "
+
+#: Verbatim excerpt shown per cited document. 300 characters held 87-90% of
+#: the evidence answers used (an excerpt-length measurement on evaluation runs).
+EXCERPT_CHARS = 300
 
 #: The whole Sources list stays under this; the rest is one ``sources`` call away.
 SOURCES_CHARS = 8_000
 
-#: Cited places listed per document before "+N more".
+#: Cited places and version-pinned keys listed per document before "+N more".
 PLACES_PER_DOCUMENT = 6
+CITATION_KEYS_PER_DOCUMENT = 6
 
 #: Tools whose ``content`` names sources only by their readable reference, so
 #: the list says where each document lives and how to open and cite it.
 #: ``research`` renders its own Sources list in content.
 _SOURCE_LISTING_TOOLS = frozenset({"knowledge_base", "knowledge_base_write"})
 
-#: The provider of a file uploaded to Beakr (the engine's ``public_sources.UPLOAD_PROVIDER``).
-UPLOAD_PROVIDER = "upload"
+#: A hint every refused Knowledge call carries; the message already says it.
+_GENERIC_FIXES = frozenset({"Correct the call as the message says and retry; nothing was read."})
 
 
 def render(tool: str, body: dict[str, Any]) -> str:
@@ -81,12 +94,55 @@ def render(tool: str, body: dict[str, Any]) -> str:
     return "\n\n".join(parts) if parts else "(no output)"
 
 
+def error_text(
+    *,
+    message: str,
+    error_code: str | None = None,
+    fix: str | None = None,
+    hints: list[str] | None = None,
+) -> str:
+    """An error as compact JSON: ``{status, error_code, message, fix}``.
+
+    ``fix`` falls back to the result's own hints when the route sent none.
+    """
+    useful = [hint for hint in hints or [] if hint not in _GENERIC_FIXES]
+    compact: dict[str, Any] = {"status": "error"}
+    if error_code:
+        compact["error_code"] = error_code
+    compact["message"] = message.strip() or "The call failed."
+    resolved_fix = fix or (" ".join(useful) or None)
+    if resolved_fix:
+        compact["fix"] = resolved_fix
+    return json.dumps(compact, separators=(", ", ": "))
+
+
+def body_error_text(body: dict[str, Any]) -> str:
+    """:func:`error_text` for a tool result whose ``status`` is ``error``."""
+    return error_text(
+        message=str(body.get("message") or body.get("content") or ""),
+        error_code=body.get("error_code"),
+        fix=body.get("fix"),
+        hints=[str(hint) for hint in body.get("next") or []],
+    )
+
+
 def _one_line(value: Any, width: int) -> str:
     text = " ".join(str(value).split())
     return text if len(text) <= width else text[: width - 1].rstrip() + "…"
 
 
+_VERSION_CITATION = re.compile(
+    r"^(?P<kind>artifact|unit):(?P<id>[0-9a-fA-F]{8}-[0-9a-fA-F-]{27})"
+)
+
+
 def _document_key(record: dict[str, Any]) -> str:
+    # The citation key carries the exact version. Prefer it to a file id so two
+    # cited versions of the same file are never merged into one Sources entry.
+    citation_key = str(record.get("citation_key") or "")
+    match = _VERSION_CITATION.match(citation_key)
+    if match:
+        return f"{match.group('kind')}:{match.group('id')}"
     location = record.get("location") or {}
     return str(
         location.get("file_id")
@@ -94,7 +150,7 @@ def _document_key(record: dict[str, Any]) -> str:
         or location.get("display_path")
         or record.get("filename")
         or record.get("name")
-        or record.get("citation_key")
+        or citation_key
         or id(record)
     )
 
@@ -112,7 +168,8 @@ def sources_block(sources: list[Any]) -> str:
         if not isinstance(record, dict):
             continue
         entry = documents.setdefault(
-            _document_key(record), {"record": record, "places": [], "excerpt": None}
+            _document_key(record),
+            {"record": record, "places": [], "citation_keys": [], "excerpt": None},
         )
         # A full record carries one passage (``evidence``) and its place; a
         # compact one carries its document's places (``cited_places``) and some
@@ -127,6 +184,12 @@ def sources_block(sources: list[Any]) -> str:
         for place in places:
             if place and str(place) not in entry["places"]:
                 entry["places"].append(str(place))
+        for key in [
+            record.get("citation_key"),
+            *(excerpt.get("citation_key") for excerpt in excerpts),
+        ]:
+            if key and str(key) not in entry["citation_keys"]:
+                entry["citation_keys"].append(str(key))
         for excerpt in [
             (record.get("evidence") or {}).get("excerpt"),
             *(excerpt.get("text") for excerpt in excerpts),
@@ -202,12 +265,22 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         where.append(str(location["url"]))
     if location.get("file_id"):
         where.append(f"read_file {location['file_id']}")
+    status = record.get("status") or {}
+    if status.get("changed_since_cited"):
+        where.append("source changed since cited; use citation_key for the cited version")
+    keys = entry.get("citation_keys") or []
+    if keys:
+        shown_keys = ", ".join(keys[:CITATION_KEYS_PER_DOCUMENT])
+        if len(keys) > CITATION_KEYS_PER_DOCUMENT:
+            shown_keys += f" +{len(keys) - CITATION_KEYS_PER_DOCUMENT} more"
+        label = "citation_key" if len(keys) == 1 else "citation_keys"
+        where.append(f"{label} {shown_keys}")
     passages = record.get("cited_passages")
     if isinstance(passages, int) and passages > 1:
         where.append(f"{passages} passages cited")
     if record.get("source_ref"):
         where.append(f"source_ref {record['source_ref']}")
-    tail = f" · {' · '.join(where)}" if where else ""
+    tail = f" \u00b7 {' \u00b7 '.join(where)}" if where else ""
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     lines = [f"- {head}{tail}".rstrip()]
     if entry["excerpt"]:

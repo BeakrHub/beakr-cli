@@ -47,9 +47,10 @@ def test_sources_list_names_each_document_once_with_its_file_and_one_excerpt():
     second = {**passage, "citation_key": "artifact:v1-u2", "evidence": {"excerpt": "later"}}
     text = render("knowledge_base", {"content": "Body (charter.pdf)", "sources": [passage, second]})
     sources = text.split("Sources (1 document):", 1)[1]
-    # The path leads; ``upload`` is left out (the read_file id says Beakr holds it),
-    # and no citation token is listed: the text cites by readable reference.
+    # The path leads; ``upload`` is left out (the read_file id says Beakr holds it).
+    # Plain citation keys remain available even though inline ``{{tokens}}`` do not.
     assert "- charter.pdf · read_file f-1" in sources
+    assert "citation_keys artifact:v1-u1, artifact:v1-u2" in sources
     assert "{{" not in sources
     excerpt = sources.split('"', 2)[1]
     assert len(excerpt) <= EXCERPT_CHARS and "later" not in sources
@@ -105,3 +106,15 @@ def test_the_path_is_followed_by_every_place_cited_in_it():
         "- Finance/2026/book.xlsx › sheet 2, B4:D9, sheet 3 · google_drive · "
         "https://drive.example/book"
     ) in text
+
+
+def test_a_changed_source_keeps_its_version_pinned_key():
+    record = {
+        "citation_key": "artifact:00000000-0000-4000-8000-000000000001-u1",
+        "filename": "memo.pdf",
+        "location": {"file_id": "f1"},
+        "status": {"changed_since_cited": True},
+    }
+    text = render("knowledge_base", {"content": "Body", "sources": [record]})
+    assert "source changed since cited; use citation_key for the cited version" in text
+    assert "citation_key artifact:00000000-0000-4000-8000-000000000001-u1" in text

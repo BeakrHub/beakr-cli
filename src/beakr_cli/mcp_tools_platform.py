@@ -457,10 +457,12 @@ async def read_file(
 ) -> str | dict[str, Any]:
     """A window of a document's extracted text, as the hosted read_file reads it.
 
-    ``artifact_id`` (or ``path``) may be a file id, a version id, a citation's
-    readable reference or a file's path as a read prints it, or a citation
-    token; with `` › <unit>`` (or ``#<unit>``) after one (``memo.pdf › p. 7``)
-    the window is the text around that place. One route resolves and reads all
+    ``artifact_id`` (or ``path``) may be a file id, a version id, a plain
+    ``citation_key`` from Sources, a citation's readable reference or a file's
+    path as a read prints it. The citation key pins the exact cited version;
+    a short readable reference or file id may follow the current version after
+    a file changes. With `` › <unit>`` (or ``#<unit>``) after one
+    (``memo.pdf › p. 7``) the window is the text around that place. One route resolves and reads all
     of them (``POST /v1/artifacts/read``), so a reference that reaches no
     readable file is one answer whatever the reason.
     """
@@ -468,10 +470,10 @@ async def read_file(
     if not reference:
         return _read_error(
             "invalid_arguments",
-            "Pass `artifact_id`: a file id, a citation's reference from a Knowledge read "
-            "(memo.pdf › p. 7), or a file's path from its Sources (optionally with "
+            "Pass `artifact_id`: a citation_key from Sources (exact cited version), a file "
+            "id, a citation's reference (memo.pdf › p. 7), or a file's path (optionally with "
             "' › <unit>').",
-            "Copy the `read_file <id>`, a citation's reference or the path from a Knowledge "
+            "Copy the citation_key, `read_file <id>`, reference or path from a Knowledge "
             "result's Sources.",
         )
     offset = max(0, int(offset or 0))
@@ -484,8 +486,8 @@ async def read_file(
             # The hosted read_file's error exactly (beakr/api/mcp_remote/tools.py).
             return _read_error(
                 None,
-                "No readable file matches this reference. Pass `artifact_id`: the file id, "
-                "citation token or path from a Knowledge result's Sources (location.file_id, "
+                "No readable file matches this reference. Pass `artifact_id`: the citation_key, "
+                "file id, reference or path from a Knowledge result's Sources (location.file_id, "
                 "or `read_file <id>`).",
             )
         if status == 409:
