@@ -32,7 +32,18 @@ READ = f"{API}/v1/artifacts/read"
 _CAT = json.loads((Path(__file__).parent / "fixtures" / "knowledge_door_results.json").read_text())[
     "reads"
 ]["cat"]["mcp"]
-TOKEN = re.findall(r"\{\{artifact:[0-9a-f-]{36}-[^}]+\}\}", _CAT["content"])[0]
+# A cat cites by readable reference (``(charter.pdf › block 1)``), never by token;
+# read_file still takes the token a record's citation_key names.
+REFERENCE = re.findall(r"\(([^()\n]+ › [^()\n,]+)\)", _CAT["content"])[0]
+TOKEN = (
+    "{{"
+    + next(
+        key
+        for source in _CAT["sources"]
+        if re.fullmatch(r"artifact:[0-9a-f-]{36}-.+", key := str(source.get("citation_key", "")))
+    )
+    + "}}"
+)
 VERSION = re.search(r"[0-9a-f-]{36}", TOKEN).group(0)
 FILE_ID = "6f1c2d3e-4a5b-4c6d-8e7f-901234567890"
 PATH = "deals/acme/closing/charter.pdf"
@@ -82,6 +93,7 @@ async def _read_error(arguments: dict) -> dict:
     [
         ({"artifact_id": FILE_ID}, FILE_ID),
         ({"artifact_id": TOKEN}, TOKEN),
+        ({"artifact_id": REFERENCE}, REFERENCE),
         ({"path": PATH}, PATH),
         ({"path": f"{PATH}#p. 7"}, f"{PATH}#p. 7"),
         ({"artifact_id": "Closing/charter.pdf › p. 7"}, "Closing/charter.pdf › p. 7"),

@@ -179,7 +179,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'bench'", specifier = ">=1.13.0" },
-    { name = "beakr-sdk", git = "https://github.com/BeakrHub/beakr-python?rev=b09312d6c126dc585a6ca8ef20f1d91b424cb919" },
+    { name = "beakr-sdk", git = "https://github.com/BeakrHub/beakr-python?rev=f6676c41eae54d38ec9052f8134c82b25bf2ddc4" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "keyring", specifier = ">=25" },
     { name = "mcp", specifier = ">=1.9,<2" },
@@ -199,7 +199,7 @@ provides-extras = ["dev", "bench"]
 [[package]]
 name = "beakr-sdk"
 version = "0.1.0"
-source = { git = "https://github.com/BeakrHub/beakr-python?rev=b09312d6c126dc585a6ca8ef20f1d91b424cb919#b09312d6c126dc585a6ca8ef20f1d91b424cb919" }
+source = { git = "https://github.com/BeakrHub/beakr-python?rev=f6676c41eae54d38ec9052f8134c82b25bf2ddc4#f6676c41eae54d38ec9052f8134c82b25bf2ddc4" }
 dependencies = [
     { name = "httpx" },
     { name = "keyring" },
