@@ -26,7 +26,9 @@ Each release lists the public API changes it supports, taken from the API change
   `group_by` (counts, sums, minimum and maximum per `entity`, `entity_type`,
   `year` or a column) and `view` `fields` with `field_id` (the field names
   cards use, with counts, types and examples); `timeline` takes `page` (that
-  page and every page beneath it); `hover` and `cat` with `outline` report a
+  page and every page beneath it); `links` takes `offset` to page past one
+  window of incoming links; `rows` takes `after_card` to continue a card scan
+  that stopped at its cap (one project per scan); `hover` and `cat` with `outline` report a
   page's parent, children, incoming links by type and outgoing link count.
   `rows` filters (`attribute`, `to`, `query`) match their words in any order
   with plurals folded, as well as the phrase; nothing that matched before

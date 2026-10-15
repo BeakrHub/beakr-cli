@@ -19294,6 +19294,10 @@
                   }
                 ],
                 "properties": {
+                  "after_card": {
+                    "description": "rows: continue a capped card scan after this card.",
+                    "type": "string"
+                  },
                   "after_section": {
                     "description": "Keyset cursor for provenance: return only the sections that follow this section id in page order. Pass the last section id of the previous window to walk the whole page.",
                     "type": "string"

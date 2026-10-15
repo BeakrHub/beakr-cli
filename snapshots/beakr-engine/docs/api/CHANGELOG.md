@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ae46ac6e1dac2f0ad75db8590c12016c9d5ff49f0f05c43029e0b80d41e09309 changelog sha256=cb4bbcbf76571664e77b40ad9cc5785b4eddcdd59432aa5cbe9e3c3a5c93c92b -->
+<!-- contract-stamp: public-openapi sha256=4116bd8024441233171a8e60dbfd9114f5f67b2176aa5bd7e03b023a21bcf82c changelog sha256=501f2b3ce3f83cd8860a15b6fb1dfd43085717a5ba4b13d548161adccc43a94e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -22,7 +22,9 @@ The first public version.
   `group_by` (counts, sums, minimum and maximum per `entity`, `entity_type`,
   `year` or a column) and `view` `fields` with `field_id` (the field names
   cards use, with counts, types and examples); `timeline` takes `page` (that
-  page and every page beneath it); `hover` and `cat` with `outline` report a
+  page and every page beneath it); `links` takes `offset` to page past one
+  window of incoming links; `rows` takes `after_card` to continue a card scan
+  that stopped at its cap (one project per scan); `hover` and `cat` with `outline` report a
   page's parent, children, incoming links by type and outgoing link count.
   `rows` filters (`attribute`, `to`, `query`) match their words in any order
   with plurals folded, as well as the phrase; nothing that matched before
