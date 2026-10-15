@@ -1,0 +1,30 @@
+{
+  "operation": "GET /v1/projects/{project_id}/knowledge/failed-files",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "artifact_id": "6e9422f6-04ea-41a2-87c1-d41ed1f62713",
+        "filename": "NW-217 stability report.pdf",
+        "path": "Stability/NW-217 stability report.pdf",
+        "error_code": "processing_failed",
+        "reason": "The file could not be read, so nothing from it was added to Knowledge.",
+        "failed_at": "2026-10-14T09:12:00Z",
+        "retryable": true
+      },
+      {
+        "artifact_id": "2b7c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4",
+        "filename": "Assay plate map.xlsx",
+        "path": "Assays/Assay plate map.xlsx",
+        "error_code": "timed_out",
+        "reason": "Adding the file to Knowledge timed out before anything was written.",
+        "failed_at": "2026-10-14T08:40:00Z",
+        "retryable": true
+      }
+    ],
+    "next_cursor": null,
+    "has_more": false
+  }
+}

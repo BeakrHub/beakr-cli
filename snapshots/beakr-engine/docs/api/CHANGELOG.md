@@ -11,10 +11,37 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=808e40fc6dea92c548b15cdf54deaade2a0d2d973174605911d033cec851fcfa changelog sha256=1044d91b11f79fb5bb5871e81a8dfab44cd4e7c8d96de4efbea6bc4aa6a8d386 -->
+<!-- contract-stamp: public-openapi sha256=fd1e0705f183067fcabfd8a34a90cf5cd9fbb2c53d81377d19c82b47a68f5633 changelog sha256=503a1321c05b94a1bea75136b4fc35dba5153ccb4e572218c6ed539bb01f3be3 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- **Know when a project's Knowledge is ready.**
+  `GET /v1/projects/{project_id}/knowledge-summary` (`projects:read`) is now
+  documented, under Projects. Alongside its coverage counts it reports `queued` and `running`
+  files (together `syncing`) and `failed` files (part of `eligible`), `ready`
+  (true when nothing is queued or running), and the most
+  recently failed files in `failed_files` (`failed_limit`, default 20), each with
+  `artifact_id`, `filename`, `path`, a public `error_code`
+  (`processing_failed`, `timed_out`, `concurrent_update` or `compile_failed`),
+  a `reason` safe to show a person, `failed_at` and `retryable`. A project the
+  caller cannot read now answers `404 not_found`, the same as one that does not
+  exist (it answered `403` before).
+- `GET /v1/projects/{project_id}/knowledge/failed-files` (`projects:read`) pages
+  through every failed file, newest first; `failed_files_next_cursor` from the
+  summary is its first `cursor`.
+- `POST /v1/projects/{project_id}/knowledge/retry-failed` (`uploads:write`)
+  sends the project's failed files, or the `artifact_ids` named, to Knowledge
+  again, up to 500 per call, and reports each file's `outcome` (`queued`,
+  `already_queued`, `not_failed`, `not_found` or `skipped`). Repeating it is
+  safe: files already queued or running are left alone. It needs permission to
+  add files to the project (`403 forbidden` otherwise) and is limited to 10
+  requests per minute.
+- `GET /v1/projects` takes `include_knowledge=true` to add each project's
+  `knowledge` (`queued`, `running`, `failed`, `ready`).
+- `GET /v1/bulk/{batch_id}/status` adds each file's `knowledge_status` and a
+  `knowledge` breakdown for the batch (`queued`, `running`, `created`, `failed`,
+  `skipped`, `other`, `not_requested`, `ready`).
 
 - Knowledge reads (`POST /v1/knowledge/wiki/command`: `sections`, `cat`, `grep`,
   `rows`, `sources` and the rest) and answers (`POST /v1/knowledge/research`

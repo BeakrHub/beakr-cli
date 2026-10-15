@@ -1,0 +1,26 @@
+{
+  "operation": "POST /v1/projects/{project_id}/knowledge/retry-failed",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "queued": 1,
+    "already_queued": 1,
+    "not_failed": 0,
+    "not_found": 0,
+    "skipped": 0,
+    "files": [
+      {
+        "artifact_id": "6e9422f6-04ea-41a2-87c1-d41ed1f62713",
+        "outcome": "queued",
+        "reason": null
+      },
+      {
+        "artifact_id": "2b7c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4",
+        "outcome": "already_queued",
+        "reason": null
+      }
+    ],
+    "has_more": false
+  }
+}

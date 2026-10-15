@@ -254,6 +254,7 @@ key can carry). A call outside a key's scopes exits 3 and names the missing scop
 
 ```bash
 beakr projects ls | create NAME | show ID | archive ID | rm ID
+beakr projects status -P ID | retry -P ID [--file FILE_ID]   # Knowledge: ready? what failed?
 beakr projects members ls ID | add ID USER_ID | invite ID EMAIL | rm ID TYPE PRINCIPAL_ID
 beakr members ls | role USER_ID admin | rm USER_ID
 beakr upload report.pdf data/ --project <id> --folder <folder-id>
@@ -264,6 +265,33 @@ beakr integrations tools --provider slack           # what your connected integr
 beakr integrations call slack_search --arg query="assay handover"
 beakr doctor                                        # auth, scopes, API, MCP, hooks, version
 ```
+
+### Know when Knowledge is ready
+
+Uploaded files reach a project's Knowledge in the background after indexing.
+Before asking questions that depend on new files, wait for it, see what failed,
+and retry:
+
+```bash
+beakr upload docs/ -P Research --wait-knowledge     # index, then wait for Knowledge
+#   Knowledge: 12 queued, 3 running, 0 failed
+#   Knowledge: 0 queued, 0 running, 1 failed
+#   Failed: docs/scan.pdf  processing_failed  The file could not be read, ...
+#   exit 1 when an uploaded file failed to index or to reach Knowledge
+beakr projects status -P Research                   # ready / queued / compiling, and failures
+#   Knowledge: compiling (3 running, 12 queued)
+#   Files: 120 files, 103 processed, 2 not sent or out of date
+#   Failed (1):
+#     docs/scan.pdf  processing_failed  The file could not be read, ...  (FILE_ID)
+beakr projects retry -P Research                    # every failed file, or --file FILE_ID
+```
+
+`--wait-knowledge` waits until nothing in the project is queued or running
+(`--timeout` seconds), so it also waits out other files compiling at the same
+time; it reports failures only for the files it uploaded. A retry is safe to
+repeat: files already queued or running are left alone. The MCP server's
+`list_projects` names projects whose Knowledge is still building or has failed
+files, so an agent knows when an answer may be incomplete.
 
 Organization admins manage service accounts (non-human members that own scoped
 keys, for CI and backends). Creating one and minting its keys need a browser
