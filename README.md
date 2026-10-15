@@ -446,6 +446,15 @@ them: here they report and upgrade this installed CLI; the hosted server reports
 its own version and the latest beakr-cli release it is configured with, and its
 `update_beakr` runs nothing and returns the command to run locally (`beakr update`).
 
+When a `documents grep` file listing exceeds MCP's text budget, both servers
+retain complete rows and report a continuation offset after the last visible
+row. Continue with the same project, query and filters at that offset before
+advancing an `after_document` scan cursor. Scan limits and unindexed-document
+warnings remain visible; a page of results does not imply an exhaustive scan.
+Unrecognized response formats keep the generic truncation warning and narrower
+request guidance. This formatting does not change the SDK or terminal CLI's
+API response, perform additional searches, or summarize source evidence.
+
 ## Python SDK
 
 The CLI is built on Beakr's Python SDK, `beakr-sdk` (`import beakr_sdk`), which

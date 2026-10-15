@@ -161,6 +161,7 @@ SOURCES = (
             # The Knowledge notice the hosted list_projects appends: the stdio
             # server carries a copy (test_mcp_knowledge_status_matches_engine).
             "beakr/api/mcp_remote/knowledge_status.py",
+            "beakr/api/mcp_remote/document_listing.py",
             # The compatibility rules scripts/contract_compat.py vendors.
             "beakr/api/public/compat.py",
         ),
