@@ -73,7 +73,10 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 ## Reading evidence
 
 - **Start with `sections`.** Each hit shows the document passage (a verbatim excerpt) that supports it. Quote it directly; open the file only when the value you need is not in the excerpt.
-- **The knowledge base replaces a corpus grep.** For "every X", counts and superlatives use `ls` (by `page_type`) or `rows` (one table of every card's facts). Do not extract the documents and grep them; every document, its date and matter are already indexed.
+- **Three ways in, used together.** Walk the **graph** (a record's children are its documents; its links name its parties, instruments and filings), query the **database** (`rows`: every card's Facts, Connections or Findings as one table, with the page each row came from as `entity`), or read the **text** (`sections`, `grep`, `cat`). Do not extract the documents and grep them; every document, its date and matter are already indexed.
+- **Walk instead of searching again.** `hover {page}` and `cat {page, outline}` show a page's edges; `ls {parent}` lists its documents; `links {page, direction: out}` what it links to; `timeline {page}` its dated events.
+- **`rows` as a database.** Filter (`page_type`, `entity`, `to` for connections pointing at a page, `attribute`, `query`, `regex: true` for patterns, dates, `current_only`), sort (`order_by` any column, `descending`) and aggregate (`group_by` entity, entity_type, year or a column: counts, sums, min, max). Filters match words, not meaning: `view: fields` lists the field names cards actually use, and `field_id` picks one.
+- **0 rows is not absence.** It means no scanned card states the fact under that name. Retry with the names the reply suggests or `view: fields`, then `sections` and the cited documents; never conclude a fact does not exist from an empty `rows`.
 - **Results stay under about 6k tokens.** When `next` appears, page with it rather than re-querying.
 - **Exact wording:** `sources {page}` lists every cited passage; `read_file` with a citation's reference, a file id or a path opens the original.
 
@@ -93,8 +96,17 @@ User asks a question about their org, a fact, a decision or a page
 User asks a broad question and research is available
   → research(query=...)
 
-User asks for every X, a count or a superlative
-  → knowledge_base ls {page_type} or rows {table: facts, ...}
+User asks for the most recent or largest X
+  → knowledge_base rows {table: facts, page_type, attribute, order_by: when (or value), descending: true}; cat the top few, then their children for the executed documents
+
+User asks for every X involving a party, client or instrument
+  → knowledge_base rows {table: connections, to: <page>} or links {page, page_type, relation}
+
+User asks how many X, or for counts per group
+  → knowledge_base ls {page_type} (the whole population, paged), then check each; rows {..., group_by} for counts and totals per group
+
+User asks everything about one record
+  → knowledge_base hover {page}, ls {parent: <page>}, links {page, direction: out}, timeline {page}
 
 User needs the exact wording or a value the excerpt lacks
   → read_file {path: "<path> › <place>"} from the Sources line (or the citation's reference)
@@ -113,6 +125,9 @@ User wants to verify sources for a claim
 
 User wants to create/update a page
   → See [reference/writing-pages.md](reference/writing-pages.md)
+
+You established something the organization will want again (after a cited answer)
+  → propose it: add_fact {page, attribute, value, evidence} for a sourced value (reuse the attribute names rows view: fields lists); add_connection {page, relation, to, evidence} on the more specific card; add_finding {page, date, kind, text, evidence} for your conclusion. An out-of-date value gets a newer dated row, not a deletion.
 
 User wants to audit knowledge base quality
   → See [reference/auditing.md](reference/auditing.md)

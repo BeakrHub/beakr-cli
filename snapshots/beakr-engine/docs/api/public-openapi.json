@@ -19364,12 +19364,28 @@
                     ],
                     "type": "string"
                   },
+                  "direction": {
+                    "description": "links: in (default) or out.",
+                    "enum": [
+                      "in",
+                      "out"
+                    ],
+                    "type": "string"
+                  },
                   "end_date": {
                     "description": "End date YYYY-MM-DD (for timeline).",
                     "type": "string"
                   },
                   "entity": {
                     "description": "rows: card titles containing this.",
+                    "type": "string"
+                  },
+                  "field_id": {
+                    "description": "rows: one field from view=fields, instead of attribute.",
+                    "type": "string"
+                  },
+                  "group_by": {
+                    "description": "rows: counts and totals per entity, entity_type, year or column.",
                     "type": "string"
                   },
                   "include_approx": {
@@ -19439,11 +19455,15 @@
                     "type": "string"
                   },
                   "query": {
-                    "description": "For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query. For rows: a literal substring across cells.",
+                    "description": "For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query. For rows: words across cells, not meaning.",
                     "type": "string"
                   },
+                  "regex": {
+                    "description": "rows: attribute, to and query are regexes.",
+                    "type": "boolean"
+                  },
                   "relation": {
-                    "description": "For links: keep only linking cards whose Connections row to this page states a relation containing this text (case-insensitive), e.g. 'annex of', 'measured'.",
+                    "description": "links: stated relation contains this, e.g. 'lender'.",
                     "type": "string"
                   },
                   "rev": {
@@ -19509,8 +19529,20 @@
                     "description": "For suggest_parent: the title of a page that does not exist yet. Use this instead of `page` when asking where a page you are about to create should be filed.",
                     "type": "string"
                   },
+                  "to": {
+                    "description": "rows, table connections: rows whose To names this page.",
+                    "type": "string"
+                  },
                   "topic": {
                     "description": "With `help`: one command or action to describe instead of all of them.",
+                    "type": "string"
+                  },
+                  "view": {
+                    "description": "rows: values (default) or fields (field names, counts, examples).",
+                    "enum": [
+                      "values",
+                      "fields"
+                    ],
                     "type": "string"
                   }
                 },

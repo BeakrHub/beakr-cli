@@ -11,10 +11,23 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=88d385982db0bcb8262ca8cf3dcc065e5eec3b9c89459e345b8c7a4059586254 changelog sha256=f57616f030a944c380dd9b4c9fb296ec9a1f0d7fd76f50dcc666c3321bc8f79d -->
+<!-- contract-stamp: public-openapi sha256=ae46ac6e1dac2f0ad75db8590c12016c9d5ff49f0f05c43029e0b80d41e09309 changelog sha256=cb4bbcbf76571664e77b40ad9cc5785b4eddcdd59432aa5cbe9e3c3a5c93c92b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
+  `links` with `direction` `out` lists the pages a page links to, with the
+  relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
+  `group_by` (counts, sums, minimum and maximum per `entity`, `entity_type`,
+  `year` or a column) and `view` `fields` with `field_id` (the field names
+  cards use, with counts, types and examples); `timeline` takes `page` (that
+  page and every page beneath it); `hover` and `cat` with `outline` report a
+  page's parent, children, incoming links by type and outgoing link count.
+  `rows` filters (`attribute`, `to`, `query`) match their words in any order
+  with plurals folded, as well as the phrase; nothing that matched before
+  stops matching, and an empty filtered reply names the field names the
+  scanned cards use.
 
 - `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
   as a duplicate of one already in the same place: the `artifact_index` job is
