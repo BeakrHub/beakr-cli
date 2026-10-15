@@ -14,6 +14,20 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
+  as a duplicate of one already in the same place: the `artifact_index` job is
+  `failed` with `error.code` `duplicate` and `error.duplicate_of`
+  (`artifact_id`, `title`) naming the copy that was kept, and `resource_url`
+  points at that copy. It answered `404 not_found` before, once the rejected
+  file was removed.
+- `POST /v1/artifacts/read` accepts a source record's `source_ref` from any
+  Knowledge read as `reference` (optionally followed by ` › <unit>` or
+  `#<unit>`), and opens
+  the file it names at the cited passage. A `source_ref` that names a Knowledge
+  page answers `400 knowledge_page` (read the page with the knowledge_base `cat`
+  command); one that names a connected item (Slack, email, calendar, Jira)
+  answers `400 not_a_file`. A `source_ref` for a source the caller cannot read
+  answers `404 not_found`, the same as one that names nothing.
 - **Know when a project's Knowledge is ready.**
   `GET /v1/projects/{project_id}/knowledge-summary` (`projects:read`) is now
   documented, under Projects. Alongside its coverage counts it reports `queued` and `running`
