@@ -19534,7 +19534,7 @@
                     "type": "string"
                   },
                   "to": {
-                    "description": "rows, table connections: rows whose To names this page.",
+                    "description": "rows, table connections: rows involving this page.",
                     "type": "string"
                   },
                   "topic": {

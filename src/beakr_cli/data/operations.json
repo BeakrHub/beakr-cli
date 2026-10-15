@@ -2813,7 +2813,7 @@
       "type": "string"
      },
      {
-      "description": "rows, table connections: rows whose To names this page.",
+      "description": "rows, table connections: rows involving this page.",
       "name": "to",
       "required": false,
       "type": "string"
