@@ -2552,6 +2552,12 @@
       "type": "boolean"
      },
      {
+      "description": "timeline without timeline_query: next_cursor from the previous result; keep the same filters.",
+      "name": "cursor",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "rows: reverse the order.",
       "name": "descending",
       "required": false,
@@ -2579,7 +2585,7 @@
       "type": "string"
      },
      {
-      "description": "Timeline only. Events with approximate/estimated dates (date_precision=approx) are included by default. Set false to restrict the chronology to confident (day/month/year) dated events only.",
+      "description": "timeline: include estimated dates (default true). False keeps only day/month/year precision.",
       "name": "include_approx",
       "required": false,
       "type": "boolean"
@@ -2657,7 +2663,7 @@
       "type": "string"
      },
      {
-      "description": "Filter results by page type, e.g. 'person', 'initiative', 'organization', 'decision' (for sections, grep, ls, timeline; for links, the type of the linking pages). For suggest_parent it is not a filter but the type of the page being placed, which orders equally-evidenced candidates by affinity; it is read from the page itself when one is named. Use `ontology` to see the active types.",
+      "description": "Page type filter for sections, grep, ls, timeline; linking-page type for links. For suggest_parent: the new page's type (read from an existing page), ranking equally-evidenced parents by affinity. Use ontology for active types.",
       "name": "page_type",
       "required": false,
       "type": "string"
@@ -2675,7 +2681,7 @@
       "type": "string"
      },
      {
-      "description": "For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query.",
+      "description": "For grep: the pattern. text mode matches a literal case-insensitive SUBSTRING, so a distinctive term or exact phrase hits and a natural-language question does not; regex mode is POSIX and matches per line, so `^` and `$` anchor to line starts and ends. For sections: the semantic query. For rows: a literal substring across cells.",
       "name": "query",
       "required": false,
       "type": "string"
