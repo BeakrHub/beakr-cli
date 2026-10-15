@@ -335,6 +335,8 @@ def _wiki_result(result: dict) -> dict:
         # A read's coverage and next-step hints, as the engine sent them
         # (beakr/engines/tools/graph/kb_result_coverage.py in beakr-engine).
         **({"coverage": result["coverage"]} if isinstance(result.get("coverage"), dict) else {}),
+        **({"field_discovery": result["field_discovery"]}
+           if isinstance(result.get("field_discovery"), dict) else {}),
         # Older compact API responses report truncation only through next.
         "next": list(result.get("next") or []),
     }
@@ -499,8 +501,14 @@ async def knowledge_base(
       timeline   {timeline_query?, start_date?, end_date?, include_content?, include_approx?}
       rows       {table: facts|connections|findings, page_type?, entity?, attribute?, query?,
                   start_date?, end_date?, current_only?, order_by?, descending?, limit?, offset?,
-                  include_evidence?}
+                  include_evidence?, view?, field_id?}
                  Every map card's rows as one table, each tagged with its card (entity).
+                 attribute/query are literal. view=fields lists observed labels, types,
+                 coverage and field IDs; query in that view ranks fields semantically.
+                 Fields: limit defaults to 10, max 20; page with offset.
+                 Candidates are not equivalent fields: inspect examples, then select
+                 field_id for exact rows. Empty is not zero: follow its recovery, then
+                 sections and cited originals; do not guess missing facts or counts.
                  include_evidence adds each row's cited passage (at most 50 rows).
                  current_only keeps the latest When per attribute; a connection's `to` is
                  an entity, so facts and connections join on it.
