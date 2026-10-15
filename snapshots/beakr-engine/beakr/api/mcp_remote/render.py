@@ -18,10 +18,9 @@ stdio text equals :func:`render` of the hosted dict):
   document (where it lives -- its path, or a connector item's place in its
   service --, every place cited in it -- ``p. 7``, ``slide 3``, ``sheet 2,
   B4:D9`` --, provider, url, the file id that ``read_file`` opens, and the
-  ``source_ref`` a write cites, and the plain ``citation_key`` that pins the
-  exact cited version/passage) with one verbatim excerpt of at most
-  :data:`EXCERPT_CHARS`, capped at :data:`SOURCES_CHARS` in all. No inline
-  ``{{token}}`` markers: the text cites each passage by its readable reference
+  ``source_ref`` a write cites) with one verbatim excerpt of at most
+  :data:`EXCERPT_CHARS`, capped at :data:`SOURCES_CHARS` in all. No citation
+  tokens: the text cites each passage by its readable reference
   (``memo.pdf › p. 7``);
 - the ``next`` hints when the result is incomplete or names a follow-up.
 
@@ -33,7 +32,6 @@ too: ``{status, error_code, message, fix}`` as compact JSON.
 from __future__ import annotations
 
 import json
-import re
 from typing import Any
 
 #: The provider of a file Beakr holds itself. Equals
@@ -54,9 +52,8 @@ EXCERPT_CHARS = 300
 #: The whole Sources list stays under this; the rest is one ``sources`` call away.
 SOURCES_CHARS = 8_000
 
-#: Cited places and version-pinned keys listed per document before "+N more".
+#: Cited places listed per document before "+N more".
 PLACES_PER_DOCUMENT = 6
-CITATION_KEYS_PER_DOCUMENT = 6
 
 #: Tools whose ``content`` names sources only by their readable reference, so
 #: the list says where each document lives and how to open and cite it.
@@ -131,18 +128,7 @@ def _one_line(value: Any, width: int) -> str:
     return text if len(text) <= width else text[: width - 1].rstrip() + "…"
 
 
-_VERSION_CITATION = re.compile(
-    r"^(?P<kind>artifact|unit):(?P<id>[0-9a-fA-F]{8}-[0-9a-fA-F-]{27})"
-)
-
-
 def _document_key(record: dict[str, Any]) -> str:
-    # The citation key carries the exact version. Prefer it to a file id so two
-    # cited versions of the same file are never merged into one Sources entry.
-    citation_key = str(record.get("citation_key") or "")
-    match = _VERSION_CITATION.match(citation_key)
-    if match:
-        return f"{match.group('kind')}:{match.group('id')}"
     location = record.get("location") or {}
     return str(
         location.get("file_id")
@@ -150,7 +136,7 @@ def _document_key(record: dict[str, Any]) -> str:
         or location.get("display_path")
         or record.get("filename")
         or record.get("name")
-        or citation_key
+        or record.get("citation_key")
         or id(record)
     )
 
@@ -168,8 +154,7 @@ def sources_block(sources: list[Any]) -> str:
         if not isinstance(record, dict):
             continue
         entry = documents.setdefault(
-            _document_key(record),
-            {"record": record, "places": [], "citation_keys": [], "excerpt": None},
+            _document_key(record), {"record": record, "places": [], "excerpt": None}
         )
         # A full record carries one passage (``evidence``) and its place; a
         # compact one carries its document's places (``cited_places``) and some
@@ -184,12 +169,6 @@ def sources_block(sources: list[Any]) -> str:
         for place in places:
             if place and str(place) not in entry["places"]:
                 entry["places"].append(str(place))
-        for key in [
-            record.get("citation_key"),
-            *(excerpt.get("citation_key") for excerpt in excerpts),
-        ]:
-            if key and str(key) not in entry["citation_keys"]:
-                entry["citation_keys"].append(str(key))
         for excerpt in [
             (record.get("evidence") or {}).get("excerpt"),
             *(excerpt.get("text") for excerpt in excerpts),
@@ -265,16 +244,6 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         where.append(str(location["url"]))
     if location.get("file_id"):
         where.append(f"read_file {location['file_id']}")
-    status = record.get("status") or {}
-    if status.get("changed_since_cited"):
-        where.append("source changed since cited; use citation_key for the cited version")
-    keys = entry.get("citation_keys") or []
-    if keys:
-        shown_keys = ", ".join(keys[:CITATION_KEYS_PER_DOCUMENT])
-        if len(keys) > CITATION_KEYS_PER_DOCUMENT:
-            shown_keys += f" +{len(keys) - CITATION_KEYS_PER_DOCUMENT} more"
-        label = "citation_key" if len(keys) == 1 else "citation_keys"
-        where.append(f"{label} {shown_keys}")
     passages = record.get("cited_passages")
     if isinstance(passages, int) and passages > 1:
         where.append(f"{passages} passages cited")
