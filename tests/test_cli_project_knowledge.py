@@ -93,6 +93,73 @@ def test_wait_knowledge_prints_progress_and_succeeds_when_ready(tmp_path):
     assert "knowledge=ready" in result.stdout
 
 
+#: What GET /v1/jobs answers for an upload whose bytes were already in the project:
+#: indexing kept the existing file and rejected this one as a duplicate.
+KEPT = "art-kept"
+DUPLICATE_JOB = {
+    "job_id": "j",
+    "kind": "artifact_index",
+    "status": "failed",
+    "error": {
+        "code": "duplicate",
+        "message": "This file has already been uploaded",
+        "duplicate_of": {"artifact_id": KEPT, "title": "kept.md"},
+    },
+}
+
+
+def _upload_duplicate(tmp_path, *args):
+    mock_resumable_uploads(API)
+    respx.get(url__regex=rf"{API}/v1/jobs/.+").respond(json=DUPLICATE_JOB)
+    path = tmp_path / "notes.md"
+    path.write_text("hello")
+    return runner.invoke(app, ["upload", str(path), "-P", PROJECT, *args])
+
+
+@respx.mock
+def test_a_duplicate_upload_is_already_uploaded_and_waits_for_the_kept_file(tmp_path):
+    # Indexing rejected the re-upload and kept the existing file; the upload did
+    # what was asked, so it succeeds once the kept file's Knowledge is ready.
+    reads = respx.get(STATUS).mock(side_effect=[_status(running=1), _status()])
+    result = _upload_duplicate(tmp_path, "--wait-knowledge")
+    assert result.exit_code == 0, result.output
+    assert reads.call_count == 2
+    assert "Already uploaded: " in result.stderr and f"({KEPT})" in result.stderr
+    assert f"duplicate_of={KEPT}" in result.stdout
+    assert "knowledge=ready" in result.stdout
+
+
+@respx.mock
+def test_a_duplicate_upload_reports_the_kept_files_knowledge_failure(tmp_path):
+    respx.get(STATUS).mock(return_value=_status(failed=(KEPT,)))
+    result = _upload_duplicate(tmp_path, "--wait-knowledge", "--json")
+    assert result.exit_code == 1
+    [row] = json.loads(result.stdout)
+    assert row["duplicate_of"]["artifact_id"] == KEPT
+    assert row["knowledge"]["status"] == "failed"
+    assert f"Failed: docs/{KEPT}" in result.stderr
+
+
+@respx.mock
+def test_wait_alone_exits_0_for_a_duplicate_upload(tmp_path):
+    result = _upload_duplicate(tmp_path, "--wait")
+    assert result.exit_code == 0, result.output
+    assert f"duplicate_of={KEPT}" in result.stdout
+    assert "Already uploaded: " in result.stderr
+
+
+@respx.mock
+def test_a_real_job_failure_still_exits_1(tmp_path):
+    mock_resumable_uploads(API)
+    respx.get(url__regex=rf"{API}/v1/jobs/.+").respond(
+        json={"job_id": "j", "status": "failed", "error": {"code": "index_failed"}}
+    )
+    path = tmp_path / "notes.md"
+    path.write_text("hello")
+    result = runner.invoke(app, ["upload", str(path), "-P", PROJECT, "--wait"])
+    assert result.exit_code == 1
+
+
 @respx.mock
 def test_wait_knowledge_exits_1_naming_the_uploaded_file_that_failed(tmp_path):
     # Another file of the project failed too; only the uploaded one is reported.

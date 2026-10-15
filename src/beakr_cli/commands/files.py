@@ -10,7 +10,7 @@ from typing import Any
 import typer
 from beakr_sdk.resources._upload import iter_folder_files
 
-from beakr_cli.commands.jobs import all_succeeded, wait_for_jobs
+from beakr_cli.commands.jobs import all_uploaded, duplicate_of, wait_for_jobs
 from beakr_cli.output import console, emit, err_console, page_rows, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -146,10 +146,20 @@ def upload_command(
         for row in results:
             if row.get("job_id") in states:
                 row["job"] = states[str(row["job_id"])]
+                kept = duplicate_of(row["job"])
+                if kept is not None:
+                    row["duplicate_of"] = kept
+                    err_console.print(
+                        f"Already uploaded: {row['path']} is a copy of "
+                        f"{kept.get('title') or kept['artifact_id']} ({kept['artifact_id']}); "
+                        "kept that file.",
+                        highlight=False,
+                        markup=False,
+                    )
     waited = wait and bool(job_ids)
     knowledge_failed: list[dict[str, Any]] = []
     knowledge_settled = False
-    if wait_knowledge and project_id and all_succeeded(list(states.values()) if waited else []):
+    if wait_knowledge and project_id and all_uploaded(list(states.values()) if waited else []):
         knowledge_failed, knowledge_settled = _wait_for_uploaded_knowledge(
             results, str(project_id), timeout=timeout
         )
@@ -158,6 +168,13 @@ def upload_command(
         for row in rows:
             artifact = row.get("artifact") or {}
             status = (row.get("job") or {}).get("status")
+            kept = row.get("duplicate_of")
+            if kept:
+                console.print(
+                    f"Already uploaded {row['path']} -> {kept['artifact_id']} "
+                    f"(copy of {kept.get('title') or 'an existing file'})"
+                )
+                continue
             console.print(
                 f"Uploaded {row['path']} -> {artifact.get('id')}"
                 + (f" ({status})" if status else "")
@@ -181,7 +198,7 @@ def upload_command(
     if wait_knowledge:
         failed_ids = {str(row.get("artifact_id")) for row in knowledge_failed}
         for row in results:
-            file_id = str((row.get("artifact") or {}).get("id") or "")
+            file_id = _knowledge_file_id(row)
             failure = next(
                 (f for f in knowledge_failed if str(f.get("artifact_id")) == file_id), None
             )
@@ -202,13 +219,13 @@ def upload_command(
             job_ids,
             ingest=ingest,
             waited=waited,
-            failed=waited and not all_succeeded(list(states.values())),
+            failed=waited and not all_uploaded(list(states.values())),
             project_id=project_id,
             knowledge_failed=bool(knowledge_failed),
             knowledge_settled=knowledge_settled,
         ),
     )
-    if waited and not all_succeeded(list(states.values())):
+    if waited and not all_uploaded(list(states.values())):
         raise typer.Exit(1)
     if wait_knowledge and (knowledge_failed or not knowledge_settled):
         raise typer.Exit(1)
@@ -229,11 +246,7 @@ def _wait_for_uploaded_knowledge(
         wait_for_knowledge,
     )
 
-    uploaded = {
-        str((row.get("artifact") or {}).get("id"))
-        for row in results
-        if (row.get("artifact") or {}).get("id")
-    }
+    uploaded = {_knowledge_file_id(row) for row in results} - {""}
     err_console.print("Waiting for Knowledge...")
     with get_sdk(timeout=300.0) as sdk:
         status = wait_for_knowledge(sdk, project_id, timeout=timeout)
@@ -243,6 +256,14 @@ def _wait_for_uploaded_knowledge(
     for row in failed:
         err_console.print(f"Failed: {failed_file_line(row)}", highlight=False, markup=False)
     return failed, True
+
+
+def _knowledge_file_id(row: dict[str, Any]) -> str:
+    """The file whose Knowledge an uploaded row waits on: its own, or the copy it duplicated."""
+    kept = row.get("duplicate_of")
+    if isinstance(kept, dict) and kept.get("artifact_id"):
+        return str(kept["artifact_id"])
+    return str((row.get("artifact") or {}).get("id") or "")
 
 
 #: What --wait waited for, and what still happens after it.
@@ -274,7 +295,7 @@ def _upload_hint(
 
 
 def _upload_lines(rows: list[dict[str, Any]]) -> list[str]:
-    """``file_id<TAB>path<TAB>job=JOB_ID[<TAB>status=...][<TAB>knowledge=...]`` per file."""
+    """``file_id<TAB>path<TAB>job=JOB_ID[<TAB>status=...][<TAB>duplicate_of=...][<TAB>knowledge=...]``."""
     lines = []
     for row in rows:
         artifact = row.get("artifact") or {}
@@ -287,6 +308,9 @@ def _upload_lines(rows: list[dict[str, Any]]) -> list[str]:
         error = job.get("error")
         if isinstance(error, dict) and (error.get("message") or error.get("code")):
             columns.append(f"error={error.get('message') or error.get('code')}")
+        kept = row.get("duplicate_of")
+        if isinstance(kept, dict) and kept.get("artifact_id"):
+            columns.append(f"duplicate_of={kept['artifact_id']}")
         knowledge = row.get("knowledge") or {}
         if knowledge.get("status"):
             columns.append(f"knowledge={knowledge['status']}")

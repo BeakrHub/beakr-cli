@@ -87,6 +87,30 @@ def all_succeeded(jobs: list[dict[str, Any]]) -> bool:
     return all(job.get("status") == "succeeded" for job in jobs)
 
 
+def duplicate_of(job: dict[str, Any]) -> dict[str, Any] | None:
+    """The kept file when indexing rejected this upload as a duplicate, else None.
+
+    Indexing does not store bytes already in the same place twice: it fails the
+    new file's job with ``error.code`` ``duplicate`` and keeps the existing file,
+    named in ``error.duplicate_of``. The content is in Beakr, so the upload is
+    "already uploaded", not failed.
+    """
+    error = job.get("error")
+    if job.get("status") != "failed" or not isinstance(error, dict):
+        return None
+    if error.get("code") != "duplicate":
+        return None
+    kept = error.get("duplicate_of")
+    if not isinstance(kept, dict) or not kept.get("artifact_id"):
+        return None
+    return kept
+
+
+def all_uploaded(jobs: list[dict[str, Any]]) -> bool:
+    """Every upload's job succeeded, or found its bytes already uploaded."""
+    return all(job.get("status") == "succeeded" or duplicate_of(job) for job in jobs)
+
+
 @app.command("show")
 def show_jobs(
     job_ids: list[str] = typer.Argument(..., help="One or more job ids."),
