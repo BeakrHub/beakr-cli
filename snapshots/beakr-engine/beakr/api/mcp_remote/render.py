@@ -32,6 +32,7 @@ too: ``{status, error_code, message, fix}`` as compact JSON.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 #: The provider of a file Beakr holds itself. Equals
@@ -97,6 +98,7 @@ def error_text(
     error_code: str | None = None,
     fix: str | None = None,
     hints: list[str] | None = None,
+    request_id: str | None = None,
 ) -> str:
     """An error as compact JSON: ``{status, error_code, message, fix}``.
 
@@ -110,6 +112,8 @@ def error_text(
     resolved_fix = fix or (" ".join(useful) or None)
     if resolved_fix:
         compact["fix"] = resolved_fix
+    if isinstance(request_id, str) and re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", request_id):
+        compact["request_id"] = request_id
     return json.dumps(compact, separators=(", ", ": "))
 
 
@@ -120,6 +124,7 @@ def body_error_text(body: dict[str, Any]) -> str:
         error_code=body.get("error_code"),
         fix=body.get("fix"),
         hints=[str(hint) for hint in body.get("next") or []],
+        request_id=body.get("request_id"),
     )
 
 
