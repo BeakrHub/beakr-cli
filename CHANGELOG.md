@@ -6,6 +6,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- The MCP server no longer forwards a timeline cursor when it had to cut the
+  timeline's text: following it skipped the events the cut dropped. It asks for
+  the same window again with a smaller limit instead.
 - Preserve API request IDs in MCP error results and readable API error messages,
   including gateway responses that provide only `X-Request-ID`. This makes a
   failed call traceable without retrying it solely to obtain diagnostics.
