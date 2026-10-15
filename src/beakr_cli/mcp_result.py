@@ -14,6 +14,7 @@ import re
 from typing import Any
 
 from beakr_cli import mcp_render as render
+from beakr_cli.document_listing import fit_document_listing
 
 MAX_TEXT_CHARS = 20_000
 
@@ -119,6 +120,15 @@ def finish(result: Any, *, tool: str, cut_hint: str | None = None) -> dict[str, 
     coverage.setdefault("complete", not coverage["has_more"])
     hints = [str(hint) for hint in body.get("next") or []]
     limit = TEXT_LIMITS.get(tool, MAX_TEXT_CHARS)
+    if tool == "documents" and body.get("status") != "error" and not body.get("is_error"):
+        window = fit_document_listing(text, limit)
+        if window is not None:
+            text = window["content"]
+            if coverage.get("next_cursor") is not None:
+                coverage["upstream_next_cursor"] = coverage["next_cursor"]
+            coverage.update(window["coverage"])
+            if window["next"] not in hints:
+                hints.insert(0, window["next"])
     # The cap is enforced on the text itself, never on an incoming flag: an
     # upstream ``coverage.truncated`` only says the upstream cut something, not
     # that this cap was applied (audit C077 follow-up: a 90k Knowledge result

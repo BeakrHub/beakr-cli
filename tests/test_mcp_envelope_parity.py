@@ -59,6 +59,38 @@ async def _tool_body(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     return await mcp._tool_manager.call_tool(name, arguments, convert_result=False)
 
 
+@pytest.mark.asyncio
+@respx.mock
+@pytest.mark.parametrize("readable", [False, True])
+async def test_document_listing_tools_call_continues_after_visible_rows(hosted_render, readable):
+    import re
+
+    from beakr_cli.mcp_result import finish
+    from tests.test_mcp_document_listing_window import listing
+
+    content = listing()
+    if readable:
+        content = re.sub(r"  \{\{rag:[^}]+\}\}", "", content)
+    respx.post(f"{API}/v1/knowledge/documents").respond(
+        200, json={"content": content, "sources": {}, "is_error": False}
+    )
+    args = {
+        "command": "grep",
+        "arguments": {"pattern": "markman", "output_mode": "files_with_matches"},
+    }
+    stdio = await _stdio_call("documents", args)
+    body = finish(await _tool_body("documents", args), tool="documents")
+    assert _envelope(stdio) == _envelope(_hosted_success(hosted_render, "documents", body))
+    assert len(stdio.content) == 1 and not stdio.isError
+    assert "structuredContent" not in _envelope(stdio)
+    end = body["coverage"]["visible_end"]
+    text = stdio.content[0].text
+    assert 1 < end < 200
+    assert f"showing 1-{end}." in text
+    assert f"Continue with offset={end}." in text
+    assert "offset=200." not in text
+
+
 def _hosted_success(render, name: str, body: dict[str, Any]) -> types.CallToolResult:
     # beakr/api/mcp_remote/server.py call_tool, success branch.
     return types.CallToolResult(
