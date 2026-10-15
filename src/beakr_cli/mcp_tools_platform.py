@@ -458,8 +458,8 @@ async def read_file(
     """A window of a document's extracted text, as the hosted read_file reads it.
 
     ``artifact_id`` (or ``path``) may be a file id, a version id, a citation's
-    readable reference or a file's path as a read prints it, or a citation
-    token; with `` › <unit>`` (or ``#<unit>``) after one (``memo.pdf › p. 7``)
+    readable reference or ``source_ref``, a file's path as a read prints it, or
+    a citation token; with `` › <unit>`` (or ``#<unit>``) after one (``memo.pdf › p. 7``)
     the window is the text around that place. One route resolves and reads all
     of them (``POST /v1/artifacts/read``), so a reference that reaches no
     readable file is one answer whatever the reason.
@@ -485,8 +485,8 @@ async def read_file(
             return _read_error(
                 None,
                 "No readable file matches this reference. Pass `artifact_id`: the file id, "
-                "citation token or path from a Knowledge result's Sources (location.file_id, "
-                "or `read_file <id>`).",
+                "reference, source_ref or path from a Knowledge result's Sources "
+                "(location.file_id, or `read_file <id>`).",
             )
         if status == 409:
             return _read_conflict(exc)

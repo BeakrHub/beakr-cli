@@ -11,11 +11,25 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=fd1e0705f183067fcabfd8a34a90cf5cd9fbb2c53d81377d19c82b47a68f5633 changelog sha256=503a1321c05b94a1bea75136b4fc35dba5153ccb4e572218c6ed539bb01f3be3 -->
+<!-- contract-stamp: public-openapi sha256=d9bbb4332bfa5937bf0ef2e8af47ed90c304c238fab2240e3b99a6ac55d7fdab changelog sha256=c8298b2108b22e287e7fbc11cd787db8fb63bcdebdfa8c3dbe28a7411ab9285d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
+  as a duplicate of one already in the same place: the `artifact_index` job is
+  `failed` with `error.code` `duplicate` and `error.duplicate_of`
+  (`artifact_id`, `title`) naming the copy that was kept, and `resource_url`
+  points at that copy. It answered `404 not_found` before, once the rejected
+  file was removed.
+- `POST /v1/artifacts/read` accepts a source record's `source_ref` from any
+  Knowledge read as `reference` (optionally followed by ` › <unit>` or
+  `#<unit>`), and opens
+  the file it names at the cited passage. A `source_ref` that names a Knowledge
+  page answers `400 knowledge_page` (read the page with the knowledge_base `cat`
+  command); one that names a connected item (Slack, email, calendar, Jira)
+  answers `400 not_a_file`. A `source_ref` for a source the caller cannot read
+  answers `404 not_found`, the same as one that names nothing.
 - **Know when a project's Knowledge is ready.**
   `GET /v1/projects/{project_id}/knowledge-summary` (`projects:read`) is now
   documented, under Projects. Alongside its coverage counts it reports `queued` and `running`

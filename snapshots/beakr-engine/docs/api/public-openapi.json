@@ -4392,7 +4392,7 @@
             "type": "integer"
           },
           "reference": {
-            "description": "The file to read (an upload or a canvas): its id or a version id, a citation token from a Knowledge read ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}) are not stored as files and are refused.",
+            "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
             "maxLength": 2048,
             "minLength": 1,
             "title": "Reference",

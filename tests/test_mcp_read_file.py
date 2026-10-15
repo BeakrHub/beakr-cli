@@ -164,8 +164,8 @@ async def test_an_unreachable_reference_answers_as_the_hosted_server():
     assert await _read_error({"artifact_id": VERSION}) == {
         "status": "error",
         "message": "No readable file matches this reference. Pass `artifact_id`: the file id, "
-        "citation token or path from a Knowledge result's Sources (location.file_id, "
-        "or `read_file <id>`).",
+        "reference, source_ref or path from a Knowledge result's Sources "
+        "(location.file_id, or `read_file <id>`).",
     }
 
 
