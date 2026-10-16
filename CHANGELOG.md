@@ -6,6 +6,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- The bundled `beakr` skill teaches the three ways into Knowledge (walk the
+  graph, query `rows` as one database, read the text), what an empty `rows`
+  reply means, and when to propose a fact, connection or finding.
 - The MCP server no longer forwards a timeline cursor when it had to cut the
   timeline's text: following it skipped the events the cut dropped. It asks for
   the same window again with a smaller limit instead.
@@ -17,6 +20,20 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
+  `links` with `direction` `out` lists the pages a page links to, with the
+  relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
+  `group_by` (counts, sums, minimum and maximum per `entity`, `entity_type`,
+  `year` or a column) and `view` `fields` with `field_id` (the field names
+  cards use, with counts, types and examples); `timeline` takes `page` (that
+  page and every page beneath it); `links` takes `offset` to page past one
+  window of incoming links; `rows` takes `after_card` to continue a card scan
+  that stopped at its cap (one project per scan); `hover` and `cat` with `outline` report a
+  page's parent, children, incoming links by type and outgoing link count.
+  `rows` filters (`attribute`, `to`, `query`) match their words in any order
+  with plurals folded, as well as the phrase; nothing that matched before
+  stops matching, and an empty filtered reply names the field names the
+  scanned cards use.
 - `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
   as a duplicate of one already in the same place: the `artifact_index` job is
   `failed` with `error.code` `duplicate` and `error.duplicate_of`
