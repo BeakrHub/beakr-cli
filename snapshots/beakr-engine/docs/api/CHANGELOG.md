@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=494fae3c800053e7016ae06a41db0ad91ee6e7f078ba1a49062cd10e4de31f9b changelog sha256=a3f67d22098daccfe0bab5cfe084dc9d0802126adafad7fa4eb96c457ad19cd6 -->
+<!-- contract-stamp: public-openapi sha256=494fae3c800053e7016ae06a41db0ad91ee6e7f078ba1a49062cd10e4de31f9b changelog sha256=29b7a6fb30707c7aec3eb11825cf84fbf9d791cf64d63a788d21f61e7fe63303 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -31,9 +31,7 @@ The first public version.
   name or a recorded alias, and no retry of a `query` by words), `similar`
   (also a field holding its words) or `meaning` (the default: also the closest
   field by meaning); without the rows index, `similar` and `meaning` match the
-  phrase or every word, as before. `GET /v1/knowledge/rows` takes `match` too:
-  `exact` keeps the name or an alias only, and the others match the phrase or
-  every word.
+  phrase or every word, as before.
 
 - **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
   documents feature) adds the `search` command: passages of the original
@@ -92,7 +90,8 @@ The first public version.
   takes `reviewed_hash`, the `content_hash` echoed back: when the stored
   proposal no longer hashes to it, nothing is applied and the answer is `409`
   with `code` `proposal_changed`. Accepting a proposal that changes a card's
-  table rows may require it (`422` `review_required`).
+  table rows may require it (`422` `review_required`); proposal reads say so
+  with `changes_card_tables`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
