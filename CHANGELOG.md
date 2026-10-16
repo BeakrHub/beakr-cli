@@ -6,6 +6,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- `beakr api` and the MCP `knowledge_base` read accept `rows` with `view`
+  `groups` and a `page_type`: that card type's field names that likely mean
+  one field, grouped, with counts and example values.
 - The bundled `beakr` skill teaches the three ways into Knowledge (walk the
   graph, query `rows` as one database, read the text), what an empty `rows`
   reply means, and when to propose a fact, connection or finding.
@@ -33,7 +36,9 @@ Each release lists the public API changes it supports, taken from the API change
   `rows` filters (`attribute`, `to`, `query`) match their words in any order
   with plurals folded, as well as the phrase; nothing that matched before
   stops matching, and an empty filtered reply names the field names the
-  scanned cards use.
+  scanned cards use. `rows` with `view` `groups` and a `page_type` lists that
+  card type's field names that likely mean one field, grouped, with counts
+  and example values.
 - `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
   as a duplicate of one already in the same place: the `artifact_index` job is
   `failed` with `error.code` `duplicate` and `error.duplicate_of`

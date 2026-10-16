@@ -19542,10 +19542,11 @@
                     "type": "string"
                   },
                   "view": {
-                    "description": "rows: values (default) or fields (field names, counts, examples).",
+                    "description": "rows: values (default), fields (field names, counts, examples) or groups (one page_type's likely synonym names).",
                     "enum": [
                       "values",
-                      "fields"
+                      "fields",
+                      "groups"
                     ],
                     "type": "string"
                   }
