@@ -21,7 +21,7 @@ from beakr_cli.sdk import get_sdk
 
 _FINDING_KINDS = ("result", "lesson", "decision", "question", "correction")
 _ROW_TABLES = ("facts", "connections", "findings")
-_EDIT_TABLES = ("facts", "connections")
+_EDIT_TABLES = ("facts", "connections", "findings")
 
 _scope_opt = typer.Option(
     None,
@@ -192,9 +192,11 @@ def add_finding(
 
 def edit_rows(
     page: str = typer.Argument(..., help="Card title, slug or ID."),
-    table: str = typer.Option(..., "--table", "-t", help="facts or connections."),
+    table: str = typer.Option(..., "--table", "-t", help="facts, connections or findings."),
     old_row: list[str] | None = typer.Option(
-        None, "--old-row", help="Row to replace, JSON or row text (repeat)."
+        None,
+        "--old-row",
+        help="Row to replace, JSON or row text (repeat). A finding is {date, text}.",
     ),
     row: list[str] | None = typer.Option(
         None, "--row", help="Replacement row JSON (repeat; none deletes the old rows)."

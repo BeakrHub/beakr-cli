@@ -1948,7 +1948,19 @@
    "action": "accept-proposal",
    "anonymous": false,
    "area": "knowledge",
-   "body": null,
+   "body": {
+    "fields": [
+     {
+      "description": "The proposal's content_hash exactly as the proposal read returned it (echo it; do not compute it). When the stored proposal no longer hashes to it, nothing is applied (409 proposal_changed).",
+      "name": "reviewed_hash",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
    "destructive": false,
    "method": "POST",
    "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/accept",
@@ -3092,7 +3104,7 @@
       "type": "string"
      },
      {
-      "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value} or {relation, to}, or the row copied from cat.",
+      "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat.",
       "name": "old_rows",
       "required": false,
       "type": "object"
@@ -3240,10 +3252,11 @@
       "type": "string"
      },
      {
-      "description": "sort_table / edit_rows: which table.",
+      "description": "sort_table (facts | connections) / edit_rows: which table.",
       "enum": [
        "facts",
-       "connections"
+       "connections",
+       "findings"
       ],
       "name": "table",
       "required": false,

@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=3f538d48c3f7cf183125b96bd625a5501688a5530e96776ae255c19ef3fcf103 changelog sha256=4343e47d728aeeeaf76e690204dd4854b09a764fe9f17c6a9661d122c885fb95 -->
+<!-- contract-stamp: public-openapi sha256=a2426cfdef956a8f6f12216944bc62a44fdf02c78e558f789ba2abc44a07a57f changelog sha256=6da0c8d77c76a0dd9312f138b13e9e97d2f66f4672985fa6a361627bf967f373 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -53,6 +53,27 @@ The first public version.
   `quick`, and `stopped_early` is `true` when the answer is the cited results
   without a written summary. Leaving `quick` out keeps research as before;
   a `quick` that is not a boolean is `422 invalid_quick`.
+- A map card's Facts, Connections and Findings rows change only through row
+  operations. `POST /v1/knowledge/wiki/write` refuses an `edit_section`,
+  `edit` or `find_replace` that would change one of their rows as markdown
+  (`invalid_arguments`, naming the row action to use); `add_fact`,
+  `add_connection`, `add_finding`, `edit_rows` and `sort_table` change them,
+  and `find_replace` may still retarget a `[[link]]` in a row. `edit_rows`
+  takes `table` `findings`, naming each finding by `date` and `text`. No
+  write may store a table row that does not parse. `GET /v1/knowledge/wiki/pages/{page_id}` adds
+  `protected_sections`, and `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` add `table_changes`: each
+  changed table's `added`, `removed` and `changed` rows (`changed_cells` names
+  what changed) with their citations, whether the table was `reordered`, and
+  the `reasons` given for the edit; `table_changes_complete` is `false` when
+  part of the change is not expressed as rows. Those protected sections hold
+  only their rows, in one canonical form: a write that puts other text in them
+  is refused with `noncanonical_table`. Proposal reads also add
+  `content_hash`, and `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept`
+  takes `reviewed_hash`, the `content_hash` echoed back: when the stored
+  proposal no longer hashes to it, nothing is applied and the answer is `409`
+  with `code` `proposal_changed`. Accepting a proposal that changes a card's
+  table rows may require it (`422` `review_required`).
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
