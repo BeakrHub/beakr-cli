@@ -3398,6 +3398,38 @@
             "title": "Is Error",
             "type": "boolean"
           },
+          "next": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`search` only: what the response budget left out, and how to get it.",
+            "title": "Next"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DocumentsSearchResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`search` only: one public source record per matching document, best first, with `location.file_id` and `location.version_id`, its `match` and `score`, and its best `passages`. Pass a record's or passage's `source_ref` to `POST /v1/artifacts/download-url` for the original file.",
+            "title": "Results"
+          },
           "sources": {
             "additionalProperties": {
               "$ref": "#/components/schemas/ResearchSource"
@@ -3411,6 +3443,250 @@
           "content"
         ],
         "title": "DocumentsResult",
+        "type": "object"
+      },
+      "DocumentsSearchPassage": {
+        "additionalProperties": true,
+        "description": "One matching passage of a document a ``search`` found.",
+        "properties": {
+          "citation_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Key to cite it with.",
+            "title": "Citation Key"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A brief excerpt of the passage, centred on the query's words.",
+            "title": "Excerpt"
+          },
+          "line_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Last indexed line of the passage.",
+            "title": "Line End"
+          },
+          "line_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "First indexed line of the passage, as `documents read` numbers lines (`start_line`).",
+            "title": "Line Start"
+          },
+          "match": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`strong`, `moderate` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.",
+            "title": "Match"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ranking score (meaning and word overlap); higher is better.",
+            "title": "Score"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The heading path the passage sits under.",
+            "title": "Section"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.",
+            "title": "Source Ref"
+          },
+          "unit_locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where the passage sits: `p. 7`, ...",
+            "title": "Unit Locator"
+          }
+        },
+        "title": "DocumentsSearchPassage",
+        "type": "object"
+      },
+      "DocumentsSearchResult": {
+        "additionalProperties": true,
+        "description": "One document a ``search`` found: its public source record and its best passages.",
+        "properties": {
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The document's file name.",
+            "title": "Filename"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceLocation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where the document lives: `display_path`, `file_id` and `version_id`."
+          },
+          "match": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Its best passage's match label.",
+            "title": "Match"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The document's title in Beakr.",
+            "title": "Name"
+          },
+          "passages": {
+            "description": "Its best matching passages, best first.",
+            "items": {
+              "$ref": "#/components/schemas/DocumentsSearchPassage"
+            },
+            "title": "Passages",
+            "type": "array"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`upload` for a file Beakr holds, else the connected service.",
+            "title": "Provider"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Its best passage's score.",
+            "title": "Score"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What kind of source the document is.",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Reusable reference to the document: a later Knowledge write cites it, `POST /v1/artifacts/read` opens it, `POST /v1/artifacts/download-url` downloads it.",
+            "title": "Source Ref"
+          }
+        },
+        "title": "DocumentsSearchResult",
         "type": "object"
       },
       "DownloadUrl": {
@@ -4225,6 +4501,73 @@
           "error"
         ],
         "title": "FailedFileOut",
+        "type": "object"
+      },
+      "FileDownloadOut": {
+        "description": "A short-lived signed URL for one file version's original bytes.",
+        "properties": {
+          "expires_in": {
+            "description": "Seconds the URL stays valid",
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "file": {
+            "$ref": "#/components/schemas/FileReadFileOut",
+            "description": "The file and the version the URL downloads"
+          },
+          "filename": {
+            "description": "The file name the download is saved as",
+            "title": "Filename",
+            "type": "string"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The stored file's content type",
+            "title": "Mime Type"
+          },
+          "url": {
+            "description": "Signed URL; fetch it without Beakr credentials before it expires",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_in",
+          "filename",
+          "file"
+        ],
+        "title": "FileDownloadOut",
+        "type": "object"
+      },
+      "FileDownloadRequest": {
+        "description": "Sign a download of one file's original bytes, named by any reference a read hands out.",
+        "properties": {
+          "inline": {
+            "default": false,
+            "description": "Ask a browser to display the file instead of saving it.",
+            "title": "Inline",
+            "type": "boolean"
+          },
+          "reference": {
+            "description": "The file to download, in any form POST /v1/artifacts/read takes: a source record's source_ref (beakr-source:v1:...), its id or a version id, a citation token, or its path. A ` \u203a <unit>` suffix is accepted and ignored. A reference that names a version downloads that version; any other, the current version. Knowledge pages, connected items and canvases have no stored file and are refused (knowledge_page, not_a_file, no_original_file).",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "title": "FileDownloadRequest",
         "type": "object"
       },
       "FileReadFileOut": {
@@ -11358,6 +11701,23 @@
             "default": null,
             "description": "The source's address in its service.",
             "title": "Url"
+          },
+          "version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a documents `search` result: the version of the file the passage was read from, in the Files API; `GET /v1/artifacts/versions/{version_id}/download-url` signs a download of exactly that version. From any file record, pass its `source_ref` to `POST /v1/artifacts/download-url` to download in one step. Knowledge pages and connected items have no version and no download.",
+            "examples": [
+              "c1a7e5d2-4b9f-4f38-a612-7d0e9b3c5f81"
+            ],
+            "title": "Version Id"
           }
         },
         "title": "SourceLocation",
@@ -15601,6 +15961,75 @@
         "x-beakr-scope": "projects:read"
       }
     },
+    "/v1/artifacts/download-url": {
+      "post": {
+        "description": "A short-lived signed URL for a file's original bytes, by any reference a read hands out.\n\nThe reference resolves exactly as ``POST /v1/artifacts/read`` resolves it, so a\nsource record's ``source_ref`` from a Knowledge read, research or a documents\nsearch downloads its file in one call. A reference that reaches no readable\nfile (none, another organization's, outside a project-restricted credential's\nprojects) is the same ``404``.\n\nThe URL signs the version row the caller's lookup returned; its storage key\nwas checked against the file's organization where it was written, as\n``GET /v1/artifacts/versions/{version_id}/download-url`` relies on.",
+        "operationId": "download_url_route_v1_artifacts_download_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileDownloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileDownloadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a download link by reference",
+        "tags": [
+          "public",
+          "files"
+        ],
+        "x-beakr-scope": "projects:read"
+      }
+    },
     "/v1/artifacts/read": {
       "post": {
         "description": "Read a file's text (an upload or a canvas) by id, citation token or path, optionally at one place.\n\nWith `` \u203a <unit>`` (or a token, whose passage is its unit) the window is the\ntext around that place: its page, slide or sheet, or the stretch around a\nblock, paragraph or line range. Without one it is ``max_chars`` characters from\n``offset``; ``next_offset`` continues it.",
@@ -19075,7 +19504,7 @@
     },
     "/v1/knowledge/documents": {
       "post": {
-        "description": "Search and read the original documents' text: the `documents` tool for API callers. Search and read the original documents' text: the ``documents`` tool for API callers.\n\nBehind the ``documents_api`` flag. Same commands and arguments as Beakr's own\nagents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across\nevery document in scope), ``read`` (line-numbered text of one document) and ``ls``.\n\nBody:\n    command: grep | read | ls (required).\n    arguments: that command's options, e.g. {\"pattern\": \"comfort letter\", \"output_mode\": \"files_with_matches\"}.\n    project_id: Optional project scope (UUID).",
+        "description": "Search and read the original documents: the `documents` tool for API callers. Search and read the original documents: the ``documents`` tool for API callers.\n\nBehind the ``documents_api`` flag. Same commands and arguments as Beakr's own\nagents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across\nevery document in scope), ``read`` (line-numbered text of one document), ``ls``,\nand ``search`` (passages ranked by meaning, grouped by document; the response\nadds ``results``, one public source record per document with its passages).\n\nBody:\n    command: grep | read | ls | search (required).\n    arguments: that command's options, e.g. {\"pattern\": \"comfort letter\", \"output_mode\": \"files_with_matches\"}.\n    project_id: Optional scope: a project id or name (``project`` is accepted too).\n        Without one, a command covers everything the caller can read; a\n        project-restricted credential, all of its projects.",
         "operationId": "documents_v1_knowledge_documents_post",
         "requestBody": {
           "content": {
@@ -19095,21 +19524,21 @@
                 "properties": {
                   "arguments": {
                     "additionalProperties": true,
-                    "description": "Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document.",
+                    "description": "Options for the selected documents command. grep: pattern, output_mode, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
                     "type": "object"
                   },
                   "command": {
-                    "description": "Search indexed text, read a document window, or list files.",
+                    "description": "grep: literal/regex matches across indexed text; read: a document's lines; ls: the file tree; search: passages ranked by meaning, grouped by document (adds `results`).",
                     "enum": [
                       "grep",
                       "read",
-                      "ls"
+                      "ls",
+                      "search"
                     ],
                     "type": "string"
                   },
                   "project_id": {
-                    "description": "Limit to this project. Required for project-restricted credentials.",
-                    "format": "uuid",
+                    "description": "Limit to this project: its id or name (a name may match several projects you can read). Without it a command covers everything you can read; a project-restricted credential, all of its projects.",
                     "type": "string"
                   }
                 },

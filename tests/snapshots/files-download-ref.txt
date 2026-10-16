@@ -1,0 +1,23 @@
+$ beakr files download Helios/helios-charter.pdf --out charter.pdf --json
+> POST /v1/artifacts/download-url
+  {"reference": "Helios/helios-charter.pdf"}
+> GET /artifacts/helios-charter.pdf?X-Amz-Signature=snapshot
+[exit 0]
+--- stdout
+{
+  "id": "Helios/helios-charter.pdf",
+  "path": "charter.pdf",
+  "bytes": 43
+}
+--- stderr
+
+
+$ beakr files download Helios/helios-charter.pdf --out charter.pdf
+> POST /v1/artifacts/download-url
+  {"reference": "Helios/helios-charter.pdf"}
+> GET /artifacts/helios-charter.pdf?X-Amz-Signature=snapshot
+[exit 0]
+--- stdout
+Saved charter.pdf (43 bytes).
+--- stderr
+

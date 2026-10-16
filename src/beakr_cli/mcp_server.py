@@ -620,7 +620,7 @@ async def documents(
     data = await _call_api(
         lambda sdk: sdk.knowledge.documents(command, project_id=scoped, **(arguments or {}))
     )
-    return {
+    result: dict[str, Any] = {
         "content": data.get("content", ""),
         "sources": [
             _public_source(source, citation_key=key)
@@ -628,6 +628,13 @@ async def documents(
         ],
         "status": "error" if data.get("is_error") else "ok",
     }
+    # A search's documents, each a public record with its passages, already
+    # projected and budgeted by the engine (as the hosted server passes them).
+    if isinstance(data.get("results"), list):
+        result["results"] = data["results"]
+    if data.get("next"):
+        result["next"] = list(data["next"])
+    return result
 
 
 @mcp.tool(**tool_surface.tool_kwargs("research"))

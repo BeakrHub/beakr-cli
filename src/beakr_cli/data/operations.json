@@ -845,6 +845,41 @@
    "summary": "Delete a file"
   },
   {
+   "action": "download-url",
+   "anonymous": false,
+   "area": "files",
+   "body": {
+    "fields": [
+     {
+      "default": false,
+      "description": "Ask a browser to display the file instead of saving it.",
+      "name": "inline",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The file to download, in any form POST /v1/artifacts/read takes: a source record's source_ref (beakr-source:v1:...), its id or a version id, a citation token, or its path. A ` \u203a <unit>` suffix is accepted and ignored. A reference that names a version downloads that version; any other, the current version. Knowledge pages, connected items and canvases have no stored file and are refused (knowledge_page, not_a_file, no_original_file).",
+      "name": "reference",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/artifacts/download-url",
+   "paginated": false,
+   "path": "/v1/artifacts/download-url",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a download link by reference"
+  },
+  {
    "action": "get-artifact",
    "anonymous": false,
    "area": "files",
@@ -2096,24 +2131,25 @@
    "body": {
     "fields": [
      {
-      "description": "Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document.",
+      "description": "Options for the selected documents command. grep: pattern, output_mode, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
       "name": "arguments",
       "required": false,
       "type": "object"
      },
      {
-      "description": "Search indexed text, read a document window, or list files.",
+      "description": "grep: literal/regex matches across indexed text; read: a document's lines; ls: the file tree; search: passages ranked by meaning, grouped by document (adds `results`).",
       "enum": [
        "grep",
        "read",
-       "ls"
+       "ls",
+       "search"
       ],
       "name": "command",
       "required": true,
       "type": "string"
      },
      {
-      "description": "Limit to this project. Required for project-restricted credentials.",
+      "description": "Limit to this project: its id or name (a name may match several projects you can read). Without it a command covers everything you can read; a project-restricted credential, all of its projects.",
       "name": "project_id",
       "required": false,
       "type": "string"

@@ -535,6 +535,7 @@ beakr kb ls --roots              # top-level pages only
 beakr kb ls --parent "My Page"   # children of a page
 beakr kb cat "Page Title"
 beakr kb search "authentication flow"
+beakr documents search "who covers losses from defects"   # the original files, by meaning
 beakr kb sources "API Design"
 beakr kb log
 

@@ -118,7 +118,7 @@
       "tier": "eager"
     },
     {
-      "description": "Search original indexed file text with command='grep', read a line window with 'read', or browse files with 'ls'. Use for exact wording and finding files that mention a term. Pass command options in arguments and a project ID in project. grep accepts pattern, output_mode (content, files_with_matches, count), path/glob, head_limit, offset and after_document; read takes document and start_line/end_line. Check scan notices: offset pages matches already found; after_document resumes a partial scan. Unindexed files are not searched. Requires the documents_api feature; if unavailable use research or read_file.",
+      "description": "Search original indexed file text with command='grep', find passages by meaning with 'search', read a line window with 'read', or browse files with 'ls'. grep for exact wording and every file that mentions a term; search when you do not know the words (a concept or paraphrase): it ranks passages, grouped by document, with a match label and each file's source_ref, file_id and version_id, and is a ranked selection, not a census. Pass command options in arguments and a project ID or name in project. grep accepts pattern, output_mode (content, files_with_matches, count), path/glob, head_limit, offset and after_document; search takes query, limit, offset, passages and path/glob; read takes document and start_line/end_line. Check scan notices: offset pages matches already found; after_document resumes a partial scan. Unindexed files are not searched. Download a file with POST /v1/artifacts/download-url and its source_ref. Requires the documents_api feature; if unavailable use research or read_file.",
       "name": "documents",
       "surfaces": [
         "remote",
