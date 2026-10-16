@@ -65,7 +65,8 @@ Each release lists the public API changes it supports, taken from the API change
   takes `reviewed_hash`, the `content_hash` echoed back: when the stored
   proposal no longer hashes to it, nothing is applied and the answer is `409`
   with `code` `proposal_changed`. Accepting a proposal that changes a card's
-  table rows may require it (`422` `review_required`).
+  table rows may require it (`422` `review_required`); proposal reads say so
+  with `changes_card_tables`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
@@ -828,6 +829,14 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **Accept the proposal you reviewed.** `beakr kb proposals show` prints the
+  proposal's content hash, and `beakr kb proposals accept --reviewed-hash HASH`
+  applies it only if it is unchanged since (a changed proposal exits 5 and
+  nothing is applied). At a terminal without `--yes`, accept shows the proposal
+  and binds to that read once you confirm. A proposal that changes card table
+  rows is not accepted without one of those (exit 2). The MCP server's
+  `show_proposal` prints `content_hash`, and `accept_proposal` takes it back as
+  `reviewed_hash`.
 - **Know when Knowledge is ready.** `beakr projects status -P PROJECT` says
   whether the project's Knowledge is ready, queued or compiling, with counts,
   and lists failed files with their error code and reason;
