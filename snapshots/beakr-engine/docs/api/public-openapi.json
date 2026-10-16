@@ -13966,6 +13966,14 @@
             ],
             "title": "Project Id"
           },
+          "protected_sections": {
+            "description": "On a project-map card, the section ids of its Facts, Connections and Findings, whose rows change only through row operations (add_fact, add_connection, add_finding, edit_rows). Empty on any other page.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Protected Sections",
+            "type": "array"
+          },
           "revision": {
             "description": "Revision number.",
             "title": "Revision",
@@ -14618,6 +14626,26 @@
         "title": "WikiPatchIn",
         "type": "object"
       },
+      "WikiProposalAccept": {
+        "additionalProperties": false,
+        "description": "Optional accept body: bind the accept to the content that was reviewed.",
+        "properties": {
+          "reviewed_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The proposal's content_hash exactly as the proposal read returned it (echo it; do not compute it). When the stored proposal no longer hashes to it, nothing is applied (409 proposal_changed).",
+            "title": "Reviewed Hash"
+          }
+        },
+        "title": "WikiProposalAccept",
+        "type": "object"
+      },
       "WikiProposalBatchCopyItem": {
         "description": "One page to copy as part of a proposal batch.",
         "properties": {
@@ -14864,6 +14892,19 @@
       "WikiProposalOut": {
         "additionalProperties": true,
         "properties": {
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "SHA-256 of this proposal as stored (its id, type and whole payload). Echo it back as reviewed_hash when accepting, so a proposal that changed after it was read is not applied.",
+            "title": "Content Hash"
+          },
           "created_at": {
             "description": "When it was created (ISO 8601, UTC).",
             "examples": [
@@ -14983,6 +15024,21 @@
             "default": null,
             "description": "A short summary.",
             "title": "Summary"
+          },
+          "table_changes": {
+            "description": "How this proposal changes map cards' Facts, Connections and Findings, read as rows: per table its added, removed and changed rows (changed_cells names what changed), each with its citations, and the reasons given for the edit.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Table Changes",
+            "type": "array"
+          },
+          "table_changes_complete": {
+            "default": true,
+            "description": "False when part of this proposal's change to a map card's Facts, Connections or Findings is not expressed by table_changes (text that is not a row, or a section not in canonical form): review the markdown diff then.",
+            "title": "Table Changes Complete",
+            "type": "boolean"
           }
         },
         "required": [
@@ -21056,6 +21112,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/WikiProposalAccept"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -21618,7 +21691,7 @@
                     "type": "string"
                   },
                   "old_rows": {
-                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value} or {relation, to}, or the row copied from cat.",
+                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat.",
                     "items": {
                       "type": [
                         "object",
@@ -21914,10 +21987,11 @@
                     "type": "string"
                   },
                   "table": {
-                    "description": "sort_table / edit_rows: which table.",
+                    "description": "sort_table (facts | connections) / edit_rows: which table.",
                     "enum": [
                       "facts",
-                      "connections"
+                      "connections",
+                      "findings"
                     ],
                     "type": "string"
                   },
