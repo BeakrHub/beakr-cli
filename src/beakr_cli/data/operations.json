@@ -2493,6 +2493,13 @@
       "name": "query",
       "required": true,
       "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Answer within 15 seconds from one search of Knowledge and uploaded documents, with a short cited answer. Connected services are not searched. The response's engine is quick, and stopped_early is true when the answer is the cited results without a written summary.",
+      "name": "quick",
+      "required": false,
+      "type": "boolean"
      }
     ],
     "media": "json",

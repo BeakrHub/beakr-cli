@@ -4,32 +4,6 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## Unreleased
-
-- `beakr documents search QUERY` (and the MCP `documents` tool's `search`
-  command) finds passages of the original documents by meaning, grouped by
-  document, each with a source_ref; `--limit`, `--offset`, `--passages`,
-  `--path`, `--glob`, `--type` and `--project` (an id or name) narrow it.
-- `beakr files download` takes any reference a read hands out (a source
-  record's source_ref, a version id, a path) as well as a file id, and signs
-  the download in one request. The MCP `documents` tool passes a search's
-  `results` through.
-- `beakr research` and `beakr kb research` take `--quick`, and the MCP
-  `research` tool takes `quick`: a short cited answer within 15 seconds from
-  one search of Knowledge and uploaded files, without connected services.
-- `beakr api` and the MCP `knowledge_base` read accept `rows` with `view`
-  `groups` and a `page_type`: that card type's field names that likely mean
-  one field, grouped, with counts and example values.
-- The bundled `beakr` skill teaches the three ways into Knowledge (walk the
-  graph, query `rows` as one database, read the text), what an empty `rows`
-  reply means, and when to propose a fact, connection or finding.
-- The MCP server no longer forwards a timeline cursor when it had to cut the
-  timeline's text: following it skipped the events the cut dropped. It asks for
-  the same window again with a smaller limit instead.
-- Preserve API request IDs in MCP error results and readable API error messages,
-  including gateway responses that provide only `X-Request-ID`. This makes a
-  failed call traceable without retrying it solely to obtain diagnostics.
-
 ## beakr-cli 0.4.0 (2026-10-16)
 
 ### Changes
@@ -65,6 +39,12 @@ Each release lists the public API changes it supports, taken from the API change
   connected item's `400 not_a_file`, a Beakr document with no stored original
   `409 no_original_file`, and a file the caller cannot read `404 not_found`,
   the same as no file.
+- `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
+  seconds from one search of Knowledge and uploaded files, with a short cited
+  answer. Connected integrations are not searched. The response's `engine` is
+  `quick`, and `stopped_early` is `true` when the answer is the cited results
+  without a written summary. Leaving `quick` out keeps research as before;
+  a `quick` that is not a boolean is `422 invalid_quick`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
@@ -1011,6 +991,32 @@ Each release lists the public API changes it supports, taken from the API change
   list is keyed by document with every place cited in it, never by `{{key}}`
   tokens. `beakr research` prints a plain list of cited documents when the
   answer cites by reference, and a numbered one when an engine still numbers it.
+
+## Unreleased
+
+- `beakr documents search QUERY` (and the MCP `documents` tool's `search`
+  command) finds passages of the original documents by meaning, grouped by
+  document, each with a source_ref; `--limit`, `--offset`, `--passages`,
+  `--path`, `--glob`, `--type` and `--project` (an id or name) narrow it.
+- `beakr files download` takes any reference a read hands out (a source
+  record's source_ref, a version id, a path) as well as a file id, and signs
+  the download in one request. The MCP `documents` tool passes a search's
+  `results` through.
+- `beakr research` and `beakr kb research` take `--quick`, and the MCP
+  `research` tool takes `quick`: a short cited answer within 15 seconds from
+  one search of Knowledge and uploaded files, without connected services.
+- `beakr api` and the MCP `knowledge_base` read accept `rows` with `view`
+  `groups` and a `page_type`: that card type's field names that likely mean
+  one field, grouped, with counts and example values.
+- The bundled `beakr` skill teaches the three ways into Knowledge (walk the
+  graph, query `rows` as one database, read the text), what an empty `rows`
+  reply means, and when to propose a fact, connection or finding.
+- The MCP server no longer forwards a timeline cursor when it had to cut the
+  timeline's text: following it skipped the events the cut dropped. It asks for
+  the same window again with a smaller limit instead.
+- Preserve API request IDs in MCP error results and readable API error messages,
+  including gateway responses that provide only `X-Request-ID`. This makes a
+  failed call traceable without retrying it solely to obtain diagnostics.
 
 ## Unreleased
 

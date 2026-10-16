@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=be9ba63045f3bca43caec3144fab997824bee669274feaaaf007a617644e2b86 changelog sha256=2a7e771cb3763f6e20d54a4bfed0088becea3576da8559b1721f51a5ea5323d9 -->
+<!-- contract-stamp: public-openapi sha256=3f538d48c3f7cf183125b96bd625a5501688a5530e96776ae255c19ef3fcf103 changelog sha256=4343e47d728aeeeaf76e690204dd4854b09a764fe9f17c6a9661d122c885fb95 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -47,6 +47,12 @@ The first public version.
   connected item's `400 not_a_file`, a Beakr document with no stored original
   `409 no_original_file`, and a file the caller cannot read `404 not_found`,
   the same as no file.
+- `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
+  seconds from one search of Knowledge and uploaded files, with a short cited
+  answer. Connected integrations are not searched. The response's `engine` is
+  `quick`, and `stopped_early` is `true` when the answer is the cited results
+  without a written summary. Leaving `quick` out keeps research as before;
+  a `quick` that is not a boolean is `422 invalid_quick`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
