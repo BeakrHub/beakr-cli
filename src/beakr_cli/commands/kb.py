@@ -654,11 +654,16 @@ def research(
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
+    quick: bool = typer.Option(
+        False,
+        "--quick",
+        help="A short cited answer within 15 seconds from one search (no connected services).",
+    ),
 ) -> None:
     """Ask a question and get a researched answer with citations."""
     project_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
-        data = sdk.knowledge.research(query, project_id=project_id)
+        data = sdk.knowledge.research(query, project_id=project_id, quick=quick)
 
     if machine_output(data, json_out=json_out, lines=research_lines):
         return

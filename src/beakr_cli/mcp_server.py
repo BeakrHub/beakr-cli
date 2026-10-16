@@ -635,6 +635,7 @@ async def research(
     query: str,
     project: str = "",
     project_id: str = "",
+    quick: bool = False,
 ) -> dict:
     """Ask a question and get a researched answer with citations from the
     organization's knowledge base, documents, and connected services.
@@ -662,6 +663,8 @@ async def research(
         query: The question to answer.
         project: Optional project ID to scope the search.
         project_id: Deprecated alias for project.
+        quick: A short cited answer within 15 seconds from one search of
+            Knowledge and documents (no connected services).
     """
     from beakr_cli.research_metadata import (
         attach_research_metadata,
@@ -672,7 +675,9 @@ async def research(
     scoped = await _project_by_name_or_id(project, project_id)
     started = time.monotonic()
     try:
-        data = await _call_api(lambda sdk: sdk.knowledge.research(query, project_id=scoped))
+        data = await _call_api(
+            lambda sdk: sdk.knowledge.research(query, project_id=scoped, quick=quick)
+        )
     except (Exception, asyncio.CancelledError) as exc:
         record_failed_research(exc, time.monotonic() - started)
         raise

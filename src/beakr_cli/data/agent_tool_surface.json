@@ -55,7 +55,7 @@
       "tier": "eager"
     },
     {
-      "description": "Ask a question and get a researched, cited answer from the organization's knowledge base, documents and connected services. The primary tool for questions about the organization: decisions, owners, status, everything related to a topic. Pass the user's original wording and scope; add context separately. Do not turn a natural-language criterion into a requirement for an exact field or taxonomy label. For counts, averages and all/none claims, inspect checked/not_checked and coverage: citations support evidence, not complete population coverage. Resolve material gaps before presenting a result as exhaustive.",
+      "description": "Ask a question and get a researched, cited answer from the organization's knowledge base, documents and connected services. The primary tool for questions about the organization: decisions, owners, status, everything related to a topic. Pass the user's original wording and scope; add context separately. Do not turn a natural-language criterion into a requirement for an exact field or taxonomy label. For counts, averages and all/none claims, inspect checked/not_checked and coverage: citations support evidence, not complete population coverage. Resolve material gaps before presenting a result as exhaustive. Pass quick=true for a short cited answer within 15 seconds from one search of Knowledge and documents (no connected services): for checking a fact before going on, not for exhaustive questions.",
       "name": "research",
       "surfaces": [
         "remote",
