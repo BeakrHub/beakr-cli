@@ -24,6 +24,10 @@ Each release lists the public API changes it supports, taken from the API change
   (also a field holding its words) or `meaning` (the default: also the closest
   field by meaning); without the rows index, `similar` and `meaning` match the
   phrase or every word, as before.
+- `POST /v1/knowledge/wiki/command` `rows` takes `view` `conflicts` (Facts):
+  each pair of rows on one card that gives one field different values with
+  overlapping or missing When, both sides with their citations. A different
+  value with a later When is an update and is not listed.
 - **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
   documents feature) adds the `search` command: passages of the original
   documents ranked by meaning and wording, grouped by document, best first.

@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a3cf6d8fecf1039211b17127d8cf1935de0bbc5a0b80cfb4c262d16c3b7bbbcf changelog sha256=d9b165f96b6459b0a00e900912e61cc3e2a948d81da8ef3adccd7fe34055a4ee -->
+<!-- contract-stamp: public-openapi sha256=4639480e64f96249d76cf5753f50158124ef89f23740dd0ded768077ba616698 changelog sha256=590332bffd543fa6a7a5260855cf28d9708c794f0672ba85496b98dd9ac19337 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -32,6 +32,11 @@ The first public version.
   (also a field holding its words) or `meaning` (the default: also the closest
   field by meaning); without the rows index, `similar` and `meaning` match the
   phrase or every word, as before.
+
+- `POST /v1/knowledge/wiki/command` `rows` takes `view` `conflicts` (Facts):
+  each pair of rows on one card that gives one field different values with
+  overlapping or missing When, both sides with their citations. A different
+  value with a later When is an update and is not listed.
 
 - **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
   documents feature) adds the `search` command: passages of the original
@@ -92,12 +97,6 @@ The first public version.
   with `code` `proposal_changed`. Accepting a proposal that changes a card's
   table rows may require it (`422` `review_required`); proposal reads say so
   with `changes_card_tables`.
-- `GET /v1/knowledge/wiki/pages/{page_id}` adds, for a map card,
-  `contradicting_citations` (per protected section, the citation keys its
-  sources cite as contradicting what the card states) and `disputed_rows` (per
-  protected section, the `row_id`s of the rows those citations mark as
-  disputing, the ids the table and proposal reads use). A card's text does not
-  carry a citation's stance; read it here. Both are empty on any other page.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
