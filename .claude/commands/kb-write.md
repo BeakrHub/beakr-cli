@@ -25,6 +25,6 @@ Follow this procedure:
    - New page: action `new` with `title`, `page_type`, `summary` (one line on what the page is about), `parent`, `sections`, and `rationale`.
    - Existing page: action `edit_section` with `page`, `section_id`, `new_section_body`, `citations`, `edit_note`, and `rationale`. Read the page first; the new body replaces the whole section.
 
-7. **Review.** Show the result with `show_proposal`. Call `accept_proposal` only when the user explicitly asks to apply it.
+7. **Review.** Show the result with `show_proposal`. Call `accept_proposal` only when the user explicitly asks to apply it, with the `content_hash` `show_proposal` printed as `reviewed_hash`.
 
 Do NOT create stub pages. Every page should have substantive content.

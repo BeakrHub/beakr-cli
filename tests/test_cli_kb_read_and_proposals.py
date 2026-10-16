@@ -281,11 +281,25 @@ def test_proposals_show_json_and_human(terminal):
     assert "New hires pair for two weeks." in human.stdout
 
 
-def _read_for_accept() -> respx.Route:
-    """The read an accept makes first; it echoes this ``content_hash`` back."""
+HASH_A = "a" * 64
+HASH_B = "b" * 64
+
+
+def _read_for_accept(*, changes_card_tables: bool = False) -> respx.Route:
+    """The read an accept without --reviewed-hash makes, only to classify the proposal."""
     return respx.get(f"{PROPOSALS}/prop-1").respond(
-        json={"id": "prop-1", "status": "pending", "content_hash": "ab" * 32}
+        json={
+            "id": "prop-1",
+            "status": "pending",
+            "content_hash": HASH_B,
+            "changes_card_tables": changes_card_tables,
+        }
     )
+
+
+def _body(route: respx.Route) -> dict | None:
+    content = route.calls.last.request.content
+    return json.loads(content) if content else None
 
 
 @respx.mock
@@ -321,25 +335,17 @@ def test_proposals_accept_conflict_exits_5():
     assert result.exit_code == 5, result.output
 
 
-@respx.mock
-def test_proposals_accept_echoes_the_reads_content_hash():
-    # ROOT CAUSE (2026-10-16): accept posted no reviewed hash, so it could not be
-    # bound to a review. It reads the proposal first and echoes that read's
-    # content_hash; it never computes one.
-    read = _read_for_accept()
-    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
-
-    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--yes"])
-
-    assert result.exit_code == 0, result.output
-    assert read.called
-    assert json.loads(accept.calls.last.request.content) == {"reviewed_hash": "ab" * 32}
+# ROOT CAUSE (security review, 2026-10-16): accept read the proposal and echoed
+# that fresh read's content_hash, which bound the accept to whatever the proposal
+# was at accept time rather than to the read someone reviewed, so a proposal that
+# changed in between was accepted anyway. The hash now comes only from a review:
+# --reviewed-hash, or the read this command displayed and the person confirmed.
 
 
 @respx.mock
-def test_a_proposal_changed_since_the_read_says_to_review_it_again():
-    _read_for_accept()
-    respx.post(f"{PROPOSALS}/prop-1/accept").respond(
+def test_accept_with_the_shown_hash_is_refused_when_the_proposal_changed_since():
+    _read_for_accept(changes_card_tables=True)  # the stored proposal now hashes to B
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(
         409,
         json={
             "error": {
@@ -349,7 +355,84 @@ def test_a_proposal_changed_since_the_read_says_to_review_it_again():
         },
     )
 
-    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--yes"])
+    result = runner.invoke(
+        app, ["kb", "proposals", "accept", "prop-1", "--reviewed-hash", HASH_A, "--yes"]
+    )
 
     assert result.exit_code == 5, result.output
     assert "beakr kb proposals show" in result.output
+    assert _body(accept) == {"reviewed_hash": HASH_A}
+
+
+@respx.mock
+def test_accept_with_a_reviewed_hash_sends_it_with_no_read_of_its_own():
+    read = _read_for_accept(changes_card_tables=True)
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(
+        app, ["kb", "proposals", "accept", "prop-1", "--reviewed-hash", HASH_B, "--yes"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert not read.called
+    assert _body(accept) == {"reviewed_hash": HASH_B}
+
+
+@respx.mock
+def test_a_card_table_accept_without_a_reviewed_hash_is_refused_non_interactively():
+    _read_for_accept(changes_card_tables=True)
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--yes"])
+
+    assert result.exit_code == 2, result.output
+    assert "--reviewed-hash" in result.output
+    assert not accept.called
+
+
+@respx.mock
+def test_a_prose_accept_without_a_hash_sends_none_not_a_fresh_reads_hash():
+    _read_for_accept(changes_card_tables=False)
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--yes"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(accept) is None
+
+
+@respx.mock
+def test_an_interactive_accept_binds_to_the_read_it_displayed(terminal, monkeypatch):
+    monkeypatch.setattr("beakr_cli.commands.kb.is_interactive", lambda: True)
+    monkeypatch.setattr("beakr_cli.output.is_interactive", lambda: True)
+    _read_for_accept(changes_card_tables=True)
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1"], input="y\n")
+
+    assert result.exit_code == 0, result.output
+    assert f"Content hash: {HASH_B}" in result.stdout
+    assert _body(accept) == {"reviewed_hash": HASH_B}
+
+
+@respx.mock
+def test_proposals_show_prints_the_content_hash_to_accept_with(terminal):
+    _read_for_accept(changes_card_tables=True)
+
+    result = runner.invoke(app, ["kb", "proposals", "show", "prop-1"])
+
+    assert result.exit_code == 0, result.output
+    assert f"Content hash: {HASH_B}" in result.stdout
+    assert "--reviewed-hash" in result.stdout
+
+
+@respx.mock
+def test_a_reviewed_hash_that_is_not_a_content_hash_is_a_usage_error():
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(
+        app, ["kb", "proposals", "accept", "prop-1", "--reviewed-hash", "latest", "--yes"]
+    )
+
+    assert result.exit_code == 2, result.output
+    assert not accept.called

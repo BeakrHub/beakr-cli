@@ -12,9 +12,11 @@ from beakr_sdk.resources.knowledge import result_text
 
 from beakr_cli.citations import CitationValidationError, validate_proposal_sections
 from beakr_cli.cited_answer import print_research_result, research_lines
+from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
 from beakr_cli.output import (
     console,
     err_console,
+    is_interactive,
     machine_output,
     output_mode,
     page_lines,
@@ -28,7 +30,7 @@ from beakr_cli.output import (
 )
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
-from beakr_cli.proposal_accept import accept_reviewed
+from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
@@ -761,6 +763,11 @@ def _print_proposal(proposal: dict) -> None:
         console.print(f"Page:   {proposal.get('page_title')}")
     if proposal.get("summary"):
         console.print(f"Summary: {proposal.get('summary')}")
+    if proposal.get("content_hash"):
+        # Printed plainly: `kb proposals accept --reviewed-hash` takes it back.
+        console.print(f"Content hash: {proposal['content_hash']}", markup=False)
+    if proposal.get("changes_card_tables"):
+        console.print("Changes card table rows: accept with --reviewed-hash and this content hash.")
     payload = proposal.get("payload") or {}
     if proposal.get("proposal_type") == "find_replace":
         console.print(
@@ -780,10 +787,22 @@ def _accept_created_proposal(proposal: dict, *, accept: bool, yes: bool) -> None
     # The proposal exists either way: a "no" leaves it pending, not failed.
     if not confirmed("Accept and apply this proposal?", yes):
         return
-    with get_sdk() as sdk:
-        # Bound to the proposal just shown: its content_hash is echoed back.
-        _read, result = accept_reviewed(sdk, proposal["id"], proposal)
+    # Bound to the proposal this command created and just showed.
+    result = _accept_bound(proposal["id"], proposal.get("content_hash"))
     console.print(f"Accepted proposal {result.get('proposal_id', proposal['id'])}.")
+
+
+def _accept_bound(proposal_id: str, reviewed_hash: str | None) -> dict:
+    """Accept bound to ``reviewed_hash``; a card-table proposal without one is refused (exit 2)."""
+    try:
+        with get_sdk() as sdk:
+            return accept_reviewed(sdk, proposal_id, reviewed_hash)
+    except ReviewRequired as refused:
+        err_console.print(
+            f"{refused} Review it with `beakr kb proposals show {proposal_id}`, then run "
+            f"`beakr kb proposals accept {proposal_id} --reviewed-hash <its content hash>`."
+        )
+        raise typer.Exit(EXIT_USAGE) from refused
 
 
 def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool) -> None:
@@ -807,8 +826,8 @@ def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool)
         )
         raise typer.Exit(1)
     if accept:
-        with get_sdk() as sdk:
-            _read, result = accept_reviewed(sdk, proposal["id"], proposal)
+        # The proposal this command just created: what the caller itself submitted.
+        result = _accept_bound(proposal["id"], proposal.get("content_hash"))
         machine_output({**proposal, "accepted": True, "accept_result": result}, json_out=json_out)
         return
     machine_output(proposal, json_out=json_out, hint=accept_hint)
@@ -1033,14 +1052,38 @@ def proposals_show(
 @proposals_app.command("accept")
 def proposals_accept(
     proposal_id: str = typer.Argument(..., help="Proposal ID."),
+    reviewed_hash: str | None = typer.Option(
+        None,
+        "--reviewed-hash",
+        help="The content hash `beakr kb proposals show` printed for the proposal you reviewed.",
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """Accept and apply a wiki proposal."""
-    confirm_or_require_yes(f"Accept and apply proposal {proposal_id}?", yes)
-    with get_sdk() as sdk:
-        # Read, then accept exactly that read (its content_hash echoed back).
-        _read, result = accept_reviewed(sdk, proposal_id)
+    """Accept and apply a wiki proposal, bound to the read you reviewed.
+
+    Pass --reviewed-hash from `beakr kb proposals show`, or run this at a terminal
+    without --yes to review the proposal here and confirm it. A proposal that
+    changes card table rows is not accepted any other way.
+    """
+    try:
+        given = checked_hash(reviewed_hash)
+    except ValueError as exc:
+        err_console.print(f"{exc} Copy it from `beakr kb proposals show {proposal_id}`.")
+        raise typer.Exit(EXIT_USAGE) from exc
+    if given is None and not yes and output_mode(json_out) == "human" and is_interactive():
+        # Review here: show the proposal and bind the accept to exactly this read.
+        with get_sdk() as sdk:
+            proposal = sdk.knowledge.proposals.show(proposal_id) or {}
+        _print_proposal(proposal)
+        console.print()
+        print_json(proposal.get("payload", {}))
+        if not confirmed("Accept and apply this proposal?", False):
+            raise typer.Exit(EXIT_ERROR)
+        given = proposal.get("content_hash")
+    else:
+        confirm_or_require_yes(f"Accept and apply proposal {proposal_id}?", yes)
+    result = _accept_bound(proposal_id, given)
     if not machine_output(result, json_out=json_out):
         console.print(f"Accepted proposal {result.get('proposal_id', proposal_id)}.")
 

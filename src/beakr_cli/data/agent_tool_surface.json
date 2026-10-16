@@ -163,7 +163,7 @@
       "tier": "discovery"
     },
     {
-      "description": "Accept and apply a wiki proposal. Only after the user explicitly asks to accept this specific proposal. It reads the proposal first and applies it only if unchanged since.",
+      "description": "Accept and apply a wiki proposal. Only after the user explicitly asks to accept this specific proposal. Call show_proposal first and pass its content_hash as reviewed_hash; the accept applies only that reviewed proposal.",
       "name": "accept_proposal",
       "surfaces": [
         "remote",

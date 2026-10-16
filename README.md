@@ -344,7 +344,8 @@ beakr kb edit-rows "Stripe" --table facts \
     --old-row '{"attribute": "tier", "value": "Basic"}' --row '{"attribute": "tier", "value": "Pro"}' \
     --rationale "Upgraded"
 beakr kb proposals ls
-beakr kb proposals accept <proposal-id>
+beakr kb proposals show <proposal-id>   # prints its content hash
+beakr kb proposals accept <proposal-id> --reviewed-hash <content-hash>
 ```
 
 ## Agents: context, session capture, skills
@@ -550,7 +551,9 @@ beakr kb propose edit --project <project-id> "Launch Plan" --file launch.md --se
 beakr kb proposals ls
 beakr kb proposals ls --mine
 beakr kb proposals show <proposal-id>
-beakr kb proposals accept <proposal-id>
+# Bound to the read you reviewed: a proposal changed since is refused. At a
+# terminal without --yes, accept shows the proposal and asks instead.
+beakr kb proposals accept <proposal-id> --reviewed-hash <content-hash>
 
 # Output JSON (for piping)
 beakr kb ls --json
@@ -595,7 +598,9 @@ The MCP contract intentionally does not expose Unit IDs, connector IDs, artifact
 MCP writes follow the same proposal workflow as the CLI. Pass `scope` with a
 project name or ID. They do not write immediately; the assistant should show or
 list the proposal and only call `accept_proposal` after the user explicitly asks
-to apply that proposal.
+to apply that proposal, passing the `content_hash` that `show_proposal` printed as
+`reviewed_hash`. A proposal that changed after it was shown is refused, and one
+that changes card table rows is not accepted without the hash.
 
 ## Project-scoped install
 
