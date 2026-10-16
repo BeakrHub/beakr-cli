@@ -6,6 +6,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- `beakr kb rows` takes `--match` (`exact`, `similar` or `meaning`: how
+  `--attribute` finds a field), and its help names what each row carries
+  (entity, entity_type, table, field, value, When, sources). The bundled skill
+  and the README teach the four ways to read Knowledge (file system, graph,
+  database, meaning) and how to combine them.
 - `beakr kb rows` takes `--as-of` (each card's value on a date), `--to`,
   `--connected-to` (only cards linked to a page, either way) and `--group-by`,
   and `--order-by amount` or `date` for typed sorts. The MCP `knowledge_base`

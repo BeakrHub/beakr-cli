@@ -19936,6 +19936,15 @@
                     "description": "cat only. Read an exact line range, `start-end` or a single line, 1-indexed and inclusive -- what grep's `section:line` addresses point at. Prefer `section_id` when the hit sits inside a marked section; use this for a long section, or a page with no section markers, instead of opening the whole page.",
                     "type": "string"
                   },
+                  "match": {
+                    "description": "rows: exact = the name or an alias; similar adds words; meaning (default) adds closest meaning.",
+                    "enum": [
+                      "meaning",
+                      "similar",
+                      "exact"
+                    ],
+                    "type": "string"
+                  },
                   "matches_per_page": {
                     "description": "grep only. Snippets kept per page (default 10, max 200). Every match is addressed in the result regardless; this controls how many also carry their text. Raise it to enumerate a term ACROSS pages in one call -- every version of a component, every date a decision moved -- where the alternative is opening each page in turn. For everything on ONE page, reading that page is usually simpler.",
                     "type": "integer"

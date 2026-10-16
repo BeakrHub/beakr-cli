@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1ae2bda0e4f4456f597c8eabe8e1913c617cb61291fbc4a4fd1cdaa4781a59ef changelog sha256=74d144d9331c1b9dcc0e7e03ce32be3389f7a05b6b40c57b5863e34e3bd2d998 -->
+<!-- contract-stamp: public-openapi sha256=494fae3c800053e7016ae06a41db0ad91ee6e7f078ba1a49062cd10e4de31f9b changelog sha256=a3f67d22098daccfe0bab5cfe084dc9d0802126adafad7fa4eb96c457ad19cd6 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -27,7 +27,13 @@ The first public version.
   line names the field it used, and a field meaning the opposite is never
   used), a `query` that no row matches in full matches the rows holding most
   of its words, and an empty reply lists the closest fields with their card
-  counts and an example value.
+  counts and an example value. `rows` also takes `match`: `exact` (the field
+  name or a recorded alias, and no retry of a `query` by words), `similar`
+  (also a field holding its words) or `meaning` (the default: also the closest
+  field by meaning); without the rows index, `similar` and `meaning` match the
+  phrase or every word, as before. `GET /v1/knowledge/rows` takes `match` too:
+  `exact` keeps the name or an alias only, and the others match the phrase or
+  every word.
 
 - **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
   documents feature) adds the `search` command: passages of the original
