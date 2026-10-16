@@ -6,6 +6,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- `beakr api` and the MCP `knowledge_base` read accept `rows` with `view`
+  `groups` and a `page_type`: that card type's field names that likely mean
+  one field, grouped, with counts and example values.
 - The bundled `beakr` skill teaches the three ways into Knowledge (walk the
   graph, query `rows` as one database, read the text), what an empty `rows`
   reply means, and when to propose a fact, connection or finding.

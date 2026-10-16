@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=32b7b8b72356541a503399ffce483df0557e00162715abe19db243daeaabeb5a changelog sha256=501f2b3ce3f83cd8860a15b6fb1dfd43085717a5ba4b13d548161adccc43a94e -->
+<!-- contract-stamp: public-openapi sha256=a263e80e5dde0b1db2458368ca961c7959d86f60ec70e5534900d0adbddc6d5a changelog sha256=1712c3a24221b9c88f653478e30709f809c78b0d72c78a33978700eb25401fcf -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -29,7 +29,9 @@ The first public version.
   `rows` filters (`attribute`, `to`, `query`) match their words in any order
   with plurals folded, as well as the phrase; nothing that matched before
   stops matching, and an empty filtered reply names the field names the
-  scanned cards use.
+  scanned cards use. `rows` with `view` `groups` and a `page_type` lists that
+  card type's field names that likely mean one field, grouped, with counts
+  and example values.
 
 - `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
   as a duplicate of one already in the same place: the `artifact_index` job is
