@@ -11,15 +11,28 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=aee0350e5a53c92e261a64364cacbf23660c8c3a7fa6a270c0f5dba20ef75ee4 changelog sha256=b6bfbe1f7e7c16072da76b0b9b03b1ee1b2c0edbfbfe39c8a896bad4b69782a2 -->
+<!-- contract-stamp: public-openapi sha256=a263e80e5dde0b1db2458368ca961c7959d86f60ec70e5534900d0adbddc6d5a changelog sha256=1712c3a24221b9c88f653478e30709f809c78b0d72c78a33978700eb25401fcf -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
-  `GET /v1/threads/{thread_id}` return `origin`: null for a
-  conversation started in the web app or through the API, or `slack`, `email`
-  or `text` for one a person started by messaging Beakr there.
+- `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
+  `links` with `direction` `out` lists the pages a page links to, with the
+  relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
+  `group_by` (counts, sums, minimum and maximum per `entity`, `entity_type`,
+  `year` or a column) and `view` `fields` with `field_id` (the field names
+  cards use, with counts, types and examples); `timeline` takes `page` (that
+  page and every page beneath it); `links` takes `offset` to page past one
+  window of incoming links; `rows` takes `after_card` to continue a card scan
+  that stopped at its cap (one project per scan); `hover` and `cat` with `outline` report a
+  page's parent, children, incoming links by type and outgoing link count.
+  `rows` filters (`attribute`, `to`, `query`) match their words in any order
+  with plurals folded, as well as the phrase; nothing that matched before
+  stops matching, and an empty filtered reply names the field names the
+  scanned cards use. `rows` with `view` `groups` and a `page_type` lists that
+  card type's field names that likely mean one field, grouped, with counts
+  and example values.
+
 - `GET /v1/jobs/{job_id}` keeps answering for an upload whose file was rejected
   as a duplicate of one already in the same place: the `artifact_index` job is
   `failed` with `error.code` `duplicate` and `error.duplicate_of`
@@ -86,6 +99,18 @@ The first public version.
   results name citations the same readable way. `ResearchResult` fields `checked`, `not_checked`,
   `sources_consulted`, `subtasks`, `stopped_early`, `engine` and `lead_model`
   now say what they hold.
+- `POST /v1/knowledge/wiki/command` supports continuing a chronological timeline without
+  `timeline_query` using `cursor`. Timeline coverage distinguishes dated candidates
+  examined (`scanned`) from results shown, reports whether an unqueried scan reached
+  the end (`scan_complete`), and supplies `next_cursor` when another chronological
+  window remains. Repeat the same filters when continuing. Semantic queries select
+  relevant sections first and remain non-exhaustive; they do not return a cursor.
+  Command guidance also states that the `rows` query is a literal substring filter.
+  Compact/full source-sidecar Knowledge reads can report `coverage.truncated` when
+  their response budget omits text; other reads may omit this field.
+- `POST /v1/knowledge/research` now documents what its coverage reports, subtask
+  count, early-stop indicator, engine and lead-model fields mean. Response behavior
+  is unchanged.
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
   project-restricted credential must supply one of its authorized projects.

@@ -13,7 +13,9 @@ from typing import Any
 _SUMMARY = re.compile(
     r"^(?P<prefix>documents grep .+: (?P<total>\d+) matching documents?; showing )"
     r"(?P<start>\d+)-(?P<end>\d+)"
-    r"(?P<suffix>\. Searched \d+ of \d+ documents \(\d+ in scope\)\.)$"
+    r"(?P<suffix>\. (?:Searched \d+ of \d+ documents \(\d+ in scope\)"
+    r"|Scanned \d+ of \d+ candidate documents after the safe prefilter; "
+    r"\d+ documents considered \(\d+ in scope\))\.)$"
 )
 # Both readable API rows and legacy token rows end in the document's exact ID.
 # Content-mode grep has a different summary and cannot enter this parser.

@@ -65,6 +65,26 @@ def test_scan_limits_profiles_and_unindexed_warnings_survive():
     assert not result["coverage"]["complete"]
 
 
+def test_prefiltered_scan_summary_keeps_the_visible_window_and_scan_cursor():
+    # The producer now distinguishes scanned candidates from considered scope;
+    # rejecting that canonical summary would discard whole-row pagination.
+    scope = (
+        "Scanned 231 of 400 candidate documents after the safe prefilter; "
+        "9288 documents considered (9288 in scope)."
+    )
+    warning = "Scan byte limit reached. Resume with after_document=scan-cursor."
+    text = listing(notices=(warning,)).replace(
+        "Searched 231 of 9288 documents (9288 in scope).", scope
+    )
+    result = fit_listing(text, limit=5000)
+    assert result is not None
+    assert 0 < result["coverage"]["returned"] < 200
+    assert scope in result["content"] and warning in result["content"]
+    assert result["coverage"]["next_offset"] == result["coverage"]["returned"]
+    assert "before advancing any after_document scan cursor" in result["content"]
+    assert len(result["content"]) <= 5000
+
+
 def test_rows_tokens_and_paths_are_unchanged():
     text = listing()
     result = fit_listing(text, limit=20_000)
