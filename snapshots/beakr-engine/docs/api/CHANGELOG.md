@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4116bd8024441233171a8e60dbfd9114f5f67b2176aa5bd7e03b023a21bcf82c changelog sha256=501f2b3ce3f83cd8860a15b6fb1dfd43085717a5ba4b13d548161adccc43a94e -->
+<!-- contract-stamp: public-openapi sha256=32b7b8b72356541a503399ffce483df0557e00162715abe19db243daeaabeb5a changelog sha256=501f2b3ce3f83cd8860a15b6fb1dfd43085717a5ba4b13d548161adccc43a94e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
