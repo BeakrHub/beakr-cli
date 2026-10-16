@@ -216,3 +216,18 @@ async def test_research_numbers_each_document_once() -> None:
     text = result.content[0].text
     assert "TTL 300s.[1] Renewed by a heartbeat.[1]" in text
     assert "[1] {{rag:a}} {{rag:b}}  (rag) runtime.md" in text and "[2]" not in text
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_research_passes_quick_only_when_asked() -> None:
+    route = respx.post(f"{API}/v1/knowledge/research").mock(
+        return_value=Response(200, json={"answer": "Five minutes.", "sources": {}})
+    )
+    await _call("research", {"query": "How long is a lease?", "quick": True})
+    await _call("research", {"query": "How long is a lease?"})
+    sent = [json.loads(call.request.content) for call in route.calls]
+    assert sent == [
+        {"query": "How long is a lease?", "quick": True},
+        {"query": "How long is a lease?"},
+    ]

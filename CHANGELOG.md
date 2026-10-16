@@ -6,6 +6,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- `beakr research` and `beakr kb research` take `--quick`, and the MCP
+  `research` tool takes `quick`: a short cited answer within 15 seconds from
+  one search of Knowledge and uploaded files, without connected services.
 - `beakr api` and the MCP `knowledge_base` read accept `rows` with `view`
   `groups` and a `page_type`: that card type's field names that likely mean
   one field, grouped, with counts and example values.

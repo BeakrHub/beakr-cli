@@ -11,11 +11,17 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a263e80e5dde0b1db2458368ca961c7959d86f60ec70e5534900d0adbddc6d5a changelog sha256=1712c3a24221b9c88f653478e30709f809c78b0d72c78a33978700eb25401fcf -->
+<!-- contract-stamp: public-openapi sha256=996022d4516fc3bb495a8365ef91e8a5df375a9592a42e7ce8835d8a95a77b8d changelog sha256=8529fea6be3a89af92b001c66c8537afc4aa0762b5d697f691ac6dea3cba09ad -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
+  seconds from one search of Knowledge and uploaded files, with a short cited
+  answer. Connected integrations are not searched. The response's `engine` is
+  `quick`, and `stopped_early` is `true` when the answer is the cited results
+  without a written summary. Leaving `quick` out keeps research as before;
+  a `quick` that is not a boolean is `422 invalid_quick`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
