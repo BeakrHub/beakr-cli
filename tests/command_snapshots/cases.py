@@ -104,7 +104,10 @@ CASES: list[SnapshotCase] = [
     c("files-ls", "files", "ls", "--project", PROJECT),
     c("files-show", "files", "show", ID),
     c("files-download", "files", "download", ID, "--out", "charter.pdf"),
-    c("files-download-ref", "files", "download", "Helios/helios-charter.pdf", "--out", "charter.pdf"),
+    c(
+        "files-download-ref",
+        "files", "download", "Helios/helios-charter.pdf", "--out", "charter.pdf",
+    ),
     c("files-rm", "files", "rm", ID, "--yes"),
     c("files-versions", "files", "versions", ID),
     c(
