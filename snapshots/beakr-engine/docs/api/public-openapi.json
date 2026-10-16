@@ -19827,7 +19827,7 @@
                     "type": "string"
                   },
                   "attribute": {
-                    "description": "rows: Attribute, Relation or kind containing this.",
+                    "description": "rows: the field by name, alias or meaning; replies say which field.",
                     "type": "string"
                   },
                   "command": {

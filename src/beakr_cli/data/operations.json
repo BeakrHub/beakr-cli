@@ -2566,7 +2566,7 @@
       "type": "string"
      },
      {
-      "description": "rows: Attribute, Relation or kind containing this.",
+      "description": "rows: the field by name, alias or meaning; replies say which field.",
       "name": "attribute",
       "required": false,
       "type": "string"

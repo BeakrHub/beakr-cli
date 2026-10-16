@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=e4afd720c9bb422be30acef40e58dde1cc36e86185786b4eb55061c75f77347d changelog sha256=decbc277c293022c3cab69d86437b761a364ad326f32d3317ce34312f3530a03 -->
+<!-- contract-stamp: public-openapi sha256=1ae2bda0e4f4456f597c8eabe8e1913c617cb61291fbc4a4fd1cdaa4781a59ef changelog sha256=74d144d9331c1b9dcc0e7e03ce32be3389f7a05b6b40c57b5863e34e3bd2d998 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -22,9 +22,71 @@ The first public version.
   `order_by` `amount` or `date` (Facts: money values with their scale, and
   date values, in order). Where the rows index is enabled, a `rows` read
   covers every card in scope with no card scan cap, `view` `fields` with a
-  `query` ranks the field names by meaning, and an empty filtered reply names
-  the field names nearest in meaning to the filter.
+  `query` ranks the field names by meaning, an `attribute` that no field is
+  named resolves to the closest field by words or meaning (the reply's first
+  line names the field it used, and a field meaning the opposite is never
+  used), a `query` that no row matches in full matches the rows holding most
+  of its words, and an empty reply lists the closest fields with their card
+  counts and an example value.
 
+- **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
+  documents feature) adds the `search` command: passages of the original
+  documents ranked by meaning and wording, grouped by document, best first.
+  `arguments` takes `query`, `limit` (documents per page, default 8, max 25),
+  `offset`, `passages` (per document, default 2, max 5), and the same `path`,
+  `glob`, `type`, `document` and `project` filters as `grep`. Besides `content`
+  and `sources`, a search answers `results`: one source record per matching
+  document (`source_ref`, `name`, `filename`, `location` with `display_path`,
+  `file_id` and `version_id`), its `match` (`strong`, `moderate` or `weak`) and
+  `score`, and its best `passages`, each with its own `source_ref`,
+  `unit_locator`, `line_start`/`line_end` (the lines `read` takes), `section`,
+  a brief `excerpt`, `match` and `score`. A search is a ranked selection, not a
+  census: use `grep` to find or count every mention.
+- `POST /v1/knowledge/documents` takes a project name as well as an id in
+  `project_id` (or `project`); a name may match several projects you can read.
+  Without one, a command covers everything the caller can read, and a
+  project-restricted credential now covers all of its projects (it was refused
+  with `403 insufficient_scope` before). A restricted credential naming a
+  project outside its list by name answers `404 not_found`, the same as a name
+  that matches nothing.
+- **Download a file from any source record in one step.**
+  `POST /v1/artifacts/download-url` (`projects:read`) takes the `reference`
+  `POST /v1/artifacts/read` takes, including a source record's `source_ref`,
+  and answers a short-lived signed `url` for the file's original bytes, with
+  `expires_in`, `filename`, `mime_type` and the `file` (`id`, `version_id`,
+  `title`, `display_path`). A reference that names a version downloads that
+  version; any other, the current one. `inline: true` asks a browser to display
+  the file. A Knowledge page's reference answers `400 knowledge_page`, a
+  connected item's `400 not_a_file`, a Beakr document with no stored original
+  `409 no_original_file`, and a file the caller cannot read `404 not_found`,
+  the same as no file.
+- `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
+  seconds from one search of Knowledge and uploaded files, with a short cited
+  answer. Connected integrations are not searched. The response's `engine` is
+  `quick`, and `stopped_early` is `true` when the answer is the cited results
+  without a written summary. Leaving `quick` out keeps research as before;
+  a `quick` that is not a boolean is `422 invalid_quick`.
+- A map card's Facts, Connections and Findings rows change only through row
+  operations. `POST /v1/knowledge/wiki/write` refuses an `edit_section`,
+  `edit` or `find_replace` that would change one of their rows as markdown
+  (`invalid_arguments`, naming the row action to use); `add_fact`,
+  `add_connection`, `add_finding`, `edit_rows` and `sort_table` change them,
+  and `find_replace` may still retarget a `[[link]]` in a row. `edit_rows`
+  takes `table` `findings`, naming each finding by `date` and `text`. No
+  write may store a table row that does not parse. `GET /v1/knowledge/wiki/pages/{page_id}` adds
+  `protected_sections`, and `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` add `table_changes`: each
+  changed table's `added`, `removed` and `changed` rows (`changed_cells` names
+  what changed) with their citations, whether the table was `reordered`, and
+  the `reasons` given for the edit; `table_changes_complete` is `false` when
+  part of the change is not expressed as rows. Those protected sections hold
+  only their rows, in one canonical form: a write that puts other text in them
+  is refused with `noncanonical_table`. Proposal reads also add
+  `content_hash`, and `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept`
+  takes `reviewed_hash`, the `content_hash` echoed back: when the stored
+  proposal no longer hashes to it, nothing is applied and the answer is `409`
+  with `code` `proposal_changed`. Accepting a proposal that changes a card's
+  table rows may require it (`422` `review_required`).
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
