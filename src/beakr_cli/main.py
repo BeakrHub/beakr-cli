@@ -278,6 +278,11 @@ def research(
         help="Project id, slug or name to scope the query.",
         callback=project_ref_callback,
     ),
+    quick: bool = typer.Option(
+        False,
+        "--quick",
+        help="A short cited answer within 15 seconds from one search (no connected services).",
+    ),
 ) -> None:
     """Ask a question and get a researched answer with citations."""
     from beakr_cli.cited_answer import print_research_result, research_lines
@@ -290,7 +295,7 @@ def research(
     err_console.print("[dim]Researching...[/dim]")
     try:
         with get_sdk() as sdk:
-            data = sdk.knowledge.research(query, project_id=project_id)
+            data = sdk.knowledge.research(query, project_id=project_id, quick=quick)
     except Exception as e:
         err_console.print(f"[red]Error: {e}[/red]")
         raise typer.Exit(1)

@@ -173,3 +173,14 @@ def test_an_older_engines_answer_still_renders() -> None:
     )
     assert lines[0] == "Five minutes [1]."
     assert lines[lines.index("sources:") + 1].startswith("[1]\t")
+
+
+@respx.mock
+@pytest.mark.parametrize("command", [["research"], ["kb", "research"]])
+def test_beakr_research_quick_sends_quick(monkeypatch, command) -> None:
+    monkeypatch.setenv("BEAKR_API_URL", API)
+    monkeypatch.setenv("BEAKR_API_KEY", "bk_live_test")
+    route = respx.post(f"{API}/v1/knowledge/research").respond(200, json=_two_documents())
+    result = CliRunner().invoke(app, [*command, "Which lead?", "--quick", "--json"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls.last.request.content) == {"query": "Which lead?", "quick": True}
