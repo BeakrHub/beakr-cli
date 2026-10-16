@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a2426cfdef956a8f6f12216944bc62a44fdf02c78e558f789ba2abc44a07a57f changelog sha256=6da0c8d77c76a0dd9312f138b13e9e97d2f66f4672985fa6a361627bf967f373 -->
+<!-- contract-stamp: public-openapi sha256=a2426cfdef956a8f6f12216944bc62a44fdf02c78e558f789ba2abc44a07a57f changelog sha256=2da61e59efce5b11fa51fefc1b253ab80087676af4dc3aeb5e1c5003a6948f72 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -73,7 +73,8 @@ The first public version.
   takes `reviewed_hash`, the `content_hash` echoed back: when the stored
   proposal no longer hashes to it, nothing is applied and the answer is `409`
   with `code` `proposal_changed`. Accepting a proposal that changes a card's
-  table rows may require it (`422` `review_required`).
+  table rows may require it (`422` `review_required`); proposal reads say so
+  with `changes_card_tables`.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,

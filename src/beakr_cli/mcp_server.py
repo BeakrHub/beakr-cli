@@ -139,6 +139,10 @@ def _format_proposal(data: dict) -> str:
         lines.append(f"Page: {data['page_title']}")
     if data.get("summary"):
         lines.append(f"Summary: {data['summary']}")
+    from beakr_cli.proposal_accept import review_lines
+
+    # Printed plainly: accept_proposal takes content_hash back as reviewed_hash.
+    lines.extend(review_lines(data))
     if data.get("proposal_type") == "find_replace":
         lines.append(
             f"Changes: {payload.get('total_matches', 0)} match(es) across "
@@ -895,15 +899,58 @@ async def show_proposal(proposal_id: str) -> str:
 
 
 @mcp.tool(**tool_surface.tool_kwargs("accept_proposal"))
-async def accept_proposal(proposal_id: str) -> str:
+async def accept_proposal(proposal_id: str, reviewed_hash: str = "") -> str | dict[str, Any]:
     """Accept and apply a wiki proposal.
 
     Only call this after the user explicitly asks to accept/apply this specific
     proposal. Do not create and accept a proposal in the same assistant step
-    unless the user already explicitly requested that behavior.
+    unless the user already explicitly requested that behavior. ``reviewed_hash``
+    is the content_hash show_proposal printed for the proposal that was reviewed.
     """
-    data = await _call_api(lambda sdk: sdk.knowledge.proposals.accept(proposal_id))
-    return f"Accepted proposal {data.get('proposal_id', proposal_id)}."
+    from beakr_cli.mcp_errors import ApiCallError
+    from beakr_cli.proposal_accept import (
+        CHANGED_FIX,
+        CHANGED_MESSAGE,
+        PROPOSAL_CHANGED,
+        REVIEW_REQUIRED,
+        REVIEW_REQUIRED_MESSAGE,
+        ReviewRequired,
+        accept_reviewed_async,
+        accepted_text,
+        checked_hash,
+    )
+
+    try:
+        reviewed = checked_hash(reviewed_hash)
+    except ValueError as exc:
+        return {
+            "status": "error",
+            "error_code": "invalid_arguments",
+            "message": str(exc),
+            "fix": "Call show_proposal and pass its content_hash unchanged.",
+        }
+    # Bound to the caller's review: the hash is never taken from a read made here.
+    try:
+        result = await _call_api(lambda sdk: accept_reviewed_async(sdk, proposal_id, reviewed))
+    except ReviewRequired:
+        return {
+            "status": "error",
+            "error_code": REVIEW_REQUIRED,
+            "message": REVIEW_REQUIRED_MESSAGE,
+            "fix": "Call show_proposal, review it, then call accept_proposal again with its "
+            "content_hash as reviewed_hash.",
+        }
+    except ApiCallError as exc:
+        if exc.fields.get("error_code") != PROPOSAL_CHANGED:
+            raise
+        changed = ApiCallError(
+            f"{CHANGED_MESSAGE} To fix: {CHANGED_FIX}",
+            request=exc.request,
+            response=exc.response,
+        )
+        changed.fields = {**exc.fields, "message": CHANGED_MESSAGE, "fix": CHANGED_FIX}
+        raise changed from exc
+    return accepted_text(result, proposal_id)
 
 
 @mcp.tool(**tool_surface.tool_kwargs("dismiss_proposal"))

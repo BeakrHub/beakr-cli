@@ -28,7 +28,12 @@ def authenticated(monkeypatch):
 
 def _routes():
     created = respx.post(f"{API}/v1/knowledge/wiki/proposals").respond(
-        json={"id": "prop-1", "status": "pending", "proposal_type": "create"}
+        json={
+            "id": "prop-1",
+            "status": "pending",
+            "proposal_type": "create",
+            "content_hash": "ab" * 32,
+        }
     )
     accepted = respx.post(f"{API}/v1/knowledge/wiki/proposals/prop-1/accept").respond(
         json={"proposal_id": "prop-1", "status": "accepted"}
@@ -61,6 +66,8 @@ def test_accept_yes_accepts_when_output_is_not_a_terminal(mode):
     result = _create("--accept", "--yes", *mode)
     assert result.exit_code == 0, result.output
     assert created.called and accepted.called
+    # Bound to the proposal it just showed: that read's content_hash is echoed.
+    assert json.loads(accepted.calls.last.request.content) == {"reviewed_hash": "ab" * 32}
     if mode:
         assert json.loads(result.stdout)["accepted"] is True
     else:  # piped: the compact line says so
