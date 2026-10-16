@@ -11,17 +11,42 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=996022d4516fc3bb495a8365ef91e8a5df375a9592a42e7ce8835d8a95a77b8d changelog sha256=8529fea6be3a89af92b001c66c8537afc4aa0762b5d697f691ac6dea3cba09ad -->
+<!-- contract-stamp: public-openapi sha256=be9ba63045f3bca43caec3144fab997824bee669274feaaaf007a617644e2b86 changelog sha256=2a7e771cb3763f6e20d54a4bfed0088becea3576da8559b1721f51a5ea5323d9 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
-  seconds from one search of Knowledge and uploaded files, with a short cited
-  answer. Connected integrations are not searched. The response's `engine` is
-  `quick`, and `stopped_early` is `true` when the answer is the cited results
-  without a written summary. Leaving `quick` out keeps research as before;
-  a `quick` that is not a boolean is `422 invalid_quick`.
+- **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
+  documents feature) adds the `search` command: passages of the original
+  documents ranked by meaning and wording, grouped by document, best first.
+  `arguments` takes `query`, `limit` (documents per page, default 8, max 25),
+  `offset`, `passages` (per document, default 2, max 5), and the same `path`,
+  `glob`, `type`, `document` and `project` filters as `grep`. Besides `content`
+  and `sources`, a search answers `results`: one source record per matching
+  document (`source_ref`, `name`, `filename`, `location` with `display_path`,
+  `file_id` and `version_id`), its `match` (`strong`, `moderate` or `weak`) and
+  `score`, and its best `passages`, each with its own `source_ref`,
+  `unit_locator`, `line_start`/`line_end` (the lines `read` takes), `section`,
+  a brief `excerpt`, `match` and `score`. A search is a ranked selection, not a
+  census: use `grep` to find or count every mention.
+- `POST /v1/knowledge/documents` takes a project name as well as an id in
+  `project_id` (or `project`); a name may match several projects you can read.
+  Without one, a command covers everything the caller can read, and a
+  project-restricted credential now covers all of its projects (it was refused
+  with `403 insufficient_scope` before). A restricted credential naming a
+  project outside its list by name answers `404 not_found`, the same as a name
+  that matches nothing.
+- **Download a file from any source record in one step.**
+  `POST /v1/artifacts/download-url` (`projects:read`) takes the `reference`
+  `POST /v1/artifacts/read` takes, including a source record's `source_ref`,
+  and answers a short-lived signed `url` for the file's original bytes, with
+  `expires_in`, `filename`, `mime_type` and the `file` (`id`, `version_id`,
+  `title`, `display_path`). A reference that names a version downloads that
+  version; any other, the current one. `inline: true` asks a browser to display
+  the file. A Knowledge page's reference answers `400 knowledge_page`, a
+  connected item's `400 not_a_file`, a Beakr document with no stored original
+  `409 no_original_file`, and a file the caller cannot read `404 not_found`,
+  the same as no file.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,

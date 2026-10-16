@@ -97,6 +97,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "files show",
         "files download",
         "files rm",
+        "documents search",
         # Background jobs (indexing, imports, syncs)
         "jobs show",
         "jobs wait",

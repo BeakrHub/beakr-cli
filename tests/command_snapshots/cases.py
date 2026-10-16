@@ -104,6 +104,7 @@ CASES: list[SnapshotCase] = [
     c("files-ls", "files", "ls", "--project", PROJECT),
     c("files-show", "files", "show", ID),
     c("files-download", "files", "download", ID, "--out", "charter.pdf"),
+    c("files-download-ref", "files", "download", "Helios/helios-charter.pdf", "--out", "charter.pdf"),
     c("files-rm", "files", "rm", ID, "--yes"),
     c("files-versions", "files", "versions", ID),
     c(
@@ -122,6 +123,7 @@ CASES: list[SnapshotCase] = [
     ),
     c("kb-search", "kb", "search", "thermostable lead", "--project", PROJECT),
     c("kb-grep", "kb", "grep", "NW-217", "--project", PROJECT),
+    c("documents-search", "documents", "search", "heat-stable lead", "--project", PROJECT),
     c("kb-sections", "kb", "sections", "Helios lead", "--project", PROJECT),
     c("kb-blame", "kb", "blame", PAGE, "--project", PROJECT),
     c("kb-log", "kb", "log", PAGE, "--project", PROJECT),
