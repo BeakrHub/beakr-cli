@@ -281,9 +281,17 @@ def test_proposals_show_json_and_human(terminal):
     assert "New hires pair for two weeks." in human.stdout
 
 
+def _read_for_accept() -> respx.Route:
+    """The read an accept makes first; it echoes this ``content_hash`` back."""
+    return respx.get(f"{PROPOSALS}/prop-1").respond(
+        json={"id": "prop-1", "status": "pending", "content_hash": "ab" * 32}
+    )
+
+
 @respx.mock
 @pytest.mark.parametrize(("verb", "status"), [("accept", "accepted"), ("dismiss", "dismissed")])
 def test_proposals_accept_and_dismiss_with_yes(verb, status):
+    _read_for_accept()
     route = respx.post(f"{PROPOSALS}/prop-1/{verb}").respond(
         json={"proposal_id": "prop-1", "status": status}
     )
@@ -296,6 +304,7 @@ def test_proposals_accept_and_dismiss_with_yes(verb, status):
 @respx.mock
 @pytest.mark.parametrize(("verb", "word"), [("accept", "Accepted"), ("dismiss", "Dismissed")])
 def test_proposals_accept_and_dismiss_human_output(terminal, verb, word):
+    _read_for_accept()
     respx.post(f"{PROPOSALS}/prop-1/{verb}").respond(json={"proposal_id": "prop-1"})
     result = runner.invoke(app, ["kb", "proposals", verb, "prop-1", "--yes"])
     assert result.exit_code == 0, result.output
@@ -304,8 +313,43 @@ def test_proposals_accept_and_dismiss_human_output(terminal, verb, word):
 
 @respx.mock
 def test_proposals_accept_conflict_exits_5():
+    _read_for_accept()
     respx.post(f"{PROPOSALS}/prop-1/accept").respond(
         409, json={"error": {"code": "conflict", "message": "The page changed since."}}
     )
     result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--yes"])
     assert result.exit_code == 5, result.output
+
+
+@respx.mock
+def test_proposals_accept_echoes_the_reads_content_hash():
+    # ROOT CAUSE (2026-10-16): accept posted no reviewed hash, so it could not be
+    # bound to a review. It reads the proposal first and echoes that read's
+    # content_hash; it never computes one.
+    read = _read_for_accept()
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--yes"])
+
+    assert result.exit_code == 0, result.output
+    assert read.called
+    assert json.loads(accept.calls.last.request.content) == {"reviewed_hash": "ab" * 32}
+
+
+@respx.mock
+def test_a_proposal_changed_since_the_read_says_to_review_it_again():
+    _read_for_accept()
+    respx.post(f"{PROPOSALS}/prop-1/accept").respond(
+        409,
+        json={
+            "error": {
+                "code": "proposal_changed",
+                "message": "This proposal changed after it was reviewed, so nothing was applied.",
+            }
+        },
+    )
+
+    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--yes"])
+
+    assert result.exit_code == 5, result.output
+    assert "beakr kb proposals show" in result.output

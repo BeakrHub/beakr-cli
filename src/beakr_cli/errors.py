@@ -46,6 +46,11 @@ def exit_code_for(exc: BaseException) -> int:
 
 #: The fix for refusals the API states with a specific ``error.code``.
 _CODE_HINTS = {
+    "proposal_changed": (
+        "The proposal changed after it was read, so nothing was applied. Read it again "
+        "(beakr kb proposals show), review what it now proposes, and accept only if it is "
+        "still wanted."
+    ),
     "session_required": (
         "This needs a signed-in browser session; API keys and CLI tokens cannot do it. "
         "Do it in the Beakr web app."

@@ -902,8 +902,29 @@ async def accept_proposal(proposal_id: str) -> str:
     proposal. Do not create and accept a proposal in the same assistant step
     unless the user already explicitly requested that behavior.
     """
-    data = await _call_api(lambda sdk: sdk.knowledge.proposals.accept(proposal_id))
-    return f"Accepted proposal {data.get('proposal_id', proposal_id)}."
+    from beakr_cli.mcp_errors import ApiCallError
+    from beakr_cli.proposal_accept import (
+        CHANGED_FIX,
+        CHANGED_MESSAGE,
+        PROPOSAL_CHANGED,
+        accept_reviewed_async,
+        accepted_text,
+    )
+
+    # Read first and echo that read's content_hash, so only what was read applies.
+    try:
+        read, result = await _call_api(lambda sdk: accept_reviewed_async(sdk, proposal_id))
+    except ApiCallError as exc:
+        if exc.fields.get("error_code") != PROPOSAL_CHANGED:
+            raise
+        changed = ApiCallError(
+            f"{CHANGED_MESSAGE} To fix: {CHANGED_FIX}",
+            request=exc.request,
+            response=exc.response,
+        )
+        changed.fields = {**exc.fields, "message": CHANGED_MESSAGE, "fix": CHANGED_FIX}
+        raise changed from exc
+    return accepted_text(read, result, proposal_id)
 
 
 @mcp.tool(**tool_surface.tool_kwargs("dismiss_proposal"))

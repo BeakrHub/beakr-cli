@@ -28,6 +28,7 @@ from beakr_cli.output import (
 )
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
+from beakr_cli.proposal_accept import accept_reviewed
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
@@ -780,7 +781,8 @@ def _accept_created_proposal(proposal: dict, *, accept: bool, yes: bool) -> None
     if not confirmed("Accept and apply this proposal?", yes):
         return
     with get_sdk() as sdk:
-        result = sdk.knowledge.proposals.accept(proposal["id"])
+        # Bound to the proposal just shown: its content_hash is echoed back.
+        _read, result = accept_reviewed(sdk, proposal["id"], proposal)
     console.print(f"Accepted proposal {result.get('proposal_id', proposal['id'])}.")
 
 
@@ -806,7 +808,7 @@ def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool)
         raise typer.Exit(1)
     if accept:
         with get_sdk() as sdk:
-            result = sdk.knowledge.proposals.accept(proposal["id"])
+            _read, result = accept_reviewed(sdk, proposal["id"], proposal)
         machine_output({**proposal, "accepted": True, "accept_result": result}, json_out=json_out)
         return
     machine_output(proposal, json_out=json_out, hint=accept_hint)
@@ -1037,7 +1039,8 @@ def proposals_accept(
     """Accept and apply a wiki proposal."""
     confirm_or_require_yes(f"Accept and apply proposal {proposal_id}?", yes)
     with get_sdk() as sdk:
-        result = sdk.knowledge.proposals.accept(proposal_id)
+        # Read, then accept exactly that read (its content_hash echoed back).
+        _read, result = accept_reviewed(sdk, proposal_id)
     if not machine_output(result, json_out=json_out):
         console.print(f"Accepted proposal {result.get('proposal_id', proposal_id)}.")
 
