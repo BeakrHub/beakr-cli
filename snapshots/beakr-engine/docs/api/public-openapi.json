@@ -19822,6 +19822,10 @@
                     "description": "Keyset cursor for ls, grep and sources: return only rows whose title sorts after this value. Pass the last title of the previous window to walk a full population. Required for any complete enumeration -- one window is never proof that nothing else matches. For sources, pass after_source_id alongside it: titles repeat, and a title-only cursor cannot reach past a run of files sharing one.",
                     "type": "string"
                   },
+                  "as_of": {
+                    "description": "rows, facts: each card's value on this date.",
+                    "type": "string"
+                  },
                   "attribute": {
                     "description": "rows: Attribute, Relation or kind containing this.",
                     "type": "string"
@@ -19851,6 +19855,10 @@
                       "suggest_parent",
                       "help"
                     ],
+                    "type": "string"
+                  },
+                  "connected_to": {
+                    "description": "rows: cards linked to this page.",
                     "type": "string"
                   },
                   "content": {
@@ -19943,11 +19951,11 @@
                     "type": "string"
                   },
                   "offset": {
-                    "description": "rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names.",
+                    "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
                     "type": "integer"
                   },
                   "order_by": {
-                    "description": "rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first.",
+                    "description": "rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first.",
                     "type": "string"
                   },
                   "outline": {

@@ -2560,6 +2560,12 @@
       "type": "string"
      },
      {
+      "description": "rows, facts: each card's value on this date.",
+      "name": "as_of",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "rows: Attribute, Relation or kind containing this.",
       "name": "attribute",
       "required": false,
@@ -2592,6 +2598,12 @@
       ],
       "name": "command",
       "required": true,
+      "type": "string"
+     },
+     {
+      "description": "rows: cards linked to this page.",
+      "name": "connected_to",
+      "required": false,
       "type": "string"
      },
      {
@@ -2722,13 +2734,13 @@
       "type": "string"
      },
      {
-      "description": "rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names.",
+      "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
       "name": "offset",
       "required": false,
       "type": "integer"
      },
      {
-      "description": "rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first.",
+      "description": "rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first.",
       "name": "order_by",
       "required": false,
       "type": "string"

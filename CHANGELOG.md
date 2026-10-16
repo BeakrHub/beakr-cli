@@ -4,6 +4,14 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## Unreleased
+
+- `beakr kb rows` takes `--as-of` (each card's value on a date), `--to`,
+  `--connected-to` (only cards linked to a page, either way) and `--group-by`,
+  and `--order-by amount` or `date` for typed sorts. The MCP `knowledge_base`
+  guide says `rows` is a database over every card to use first for every, how
+  many, latest, largest and as-of questions.
+
 ## beakr-cli 0.4.0 (2026-10-16)
 
 ### Changes

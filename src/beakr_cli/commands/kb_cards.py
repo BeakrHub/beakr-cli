@@ -77,7 +77,21 @@ def rows(
     current_only: bool = typer.Option(
         False, "--current-only", help="Keep the latest When per attribute."
     ),
-    order_by: str | None = typer.Option(None, "--order-by", help="Sort column."),
+    as_of: str | None = typer.Option(
+        None, "--as-of", help="Facts: each card's value on this date (YYYY-MM-DD)."
+    ),
+    to: str | None = typer.Option(
+        None, "--to", help="Connections: every row involving this page."
+    ),
+    connected_to: str | None = typer.Option(
+        None, "--connected-to", help="Only cards linked to this page, either direction."
+    ),
+    group_by: str | None = typer.Option(
+        None, "--group-by", help="Counts and totals per entity, entity_type, year or a column."
+    ),
+    order_by: str | None = typer.Option(
+        None, "--order-by", help="Sort column; facts also amount or date."
+    ),
     descending: bool = typer.Option(False, "--desc", help="Sort descending."),
     page_type: str | None = typer.Option(None, "--type", help="Card page type."),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Max rows."),
@@ -89,14 +103,21 @@ def rows(
     """Every map card's rows as one table (facts, connections or findings)."""
     _choice(table, _ROW_TABLES, "--table")
     with get_sdk() as sdk:
-        result = sdk.knowledge.rows(
-            table,
+        # The generic door call: the SDK's rows() predates to, connected_to, as_of
+        # and group_by, and the door takes every rows argument by its tool name.
+        result = sdk.knowledge.command(
+            "rows",
+            table=table,
             entity=entity,
             attribute=attribute,
             query=query,
             start_date=start,
             end_date=end,
             current_only=current_only or None,
+            as_of=as_of,
+            to=to,
+            connected_to=connected_to,
+            group_by=group_by,
             order_by=order_by,
             descending=descending or None,
             page_type=page_type,
