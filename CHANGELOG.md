@@ -6,6 +6,12 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
+  seconds from one search of Knowledge and uploaded files, with a short cited
+  answer. Connected integrations are not searched. The response's `engine` is
+  `quick`, and `stopped_early` is `true` when the answer is the cited results
+  without a written summary. Leaving `quick` out keeps research as before;
+  a `quick` that is not a boolean is `422 invalid_quick`.
 - `beakr research` and `beakr kb research` take `--quick`, and the MCP
   `research` tool takes `quick`: a short cited answer within 15 seconds from
   one search of Knowledge and uploaded files, without connected services.
