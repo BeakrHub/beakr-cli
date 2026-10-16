@@ -11,11 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=996022d4516fc3bb495a8365ef91e8a5df375a9592a42e7ce8835d8a95a77b8d changelog sha256=8529fea6be3a89af92b001c66c8537afc4aa0762b5d697f691ac6dea3cba09ad -->
+<!-- contract-stamp: public-openapi sha256=c5f919d170b2ecf76957d8f8dae2bccfd091ca891327a9350bb3285af345eb81 changelog sha256=c1b70592e1a74a91f35fccb355be709d400466d955c62598d1c7fb868202d966 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack`, `email`
+  or `text` for one a person started by messaging Beakr there.
 - `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
   seconds from one search of Knowledge and uploaded files, with a short cited
   answer. Connected integrations are not searched. The response's `engine` is
