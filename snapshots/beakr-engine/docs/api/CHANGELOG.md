@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=3742af186bdc3125060999c477df03fbd474cf6abfc7bb274f615cc36ae82f0f changelog sha256=7a7d46d92fcc55e8ec86b868f524292608acfc882ff597669702d4002b4d220d -->
+<!-- contract-stamp: public-openapi sha256=3742af186bdc3125060999c477df03fbd474cf6abfc7bb274f615cc36ae82f0f changelog sha256=17ea93c3f87471fc62db14a794938ad3b9fd4cd4b595843b149f93e266d587a9 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -89,6 +89,17 @@ The first public version.
   command's options under `arguments` or `args`: the options go at the top
   level of the body, next to `command`. They used to be ignored, so the read
   ran without them.
+
+- `POST /v1/knowledge/wiki/command` `query` with `as_of` (`AS OF` in `sql`)
+  keeps, for a card whose field has no dated value at all, its current undated
+  value instead of leaving the card out; the answer's `Applied:` line (and the
+  `query` object's `applied`) says how many cards were answered that way. A
+  `spec` sent with its keys at the top level beside `command`, and a SELECT sent
+  as `query`, now run, and the answer says how they were read; a guessed
+  `{"table": ..., "filters": [...]}` is refused with the `sql` call it most
+  likely meant. In a `spec`, `field` also takes `{"equals"|"contains"|"like"|
+  "meaning": name}`. Knowledge text that points at a cited file names `read_file`
+  to the hosted MCP server and `documents read` to other callers.
 
 - `POST /v1/knowledge/wiki/command` `query` answers open with what the query
   was understood as: for `sql`, a `Translated to spec:` line with the spec as
