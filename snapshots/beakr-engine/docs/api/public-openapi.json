@@ -13864,6 +13864,17 @@
             "description": "The wiki page detail's content.",
             "title": "Content"
           },
+          "contradicting_citations": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "On a project-map card, per protected section, the citation keys its sources cite as contradicting what the card states. A card's text does not carry a citation's stance. Empty on any other page.",
+            "title": "Contradicting Citations",
+            "type": "object"
+          },
           "created_at": {
             "description": "When it was created (ISO 8601, UTC).",
             "examples": [
@@ -13872,6 +13883,17 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "disputed_rows": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "On a project-map card, per protected section, the row_ids of the rows the contradicting citations mark as disputing (the ids the table and proposal reads use). Empty on any other page.",
+            "title": "Disputed Rows",
+            "type": "object"
           },
           "group_id": {
             "anyOf": [
