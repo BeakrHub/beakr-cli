@@ -11,10 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=3742af186bdc3125060999c477df03fbd474cf6abfc7bb274f615cc36ae82f0f changelog sha256=ccb5ce768733a419c89ed7355cce812108987c4b3f5d5bac9be00b71908ac61f -->
+<!-- contract-stamp: public-openapi sha256=6ef339bca53b7013900ac455da6c5800ee589e73c883df8998dba3664fd8edf3 changelog sha256=016f1ac34a9387731cde77464491ff1bc646db4795df20558233f452e5fa1653 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/write` `edit_rows`: an `old_rows` entry may give a
+  long value by its start, up to a word end or ending in `...`, when exactly one
+  row of that field starts that way. A start that several rows share is refused
+  with each row's start. Refusals show long values by their start.
+
+- `POST /v1/knowledge/wiki/command` `rows` with `current_only` (and `as_of`):
+  rows of one field that one document gives for the same When, or all without a
+  When, are a list, and every one of them is current. Only the last such row
+  used to be current. A later When, or another document's value, still replaces
+  the earlier one.
 
 - `POST /v1/knowledge/research` and `GET /v1/knowledge/wiki/search` no longer
   slow down other requests while they wait on the database. When every

@@ -8,6 +8,15 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/write` `edit_rows`: an `old_rows` entry may give a
+  long value by its start, up to a word end or ending in `...`, when exactly one
+  row of that field starts that way. A start that several rows share is refused
+  with each row's start. Refusals show long values by their start.
+- `POST /v1/knowledge/wiki/command` `rows` with `current_only` (and `as_of`):
+  rows of one field that one document gives for the same When, or all without a
+  When, are a list, and every one of them is current. Only the last such row
+  used to be current. A later When, or another document's value, still replaces
+  the earlier one.
 - `POST /v1/knowledge/research` and `GET /v1/knowledge/wiki/search` no longer
   slow down other requests while they wait on the database. When every
   research worker on a server stays busy for 30 seconds, research answers
