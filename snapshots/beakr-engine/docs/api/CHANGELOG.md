@@ -11,10 +11,46 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ba8132085bc515e0ec1082fed2103bf894f12082b9a5d4e44e07a6666d459905 changelog sha256=a4c822be35277d20c6858e71ff68081eca129c50172e61540caff3ab5a8f934a -->
+<!-- contract-stamp: public-openapi sha256=f4fd99cf083ffac2e8dacb4ee6e326f95633aaf5a870c838fcf504ead0dd1dbf changelog sha256=eca1173be9f7ec210e5d57145962e7851ee615bb4dd4d7a234ec5aae041d26fa -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` answers 400 when the body carries an option
+  the command does not take, naming each one, the likely option meant (`rows`
+  `value` -> `query` with `attribute`; `pattern` -> `query`; `max_results` ->
+  `limit`) and every option the command takes. Such options used to be ignored,
+  so a filtered read ran unfiltered. An option sent as `null`, `""`, `[]`, `{}`
+  or `false` is still accepted. `query` validates its own input as before.
+
+- `POST /v1/knowledge/wiki/command`: a `rows`, `ls`, `grep`, `sources` or
+  `sections` reply cut to fit the response budget is cut between whole rows,
+  pages, documents or hits, and its text says what it shows: the range
+  (`Showing 1-98 (cut to fit the response budget)`), the NOT ALL notice and the
+  continuation (`offset=98`, or `after_title`/`after_page_id`/`after_source_id`
+  of the last item shown) all describe the items kept. `coverage.returned` and
+  `coverage.next_offset` count what was shown, and the new
+  `coverage.continue_with` holds the arguments that continue the read. The
+  first `next` step says how to continue. These used to describe the uncut
+  window, so the stated offset skipped the rows that were cut.
+
+- `POST /v1/knowledge/wiki/command` `rows` takes `view: "census"`: each row's
+  entity and value only (the field's name only when the window holds more than
+  one, When only when stated), 300 rows by default (at most 500), with every
+  `rows` filter. It is held to the hard response cap rather than the target so
+  one field over a few hundred records fits one call. Cite a row as
+  `(entity › Facts)`. `group_by` and `include_evidence` are refused with it.
+
+- `POST /v1/knowledge/wiki/command` `grep` in text mode reads a hyphen, a space
+  and an en dash alike: `key person` finds `Key-Person`, and
+  `patent-infringement` finds `patent infringement`. Regex mode is unchanged.
+
+- The hosted MCP server repairs a call whose shape has one reading (options
+  beside `arguments` instead of inside it, `arguments` sent as a JSON string,
+  tool-call markup such as `<arg_key>` inside a value, a `knowledge_base`
+  `read_file` command, which runs as the `read_file` tool) and says what it
+  repaired on the reply's first line. A call with more than one reading is
+  refused with `invalid_arguments` and the tool's shape.
 
 - `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write` and
   `POST /v1/knowledge/documents` no longer slow down other requests while one

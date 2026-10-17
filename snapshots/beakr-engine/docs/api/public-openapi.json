@@ -20255,9 +20255,10 @@
                     "type": "string"
                   },
                   "view": {
-                    "description": "rows: values (default), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).",
+                    "description": "rows: values (default), census (entity and value only, 300 rows), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).",
                     "enum": [
                       "values",
+                      "census",
                       "fields",
                       "groups",
                       "conflicts"
