@@ -22,4 +22,3 @@ def test_the_research_reference_says_when_to_compute_from_originals():
 def test_the_skill_points_agents_at_that_guidance():
     skill = (ROOT / "SKILL.md").read_text()
     assert "research-workflow.md#cards-or-the-original-files" in skill
-

@@ -368,9 +368,7 @@ class SkillsSync:
             # it is never uploaded into the personal library under its slug.
             scope = bound_scope or "project"
             self._record(
-                SyncAction(
-                    slug, target, "skipped", f"a {scope} skill; shared skill sync is parked"
-                )
+                SyncAction(slug, target, "skipped", f"a {scope} skill; shared skill sync is parked")
             )
             return
         links = linked_entries(directory)

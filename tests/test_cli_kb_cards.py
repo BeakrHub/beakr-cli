@@ -375,8 +375,23 @@ def test_query_sends_the_json_spec_through_the_command_door(tmp_path) -> None:
     assert json.loads(route.calls[1].request.content)["spec"] == spec
 
 
-def test_query_refuses_text_that_is_not_json_before_sending() -> None:
-    result = CliRunner().invoke(app, ["kb", "query", "SELECT 1"])
+@respx.mock
+def test_query_sends_sql_with_a_cursor() -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+    sql = "SELECT value, COUNT(*) AS n FROM facts WHERE field = 'Status' GROUP BY value"
+
+    result = CliRunner().invoke(app, ["kb", "query", sql, "--cursor", "abc"])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls[0].request.content) == {
+        "command": "query",
+        "sql": sql,
+        "cursor": "abc",
+    }
+
+
+def test_query_refuses_a_json_spec_that_is_not_json_before_sending() -> None:
+    result = CliRunner().invoke(app, ["kb", "query", '{"from": facts}'])
 
     assert result.exit_code == 1
     assert "not valid JSON" in result.output

@@ -46,5 +46,3 @@ def test_projects_ls_keeps_member_filter_across_all_pages():
     assert len(route.calls) == 2
     assert all(call.request.url.params["member_only"] == "true" for call in route.calls)
     assert route.calls[1].request.url.params["cursor"] == "next"
-
-
