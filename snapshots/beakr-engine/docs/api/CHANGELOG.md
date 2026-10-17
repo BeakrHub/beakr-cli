@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4639480e64f96249d76cf5753f50158124ef89f23740dd0ded768077ba616698 changelog sha256=590332bffd543fa6a7a5260855cf28d9708c794f0672ba85496b98dd9ac19337 -->
+<!-- contract-stamp: public-openapi sha256=3b4eb7eab5d479d0c03a14c7cc4385fe85c382258bed5019c5f871fb9308b7ff changelog sha256=73b8f41a1e82435ba1529c6dfe681dbc74bec0164752898389aea044fe497616 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -97,6 +97,12 @@ The first public version.
   with `code` `proposal_changed`. Accepting a proposal that changes a card's
   table rows may require it (`422` `review_required`); proposal reads say so
   with `changes_card_tables`.
+- `GET /v1/knowledge/wiki/pages/{page_id}` adds, for a map card,
+  `contradicting_citations` (per protected section, the citation keys its
+  sources cite as contradicting what the card states) and `disputed_rows` (per
+  protected section, the `row_id`s of the rows those citations mark as
+  disputing, the ids the table and proposal reads use). A card's text does not
+  carry a citation's stance; read it here. Both are empty on any other page.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,
