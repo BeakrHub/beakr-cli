@@ -8,6 +8,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/research` and `GET /v1/knowledge/wiki/search` no longer
+  slow down other requests while they wait on the database. When every
+  research worker on a server stays busy for 30 seconds, research answers
+  `503 server_busy` with `Retry-After` and is not charged; retry once after
+  that wait.
 - `POST /v1/knowledge/documents` answers carry their outcome as data. A refused
   call has `error_code` (`invalid_arguments`, `invalid_pattern`,
   `document_not_found`, `timeout`, `scope_unavailable`). A `grep` or `search`
