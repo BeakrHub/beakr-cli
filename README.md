@@ -342,8 +342,8 @@ closest name by meaning where the rows index is on). Writes stage a proposal
 ```bash
 beakr kb rows --table facts --entity "Stripe" --current-only
 beakr kb rows --table facts --type matter --attribute "start date" --match similar
-# where enabled: groups, joins and aggregates over every card's rows (JSON, not SQL)
-beakr kb query '{"from": "facts", "where": {"field": "Status"}, "group_by": ["value"]}'
+# where enabled: one SELECT over every card's rows, parsed (never run as SQL)
+beakr kb query "SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC"
 beakr kb add-fact "Stripe" --attribute "contract renewal" --value "2027-01-31" \
     --evidence "{{doc:abc123}}" --rationale "From the signed order form"
 beakr kb add-connection "Stripe" --relation "billing provider for" --to "Platform" \

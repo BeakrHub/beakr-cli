@@ -187,5 +187,3 @@ def test_audit_rejects_an_unknown_channel_or_credential_kind():
     for args in (["--channel", "email"], ["--credential-kind", "password"]):
         result = CliRunner().invoke(app, ["org", "audit", *args])
         assert result.exit_code == 2, result.output
-
-

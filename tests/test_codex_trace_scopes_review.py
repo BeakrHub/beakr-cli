@@ -27,10 +27,13 @@ def test_single_id_trace_returns_the_accessible_kind_without_unrelated_scopes(
             scope = "outputs:read" if kind == "output" else "agent:run"
             route.respond(
                 403,
-                json={"error": {
-                    "code": "insufficient_scope", "message": f"Tracing needs {scope}",
-                    "required_scope": scope,
-                }},
+                json={
+                    "error": {
+                        "code": "insufficient_scope",
+                        "message": f"Tracing needs {scope}",
+                        "required_scope": scope,
+                    }
+                },
             )
 
     result = CliRunner().invoke(app, ["trace", item_id, "--json"])

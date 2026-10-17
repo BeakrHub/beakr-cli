@@ -409,5 +409,3 @@ def test_kb_conflicts_lists_contradicted_sections(rendered):
     result = runner.invoke(app, ["kb", "conflicts"])
     assert result.exit_code == 0, result.output
     assert "HX-07" in result.output and "Later report" in result.output
-
-

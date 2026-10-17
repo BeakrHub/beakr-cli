@@ -6315,6 +6315,168 @@
         "title": "KnowledgeFailedFilePage",
         "type": "object"
       },
+      "KnowledgeQueryResult": {
+        "additionalProperties": true,
+        "description": "``query`` only: the spec that ran and the window as data, beside the text.",
+        "properties": {
+          "applied": {
+            "default": [],
+            "description": "What the query defaulted, capped or applied that was not written: a default LIMIT or ORDER BY, a capped LIMIT, AS OF per card, an added COUNT, a sum split by unit.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Applied",
+            "type": "array"
+          },
+          "columns": {
+            "default": [],
+            "description": "The window's column names, in order.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Milliseconds the query took to run.",
+            "title": "Elapsed Ms"
+          },
+          "form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How the query was sent: `sql` (compiled to the spec) or `spec`.",
+            "title": "Form"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Send with the same sql or spec as `cursor` for the next window.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          },
+          "notices": {
+            "default": [],
+            "description": "Warnings that lead the text, e.g. a field asked by a name few cards hold while a near name is on many more.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Rows before this window.",
+            "title": "Offset"
+          },
+          "ran": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What ran, in words (the text's `Ran:`).",
+            "title": "Ran"
+          },
+          "resolved": {
+            "default": [],
+            "description": "How each field, card-type and title condition resolved: the stored name, how it was found (exact, alias, words, meaning) and the exact name's card count.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Resolved",
+            "type": "array"
+          },
+          "rows": {
+            "default": [],
+            "description": "The window's rows: dates as YYYY-MM-DD, long text cut at 2,000 characters.",
+            "items": {
+              "items": {},
+              "type": "array"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The JSON spec that ran (for `sql`, what the SELECT compiled to; `AS OF CURRENT_DATE` appears as `\"as_of\": \"today\"`). Present on a refusal too once the query compiled.",
+            "title": "Spec"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Rows (or groups) matching in all.",
+            "title": "Total"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What one result row is: `row`, `group` or `field` (a ranking).",
+            "title": "Unit"
+          }
+        },
+        "title": "KnowledgeQueryResult",
+        "type": "object"
+      },
       "KnowledgeRetryFileResult": {
         "description": "What a retry did with one file.",
         "properties": {
@@ -13778,6 +13940,18 @@
             "$ref": "#/components/schemas/WikiToolOutcome",
             "description": "How it turned out."
           },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnowledgeQueryResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`query` only: the spec that ran and the window as columns and rows."
+          },
           "sources": {
             "default": [],
             "description": "The sources it cites or draws on.",
@@ -19875,7 +20049,7 @@
                     "type": "boolean"
                   },
                   "cursor": {
-                    "description": "timeline without timeline_query: next_cursor from the previous result; keep the same filters.",
+                    "description": "timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec.",
                     "type": "string"
                   },
                   "descending": {
@@ -20036,8 +20210,12 @@
                   },
                   "spec": {
                     "additionalProperties": true,
-                    "description": "query (where enabled for the organization): a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys.",
+                    "description": "query (where enabled for the organization): the same query as a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys.",
                     "type": "object"
+                  },
+                  "sql": {
+                    "description": "query (where enabled for the organization): one SELECT over every card's rows, parsed and compiled into a spec; the text is never run as SQL. The reply's `query` object holds the spec it compiled to. Send sql or spec, not both; `topic: query` on `help` gives the grammar. one SELECT over every card's rows, parsed into a query (never run as SQL). FROM facts|connections|findings [AS OF 'YYYY-MM-DD'|CURRENT_DATE]; JOIN <table> b ON SAME_CARD(a)|TARGET_CARD(a) (up to 2); WHERE with AND/OR/NOT on entity, entity_type, field (= exact name, LIKE words, ~ meaning), value (=, <>, IN, CONTAINS, >, >=, <, <=, BETWEEN on numbers and dates), when, to, connected_to; GROUP BY field|value|entity|entity_type; COUNT(*), COUNT(DISTINCT entity), MIN|MAX|SUM|AVG(value_number|value_amount|value_date); ORDER BY; LIMIT (50, max 200). Example: SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC. help: query has the grammar.",
+                    "type": "string"
                   },
                   "start_date": {
                     "description": "Start date YYYY-MM-DD (for timeline).",

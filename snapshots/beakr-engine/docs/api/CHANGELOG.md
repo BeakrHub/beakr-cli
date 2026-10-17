@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9907b48b8ea99c70b3f35f818564529e6705a4304064af300d407bba8705d0c5 changelog sha256=73e357471b8f756c844939bd59e432ec6c0294e659ebd01f36b89c18a6510d18 -->
+<!-- contract-stamp: public-openapi sha256=ba8132085bc515e0ec1082fed2103bf894f12082b9a5d4e44e07a6666d459905 changelog sha256=b52dd2ebca43c3195a219cdb19b372e5d12ca0cb31e5bc70185cce9bdf90b0ff -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -20,6 +20,40 @@ The first public version.
   command's options under `arguments` or `args`: the options go at the top
   level of the body, next to `command`. They used to be ignored, so the read
   ran without them.
+
+- `POST /v1/knowledge/wiki/command` `query` answers open with what the query
+  was understood as: for `sql`, a `Translated to spec:` line with the spec as
+  JSON; then the total and the query in words; a `Resolved:` line naming the
+  stored field and card type each condition matched, how (exact, alias, words,
+  meaning) and the exact name's card count, with a near name held by many more
+  cards when the exact name is sparse; and an `Applied:` line listing what was
+  defaulted, capped or applied (a default LIMIT or ORDER BY, AS OF per card, an
+  added COUNT, a sum split by unit). The `query` object adds the same as
+  `resolved` and `applied`, and `unit` (`row`, `group` or `field`). A `sql`
+  LIMIT above 200 is capped to 200 and said, instead of refused. A SUM or AVG
+  of `value_amount` or `value_number` is split by a `unit` column (the
+  currency, `%`, or the word after the number), so different units and
+  currencies are never added into one total.
+
+- `POST /v1/knowledge/wiki/command` `query` takes `sql`: one SELECT, such as
+  `SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE
+  WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER
+  BY cards DESC`. The text is parsed into the same query a `spec` describes and
+  never runs as SQL: it reads facts, connections or findings, joins along
+  `SAME_CARD(a)` or `TARGET_CARD(a)` (up to two), filters with WHERE (AND, OR,
+  NOT, parentheses; `field =` the exact name, `LIKE` by words, `~` by meaning;
+  `value` text, `IN`, `CONTAINS` and typed `>`, `>=`, `<`, `<=`, `BETWEEN`),
+  `AS OF` a day or `CURRENT_DATE`, groups with GROUP BY, aggregates with
+  `COUNT(*)`, `COUNT(DISTINCT key)`, `MIN`, `MAX`, `SUM`, `AVG`, and takes
+  ORDER BY and LIMIT. Text outside the grammar answers `invalid_arguments`
+  stating the grammar and an example; sending both `sql` and `spec` is refused.
+  Every `query` answer adds a `query` object: the `spec` that ran, the query
+  in words (`ran`), `notices`, the window's `columns` and `rows`, `total` and
+  `next_cursor` (send it as `cursor` with the same `sql` or `spec`) and
+  `elapsed_ms`. A field asked by a name few cards hold while a near name
+  holds it on many more is named on the answer's first line and in `notices`. In a `spec`, `as_of`
+  takes `today`, and an `aggregate` without `group_by` answers one row over
+  every match (it used to be ignored).
 
 - `POST /v1/knowledge/wiki/command` adds the `query` command (where enabled for
   the organization): `spec` is a JSON object, not SQL, run over every map

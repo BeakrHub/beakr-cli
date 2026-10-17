@@ -148,50 +148,62 @@ def rows(
 
 
 def query(
-    spec: str | None = typer.Argument(
+    text: str | None = typer.Argument(
         None,
         help=(
-            'The query as JSON (not SQL), e.g. \'{"from": "facts", "where": '
-            '{"field": "Status"}, "group_by": ["value"]}\'. Use - to read it from stdin.'
+            'One SQL SELECT, e.g. "SELECT value, COUNT(DISTINCT entity) AS cards FROM facts '
+            "WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value\", or the "
+            "same query as a JSON spec (text starting with {). Use - to read it from stdin."
         ),
     ),
-    spec_file: Path | None = typer.Option(
-        None, "--file", "-f", help="Read the JSON query from this file instead."
+    query_file: Path | None = typer.Option(
+        None, "--file", "-f", help="Read the query (SQL or a JSON spec) from this file instead."
+    ),
+    cursor: str | None = typer.Option(
+        None, "--cursor", help="Continue a previous answer with the cursor it gave."
     ),
     scope: str | None = _scope_opt,
     json_out: bool = _json_opt,
 ) -> None:
-    """Structured filters, joins, groups and aggregates over every map card's rows, where enabled.
+    """Joins, groups and aggregates over every map card's rows, where enabled.
 
-    For what `kb rows` cannot express in one call. The query is a JSON object:
-    from (facts, connections, findings), where (and/or/not of conditions on
-    entity, entity_type, field, value, when, as_of, to, connected_to), join (up
-    to two, same_card or target_card), group_by, aggregate (count,
-    count_distinct, min, max, sum, avg), order_by, limit (50, max 200), cursor,
-    semantic (rank_fields_by or field_near). The reply gives the total, one
-    window, the query in plain words and a cursor when more rows follow.
+    For what `kb rows` cannot express in one call. Write one SELECT: FROM facts,
+    connections or findings; up to two JOINs on SAME_CARD(a) or TARGET_CARD(a);
+    WHERE with AND/OR/NOT on entity, entity_type, field (= exact name, LIKE
+    words, ~ meaning), value, when, to, connected_to; AS OF a day or
+    CURRENT_DATE; GROUP BY with COUNT, MIN, MAX, SUM, AVG; ORDER BY; LIMIT (50,
+    at most 200). Beakr parses it into a structured query and never runs it as
+    SQL. A JSON spec (from, where, join, group_by, aggregate, order_by, limit,
+    semantic) is accepted too. The reply opens with what the query was
+    understood as, then the total, one window and a cursor when more rows follow.
     """
-    raw = _query_text(spec, spec_file)
-    try:
-        parsed = json.loads(raw)
-    except ValueError as exc:
-        err_console.print(f"[red]The query is not valid JSON:[/red] {exc.msg}.")
-        raise typer.Exit(1) from exc
+    raw = _query_text(text, query_file).strip()
+    arguments: dict = {}
+    if raw.startswith("{"):
+        try:
+            arguments["spec"] = json.loads(raw)
+        except ValueError as exc:
+            err_console.print(f"[red]The JSON spec is not valid JSON:[/red] {exc.msg}.")
+            raise typer.Exit(1) from exc
+    else:
+        arguments["sql"] = raw
+    if cursor:
+        arguments["cursor"] = cursor
     with get_sdk() as sdk:
-        result = sdk.knowledge.command("query", spec=parsed, scope=_scope(scope))
+        result = sdk.knowledge.command("query", scope=_scope(scope), **arguments)
     _print_result(result, json_out=json_out)
 
 
-def _query_text(spec: str | None, spec_file: Path | None) -> str:
+def _query_text(text: str | None, query_file: Path | None) -> str:
     import sys
 
-    if spec_file is not None:
-        return spec_file.read_text(encoding="utf-8")
-    if spec == "-":
+    if query_file is not None:
+        return query_file.read_text(encoding="utf-8")
+    if text == "-":
         return sys.stdin.read()
-    if spec:
-        return spec
-    err_console.print("[red]Give the query as JSON, '-' for stdin, or --file PATH.[/red]")
+    if text and text.strip():
+        return text
+    err_console.print("[red]Give the query as SQL or JSON, '-' for stdin, or --file PATH.[/red]")
     raise typer.Exit(1)
 
 
