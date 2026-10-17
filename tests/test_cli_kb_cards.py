@@ -76,6 +76,59 @@ def test_rows_sends_the_rows_command_with_door_argument_names() -> None:
 
 
 @respx.mock
+def test_rows_sends_the_database_arguments_by_their_door_names() -> None:
+    # as_of, to, connected_to and group_by are rows arguments the SDK's rows()
+    # does not name; the CLI sends them through the generic door call.
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "kb",
+            "rows",
+            "--as-of",
+            "2024-06-30",
+            "--connected-to",
+            "Northwind Fund",
+            "--group-by",
+            "entity",
+            "--order-by",
+            "amount",
+            "--scope",
+            "Platform",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {
+        "command": "rows",
+        "table": "facts",
+        "as_of": "2024-06-30",
+        "connected_to": "Northwind Fund",
+        "group_by": "entity",
+        "order_by": "amount",
+        "scope": "Platform",
+    }
+
+
+@respx.mock
+def test_rows_sends_match_and_refuses_an_unknown_mode() -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+
+    sent = CliRunner().invoke(
+        app, ["kb", "rows", "--attribute", "start date", "--match", "similar"]
+    )
+    refused = CliRunner().invoke(
+        app, ["kb", "rows", "--attribute", "start date", "--match", "fuzzy"]
+    )
+
+    assert sent.exit_code == 0, sent.output
+    assert _body(route)["match"] == "similar"
+    assert refused.exit_code != 0
+    assert route.call_count == 1
+
+
+@respx.mock
 def test_rows_scope_defaults_to_the_bound_project(monkeypatch) -> None:
     monkeypatch.setenv("BEAKR_PROJECT_ID", "proj-1")
     route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())

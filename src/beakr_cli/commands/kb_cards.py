@@ -21,6 +21,7 @@ from beakr_cli.sdk import get_sdk
 
 _FINDING_KINDS = ("result", "lesson", "decision", "question", "correction")
 _ROW_TABLES = ("facts", "connections", "findings")
+_MATCH_MODES = ("exact", "similar", "meaning")
 _EDIT_TABLES = ("facts", "connections", "findings")
 
 _scope_opt = typer.Option(
@@ -70,14 +71,37 @@ def _parse_row(value: str, option: str) -> Any:
 def rows(
     table: str = typer.Option("facts", "--table", "-t", help="facts, connections or findings."),
     entity: str | None = typer.Option(None, "--entity", "-e", help="Only this card."),
-    attribute: str | None = typer.Option(None, "--attribute", "-a", help="Only this attribute."),
+    attribute: str | None = typer.Option(
+        None, "--attribute", "-a", help="The field: by name, alias or meaning (see --match)."
+    ),
+    match: str | None = typer.Option(
+        None,
+        "--match",
+        help=(
+            "How --attribute finds a field: exact (the name or an alias), similar (also "
+            "names holding its words) or meaning (default: also the closest by meaning, "
+            "where the rows index is on). Replies say which field was used."
+        ),
+    ),
     query: str | None = typer.Option(None, "--query", "-q", help="Text filter."),
     start: str | None = typer.Option(None, "--start", help="Start date YYYY-MM-DD."),
     end: str | None = typer.Option(None, "--end", help="End date YYYY-MM-DD."),
     current_only: bool = typer.Option(
         False, "--current-only", help="Keep the latest When per attribute."
     ),
-    order_by: str | None = typer.Option(None, "--order-by", help="Sort column."),
+    as_of: str | None = typer.Option(
+        None, "--as-of", help="Facts: each card's value on this date (YYYY-MM-DD)."
+    ),
+    to: str | None = typer.Option(None, "--to", help="Connections: every row involving this page."),
+    connected_to: str | None = typer.Option(
+        None, "--connected-to", help="Only cards linked to this page, either direction."
+    ),
+    group_by: str | None = typer.Option(
+        None, "--group-by", help="Counts and totals per entity, entity_type, year or a column."
+    ),
+    order_by: str | None = typer.Option(
+        None, "--order-by", help="Sort column; facts also amount or date."
+    ),
     descending: bool = typer.Option(False, "--desc", help="Sort descending."),
     page_type: str | None = typer.Option(None, "--type", help="Card page type."),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Max rows."),
@@ -86,17 +110,32 @@ def rows(
     scope: str | None = _scope_opt,
     json_out: bool = _json_opt,
 ) -> None:
-    """Every map card's rows as one table (facts, connections or findings)."""
+    """Every map card's rows as one table (facts, connections or findings).
+
+    Each row shows its entity (the card's title), entity_type (page type), the
+    field (attribute or relation), the value (or to), When, its sources and a
+    citation; the header names the table. Filter by --type, --entity and --table.
+    """
     _choice(table, _ROW_TABLES, "--table")
+    if match is not None:
+        _choice(match, _MATCH_MODES, "--match")
     with get_sdk() as sdk:
-        result = sdk.knowledge.rows(
-            table,
+        # The generic door call: the SDK's rows() predates to, connected_to, as_of
+        # and group_by, and the door takes every rows argument by its tool name.
+        result = sdk.knowledge.command(
+            "rows",
+            table=table,
             entity=entity,
             attribute=attribute,
+            match=match,
             query=query,
             start_date=start,
             end_date=end,
             current_only=current_only or None,
+            as_of=as_of,
+            to=to,
+            connected_to=connected_to,
+            group_by=group_by,
             order_by=order_by,
             descending=descending or None,
             page_type=page_type,

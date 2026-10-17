@@ -11,10 +11,27 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=7f8d3f5c512a02398725b651bb06cd67e43e9f18215b1a31a2fcb72562c052f4 changelog sha256=427116a77db102857c197926d68bb7c15451eec341c9f2bc3addbed0f4ba3eff -->
+<!-- contract-stamp: public-openapi sha256=a3cf6d8fecf1039211b17127d8cf1935de0bbc5a0b80cfb4c262d16c3b7bbbcf changelog sha256=d9b165f96b6459b0a00e900912e61cc3e2a948d81da8ef3adccd7fe34055a4ee -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` `rows` takes `as_of` (Facts: each card's
+  value on that date, the row with the latest When on or before it),
+  `connected_to` (only cards linked to that page, in either direction) and
+  `order_by` `amount` or `date` (Facts: money values with their scale, and
+  date values, in order). Where the rows index is enabled, a `rows` read
+  covers every card in scope with no card scan cap, `view` `fields` with a
+  `query` ranks the field names by meaning, an `attribute` that no field is
+  named resolves to the closest field by words or meaning (the reply's first
+  line names the field it used, and a field meaning the opposite is never
+  used), a `query` that no row matches in full matches the rows holding most
+  of its words, and an empty reply lists the closest fields with their card
+  counts and an example value. `rows` also takes `match`: `exact` (the field
+  name or a recorded alias, and no retry of a `query` by words), `similar`
+  (also a field holding its words) or `meaning` (the default: also the closest
+  field by meaning); without the rows index, `similar` and `meaning` match the
+  phrase or every word, as before.
 
 - **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
   documents feature) adds the `search` command: passages of the original

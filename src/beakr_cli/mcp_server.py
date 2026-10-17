@@ -28,11 +28,17 @@ from beakr_cli.updates import (
 _INSTRUCTIONS = (
     "Beakr is the team's organizational memory: decisions, processes, ownership and "
     "dated events, so 'why did we do X' is one search away.\n\n"
-    "Answer questions about the user's org with citations. Start with knowledge_base "
-    "command='sections' to find relevant cited sections. Check the excerpt's fidelity "
-    "before quoting it, and open the source when a deciding detail is missing. For "
-    "'every X', counts and superlatives use 'ls' (by page_type) or 'rows' to compare "
-    "cards, then inspect coverage: compilation, scan and result limits can omit records. "
+    "Answer questions about the user's org with citations. Knowledge reads four ways that "
+    "combine: by meaning (knowledge_base command='sections', for what you can describe), "
+    "as a file system (ls, cat, grep for pages, exact names and ids), as a graph (links, "
+    "hover, timeline: a record's parties, documents and events) and as a database ('rows': "
+    "every card's Facts, Connections and Findings, each row with its entity, entity_type, "
+    "table, field, value, When and sources; filter by page_type, entity and table). Find by "
+    "meaning or in the database, walk the graph, confirm in the original. Check the "
+    "excerpt's fidelity before quoting it, and open the source when a deciding detail is "
+    "missing. For 'every X', counts and superlatives use 'rows' or 'ls' (by page_type), "
+    "then inspect coverage: rows holds only what was structured, and compilation, scan and "
+    "result limits can omit records. "
     "An absent row or graph link does not establish absence from the source documents. "
     "When 'next' appears, follow it; a card scan cap requires narrower searches, "
     "whereas row offset only pages rows already found. Exact wording: "
@@ -496,10 +502,16 @@ async def knowledge_base(
     Graph:
       links      {page}  Backlinks.     references {page}  Links plus prose mentions.
       timeline   {timeline_query?, start_date?, end_date?, include_content?, include_approx?}
-      rows       {table: facts|connections|findings, page_type?, entity?, attribute?, query?,
-                  start_date?, end_date?, current_only?, order_by?, descending?, limit?, offset?,
-                  include_evidence?}
-                 Every map card's rows as one table, each tagged with its card (entity).
+      rows       {table: facts|connections|findings, page_type?, entity?, to?, connected_to?,
+                  attribute?, match?, query?, start_date?, end_date?, current_only?, as_of?,
+                  order_by?, descending?, group_by?, limit?, offset?, include_evidence?}
+                 A database over every map card's rows, each tagged with its card (entity):
+                 use it first for every, how many, latest, largest and as-of questions.
+                 as_of gives each card's value on a date; connected_to keeps cards linked
+                 to a page; order_by amount or date sorts typed values.
+                 match: exact (the field name or an alias), similar (also names holding
+                 its words) or meaning (default; also the closest name by meaning where
+                 the rows index is on); the reply says which field it used.
                  include_evidence adds each row's cited passage (at most 50 rows).
                  current_only keeps the latest When per attribute; a connection's `to` is
                  an entity, so facts and connections join on it.

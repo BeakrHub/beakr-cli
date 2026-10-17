@@ -2560,7 +2560,13 @@
       "type": "string"
      },
      {
-      "description": "rows: Attribute, Relation or kind containing this.",
+      "description": "rows, facts: each card's value on this date.",
+      "name": "as_of",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "rows: the field by name, alias or meaning; replies say which field.",
       "name": "attribute",
       "required": false,
       "type": "string"
@@ -2592,6 +2598,12 @@
       ],
       "name": "command",
       "required": true,
+      "type": "string"
+     },
+     {
+      "description": "rows: cards linked to this page.",
+      "name": "connected_to",
+      "required": false,
       "type": "string"
      },
      {
@@ -2704,6 +2716,17 @@
       "type": "string"
      },
      {
+      "description": "rows: exact = the name or an alias; similar adds words; meaning (default) adds closest meaning.",
+      "enum": [
+       "meaning",
+       "similar",
+       "exact"
+      ],
+      "name": "match",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "grep only. Snippets kept per page (default 10, max 200). Every match is addressed in the result regardless; this controls how many also carry their text. Raise it to enumerate a term ACROSS pages in one call -- every version of a component, every date a decision moved -- where the alternative is opening each page in turn. For everything on ONE page, reading that page is usually simpler.",
       "name": "matches_per_page",
       "required": false,
@@ -2722,13 +2745,13 @@
       "type": "string"
      },
      {
-      "description": "rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names.",
+      "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
       "name": "offset",
       "required": false,
       "type": "integer"
      },
      {
-      "description": "rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first.",
+      "description": "rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first.",
       "name": "order_by",
       "required": false,
       "type": "string"

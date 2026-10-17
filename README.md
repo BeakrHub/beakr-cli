@@ -329,11 +329,19 @@ beakr interviews link ls | revoke LINK_ID
 
 ## Knowledge cards
 
-Project-map cards hold Facts, Connections and dated Findings. Writes stage a
-proposal (or apply at once when your auto-approve is on):
+Project-map cards hold Facts, Connections and dated Findings. Knowledge reads
+four ways, and they combine: as a file system (`kb ls`, `kb cat`, `kb grep`), a
+graph (links, hover, timeline), a database (`kb rows`) or by meaning (`kb
+sections`). `kb rows` is every card's rows as one table; each row shows its
+entity (card title), entity_type (page type), the field, the value (or to),
+When and sources, and the header names the table. `--match exact|similar|meaning`
+sets how `--attribute` finds a field (meaning, the default, also takes the
+closest name by meaning where the rows index is on). Writes stage a proposal
+(or apply at once when your auto-approve is on):
 
 ```bash
 beakr kb rows --table facts --entity "Stripe" --current-only
+beakr kb rows --table facts --type matter --attribute "start date" --match similar
 beakr kb add-fact "Stripe" --attribute "contract renewal" --value "2027-01-31" \
     --evidence "{{doc:abc123}}" --rationale "From the signed order form"
 beakr kb add-connection "Stripe" --relation "billing provider for" --to "Platform" \

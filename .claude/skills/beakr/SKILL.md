@@ -73,9 +73,17 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 ## Reading evidence
 
 - **Start with `sections`.** Each hit shows the document passage (a verbatim excerpt) that supports it. Quote it directly; open the file only when the value you need is not in the excerpt.
-- **Three ways in, used together.** Walk the **graph** (a record's children are its documents; its links name its parties, instruments and filings), query the **database** (`rows`: every card's Facts, Connections or Findings as one table, with the page each row came from as `entity`), or read the **text** (`sections`, `grep`, `cat`). Do not extract the documents and grep them; every document, its date and matter are already indexed.
-- **Walk instead of searching again.** `hover {page}` and `cat {page, outline}` show a page's edges; `ls {parent}` lists its documents; `links {page, direction: out}` what it links to; `timeline {page}` its dated events.
-- **`rows` as a database.** Filter (`page_type`, `entity`, `to` for every connection involving a page, `attribute`, `query`, `regex: true` for patterns, dates, `current_only`), sort (`order_by` any column, `descending`) and aggregate (`group_by` entity, entity_type, year or a column: counts, sums, min, max). Filters match words, not meaning: `view: fields` lists the field names cards actually use, and `field_id` picks one.
+- **Four ways to read, combined as the task needs.**
+
+  | Mode | Commands | Use it for | It cannot |
+  | --- | --- | --- | --- |
+  | File system | `ls`, `cat`, `grep`; `documents` grep and read for originals | browsing, reading a page, exact names and ids, the original document | rank or count by a fact's value |
+  | Graph | `links`, `hover`, `references`, `timeline` | a record's parties, instruments and documents, a chain, the order of events | "every" across records it does not reach |
+  | Database | `rows` (`beakr kb rows`) | every, how many, latest, largest, compare, as-of, what connects to X | see what was never structured into a card's tables: confirm a count with `ls` or `grep` |
+  | Meaning | `sections` | something you can describe but cannot name | count or enumerate: it ranks and stops |
+
+  Find by meaning or in the database, walk the graph, confirm in the original. Do not extract the documents and grep them; every document, its date and matter are already indexed.
+- **`rows` as a database.** Every row carries its entity (the card's title), entity_type (page type), the table, the field (attribute or relation), the value (or `to`), When and its sources. Filter (`table`, `page_type`, `entity`, `to` for every connection involving a page, `connected_to` for cards linked to a page either way, `attribute`, `query`, `regex: true` for patterns, dates, `current_only`, `as_of` for each card's value on a date), sort (`order_by` any column, or `amount` and `date` for typed values; `descending`) and aggregate (`group_by` entity, entity_type, year or a column: counts, sums, min, max; `group_by: value` groups a category field's consolidated values and any other value by its text). `match` sets how `attribute` finds a field: `exact` (the name or an alias), `similar` (also names holding its words) or `meaning` (the default: also the closest name by meaning, where the rows index is on); the reply says which field it used. `view: fields` lists the field names cards actually use, and `field_id` picks one.
 - **0 rows is not absence.** It means no scanned card states the fact under that name. Retry with the names the reply suggests or `view: fields`, then `sections` and the cited documents; never conclude a fact does not exist from an empty `rows`.
 - **Results stay under about 6k tokens.** When `next` appears, page with it rather than re-querying.
 - **Exact wording:** `sources {page}` lists every cited passage; `read_file` with a citation's reference, a file id or a path opens the original.
