@@ -513,6 +513,10 @@ async def knowledge_base(
                  its words) or meaning (default; also the closest name by meaning where
                  the rows index is on); the reply says which field it used.
                  include_evidence adds each row's cited passage (at most 50 rows).
+      query      {spec}  Where enabled: structured filters, joins, groups and aggregates
+                 over every card's rows when rows can't express it. spec is JSON, never
+                 SQL: from, where (and/or/not), join (up to 2: same_card, target_card),
+                 group_by, aggregate, order_by, limit (50, max 200), cursor, semantic.
                  current_only keeps the latest When per attribute; a connection's `to` is
                  an entity, so facts and connections join on it.
       ontology   {include_proposed?}   suggest_parent {page | title, content?}

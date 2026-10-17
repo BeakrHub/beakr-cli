@@ -2594,7 +2594,8 @@
        "completions",
        "proposals",
        "suggest_parent",
-       "help"
+       "help",
+       "query"
       ],
       "name": "command",
       "required": true,
@@ -2850,6 +2851,12 @@
       "name": "sources_per_section",
       "required": false,
       "type": "integer"
+     },
+     {
+      "description": "query (where enabled for the organization): a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys.",
+      "name": "spec",
+      "required": false,
+      "type": "object"
      },
      {
       "description": "Start date YYYY-MM-DD (for timeline).",
