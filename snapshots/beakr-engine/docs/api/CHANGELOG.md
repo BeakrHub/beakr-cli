@@ -11,10 +11,27 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=3b4eb7eab5d479d0c03a14c7cc4385fe85c382258bed5019c5f871fb9308b7ff changelog sha256=73b8f41a1e82435ba1529c6dfe681dbc74bec0164752898389aea044fe497616 -->
+<!-- contract-stamp: public-openapi sha256=9907b48b8ea99c70b3f35f818564529e6705a4304064af300d407bba8705d0c5 changelog sha256=391794696519f3e66c594ef7e4796d8c1d031503d5ba5621852810ee58d769e2 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` adds the `query` command (where enabled for
+  the organization): `spec` is a JSON object, not SQL, run over every map
+  card's rows under the caller's access and the request's scope. `from` is
+  facts, connections or findings; `where` is an and/or/not tree of conditions
+  on entity, entity_type, field (`match` exact, similar or meaning), value (eq,
+  ne, contains, in, and gt, gte, lt, lte, between on typed numbers and dates),
+  when, as_of, to and connected_to; `join` takes up to two joins, on
+  `same_card` or `target_card`; `group_by` takes field, value, entity_type or
+  entity; `aggregate` takes count, count_distinct, min, max, sum and avg;
+  `order_by`, `limit` (default 50, at most 200) and `cursor` page the result;
+  `semantic` ranks field names by meaning (`rank_fields_by`) or keeps rows
+  whose field means about a text (`field_near`). Every answer gives the total,
+  one window of rows or groups, the query described in words, and a cursor when
+  more follow. A refused spec answers `invalid_arguments` naming the key, what
+  is allowed and, for an unknown field, the closest field names; where the
+  feature is off, `feature_disabled`.
 
 - `POST /v1/knowledge/wiki/command` `rows` takes `as_of` (Facts: each card's
   value on that date, the row with the latest When on or before it),

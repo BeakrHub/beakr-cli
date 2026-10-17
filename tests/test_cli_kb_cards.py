@@ -353,3 +353,30 @@ def test_a_door_refusal_exits_1_with_its_guidance() -> None:
 
     assert result.exit_code == 1
     assert "not a card" in result.output
+
+
+@respx.mock
+def test_query_sends_the_json_spec_through_the_command_door(tmp_path) -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+    spec = {"from": "facts", "where": {"field": "Status"}, "group_by": ["value"]}
+
+    inline = CliRunner().invoke(app, ["kb", "query", json.dumps(spec), "--scope", "Platform"])
+    path = tmp_path / "q.json"
+    path.write_text(json.dumps(spec))
+    from_file = CliRunner().invoke(app, ["kb", "query", "--file", str(path)])
+
+    assert inline.exit_code == 0, inline.output
+    assert from_file.exit_code == 0, from_file.output
+    assert json.loads(route.calls[0].request.content) == {
+        "command": "query",
+        "spec": spec,
+        "scope": "Platform",
+    }
+    assert json.loads(route.calls[1].request.content)["spec"] == spec
+
+
+def test_query_refuses_text_that_is_not_json_before_sending() -> None:
+    result = CliRunner().invoke(app, ["kb", "query", "SELECT 1"])
+
+    assert result.exit_code == 1
+    assert "not valid JSON" in result.output

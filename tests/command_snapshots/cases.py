@@ -290,6 +290,11 @@ _NO_LABELS_FIXTURE = (
 
 #: Visible hand-written commands with no snapshot, each with the reason.
 EXEMPT: dict[str, str] = {
+    "kb query": (
+        "behind the engine flag wiki_card_rows_query, which the snapshot engine leaves off "
+        "(it would answer feature_disabled); the request it sends is pinned in "
+        "tests/test_cli_kb_cards.py"
+    ),
     "external-users ls": _NO_EXTERNAL_USERS_FIXTURE,
     "external-users create": _NO_EXTERNAL_USERS_FIXTURE,
     "external-users show": _NO_EXTERNAL_USERS_FIXTURE,

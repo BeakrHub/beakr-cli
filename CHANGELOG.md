@@ -8,6 +8,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` adds the `query` command (where enabled for
+  the organization): `spec` is a JSON object, not SQL, run over every map
+  card's rows under the caller's access and the request's scope. `from` is
+  facts, connections or findings; `where` is an and/or/not tree of conditions
+  on entity, entity_type, field (`match` exact, similar or meaning), value (eq,
+  ne, contains, in, and gt, gte, lt, lte, between on typed numbers and dates),
+  when, as_of, to and connected_to; `join` takes up to two joins, on
+  `same_card` or `target_card`; `group_by` takes field, value, entity_type or
+  entity; `aggregate` takes count, count_distinct, min, max, sum and avg;
+  `order_by`, `limit` (default 50, at most 200) and `cursor` page the result;
+  `semantic` ranks field names by meaning (`rank_fields_by`) or keeps rows
+  whose field means about a text (`field_near`). Every answer gives the total,
+  one window of rows or groups, the query described in words, and a cursor when
+  more follow. A refused spec answers `invalid_arguments` naming the key, what
+  is allowed and, for an unknown field, the closest field names; where the
+  feature is off, `feature_disabled`.
 - `POST /v1/knowledge/wiki/command` `rows` takes `as_of` (Facts: each card's
   value on that date, the row with the latest When on or before it),
   `connected_to` (only cards linked to that page, in either direction) and
@@ -1050,6 +1066,12 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## Unreleased
 
+- `beakr kb query '<json>'` (where enabled for the organization; also `-` for
+  stdin or `--file PATH`): structured filters, joins, groups and aggregates over
+  the rows of every map card, for what `kb rows` cannot express. The query is a
+  JSON spec, never SQL; the reply gives the total, one window, the query in
+  plain words and a cursor when more rows follow. The stdio MCP server's guide
+  lists it.
 - `beakr kb rows` takes `--match` (`exact`, `similar` or `meaning`: how
   `--attribute` finds a field), and its help names what each row carries
   (entity, entity_type, table, field, value, When, sources). The bundled skill

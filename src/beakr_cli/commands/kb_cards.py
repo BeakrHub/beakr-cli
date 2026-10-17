@@ -147,6 +147,54 @@ def rows(
     _print_result(result, json_out=json_out)
 
 
+def query(
+    spec: str | None = typer.Argument(
+        None,
+        help=(
+            'The query as JSON (not SQL), e.g. \'{"from": "facts", "where": '
+            '{"field": "Status"}, "group_by": ["value"]}\'. Use - to read it from stdin.'
+        ),
+    ),
+    spec_file: Path | None = typer.Option(
+        None, "--file", "-f", help="Read the JSON query from this file instead."
+    ),
+    scope: str | None = _scope_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Structured filters, joins, groups and aggregates over every map card's rows, where enabled.
+
+    For what `kb rows` cannot express in one call. The query is a JSON object:
+    from (facts, connections, findings), where (and/or/not of conditions on
+    entity, entity_type, field, value, when, as_of, to, connected_to), join (up
+    to two, same_card or target_card), group_by, aggregate (count,
+    count_distinct, min, max, sum, avg), order_by, limit (50, max 200), cursor,
+    semantic (rank_fields_by or field_near). The reply gives the total, one
+    window, the query in plain words and a cursor when more rows follow.
+    """
+    raw = _query_text(spec, spec_file)
+    try:
+        parsed = json.loads(raw)
+    except ValueError as exc:
+        err_console.print(f"[red]The query is not valid JSON:[/red] {exc.msg}.")
+        raise typer.Exit(1) from exc
+    with get_sdk() as sdk:
+        result = sdk.knowledge.command("query", spec=parsed, scope=_scope(scope))
+    _print_result(result, json_out=json_out)
+
+
+def _query_text(spec: str | None, spec_file: Path | None) -> str:
+    import sys
+
+    if spec_file is not None:
+        return spec_file.read_text(encoding="utf-8")
+    if spec == "-":
+        return sys.stdin.read()
+    if spec:
+        return spec
+    err_console.print("[red]Give the query as JSON, '-' for stdin, or --file PATH.[/red]")
+    raise typer.Exit(1)
+
+
 def add_fact(
     page: str = typer.Argument(..., help="Card title, slug or ID."),
     attribute: str = typer.Option(..., "--attribute", help="Stable attribute name."),
@@ -279,6 +327,7 @@ def edit_rows(
 def register(root: typer.Typer) -> None:
     """Attach the card commands to ``beakr kb`` (the root is unused)."""
     kb_app.command("rows")(rows)
+    kb_app.command("query")(query)
     kb_app.command("add-fact")(add_fact)
     kb_app.command("add-connection")(add_connection)
     kb_app.command("add-finding")(add_finding)
