@@ -2143,7 +2143,7 @@
    "body": {
     "fields": [
      {
-      "description": "Options for the selected documents command. grep: pattern, output_mode, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
+      "description": "Options for the selected documents command. grep: pattern, output_mode, group_by (\"folder\") and folder_depth, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, glob, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
       "name": "arguments",
       "required": false,
       "type": "object"

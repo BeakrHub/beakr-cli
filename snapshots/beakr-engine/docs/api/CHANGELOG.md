@@ -11,10 +11,24 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=f4fd99cf083ffac2e8dacb4ee6e326f95633aaf5a870c838fcf504ead0dd1dbf changelog sha256=eca1173be9f7ec210e5d57145962e7851ee615bb4dd4d7a234ec5aae041d26fa -->
+<!-- contract-stamp: public-openapi sha256=3742af186bdc3125060999c477df03fbd474cf6abfc7bb274f615cc36ae82f0f changelog sha256=7a7d46d92fcc55e8ec86b868f524292608acfc882ff597669702d4002b4d220d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/documents` answers carry their outcome as data. A refused
+  call has `error_code` (`invalid_arguments`, `invalid_pattern`,
+  `document_not_found`, `timeout`, `scope_unavailable`). A `grep` or `search`
+  has `coverage`: `complete`, `reason` (`page`, `time_budget`, `scan_budget`,
+  `catalog_cap`), `documents_considered`, `documents_checked`, `total`,
+  `resume_after_document`, `next_offset` and `continue_with`, the arguments to
+  change in the same call to continue it, as Knowledge reads' `coverage` has. A `grep` whose pattern is made of
+  common or short words (for example `Form RW`) no longer times out with no
+  answer: it answers within about 20 seconds with the documents it checked,
+  marked partial, and how to resume or narrow it. `grep` takes `group_by:
+  "folder"` with `folder_depth` (default 2) to count matches per folder with
+  `output_mode` `count` or `files_with_matches`. `ls` applies `glob`, which it
+  used to ignore.
 
 - `POST /v1/knowledge/wiki/command` answers 400 when the body carries an option
   the command does not take, naming each one, the likely option meant (`rows`

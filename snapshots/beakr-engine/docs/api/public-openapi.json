@@ -3385,12 +3385,129 @@
         "title": "CreatedLinkOut",
         "type": "object"
       },
+      "DocumentsCoverage": {
+        "properties": {
+          "complete": {
+            "description": "Whether this answer covers every match in scope; when false, see `reason`.",
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "continue_with": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The `arguments` to change in the same call to continue it: `offset` while pages remain, then `after_document` with `offset` 0 to resume a stopped scan.",
+            "title": "Continue With"
+          },
+          "documents_checked": {
+            "description": "Of those, the documents this call checked (fewer when it stopped early).",
+            "title": "Documents Checked",
+            "type": "integer"
+          },
+          "documents_considered": {
+            "description": "Documents in scope after the filters.",
+            "title": "Documents Considered",
+            "type": "integer"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The offset of the next page, if any.",
+            "title": "Next Offset"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Why it is not complete: `page` (more entries than this page), `time_budget` or `scan_budget` (the scan stopped early; counts cover what it checked), or `catalog_cap` (the scope held more documents than one call considers).",
+            "title": "Reason"
+          },
+          "resume_after_document": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`grep`: the last document checked, when the scan stopped early.",
+            "title": "Resume After Document"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Entries found: matching lines (content) or documents.",
+            "title": "Total"
+          }
+        },
+        "required": [
+          "complete",
+          "documents_considered",
+          "documents_checked"
+        ],
+        "title": "DocumentsCoverage",
+        "type": "object"
+      },
       "DocumentsResult": {
         "properties": {
           "content": {
             "description": "Document text and citations, with scan and continuation notices.",
             "title": "Content",
             "type": "string"
+          },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentsCoverage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`grep` and `search`: whether the answer is complete, and the next call."
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When `is_error`: `invalid_arguments`, `invalid_pattern`, `document_not_found`, `timeout` or `scope_unavailable`.",
+            "title": "Error Code"
           },
           "is_error": {
             "default": false,
@@ -19776,7 +19893,7 @@
                 "properties": {
                   "arguments": {
                     "additionalProperties": true,
-                    "description": "Options for the selected documents command. grep: pattern, output_mode, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
+                    "description": "Options for the selected documents command. grep: pattern, output_mode, group_by (\"folder\") and folder_depth, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, glob, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
                     "type": "object"
                   },
                   "command": {
