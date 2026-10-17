@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a3cf6d8fecf1039211b17127d8cf1935de0bbc5a0b80cfb4c262d16c3b7bbbcf changelog sha256=d9b165f96b6459b0a00e900912e61cc3e2a948d81da8ef3adccd7fe34055a4ee -->
+<!-- contract-stamp: public-openapi sha256=3b4eb7eab5d479d0c03a14c7cc4385fe85c382258bed5019c5f871fb9308b7ff changelog sha256=73b8f41a1e82435ba1529c6dfe681dbc74bec0164752898389aea044fe497616 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -32,6 +32,11 @@ The first public version.
   (also a field holding its words) or `meaning` (the default: also the closest
   field by meaning); without the rows index, `similar` and `meaning` match the
   phrase or every word, as before.
+
+- `POST /v1/knowledge/wiki/command` `rows` takes `view` `conflicts` (Facts):
+  each pair of rows on one card that gives one field different values with
+  overlapping or missing When, both sides with their citations. A different
+  value with a later When is an update and is not listed.
 
 - **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
   documents feature) adds the `search` command: passages of the original
