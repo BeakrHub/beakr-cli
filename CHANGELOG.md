@@ -73,6 +73,16 @@ Each release lists the public API changes it supports, taken from the API change
   command's options under `arguments` or `args`: the options go at the top
   level of the body, next to `command`. They used to be ignored, so the read
   ran without them.
+- `POST /v1/knowledge/wiki/command` `query` with `as_of` (`AS OF` in `sql`)
+  keeps, for a card whose field has no dated value at all, its current undated
+  value instead of leaving the card out; the answer's `Applied:` line (and the
+  `query` object's `applied`) says how many cards were answered that way. A
+  `spec` sent with its keys at the top level beside `command`, and a SELECT sent
+  as `query`, now run, and the answer says how they were read; a guessed
+  `{"table": ..., "filters": [...]}` is refused with the `sql` call it most
+  likely meant. In a `spec`, `field` also takes `{"equals"|"contains"|"like"|
+  "meaning": name}`. Knowledge text that points at a cited file names `read_file`
+  to the hosted MCP server and `documents read` to other callers.
 - `POST /v1/knowledge/wiki/command` `query` answers open with what the query
   was understood as: for `sql`, a `Translated to spec:` line with the spec as
   JSON; then the total and the query in words; a `Resolved:` line naming the
