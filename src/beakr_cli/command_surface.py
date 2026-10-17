@@ -111,6 +111,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb log",
         "kb entities",
         "kb rows",
+        "kb query",
         "kb add-fact",
         "kb add-connection",
         "kb add-finding",
