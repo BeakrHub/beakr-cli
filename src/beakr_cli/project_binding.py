@@ -141,6 +141,19 @@ def resolve_project(explicit: str | None = None) -> str | None:
     return str(configured) if configured else None
 
 
+def project_is_pinned() -> bool:
+    """Whether this process works in one project fixed outside the agent's control.
+
+    ``BEAKR_PROJECT_ID``, or a binding file that applies to the credential in
+    use. The CLI's default project is not a pin: it is a fallback the user set
+    once, not a statement that this session works in that project.
+    """
+    if os.environ.get("BEAKR_PROJECT_ID"):
+        return True
+    binding = read_binding()
+    return bool(binding and binding.get("project_id") and binding_applies(binding))
+
+
 # ---------------------------------------------------------------------------
 # Does a binding belong to the credential in use?
 # ---------------------------------------------------------------------------

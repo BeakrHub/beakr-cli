@@ -78,6 +78,41 @@ def eager_tools() -> list[str]:
     return list(document()["eager"])
 
 
+#: Tools that read the pinned project when given none (``mcp_server._project_by_name_or_id``),
+#: and the parameters that name a project for them.
+PINNABLE_TOOLS = frozenset({"documents", "research", "wiki_stats", "wiki_graph"})
+PROJECT_PARAMETERS = ("project", "project_id")
+
+
+@cache
+def _project_pinned() -> bool:
+    """``project_binding.project_is_pinned``, once per server process (its cwd is fixed)."""
+    from beakr_cli.project_binding import project_is_pinned
+
+    return project_is_pinned()
+
+
+def without_project_parameters(tool: MCPTool) -> MCPTool:
+    """``tool`` listed without its project parameters.
+
+    In a pinned session an agent offered ``project`` filled it in anyway, and
+    mostly with a name it made up, which turned a read of the pinned project into
+    a "No single project named ..." refusal. Hidden, the parameter is left
+    unset and the tool reads the pinned project. A value passed regardless is
+    still honored.
+    """
+    schema = dict(tool.inputSchema or {})
+    properties = {
+        key: value
+        for key, value in (schema.get("properties") or {}).items()
+        if key not in PROJECT_PARAMETERS
+    }
+    schema["properties"] = properties
+    if "required" in schema:
+        schema["required"] = [key for key in schema["required"] if key not in PROJECT_PARAMETERS]
+    return tool.model_copy(update={"inputSchema": schema})
+
+
 def lists_every_tool() -> bool:
     """Whether this server was asked to list every tool (``BEAKR_MCP_TOOLS=all``)."""
     return os.environ.get(TOOLS_ENV, "").strip().lower() == "all"
@@ -147,6 +182,11 @@ class TieredFastMCP(FastMCP):
     async def list_tools(self) -> list[MCPTool]:
         order = {name: index for index, name in enumerate(stdio_tools())}
         tools = sorted(await super().list_tools(), key=lambda t: order.get(t.name, len(order)))
+        if _project_pinned():
+            tools = [
+                without_project_parameters(tool) if tool.name in PINNABLE_TOOLS else tool
+                for tool in tools
+            ]
         if lists_every_tool():
             return tools
         eager = set(eager_tools())

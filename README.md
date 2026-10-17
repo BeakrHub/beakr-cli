@@ -175,6 +175,10 @@ that takes `--project` uses it by default. `--project` (also `-P`, and `--scope`
 the word the MCP tools use) takes a project id, slug or exact name. Project
 resolution order: the flag, `BEAKR_PROJECT_ID`, the nearest
 `.beakr/project.json`, then the default set by `beakr auth set-scope`.
+When the MCP server starts inside a bound directory or with `BEAKR_PROJECT_ID`
+set, the tools that read that project by default (`documents`, `research`,
+`wiki_stats`, `wiki_graph`) are listed without their `project` parameter, so
+an agent works in the pinned project instead of guessing a name.
 
 At a terminal, results are tables and text. When stdout is not a terminal (an
 agent or a script), each object is one tab-separated line -- its id, its name,
