@@ -22033,7 +22033,7 @@
                     "type": "string"
                   },
                   "old_rows": {
-                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat.",
+                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so.",
                     "items": {
                       "type": [
                         "object",
