@@ -11,10 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9907b48b8ea99c70b3f35f818564529e6705a4304064af300d407bba8705d0c5 changelog sha256=391794696519f3e66c594ef7e4796d8c1d031503d5ba5621852810ee58d769e2 -->
+<!-- contract-stamp: public-openapi sha256=9907b48b8ea99c70b3f35f818564529e6705a4304064af300d407bba8705d0c5 changelog sha256=73e357471b8f756c844939bd59e432ec6c0294e659ebd01f36b89c18a6510d18 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` answers 400 when the body nests the
+  command's options under `arguments` or `args`: the options go at the top
+  level of the body, next to `command`. They used to be ignored, so the read
+  ran without them.
 
 - `POST /v1/knowledge/wiki/command` adds the `query` command (where enabled for
   the organization): `spec` is a JSON object, not SQL, run over every map
