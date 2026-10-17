@@ -124,4 +124,4 @@ Set `stance` to `support`, `qualifies`, or `contradicts`. It defaults to `suppor
 
 ## After proposing
 
-Show the user what you staged with `show_proposal`. Call `accept_proposal` only when the user explicitly asks to apply that proposal. `knowledge_base` command `proposals` lists what is still pending; a proposed page does not exist in `ls`, `cat`, or search until accepted.
+Show the user what you staged with `show_proposal`, which prints its `content_hash`. Call `accept_proposal` only when the user explicitly asks to apply that proposal, with that hash as `reviewed_hash`: the accept then applies exactly what was shown, and a proposal that changed in between is refused (`proposal_changed`; show it again). Take the hash from the read the user reviewed, never from a fresh read made just before accepting. A proposal that changes a card's table rows is not accepted without it. `knowledge_base` command `proposals` lists what is still pending; a proposed page does not exist in `ls`, `cat`, or search until accepted.
