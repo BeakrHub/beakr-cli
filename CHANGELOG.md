@@ -8,6 +8,19 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/documents` answers carry their outcome as data. A refused
+  call has `error_code` (`invalid_arguments`, `invalid_pattern`,
+  `document_not_found`, `timeout`, `scope_unavailable`). A `grep` or `search`
+  has `coverage`: `complete`, `reason` (`page`, `time_budget`, `scan_budget`,
+  `catalog_cap`), `documents_considered`, `documents_checked`, `total`,
+  `resume_after_document`, `next_offset` and `continue_with`, the arguments to
+  change in the same call to continue it, as Knowledge reads' `coverage` has. A `grep` whose pattern is made of
+  common or short words (for example `Form RW`) no longer times out with no
+  answer: it answers within about 20 seconds with the documents it checked,
+  marked partial, and how to resume or narrow it. `grep` takes `group_by:
+  "folder"` with `folder_depth` (default 2) to count matches per folder with
+  `output_mode` `count` or `files_with_matches`. `ls` applies `glob`, which it
+  used to ignore.
 - `POST /v1/knowledge/wiki/command` answers 400 when the body carries an option
   the command does not take, naming each one, the likely option meant (`rows`
   `value` -> `query` with `attribute`; `pattern` -> `query`; `max_results` ->
