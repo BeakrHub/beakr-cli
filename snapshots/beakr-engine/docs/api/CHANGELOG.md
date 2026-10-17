@@ -11,10 +11,16 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=3742af186bdc3125060999c477df03fbd474cf6abfc7bb274f615cc36ae82f0f changelog sha256=17ea93c3f87471fc62db14a794938ad3b9fd4cd4b595843b149f93e266d587a9 -->
+<!-- contract-stamp: public-openapi sha256=3742af186bdc3125060999c477df03fbd474cf6abfc7bb274f615cc36ae82f0f changelog sha256=ccb5ce768733a419c89ed7355cce812108987c4b3f5d5bac9be00b71908ac61f -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/research` and `GET /v1/knowledge/wiki/search` no longer
+  slow down other requests while they wait on the database. When every
+  research worker on a server stays busy for 30 seconds, research answers
+  `503 server_busy` with `Retry-After` and is not charged; retry once after
+  that wait.
 
 - `POST /v1/knowledge/documents` answers carry their outcome as data. A refused
   call has `error_code` (`invalid_arguments`, `invalid_pattern`,
