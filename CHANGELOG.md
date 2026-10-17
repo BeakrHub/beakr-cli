@@ -4,10 +4,27 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-10-16)
+## beakr-cli 0.4.0 (2026-10-17)
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write` and
+  `POST /v1/knowledge/documents` no longer slow down other requests while one
+  of them waits on a long database read. When every reader on a server stays
+  busy for 30 seconds they answer `503 server_busy` with `Retry-After`; retry
+  the same call once after that wait.
+- `POST /v1/knowledge/documents` `search` answers within about 8 seconds when
+  the embedding service is slow or failing: it ranks the passages by wording
+  alone and says so (the first line reads "ranked by wording only", a notice
+  gives the reason, and `results` carry no `match` label), where it used to
+  wait for two full attempts or fail. A repeated query reuses its embedding
+  for 15 minutes. `grep` `glob` (and `path`) take `{a,b}` alternatives, for
+  example `*.{docx,pdf}`, which used to select no document; a comma inside
+  braces does not split a comma-separated `glob` list. A `grep` pattern that
+  requires two terms with lookaheads, `(?s)(?=.*first)(?=.*second).*` with
+  `multiline`, now reads only the passages holding both terms instead of
+  scanning every document until the time budget ran out. A `pattern` that
+  reads as a file-name glob (`*.docx`) is refused with a pointer to `glob`.
 - `POST /v1/knowledge/wiki/command` answers 400 when the body nests the
   command's options under `arguments` or `args`: the options go at the top
   level of the body, next to `command`. They used to be ignored, so the read

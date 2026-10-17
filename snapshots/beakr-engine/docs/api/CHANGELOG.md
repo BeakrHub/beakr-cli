@@ -11,10 +11,29 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ba8132085bc515e0ec1082fed2103bf894f12082b9a5d4e44e07a6666d459905 changelog sha256=b52dd2ebca43c3195a219cdb19b372e5d12ca0cb31e5bc70185cce9bdf90b0ff -->
+<!-- contract-stamp: public-openapi sha256=ba8132085bc515e0ec1082fed2103bf894f12082b9a5d4e44e07a6666d459905 changelog sha256=a4c822be35277d20c6858e71ff68081eca129c50172e61540caff3ab5a8f934a -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write` and
+  `POST /v1/knowledge/documents` no longer slow down other requests while one
+  of them waits on a long database read. When every reader on a server stays
+  busy for 30 seconds they answer `503 server_busy` with `Retry-After`; retry
+  the same call once after that wait.
+
+- `POST /v1/knowledge/documents` `search` answers within about 8 seconds when
+  the embedding service is slow or failing: it ranks the passages by wording
+  alone and says so (the first line reads "ranked by wording only", a notice
+  gives the reason, and `results` carry no `match` label), where it used to
+  wait for two full attempts or fail. A repeated query reuses its embedding
+  for 15 minutes. `grep` `glob` (and `path`) take `{a,b}` alternatives, for
+  example `*.{docx,pdf}`, which used to select no document; a comma inside
+  braces does not split a comma-separated `glob` list. A `grep` pattern that
+  requires two terms with lookaheads, `(?s)(?=.*first)(?=.*second).*` with
+  `multiline`, now reads only the passages holding both terms instead of
+  scanning every document until the time budget ran out. A `pattern` that
+  reads as a file-name glob (`*.docx`) is refused with a pointer to `glob`.
 
 - `POST /v1/knowledge/wiki/command` answers 400 when the body nests the
   command's options under `arguments` or `args`: the options go at the top
