@@ -8,6 +8,42 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` answers 400 when the body nests the
+  command's options under `arguments` or `args`: the options go at the top
+  level of the body, next to `command`. They used to be ignored, so the read
+  ran without them.
+- `POST /v1/knowledge/wiki/command` `query` answers open with what the query
+  was understood as: for `sql`, a `Translated to spec:` line with the spec as
+  JSON; then the total and the query in words; a `Resolved:` line naming the
+  stored field and card type each condition matched, how (exact, alias, words,
+  meaning) and the exact name's card count, with a near name held by many more
+  cards when the exact name is sparse; and an `Applied:` line listing what was
+  defaulted, capped or applied (a default LIMIT or ORDER BY, AS OF per card, an
+  added COUNT, a sum split by unit). The `query` object adds the same as
+  `resolved` and `applied`, and `unit` (`row`, `group` or `field`). A `sql`
+  LIMIT above 200 is capped to 200 and said, instead of refused. A SUM or AVG
+  of `value_amount` or `value_number` is split by a `unit` column (the
+  currency, `%`, or the word after the number), so different units and
+  currencies are never added into one total.
+- `POST /v1/knowledge/wiki/command` `query` takes `sql`: one SELECT, such as
+  `SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE
+  WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER
+  BY cards DESC`. The text is parsed into the same query a `spec` describes and
+  never runs as SQL: it reads facts, connections or findings, joins along
+  `SAME_CARD(a)` or `TARGET_CARD(a)` (up to two), filters with WHERE (AND, OR,
+  NOT, parentheses; `field =` the exact name, `LIKE` by words, `~` by meaning;
+  `value` text, `IN`, `CONTAINS` and typed `>`, `>=`, `<`, `<=`, `BETWEEN`),
+  `AS OF` a day or `CURRENT_DATE`, groups with GROUP BY, aggregates with
+  `COUNT(*)`, `COUNT(DISTINCT key)`, `MIN`, `MAX`, `SUM`, `AVG`, and takes
+  ORDER BY and LIMIT. Text outside the grammar answers `invalid_arguments`
+  stating the grammar and an example; sending both `sql` and `spec` is refused.
+  Every `query` answer adds a `query` object: the `spec` that ran, the query
+  in words (`ran`), `notices`, the window's `columns` and `rows`, `total` and
+  `next_cursor` (send it as `cursor` with the same `sql` or `spec`) and
+  `elapsed_ms`. A field asked by a name few cards hold while a near name
+  holds it on many more is named on the answer's first line and in `notices`. In a `spec`, `as_of`
+  takes `today`, and an `aggregate` without `group_by` answers one row over
+  every match (it used to be ignored).
 - `POST /v1/knowledge/wiki/command` adds the `query` command (where enabled for
   the organization): `spec` is a JSON object, not SQL, run over every map
   card's rows under the caller's access and the request's scope. `from` is
