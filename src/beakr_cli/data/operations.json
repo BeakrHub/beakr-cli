@@ -2663,7 +2663,7 @@
       "type": "string"
      },
      {
-      "description": "rows: card titles containing this.",
+      "description": "rows: card title(s), as a|b|c.",
       "name": "entity",
       "required": false,
       "type": "string"

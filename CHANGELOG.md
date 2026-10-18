@@ -8,6 +8,12 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` `rows`: `entity` takes several titles
+  (a list, `a|b|c` or `^(a|b)$`) and reads each one's cards; `attribute` with
+  `match=exact` stays a name match under `regex`; `group_by=value` counts each
+  value of an `A; B` cell; an unknown `page_type` names the closest card types.
+  `query` reads `ON a.entity = b.entity` as `SAME_CARD(a)` and `to_title` as
+  `to`, and runs while only some cards are reindexing, saying how many.
 - `POST /v1/knowledge/wiki/write` `edit_rows`: an `old_rows` entry may give a
   long value by its start, up to a word end or ending in `...`, when exactly one
   row of that field starts that way. A start that several rows share is refused

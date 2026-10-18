@@ -11,10 +11,26 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ce31d421aba6f267cc2294a21a5d7b2463dc2a198b649d5afb6e291a31f1d902 changelog sha256=46f48bd60d7287028c5751a053da9b202b002c80b62a2c2eabf9f1cc822b9879 -->
+<!-- contract-stamp: public-openapi sha256=9418b85c7ebda6ee68a031aa808722d3eab9c316c64dd55c699c0fb94428e0de changelog sha256=43c60054254340d41ce5c87c849e93e61988de4ba2afe6c3390469383ac62828 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` `rows`: `entity` takes several titles, as
+  a list, `a|b|c`, or `^(a|b)$`, and reads the cards each one names (it was
+  read as one title and matched nothing); the reply names any title that
+  matched no card, with the closest title, and the `entity` description says
+  so. `attribute` with `match=exact` is
+  compared by name when `regex` is true. `group_by=value` counts each value of
+  a cell listing several (`A; B`) in each value's group. A `page_type` no card
+  in scope has names the closest card types. A regex that runs out of time
+  says how many rows it read and which filters narrow the read.
+- `POST /v1/knowledge/wiki/command` `query`: `JOIN ... ON a.entity = b.entity`
+  reads as `SAME_CARD(a)`, and `to_title` is the connection's `to`. A query
+  over a scope where only some cards are being reindexed runs, and its first
+  line says how many cards are reindexing; only a scope whose every card is
+  being reindexed is refused with `index_not_ready`. An empty result for an
+  `entity_type` no card in scope has names the closest card types.
 
 - `POST /v1/knowledge/wiki/command` `cat` and `hover`: a reference such as
   `"matter PRJ-118"` opens the page `PRJ-118` names, and when the title given
