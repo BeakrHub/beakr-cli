@@ -6432,6 +6432,52 @@
         "title": "KnowledgeFailedFilePage",
         "type": "object"
       },
+      "KnowledgeQueryMissingField": {
+        "additionalProperties": true,
+        "description": "Cards of the queried types with no value for a field the query filters on.",
+        "properties": {
+          "cards": {
+            "description": "Cards of those types you can read in the query's scope.",
+            "title": "Cards",
+            "type": "integer"
+          },
+          "field": {
+            "description": "The field as the query named it.",
+            "title": "Field",
+            "type": "string"
+          },
+          "missing": {
+            "description": "Cards of those types with no value for the field.",
+            "title": "Missing",
+            "type": "integer"
+          },
+          "page_types": {
+            "description": "The card types the query was held to.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Page Types",
+            "type": "array"
+          },
+          "titles": {
+            "description": "Up to 10 of the missing cards' titles, sorted; open them to check.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "page_types",
+          "missing",
+          "cards",
+          "titles"
+        ],
+        "title": "KnowledgeQueryMissingField",
+        "type": "object"
+      },
       "KnowledgeQueryResult": {
         "additionalProperties": true,
         "description": "``query`` only: the spec that ran and the window as data, beside the text.",
@@ -6479,6 +6525,15 @@
             "default": null,
             "description": "How the query was sent: `sql` (compiled to the spec) or `spec`.",
             "title": "Form"
+          },
+          "missing": {
+            "default": [],
+            "description": "For a field condition held to card types (`entity_type`): the cards of those types that hold no value for the field, which no condition on it can list. The text says the same in a line `K of N <type> cards have no <field>: ...`.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeQueryMissingField"
+            },
+            "title": "Missing",
+            "type": "array"
           },
           "next_cursor": {
             "anyOf": [
