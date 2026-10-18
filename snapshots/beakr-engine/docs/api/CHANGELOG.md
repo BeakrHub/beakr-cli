@@ -11,11 +11,17 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9418b85c7ebda6ee68a031aa808722d3eab9c316c64dd55c699c0fb94428e0de changelog sha256=43c60054254340d41ce5c87c849e93e61988de4ba2afe6c3390469383ac62828 -->
+<!-- contract-stamp: public-openapi sha256=9418b85c7ebda6ee68a031aa808722d3eab9c316c64dd55c699c0fb94428e0de changelog sha256=a27f202b5efb3bb3be723a54ff6304ee9d2a8312487ca96910740afbc461210d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/documents` `read`: a path that names no document, whose
+  file name is one document's in the same record folder, opens that document,
+  and the reply's first line names the path it opened; the same name in other
+  folders is suggested. A read of a spreadsheet (.xlsx or .csv) whose indexed
+  text is a profile ends with the first 50 rows of each sheet, read from the
+  original file.
 - `POST /v1/knowledge/wiki/command` `rows`: `entity` takes several titles, as
   a list, `a|b|c`, or `^(a|b)$`, and reads the cards each one names (it was
   read as one title and matched nothing); the reply names any title that

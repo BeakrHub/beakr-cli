@@ -8,6 +8,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/documents` `read`: a path in the wrong subfolder opens the
+  one file of that name in the same record folder and says so (other matches
+  are suggested); a profiled spreadsheet read shows the first 50 rows per sheet.
 - `POST /v1/knowledge/wiki/command` `rows`: `entity` takes several titles
   (a list, `a|b|c` or `^(a|b)$`) and reads each one's cards; `attribute` with
   `match=exact` stays a name match under `regex`; `group_by=value` counts each
