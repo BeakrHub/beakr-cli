@@ -8,6 +8,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` reads and research answers name a cited
+  file inline by its drive path when it is known; `query` `GROUP BY value`
+  counts each value of an `A; B` cell in each value's group.
 - `POST /v1/knowledge/documents` `read`: a path in the wrong subfolder opens the
   one file of that name in the same record folder and says so (other matches
   are suggested); a profiled spreadsheet read shows the first 50 rows per sheet.
