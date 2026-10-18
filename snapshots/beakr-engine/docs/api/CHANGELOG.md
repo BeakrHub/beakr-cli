@@ -11,10 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9418b85c7ebda6ee68a031aa808722d3eab9c316c64dd55c699c0fb94428e0de changelog sha256=a27f202b5efb3bb3be723a54ff6304ee9d2a8312487ca96910740afbc461210d -->
+<!-- contract-stamp: public-openapi sha256=9418b85c7ebda6ee68a031aa808722d3eab9c316c64dd55c699c0fb94428e0de changelog sha256=d3ec9beb5b68b17faea0aa435a4771abab9b1c14f774f8cd593e282175f5734a -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
+  counts each value of a cell listing several (`A; B`) in each value's group,
+  as `rows` `group_by=value` does; a value repeated in one cell counts once.
+
+- `POST /v1/knowledge/wiki/command` reads (`cat`, `sections`, `grep` and the
+  rest) and research answers name a cited file inline by its drive path when
+  it is known, `(deals/acme/memo.pdf › p. 7)`, instead of its file name alone,
+  in body citations and in each `sections` hit's documents line. The path is
+  what `documents` `read` and `POST /v1/artifacts/read` open and what a write
+  accepts as a citation `reference`.
 
 - `POST /v1/knowledge/documents` `read`: a path that names no document, whose
   file name is one document's in the same record folder, opens that document,
