@@ -20248,7 +20248,7 @@
                     "type": "string"
                   },
                   "entity": {
-                    "description": "rows: card titles containing this.",
+                    "description": "rows: card title(s), as a|b|c.",
                     "type": "string"
                   },
                   "field_id": {
