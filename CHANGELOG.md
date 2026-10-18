@@ -8,18 +8,109 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
-- `POST /v1/knowledge/wiki/command` reads and research answers name a cited
-  file inline by its drive path when it is known; `query` `GROUP BY value`
-  counts each value of an `A; B` cell in each value's group.
-- `POST /v1/knowledge/documents` `read`: a path in the wrong subfolder opens the
-  one file of that name in the same record folder and says so (other matches
-  are suggested); a profiled spreadsheet read shows the first 50 rows per sheet.
-- `POST /v1/knowledge/wiki/command` `rows`: `entity` takes several titles
-  (a list, `a|b|c` or `^(a|b)$`) and reads each one's cards; `attribute` with
-  `match=exact` stays a name match under `regex`; `group_by=value` counts each
-  value of an `A; B` cell; an unknown `page_type` names the closest card types.
-  `query` reads `ON a.entity = b.entity` as `SAME_CARD(a)` and `to_title` as
-  `to`, and runs while only some cards are reindexing, saying how many.
+- `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
+  counts each value of a cell listing several (`A; B`) in each value's group,
+  as `rows` `group_by=value` does; a value repeated in one cell counts once.
+- `POST /v1/knowledge/wiki/command` reads (`cat`, `sections`, `grep` and the
+  rest) and research answers name a cited file inline by its drive path when
+  it is known, `(deals/acme/memo.pdf › p. 7)`, instead of its file name alone,
+  in body citations and in each `sections` hit's documents line. The path is
+  what `documents` `read` and `POST /v1/artifacts/read` open and what a write
+  accepts as a citation `reference`.
+- `POST /v1/knowledge/documents` `read`: a path that names no document, whose
+  file name is one document's in the same record folder, opens that document,
+  and the reply's first line names the path it opened; the same name in other
+  folders is suggested. A read of a spreadsheet (.xlsx or .csv) whose indexed
+  text is a profile ends with the first 50 rows of each sheet, read from the
+  original file.
+- `POST /v1/knowledge/wiki/command` `rows`: `entity` takes several titles, as
+  a list, `a|b|c`, or `^(a|b)$`, and reads the cards each one names (it was
+  read as one title and matched nothing); the reply names any title that
+  matched no card, with the closest title, and the `entity` description says
+  so. `attribute` with `match=exact` is
+  compared by name when `regex` is true. `group_by=value` counts each value of
+  a cell listing several (`A; B`) in each value's group. A `page_type` no card
+  in scope has names the closest card types. A regex that runs out of time
+  says how many rows it read and which filters narrow the read.
+- `POST /v1/knowledge/wiki/command` `query`: `JOIN ... ON a.entity = b.entity`
+  reads as `SAME_CARD(a)`, and `to_title` is the connection's `to`. A query
+  over a scope where only some cards are being reindexed runs, and its first
+  line says how many cards are reindexing; only a scope whose every card is
+  being reindexed is refused with `index_not_ready`. An empty result for an
+  `entity_type` no card in scope has names the closest card types.
+- `POST /v1/knowledge/wiki/command` `cat` and `hover`: a reference such as
+  `"matter PRJ-118"` opens the page `PRJ-118` names, and when the title given
+  after an identifier disagrees with the page it opens, the first line says
+  so. Titles suggested on a miss are those led by an identifier sharing its
+  first segment. `grep` and `sections` refused for `offset` name `grep`'s
+  `after_title` and `after_page_id` (`sections` does not page), and `grep`
+  refused for `page` points to `cat`.
+- `POST /v1/knowledge/documents` `grep`: a regex with a global inline flag
+  after its start, such as `MFN|(?i)most favored`, runs with the flag moved to
+  the start (it applies to the whole pattern), and the reply says so. It used
+  to be refused.
+- `POST /v1/knowledge/documents` `grep` given `query` and no `pattern` uses the
+  query as the pattern, and the reply's first line says so (it was refused with
+  `pattern is required`). `read` takes a document key carrying the full id, such
+  as `artifact:<id>` from a Knowledge source list, with or without braces (it
+  was looked up as a title).
+- `POST /v1/knowledge/wiki/command` `query` with an `entity_type` and a `field`
+  condition, and `rows` with `page_type` and an `attribute` or `field_id`, say
+  which cards of that type hold no value for the field, since no filter on the
+  field can list them: a line `K of N <type> cards have no <field>: <up to 10
+  titles> (open them to check).` The `query` result carries it as `missing`
+  (`field`, `page_types`, `missing`, `cards`, `titles`). Only cards you can
+  read are counted or named.
+- `POST /v1/knowledge/wiki/command` reads `rows` `value` as `query` and `rows`
+  `entity_type` as `page_type`, and a `timeline` cursor sent as `offset` as
+  `cursor`, instead of answering `400`; the reply's first line names each one
+  (for example "Read `entity_type` as page_type (the card type)."). Sent beside
+  a different value for that option, it is still refused. `query` reads an
+  `offset` beside `sql` or `spec` as the cursor that many rows in (it was
+  ignored), said in `Applied:`.
+- `POST /v1/knowledge/wiki/command` `cat` and `hover` given a reference that
+  names no page but starts with an identifier and a title separator (for
+  example `"PRJ-118 — Lease Dispute"`) open the one page that identifier
+  names, as its exact title, alias, or the start of its title, and say so on
+  the first line. When it names several pages or none, the `page_not_found`
+  error lists the titles to retry.
+- `POST /v1/knowledge/documents` `ls` with a `glob` lists the matching
+  documents, flat, with or without `recursive`. It used to list only the
+  folders holding them.
+- `POST /v1/knowledge/documents` and `POST /v1/knowledge/wiki/command` accept a
+  call that sends every option, as clients using strict function calling do.
+  An unset option may be sent as `""`, `0` or `false` on `documents`, and
+  `group_by` takes `"none"`; `0` for a count, a limit or a line number means its
+  default (it used to be raised to 1, or refused for `end_line`), and `read`
+  with `start_line` `0` reads the passage its citation token names. On
+  `wiki/command`, `0` for `limit`, `rev`, `rev2`, `matches_per_page` or
+  `sources_per_section` means its default, and an option the command does not
+  take is accepted when it is `0` or its default (`mode` `text`, `table`
+  `facts`, ...). `cat` resolves a page given as a citation token with a missing
+  closing brace.
+- `POST /v1/knowledge/wiki/command` `query` `sql` reads `SELECT DISTINCT keys`
+  as `GROUP BY` those keys, and accepts `LOWER()` and `UPPER()` around a
+  condition's column or text (matching is already case-insensitive); the reply's
+  `Applied:` line says so, with `adjustment_kinds` `distinct_grouped` and
+  `case_function_ignored`. In `LIKE`, `%` and a leading or trailing `_` are
+  wildcards: `field LIKE '%ettlement%'` (and `spec` `{"field": {"contains":
+  "..."}}`, match `contains`) is every field whose name contains the text, any
+  case, each listed in `Resolved:`; `value LIKE 'settle%'` means the value
+  contains "settle". A field condition in an OR that matches no field leaves
+  that branch out (`adjustment_kinds` `or_branch_dropped`) instead of refusing
+  the query.
+  `field CONTAINS 'x'` matches field names too (at most 25 fields, the rest
+  counted in `Resolved:`); an entity naming no readable card is said in
+  `Applied:` (`or_branch_dropped`, `entity_unmatched`). Backticked names,
+  `when_end`, `when_date` and `valid_from` (as `when`) are accepted; a
+  subquery, `GROUP_CONCAT`, an unsupported JOIN shape, the evidence columns
+  and more than 24 conditions are refused with the call that answers each.
+  Field-name lookups across a whole project no longer run out of time.
+  A `value` text condition alone runs card first; one on too many cards is
+  refused at once (`invalid_arguments`) with the narrower call.
+- `POST /v1/knowledge/wiki/command` `grep` given a `documents grep` option
+  (`path`, `glob`, `document`, ...) is refused with the `documents grep` call
+  that takes it.
 - `POST /v1/knowledge/wiki/write` `edit_rows`: an `old_rows` entry may give a
   long value by its start, up to a word end or ending in `...`, when exactly one
   row of that field starts that way. A start that several rows share is refused

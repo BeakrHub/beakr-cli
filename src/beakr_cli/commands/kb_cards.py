@@ -70,7 +70,12 @@ def _parse_row(value: str, option: str) -> Any:
 
 def rows(
     table: str = typer.Option("facts", "--table", "-t", help="facts, connections or findings."),
-    entity: str | None = typer.Option(None, "--entity", "-e", help="Only this card."),
+    entity: str | None = typer.Option(
+        None,
+        "--entity",
+        "-e",
+        help="Only these cards: one title, or several as a|b|c or ^(a|b)$.",
+    ),
     attribute: str | None = typer.Option(
         None, "--attribute", "-a", help="The field: by name, alias or meaning (see --match)."
     ),
