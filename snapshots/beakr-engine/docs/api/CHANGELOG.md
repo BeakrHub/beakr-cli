@@ -11,10 +11,88 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=6ef339bca53b7013900ac455da6c5800ee589e73c883df8998dba3664fd8edf3 changelog sha256=016f1ac34a9387731cde77464491ff1bc646db4795df20558233f452e5fa1653 -->
+<!-- contract-stamp: public-openapi sha256=ce31d421aba6f267cc2294a21a5d7b2463dc2a198b649d5afb6e291a31f1d902 changelog sha256=46f48bd60d7287028c5751a053da9b202b002c80b62a2c2eabf9f1cc822b9879 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` `cat` and `hover`: a reference such as
+  `"matter PRJ-118"` opens the page `PRJ-118` names, and when the title given
+  after an identifier disagrees with the page it opens, the first line says
+  so. Titles suggested on a miss are those led by an identifier sharing its
+  first segment. `grep` and `sections` refused for `offset` name `grep`'s
+  `after_title` and `after_page_id` (`sections` does not page), and `grep`
+  refused for `page` points to `cat`.
+- `POST /v1/knowledge/documents` `grep`: a regex with a global inline flag
+  after its start, such as `MFN|(?i)most favored`, runs with the flag moved to
+  the start (it applies to the whole pattern), and the reply says so. It used
+  to be refused.
+
+- `POST /v1/knowledge/documents` `grep` given `query` and no `pattern` uses the
+  query as the pattern, and the reply's first line says so (it was refused with
+  `pattern is required`). `read` takes a document key carrying the full id, such
+  as `artifact:<id>` from a Knowledge source list, with or without braces (it
+  was looked up as a title).
+
+- `POST /v1/knowledge/wiki/command` `query` with an `entity_type` and a `field`
+  condition, and `rows` with `page_type` and an `attribute` or `field_id`, say
+  which cards of that type hold no value for the field, since no filter on the
+  field can list them: a line `K of N <type> cards have no <field>: <up to 10
+  titles> (open them to check).` The `query` result carries it as `missing`
+  (`field`, `page_types`, `missing`, `cards`, `titles`). Only cards you can
+  read are counted or named.
+- `POST /v1/knowledge/wiki/command` reads `rows` `value` as `query` and `rows`
+  `entity_type` as `page_type`, and a `timeline` cursor sent as `offset` as
+  `cursor`, instead of answering `400`; the reply's first line names each one
+  (for example "Read `entity_type` as page_type (the card type)."). Sent beside
+  a different value for that option, it is still refused. `query` reads an
+  `offset` beside `sql` or `spec` as the cursor that many rows in (it was
+  ignored), said in `Applied:`.
+- `POST /v1/knowledge/wiki/command` `cat` and `hover` given a reference that
+  names no page but starts with an identifier and a title separator (for
+  example `"PRJ-118 — Lease Dispute"`) open the one page that identifier
+  names, as its exact title, alias, or the start of its title, and say so on
+  the first line. When it names several pages or none, the `page_not_found`
+  error lists the titles to retry.
+- `POST /v1/knowledge/documents` `ls` with a `glob` lists the matching
+  documents, flat, with or without `recursive`. It used to list only the
+  folders holding them.
+
+- `POST /v1/knowledge/documents` and `POST /v1/knowledge/wiki/command` accept a
+  call that sends every option, as clients using strict function calling do.
+  An unset option may be sent as `""`, `0` or `false` on `documents`, and
+  `group_by` takes `"none"`; `0` for a count, a limit or a line number means its
+  default (it used to be raised to 1, or refused for `end_line`), and `read`
+  with `start_line` `0` reads the passage its citation token names. On
+  `wiki/command`, `0` for `limit`, `rev`, `rev2`, `matches_per_page` or
+  `sources_per_section` means its default, and an option the command does not
+  take is accepted when it is `0` or its default (`mode` `text`, `table`
+  `facts`, ...). `cat` resolves a page given as a citation token with a missing
+  closing brace.
+
+- `POST /v1/knowledge/wiki/command` `query` `sql` reads `SELECT DISTINCT keys`
+  as `GROUP BY` those keys, and accepts `LOWER()` and `UPPER()` around a
+  condition's column or text (matching is already case-insensitive); the reply's
+  `Applied:` line says so, with `adjustment_kinds` `distinct_grouped` and
+  `case_function_ignored`. In `LIKE`, `%` and a leading or trailing `_` are
+  wildcards: `field LIKE '%ettlement%'` (and `spec` `{"field": {"contains":
+  "..."}}`, match `contains`) is every field whose name contains the text, any
+  case, each listed in `Resolved:`; `value LIKE 'settle%'` means the value
+  contains "settle". A field condition in an OR that matches no field leaves
+  that branch out (`adjustment_kinds` `or_branch_dropped`) instead of refusing
+  the query.
+  `field CONTAINS 'x'` matches field names too (at most 25 fields, the rest
+  counted in `Resolved:`); an entity naming no readable card is said in
+  `Applied:` (`or_branch_dropped`, `entity_unmatched`). Backticked names,
+  `when_end`, `when_date` and `valid_from` (as `when`) are accepted; a
+  subquery, `GROUP_CONCAT`, an unsupported JOIN shape, the evidence columns
+  and more than 24 conditions are refused with the call that answers each.
+  Field-name lookups across a whole project no longer run out of time.
+  A `value` text condition alone runs card first; one on too many cards is
+  refused at once (`invalid_arguments`) with the narrower call.
+- `POST /v1/knowledge/wiki/command` `grep` given a `documents grep` option
+  (`path`, `glob`, `document`, ...) is refused with the `documents grep` call
+  that takes it.
 
 - `POST /v1/knowledge/wiki/write` `edit_rows`: an `old_rows` entry may give a
   long value by its start, up to a word end or ending in `...`, when exactly one
