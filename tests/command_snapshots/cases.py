@@ -204,6 +204,7 @@ CASES: list[SnapshotCase] = [
     c("context", "context", "--project", PROJECT),
     c("context-claude-md", "context", "--project", PROJECT, "--format", "claude_md"),
     c("compound", "compound", ID, "--project", PROJECT),
+    c("conversations-compound-cancel", "conversations", "compound", "cancel", ID),
     c("changes", "changes", "--project", PROJECT),
     c("trace", "trace", "page", ID),
     c("conversations-ls", "conversations", "ls", "--project", PROJECT),

@@ -49,6 +49,15 @@ Each release lists the public API changes it supports, taken from the API change
   the markdown.
 - Piped output prints an object with neither an id nor a name as `key=value`
   columns instead of raw JSON.
+- `beakr conversations compound cancel ID` stops a queued or running compound
+  of an imported conversation; `beakr compound ID` resumes it. `conversations
+  show` reads a stopped one's status as `cancelled`.
+- `POST /v1/compound/cancel`: stop the queued or running compound of an
+  imported conversation (`conversations:write`). A batch already being read
+  finishes and its proposals stay; no further batch starts, and the
+  conversation's `compound_status` reads `cancelled`. Answers
+  `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
+  resumes from where it stopped.
 - `beakr projects profile show|set|edit`: read and set a project's Knowledge
   profile. `set --file` replaces the whole profile from JSON or YAML and
   refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,

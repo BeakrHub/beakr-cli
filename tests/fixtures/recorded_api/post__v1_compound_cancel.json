@@ -1,0 +1,11 @@
+{
+  "operation": "POST /v1/compound/cancel",
+  "source": "hand-authored from beakr/api/routes/conversations.py:cancel_compound_route (engine #1662)",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "conversation_id": "c4a1e8f2-6b3d-4f7a-9e21-8d5c0b3a7f14",
+    "status": "cancelled",
+    "pending_messages": 2
+  }
+}
