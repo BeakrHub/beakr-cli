@@ -13,6 +13,7 @@ from typing import Any
 
 import typer
 from beakr_sdk.resources.knowledge import result_text
+from rich.markup import escape
 
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.output import console, emit, err_console
@@ -60,7 +61,7 @@ def _print_result(result: dict[str, Any], *, json_out: bool) -> None:
 
 def _choice(value: str, allowed: tuple[str, ...], option: str) -> str:
     if value not in allowed:
-        err_console.print(f"{option} must be one of: {', '.join(allowed)}.")
+        err_console.print(f"{option} must be one of: {', '.join(allowed)}.", markup=False)
         raise typer.Exit(2)
     return value
 
@@ -72,7 +73,7 @@ def _parse_json(value: str, option: str) -> Any:
             return json.loads(Path(value[1:]).read_text())
         return json.loads(value)
     except (OSError, ValueError) as exc:
-        err_console.print(f"{option}: not valid JSON ({exc}).")
+        err_console.print(f"{option}: not valid JSON ({exc}).", markup=False)
         raise typer.Exit(2) from exc
 
 
@@ -208,7 +209,9 @@ def query(
         try:
             arguments["spec"] = json.loads(raw)
         except ValueError as exc:
-            err_console.print(f"[red]The JSON spec is not valid JSON:[/red] {exc.msg}.")
+            err_console.print(
+                f"[red]The JSON spec is not valid JSON:[/red] {escape(str(exc.msg))}."
+            )
             raise typer.Exit(1) from exc
     else:
         arguments["sql"] = raw

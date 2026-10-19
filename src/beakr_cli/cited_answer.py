@@ -23,6 +23,8 @@ import json
 import re
 from typing import Any
 
+from rich.markup import escape
+
 from beakr_cli.mcp_render import SOURCES_CHARS
 from beakr_cli.output import console, print_markdown
 
@@ -194,7 +196,7 @@ def print_research_result(data: dict[str, Any]) -> None:
     if data.get("gaps"):
         details.append(f"Gaps: {data['gaps']}")
     if details:
-        console.print(f"\n[dim]{' | '.join(details)}[/dim]")
+        console.print(f"\n[dim]{escape(' | '.join(details))}[/dim]")
 
     for detail in _research_details(data):
         console.print(detail, highlight=False, markup=False)

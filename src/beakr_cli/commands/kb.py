@@ -10,6 +10,7 @@ from pathlib import Path
 import typer
 from beakr_sdk.errors import NotFoundError
 from beakr_sdk.resources.knowledge import result_text
+from rich.markup import escape
 
 from beakr_cli.citations import CitationValidationError, validate_proposal_sections
 from beakr_cli.cited_answer import print_research_result, research_lines
@@ -68,7 +69,7 @@ def _scope_params(*, project: str | None = None, mine: bool = False) -> dict:
     try:
         return scope_params(project=project, personal=mine)
     except ValueError as exc:
-        err_console.print(str(exc))
+        err_console.print(str(exc), markup=False)
         raise typer.Exit(1) from exc
 
 
@@ -370,7 +371,10 @@ def blame(
         if not text:
             continue
         display = text[:120] + "..." if len(text) > 120 else text
-        console.print(f"[dim]rev {rev}[/dim]  [cyan]{source[:40]}[/cyan]  {display}")
+        console.print(
+            f"[dim]rev {escape(str(rev))}[/dim]  [cyan]{escape(str(source[:40]))}[/cyan]  "
+            f"{escape(str(display))}"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -526,7 +530,7 @@ def provenance(
             title = section_id
             citations = section_data if isinstance(section_data, list) else [section_data]
 
-        console.print(f"\n[bold]{title}[/bold]")
+        console.print(f"\n[bold]{escape(str(title))}[/bold]")
         for cit in citations:
             stance = cit.get("stance", "support")
             source = cit.get("source_title", cit.get("source_id", "unknown"))
@@ -535,7 +539,10 @@ def provenance(
             )
             inline = " inline" if cit.get("inline") else ""
             key = f" ({cit.get('key')})" if cit.get("key") else ""
-            console.print(f"  [{style}]{stance}{inline}[/{style}]  {source}{key}")
+            console.print(
+                f"  [{style}]{escape(str(stance))}{inline}[/{style}]  "
+                f"{escape(str(source))}{escape(key)}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -626,10 +633,11 @@ def timeline(
         if precision and precision != "day":
             date_str += f" ({precision})"
         console.print(
-            f"[dim]{date_str}[/dim]  [cyan][{e.get('page_type', '')}][/cyan]  "
-            f"[bold]{e.get('title', '')}[/bold]"
+            f"[dim]{escape(str(date_str))}[/dim]  "
+            f"[cyan]\\[{escape(str(e.get('page_type', '')))}][/cyan]  "
+            f"[bold]{escape(str(e.get('title', '')))}[/bold]"
         )
-        console.print(f"  Page: {e.get('page_title', '')}")
+        console.print(f"  Page: {e.get('page_title', '')}", markup=False)
         if e.get("content"):
             console.print()
             print_markdown(e["content"])
@@ -666,7 +674,7 @@ def graph(
         # Not markup: "[project]" would otherwise be read as a style tag and dropped.
         console.print(line, markup=False, highlight=False)
     if len(nodes) > 20:
-        console.print(f"  ... and {len(nodes) - 20} more")
+        console.print(f"  ... and {len(nodes) - 20} more", markup=False)
 
 
 # ---------------------------------------------------------------------------
@@ -685,8 +693,8 @@ def stats(
     with get_sdk() as sdk:
         data = sdk.knowledge.pages.stats(project_id=project_id)
     if not machine_output(data, json_out=json_out):
-        console.print(f"Pages:   {data.get('pages', 0)}")
-        console.print(f"Sources: {data.get('sources', 0)}")
+        console.print(f"Pages:   {data.get('pages', 0)}", markup=False)
+        console.print(f"Sources: {data.get('sources', 0)}", markup=False)
 
 
 # ---------------------------------------------------------------------------
@@ -785,7 +793,7 @@ def _validate_sections_arg(
     try:
         validate_proposal_sections(content, sections, require_content=require_content)
     except CitationValidationError as exc:
-        err_console.print(f"Invalid --sections:\n{exc}")
+        err_console.print(f"Invalid --sections:\n{exc}", markup=False)
         raise typer.Exit(1) from exc
 
 
@@ -803,20 +811,21 @@ def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
     The hash comes last so it is on screen when the reviewer copies it into
     `kb proposals accept --reviewed-hash`; above a long payload it scrolled away.
     """
-    console.print(f"[bold]Proposal:[/bold] {proposal.get('id')}")
-    console.print(f"Type:   {proposal.get('proposal_type')}")
-    console.print(f"Status: {proposal.get('status')}")
+    console.print(f"[bold]Proposal:[/bold] {escape(str(proposal.get('id')))}")
+    console.print(f"Type:   {proposal.get('proposal_type')}", markup=False)
+    console.print(f"Status: {proposal.get('status')}", markup=False)
     if proposal.get("page_title"):
-        console.print(f"Page:   {proposal.get('page_title')}")
+        console.print(f"Page:   {proposal.get('page_title')}", markup=False)
     if proposal.get("summary"):
-        console.print(f"Summary: {proposal.get('summary')}")
+        console.print(f"Summary: {proposal.get('summary')}", markup=False)
     if filed_by_line(proposal):
         console.print(filed_by_line(proposal), markup=False)
     payload = proposal.get("payload") or {}
     if proposal.get("proposal_type") == "find_replace":
         console.print(
             f"Changes: {payload.get('total_matches', 0)} match(es) across "
-            f"{payload.get('total_pages', 0)} page(s)"
+            f"{payload.get('total_pages', 0)} page(s)",
+            markup=False,
         )
     elif proposal.get("proposal_type") == "archive":
         console.print(f"Pages:  {len(payload.get('archive_items') or [])}")
@@ -843,7 +852,7 @@ def _accept_created_proposal(proposal: dict, *, accept: bool, yes: bool) -> None
         return
     # Bound to the proposal this command created and just showed.
     result = _accept_bound(proposal["id"], proposal.get("content_hash"))
-    console.print(f"Accepted proposal {result.get('proposal_id', proposal['id'])}.")
+    console.print(f"Accepted proposal {result.get('proposal_id', proposal['id'])}.", markup=False)
 
 
 def _accept_bound(proposal_id: str, reviewed_hash: str | None) -> dict:
@@ -854,7 +863,8 @@ def _accept_bound(proposal_id: str, reviewed_hash: str | None) -> dict:
     except ReviewRequired as refused:
         err_console.print(
             f"{refused} Review it with `beakr kb proposals show {proposal_id}`, then run "
-            f"`beakr kb proposals accept {proposal_id} --reviewed-hash <its content hash>`."
+            f"`beakr kb proposals accept {proposal_id} --reviewed-hash <its content hash>`.",
+            markup=False,
         )
         raise typer.Exit(EXIT_USAGE) from refused
 
@@ -876,7 +886,8 @@ def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool)
         machine_output(proposal, json_out=json_out, hint=accept_hint)
         err_console.print(
             "Not accepted: --accept needs --yes when output is JSON or piped. "
-            f"Accept with `{accept_hint}`."
+            f"Accept with `{accept_hint}`.",
+            markup=False,
         )
         raise typer.Exit(1)
     if accept:
@@ -1089,7 +1100,9 @@ def proposals_list(
     more = f"beakr kb proposals ls --cursor {next_cursor}" if next_cursor else None
     if machine_output(proposals, json_out=json_out, lines=_proposal_lines, hint=more):
         if more and output_mode(json_out) == "json":
-            err_console.print(f"More proposals: {more}", highlight=False, soft_wrap=True)
+            err_console.print(
+                f"More proposals: {more}", highlight=False, soft_wrap=True, markup=False
+            )
         return
     rows = [
         [
@@ -1106,7 +1119,7 @@ def proposals_list(
         ["ID", "Type", "Status", "Page", "Summary", "Filed by"], rows, title="Wiki Proposals"
     )
     if more:
-        err_console.print(f"More proposals: {more}", highlight=False, soft_wrap=True)
+        err_console.print(f"More proposals: {more}", highlight=False, soft_wrap=True, markup=False)
 
 
 def _filer(proposal: dict) -> str:
@@ -1188,7 +1201,9 @@ def proposals_accept(
     try:
         given = checked_hash(reviewed_hash)
     except ValueError as exc:
-        err_console.print(f"{exc} Copy it from `beakr kb proposals show {proposal_id}`.")
+        err_console.print(
+            f"{exc} Copy it from `beakr kb proposals show {proposal_id}`.", markup=False
+        )
         raise typer.Exit(EXIT_USAGE) from exc
     if given is None and not yes and output_mode(json_out) == "human" and is_interactive():
         # Review here: show the proposal and bind the accept to exactly this read.
@@ -1204,7 +1219,7 @@ def proposals_accept(
         confirm_or_require_yes(f"Accept and apply proposal {proposal_id}?", yes)
     result = _accept_bound(proposal_id, given)
     if not machine_output(result, json_out=json_out):
-        console.print(f"Accepted proposal {result.get('proposal_id', proposal_id)}.")
+        console.print(f"Accepted proposal {result.get('proposal_id', proposal_id)}.", markup=False)
 
 
 @proposals_app.command("dismiss")
@@ -1218,7 +1233,7 @@ def proposals_dismiss(
     with get_sdk() as sdk:
         result = sdk.knowledge.proposals.dismiss(proposal_id)
     if not machine_output(result, json_out=json_out):
-        console.print(f"Dismissed proposal {result.get('proposal_id', proposal_id)}.")
+        console.print(f"Dismissed proposal {result.get('proposal_id', proposal_id)}.", markup=False)
 
 
 # ---------------------------------------------------------------------------

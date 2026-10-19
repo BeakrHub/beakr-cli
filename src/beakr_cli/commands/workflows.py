@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_ref import project_ref_callback
@@ -128,13 +129,17 @@ def create_workflow(
         )
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"Saved workflow {data.get('name')} ({data.get('id')}).", highlight=False)
+        console.print(
+            f"Saved workflow {data.get('name')} ({data.get('id')}).", highlight=False, markup=False
+        )
         if cron:
             upcoming = (preview or {}).get("upcoming_runs") or []
             when = ", ".join(str(t) for t in upcoming[:3])
             readable = (preview or {}).get("human_readable") or cron
-            console.print(f"Scheduled: {readable}" + (f" (next: {when})" if when else ""))
-        err_console.print(f"Run it now with `beakr workflows run {data.get('id')}`.")
+            console.print(
+                f"Scheduled: {readable}" + (f" (next: {when})" if when else ""), markup=False
+            )
+        err_console.print(f"Run it now with `beakr workflows run {data.get('id')}`.", markup=False)
 
     emit(created, json_out=json_out, render=render)
 
@@ -172,13 +177,13 @@ def draft_workflow(
     def render(data: dict[str, Any]) -> None:
         template = data.get("template") or {}
         name = template.get("name") or "(unnamed)"
-        console.print(f"Drafted template: {name}", highlight=False)
+        console.print(f"Drafted template: {name}", highlight=False, markup=False)
         for change in data.get("changes_made") or []:
-            console.print(f"  changed: {change}", highlight=False)
+            console.print(f"  changed: {change}", highlight=False, markup=False)
         for suggestion in data.get("suggestions") or []:
-            console.print(f"  suggestion: {suggestion}", highlight=False)
+            console.print(f"  suggestion: {suggestion}", highlight=False, markup=False)
         if out is not None:
-            err_console.print(f"Wrote the definition to {out}.")
+            err_console.print(f"Wrote the definition to {out}.", markup=False)
         else:
             err_console.print("Pass --out FILE to keep the definition, or --json for all of it.")
 
@@ -207,18 +212,21 @@ def run_workflow(
                 sdk.wait(str(run.get("job_id") or run["id"]), timeout=timeout)
             except JobTimeout as exc:
                 err_console.print(
-                    f"[yellow]Still {exc.last.get('native_status') or exc.last.get('status')} "
+                    "[yellow]Still "
+                    f"{escape(str(exc.last.get('native_status') or exc.last.get('status')))} "
                     f"after {timeout:.0f}s.[/]"
                 )
                 raise typer.Exit(1) from None
             run = sdk.workflows.get_run(str(run["id"]))
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"Run {data.get('id')}: {data.get('status')}", highlight=False)
+        console.print(f"Run {data.get('id')}: {data.get('status')}", highlight=False, markup=False)
         if data.get("output_canvas_id"):
-            console.print(f"Output: {data['output_canvas_id']} (`beakr outputs show ...`)")
+            console.print(
+                f"Output: {data['output_canvas_id']} (`beakr outputs show ...`)", markup=False
+            )
         if data.get("error_message"):
-            err_console.print(f"[red]{data['error_message']}[/red]")
+            err_console.print(f"[red]{escape(str(data['error_message']))}[/red]")
 
     emit(run, json_out=json_out, render=render)
     if wait and str(run.get("status")) != "completed":
@@ -245,12 +253,14 @@ def schedule_workflow(
 
     def render(data: dict[str, Any]) -> None:
         if off:
-            console.print(f"Paused the schedule of {workflow_id}.")
+            console.print(f"Paused the schedule of {workflow_id}.", markup=False)
             return
         upcoming = (preview or {}).get("upcoming_runs") or []
         when = ", ".join(str(t) for t in upcoming[:3])
         readable = (preview or {}).get("human_readable") or cron
-        console.print(f"{workflow_id} runs {readable}" + (f" (next: {when})" if when else ""))
+        console.print(
+            f"{workflow_id} runs {readable}" + (f" (next: {when})" if when else ""), markup=False
+        )
 
     emit(updated, json_out=json_out, render=render)
 

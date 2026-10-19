@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from rich.markup import escape
+
 from beakr_cli import agent_hooks
 from beakr_cli.project_binding import (
     CAPTURE_FIELD,
@@ -197,6 +199,7 @@ def sync_capture_notice() -> Path | None:
         log_hook(f"codex notice: could not rewrite {agent_hooks.codex_agents_path()}: {exc}")
         err_console.print(
             f"[yellow]Beakr:[/yellow] could not update the capture notice in "
-            f"{agent_hooks.codex_agents_path()} ({exc}); run `beakr codex` to refresh it."
+            f"{escape(str(agent_hooks.codex_agents_path()))} ({escape(str(exc))}); run `beakr "
+            "codex` to refresh it."
         )
         return None
