@@ -8,6 +8,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- The MCP server lists every tool by default, so Claude Code (which calls
+  only listed tools) can call `documents`, `wiki_stats`, `wiki_graph`,
+  `get_profile`, the proposal tools, `conversations_search`,
+  `import_conversation`, `beakr_version` and `org_audit_log`.
+  `BEAKR_MCP_TOOLS=eager` keeps the small listing; there `discover_tools` adds
+  the tools it finds and the server sends `notifications/tools/list_changed`
+  (it now declares `tools.listChanged`).
+- The MCP `context` tool takes a project name as well as an id; a name was
+  refused with a bare "HTTP 422". A validation refusal now names each field
+  and the API's text for it.
+- On a self-hosted installation, tools for areas it leaves out are not listed
+  (read from its `/v1/public/openapi.json`, or from a call that meets a route
+  the server does not have), and commands for organization members, external
+  users, end-user tokens, service accounts, integrations and skills print
+  "This Beakr installation does not provide <area>." instead of a bare 404.
+  `beakr doctor` lists the areas the installation does not provide.
 - `beakr projects profile show|set|edit`: read and set a project's Knowledge
   profile. `set --file` replaces the whole profile from JSON or YAML and
   refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,
