@@ -3,9 +3,9 @@
 Some actions are deliberately web-only (creating an API key needs a browser
 session; keys and CLI tokens are refused), so the CLI opens the page instead.
 Resolution (:func:`app_url`): ``BEAKR_APP_URL``, then the API's own report
-(``app_url`` on ``GET /v1/auth/config``), then a saved ``app_url`` for the same
-deployment (sign-ins by earlier versions saved the origin of Beakr's
-device-flow page), then a guess from the API base URL.
+(``app_url`` on ``GET /v1/auth/config``), then a saved ``app_url`` (sign-ins by
+earlier versions saved the origin of Beakr's device-flow page), then a guess
+from the API base URL.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ class AppUrl:
     """The web app's URL and where it came from.
 
     ``guessed`` is true when nothing said it (no ``BEAKR_APP_URL``, the API did
-    not report one, no saved one for this API): the URL is derived from the API
+    not report one, none saved): the URL is derived from the API
     URL by convention and may not be where this deployment serves its app.
     """
 
@@ -51,7 +51,7 @@ def resolve_app_url() -> str:
 
 
 def app_url() -> AppUrl:
-    """``BEAKR_APP_URL``, then the API's own report, then a saved URL for this API, then a guess.
+    """``BEAKR_APP_URL``, then the API's own report, then a saved URL, then a guess.
 
     The guess maps a local API port to the web dev server (8000+N -> 3000+N)
     and anything else to Beakr's hosted app; a self-hosted box (API on
@@ -66,7 +66,7 @@ def app_url() -> AppUrl:
     if reported:
         return AppUrl(reported, guessed=False)
     saved = read_cli_config().get("app_url")
-    if saved and _same_deployment(str(saved), base):
+    if saved:
         return AppUrl(str(saved).rstrip("/"), guessed=False)
     local = _LOCAL_API.match(base)
     if local:
@@ -91,23 +91,3 @@ def _reported_app_url(base_url: str) -> str | None:
             # Unreachable or refusing: fall back rather than fail the command.
             _reported[base_url] = None
     return _reported[base_url]
-
-
-def _same_deployment(app: str, api: str) -> bool:
-    """Whether a saved app URL belongs to the configured API.
-
-    Sign-ins by earlier versions saved the app URL once; switching to another
-    API (a local box, sandbox) kept sending people to the first one's app. A
-    saved URL is used only when its host is the API's host or shares its
-    parent domain (``app.thebeakr.com`` for ``api.thebeakr.com``).
-    """
-    app_host = (urlsplit(app).hostname or "").lower()
-    api_host = (urlsplit(api).hostname or "").lower()
-    if not app_host or not api_host:
-        return False
-    return app_host == api_host or _parent(app_host) == _parent(api_host)
-
-
-def _parent(host: str) -> str:
-    labels = host.split(".")
-    return ".".join(labels[1:]) if len(labels) > 2 else host

@@ -41,7 +41,7 @@ Each release lists the public API changes it supports, taken from the API change
   lines instead of field dumps; `kb search` snippets drop section markers and
   citation tokens; `interviews link revoke --json` prints what it revoked.
 - `keys create` uses the web app URL the API reports (`app_url` on
-  `/v1/auth/config`), ignores an `app_url` saved for a different deployment, and
+  `/v1/auth/config`) before a saved one, and
   says when the address is only a guess (`BEAKR_APP_URL` overrides it).
 - `beakr projects members add` no longer offers `--type group`, which the server
   refuses.
