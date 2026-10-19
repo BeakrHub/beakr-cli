@@ -13375,6 +13375,18 @@
             ],
             "description": "Cursor for the next older page of messages; absent when the response was not paged."
           },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How it came to exist (for example, stated by the person or inferred).",
+            "title": "Origin"
+          },
           "profile_builder_meta": {
             "anyOf": [
               {
@@ -13671,6 +13683,18 @@
             ],
             "description": "Models to use instead of the defaults, by role.",
             "title": "Model Overrides"
+          },
+          "origin": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How it came to exist (for example, stated by the person or inferred).",
+            "title": "Origin"
           },
           "project_ids": {
             "default": [],
