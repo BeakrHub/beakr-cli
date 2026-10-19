@@ -120,6 +120,9 @@ def rows(
     page_type: str | None = typer.Option(None, "--type", help="Card page type."),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Max rows."),
     offset: int | None = typer.Option(None, "--offset", help="Skip this many rows."),
+    after_card: str | None = typer.Option(
+        None, "--after-card", help="Continue a capped card scan after this card (as a reply names)."
+    ),
     evidence: bool = typer.Option(False, "--evidence", help="Include each row's cited passage."),
     scope: str | None = _scope_opt,
     json_out: bool = _json_opt,
@@ -155,6 +158,7 @@ def rows(
             page_type=page_type,
             limit=limit,
             offset=offset,
+            after_card=after_card,
             include_evidence=evidence or None,
             scope=_scope(scope),
         )

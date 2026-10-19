@@ -23,6 +23,10 @@ Each release lists the public API changes it supports, taken from the API change
   diff and labelled fields instead of JSON, with the content hash last.
   `accept --reviewed-hash` needs no `--yes`: the reviewed hash is the
   confirmation.
+- A label or Knowledge page that does not exist exits 4 (not found), like every
+  other missing object; `labels show` exited 2 and `kb cat` 1.
+- `beakr kb grep --after-title/--after-page-id`, `kb cat --lines` and `kb rows
+  --after-card` follow the continuations those reads name.
 - `beakr projects members add` no longer offers `--type group`, which the server
   refuses.
 - `beakr context --format json --out FILE` writes the JSON response; it wrote

@@ -127,6 +127,32 @@ def test_cat_takes_the_continuation_arguments_a_cut_read_names():
     }
 
 
+# Root cause: grep's continuation ("continue with after_title=... after_page_id=...")
+# and a grep hit's line address (cat lines=) named arguments the CLI had no
+# options for. Every continuation the door names now has a flag.
+@respx.mock
+def test_grep_and_cat_take_every_continuation_the_door_names():
+    respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
+    door = respx.post(f"{API}/v1/knowledge/wiki/command").respond(json=_door("ok"))
+
+    grep = runner.invoke(
+        app,
+        ["kb", "grep", "NW-217", "--after-title", "Helios", "--after-page-id", PAGE_ID],
+    )
+    cat = runner.invoke(app, ["kb", "cat", PAGE_ID, "--lines", "4-9"])
+
+    assert grep.exit_code == 0, grep.output
+    assert cat.exit_code == 0, cat.output
+    sent = [json.loads(call.request.content) for call in door.calls]
+    assert sent[0] == {
+        "command": "grep",
+        "query": "NW-217",
+        "after_title": "Helios",
+        "after_page_id": PAGE_ID,
+    }
+    assert sent[1] == {"command": "cat", "page": PAGE_ID, "lines": "4-9"}
+
+
 def test_cat_source_offset_needs_full():
     result = runner.invoke(app, ["kb", "cat", PAGE_ID, "--source-offset", "3"])
     assert result.exit_code == 2
@@ -214,7 +240,8 @@ def test_cat_missing_page_fails():
     respx.get(url__regex=rf"{PAGES}/search.*").respond(json=_envelope([]))
     respx.get(url__regex=rf"{API}/v1/knowledge/search.*").respond(json=_envelope([]))
     result = runner.invoke(app, ["kb", "cat", "No Such Page"])
-    assert result.exit_code == 1
+    # Not found is exit 4 everywhere; a missing page used to exit 1.
+    assert result.exit_code == 4
     assert "Page not found: No Such Page" in result.stderr
 
 

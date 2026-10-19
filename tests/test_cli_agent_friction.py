@@ -250,6 +250,19 @@ def test_labels_take_a_name_and_projects_a_slug():
     assert json.loads(attach.calls[0].request.content) == {"project_id": PROJECT_ID}
 
 
+# Root cause: a label the caller cannot find raised typer.BadParameter, exit 2
+# (usage), while every other missing object (a project, a page, an API 404)
+# exits 4. A missing label is now not found too.
+@respx.mock
+def test_a_missing_label_exits_not_found():
+    respx.get(f"{API}/v1/labels").respond(
+        json={"data": [{"id": "l1", "name": "Acme customers"}], "has_more": False}
+    )
+    result = runner.invoke(app, ["labels", "show", "nope"])
+    assert result.exit_code == 4, result.output
+    assert "No label with id or name 'nope'" in result.output
+
+
 # --- kb sources / kb cat: where each source lives -----------------------------------------
 
 PAGE_ID = "33333333-3333-3333-3333-333333333333"

@@ -448,3 +448,15 @@ def test_card_commands_resolve_a_project_slug_to_its_id(
 
     assert result.exit_code == 0, result.output
     assert _body(route)["scope"] == _PLATFORM
+
+
+# Root cause: a capped rows scan names its continuation as after_card=<card>
+# (the engine's cursor argument for rows), which the CLI had no option for.
+@respx.mock
+def test_rows_continues_a_capped_scan_after_a_card() -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+
+    result = CliRunner().invoke(app, ["kb", "rows", "--after-card", "Stripe"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(route)["after_card"] == "Stripe"

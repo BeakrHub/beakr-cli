@@ -8,6 +8,7 @@ from itertools import islice
 from pathlib import Path
 
 import typer
+from beakr_sdk.errors import NotFoundError
 from beakr_sdk.resources.knowledge import result_text
 
 from beakr_cli.citations import CitationValidationError, validate_proposal_sections
@@ -142,6 +143,9 @@ def cat(
     section_id: str | None = typer.Option(
         None, "--section-id", help="Read only this section (the id a cut read names)."
     ),
+    lines: str | None = typer.Option(
+        None, "--lines", help="Read only these lines, start-end or one line (a grep hit's line)."
+    ),
     full: bool = typer.Option(
         False, "--full", help="Every source record with its excerpt, not one per document."
     ),
@@ -160,9 +164,9 @@ def cat(
     The text is the Knowledge door's `cat`, as the MCP tool shows it: each
     {{key}} citation is the name of what it cites, and the cited documents are
     listed after it. A read cut to the response budget names how to continue
-    (section_id=, source_offset=); --section-id and --source-offset take those.
-    --json prints the stored page record and its sources (the door's reply with
-    --rev, --section-id, --full or --source-offset).
+    (section_id=, lines=, source_offset=); --section-id, --lines and
+    --source-offset take those. --json prints the stored page record and its
+    sources (the door's reply with --rev, --section-id, --lines or --full).
     """
     if source_offset is not None and not full:
         err_console.print("--source-offset pages the records of a --full read; add --full.")
@@ -171,7 +175,7 @@ def cat(
     if not page_data:
         return
 
-    door_only = rev is not None or section_id is not None or full
+    door_only = rev is not None or section_id is not None or lines is not None or full
     if json_out and not door_only:
         with get_sdk() as sdk:
             source_list = sdk.knowledge.pages.sources(str(page_data["id"]))
@@ -187,6 +191,7 @@ def cat(
         page=str(page_data["id"]),
         rev=rev,
         section_id=section_id,
+        lines=lines,
         detail="full" if full else None,
         source_offset=source_offset,
     )
@@ -302,11 +307,21 @@ def grep(
         None, "--context", "-C", help="Lines of context around each match (max 10)."
     ),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Max pages."),
+    after_title: str | None = typer.Option(
+        None, "--after-title", help="Continue a listing after this page title (as a reply names)."
+    ),
+    after_page_id: str | None = typer.Option(
+        None, "--after-page-id", help="With --after-title: the page id a reply names beside it."
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Find the lines that contain a word, id or exact name, with the section they are in."""
+    """Find the lines that contain a word, id or exact name, with the section they are in.
+
+    A long listing ends "continue with after_title=... after_page_id=...":
+    pass both back as --after-title and --after-page-id for the next pages.
+    """
     _door_read(
         "grep",
         project=project,
@@ -316,6 +331,8 @@ def grep(
         mode="regex" if regex else None,
         context_lines=context,
         limit=limit,
+        after_title=after_title,
+        after_page_id=after_page_id,
     )
 
 
@@ -1171,8 +1188,8 @@ def _resolve_page(
         except Exception:
             pass
 
-    err_console.print(f"Page not found: {ref}")
-    raise typer.Exit(1)
+    # Not found (exit 4), the code every other missing object gets.
+    raise NotFoundError(f"Page not found: {ref}")
 
 
 def _page_matches_scope(
