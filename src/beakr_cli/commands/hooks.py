@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli import agent_hooks
 from beakr_cli.output import console, emit, err_console, is_interactive
@@ -22,7 +23,9 @@ _json_opt = typer.Option(False, "--json", "-j", help="Output JSON.")
 
 def _targets(client: str) -> list[str]:
     if client not in _CLIENTS:
-        err_console.print(f"Invalid --client '{client}'. Choose: {', '.join(_CLIENTS)}.")
+        err_console.print(
+            f"Invalid --client '{client}'. Choose: {', '.join(_CLIENTS)}.", markup=False
+        )
         raise typer.Exit(2)
     return ["claude", "codex"] if client == "all" else [client]
 
@@ -32,7 +35,7 @@ def _install(target: str) -> dict[str, Any]:
         try:
             path = agent_hooks.install_claude_hooks()
         except agent_hooks.SettingsError as exc:
-            err_console.print(f"[red]Claude:[/red] {exc}")
+            err_console.print(f"[red]Claude:[/red] {escape(str(exc))}")
             raise typer.Exit(1) from exc
         return {"client": "claude", "installed": True, "path": str(path)}
     from pathlib import Path
@@ -54,7 +57,7 @@ def _uninstall(target: str) -> dict[str, Any]:
         try:
             removed = agent_hooks.uninstall_claude_hooks()
         except agent_hooks.SettingsError as exc:
-            err_console.print(f"[red]Claude:[/red] {exc}")
+            err_console.print(f"[red]Claude:[/red] {escape(str(exc))}")
             raise typer.Exit(1) from exc
         return {
             "client": "claude",
@@ -92,14 +95,16 @@ def install(client: str = _client_opt, json_out: bool = _json_opt) -> None:
             if row["client"] == "claude":
                 console.print(
                     "[green]Claude:[/green] SessionStart, Stop and SessionEnd hooks "
-                    f"in {row['path']}"
+                    f"in {escape(str(row['path']))}"
                 )
                 console.print(
                     "        Sessions are captured only in projects that opt in: "
                     "run `beakr hooks capture on` in a bound repository."
                 )
             else:
-                console.print(f"[green]Codex:[/green]  Beakr context block in {row['path']}")
+                console.print(
+                    f"[green]Codex:[/green]  Beakr context block in {escape(str(row['path']))}"
+                )
                 console.print(
                     "        Start Codex with `beakr codex` to refresh it before every "
                     "session and capture the session afterwards (if this project "
@@ -118,7 +123,7 @@ def uninstall(client: str = _client_opt, json_out: bool = _json_opt) -> None:
         for row in rows:
             label = "Claude:" if row["client"] == "claude" else "Codex: "
             state = "removed from" if row["removed"] else "nothing to remove in"
-            console.print(f"{label} {state} {row['path']}")
+            console.print(f"{label} {state} {row['path']}", markup=False)
 
     emit(results, json_out=json_out, render=render)
 
@@ -131,9 +136,11 @@ def status(json_out: bool = _json_opt) -> None:
     def render(info: dict[str, Any]) -> None:
         claude = info["claude"]
         events = ", ".join(claude["events"]) or "none"
-        console.print(f"Claude: {events} ({claude['settings_path']})")
+        console.print(f"Claude: {events} ({claude['settings_path']})", markup=False)
         codex_state = "installed" if info["codex"]["installed"] else "not installed"
-        console.print(f"Codex:  context block {codex_state} ({info['codex']['agents_md']})")
+        console.print(
+            f"Codex:  context block {codex_state} ({info['codex']['agents_md']})", markup=False
+        )
 
     def lines(info: dict[str, Any]) -> list[str]:
         # One client a line, as at a terminal, instead of nested JSON columns.
@@ -174,7 +181,7 @@ def capture(
         try:
             path = set_capture(cwd, state == "on")
         except LookupError as exc:
-            err_console.print(str(exc))
+            err_console.print(str(exc), markup=False)
             raise typer.Exit(1) from exc
         # Codex reads its capture notice from AGENTS.md, not from a hook run
         # at session start, so a consent change must rewrite it here.
@@ -189,7 +196,7 @@ def capture(
 
     def render(info: dict[str, Any]) -> None:
         word = "[green]on[/green]" if info["capture"] else "off"
-        console.print(f"Session capture for this project: {word} ({info['binding']})")
+        console.print(f"Session capture for this project: {word} ({escape(str(info['binding']))})")
 
     emit(result, json_out=json_out, render=render)
 
@@ -221,7 +228,7 @@ def learning(
         try:
             path = set_learning(cwd, state == "on")
         except LookupError as exc:
-            err_console.print(str(exc))
+            err_console.print(str(exc), markup=False)
             raise typer.Exit(1) from exc
     else:
         found = find_binding(cwd)
@@ -231,7 +238,9 @@ def learning(
 
     def render(info: dict[str, Any]) -> None:
         word = "[green]on[/green]" if info["learn_from_sessions"] else "off"
-        console.print(f"Learning from sessions in this project: {word} ({info['binding']})")
+        console.print(
+            f"Learning from sessions in this project: {word} ({escape(str(info['binding']))})"
+        )
 
     emit(result, json_out=json_out, render=render)
 
@@ -256,9 +265,14 @@ def install_hooks_during_setup(targets: list[str], hooks_flag: bool | None) -> N
         except typer.Exit:
             continue
         except Exception as exc:  # noqa: BLE001 - setup continues past one failed client
-            err_console.print(f"[yellow]{target}:[/yellow] hooks not installed ({exc})")
+            err_console.print(
+                f"[yellow]{escape(str(target))}:[/yellow] hooks not installed ({escape(str(exc))})"
+            )
             continue
-        console.print(f"[green]{target.capitalize()}:[/green] hooks installed ({result['path']})")
+        console.print(
+            f"[green]{escape(str(target.capitalize()))}:[/green] hooks installed "
+            f"({escape(str(result['path']))})"
+        )
 
 
 def uninstall_hooks_during_setup(targets: list[str]) -> None:
@@ -272,7 +286,10 @@ def uninstall_hooks_during_setup(targets: list[str]) -> None:
             continue
         label = target.capitalize()
         if result["removed"]:
-            console.print(f"[green]{label}:[/green] session hooks removed ({result['path']})")
+            console.print(
+                f"[green]{escape(str(label))}:[/green] session hooks removed "
+                f"({escape(str(result['path']))})"
+            )
 
 
 def register(root: typer.Typer) -> None:

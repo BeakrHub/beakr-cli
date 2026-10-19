@@ -190,12 +190,17 @@ def create_key(
     def render(data: dict[str, Any]) -> None:
         console.print("API keys are created in the Beakr web app, from a signed-in browser.")
         console.print("The form is filled in with your request; review it and press Create.")
-        console.print(f"{'Opened' if data['opened'] else 'Open'}: {data['url']}", highlight=False)
+        console.print(
+            f"{'Opened' if data['opened'] else 'Open'}: {data['url']}",
+            highlight=False,
+            markup=False,
+        )
         if web.guessed:
             err_console.print(
                 f"The web app address {web.url} is a guess from the API URL; if the page "
                 "does not load, set BEAKR_APP_URL to your Beakr web app's address.",
                 highlight=False,
+                markup=False,
             )
         console.print(
             "[dim]Then use it with: beakr auth login --with-api-key (paste it), "
@@ -222,7 +227,7 @@ def revoke_key(
     emit(
         {"id": key_id, "revoked": True},
         json_out=json_out,
-        render=lambda _: console.print(f"Revoked key {key_id}."),
+        render=lambda _: console.print(f"Revoked key {key_id}.", markup=False),
     )
 
 

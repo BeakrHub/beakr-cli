@@ -9,6 +9,7 @@ the MCP server. The rest stay in ``internal_app`` for tests and later exposure.
 from __future__ import annotations
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.command_surface import core_tree
 from beakr_cli.commands import (
@@ -132,7 +133,8 @@ def _main(
         config.migrate_secrets()
     except Exception as exc:  # never block the command; the key still works from there
         err_console.print(
-            f"[yellow]Could not move the saved API key to secure storage: {exc}[/yellow]"
+            "[yellow]Could not move the saved API key to secure storage: "
+            f"{escape(str(exc))}[/yellow]"
         )
 
     if ctx.invoked_subcommand in _NO_UPDATE_NOTICE or not sys.stderr.isatty():
@@ -142,8 +144,8 @@ def _main(
     status = get_update_status(timeout=1.5)
     if status.update_available:
         err_console.print(
-            f"[yellow]beakr-cli {status.latest} is available "
-            f"(you have {status.current}). Run [bold]beakr update[/bold].[/yellow]"
+            f"[yellow]beakr-cli {escape(str(status.latest))} is available "
+            f"(you have {escape(str(status.current))}). Run [bold]beakr update[/bold].[/yellow]"
         )
 
 
@@ -239,31 +241,34 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
             raise typer.Exit(1)
     elif not status.update_available and not force:
         console.print(
-            f"No update needed: installed {status.current}, latest release {status.latest}."
+            f"No update needed: installed {status.current}, latest release {status.latest}.",
+            markup=False,
         )
         return report
     else:
-        console.print(f"Installed: {status.current}   Latest: {status.latest}")
+        console.print(f"Installed: {status.current}   Latest: {status.latest}", markup=False)
 
     if check:
-        console.print(info.instructions)
+        console.print(info.instructions, markup=False)
         return {**report, "instructions": info.instructions}
 
     if info.upgrade_command is None:
         err_console.print(
-            f"Cannot upgrade automatically ({info.method.value}). {info.instructions}"
+            f"Cannot upgrade automatically ({info.method.value}). {info.instructions}", markup=False
         )
         raise typer.Exit(1)
 
-    console.print(f"[dim]$ {' '.join(info.upgrade_command)}[/dim]")
+    console.print(f"[dim]$ {escape(' '.join(info.upgrade_command))}[/dim]")
     result = run_upgrade(info, expected_version=status.latest)
     if result.output:
-        console.print(f"[dim]{result.output}[/dim]", highlight=False)
+        console.print(f"[dim]{escape(str(result.output))}[/dim]", highlight=False)
     if not result.ok:
-        err_console.print(f"[red]{result.message}[/red]")
+        err_console.print(f"[red]{escape(str(result.message))}[/red]")
         raise typer.Exit(1)
     now = installed_version_on_path() or "unknown"
-    console.print(f"[green]{result.message}[/green] beakr on PATH is now {now}.")
+    console.print(
+        f"[green]{escape(str(result.message))}[/green] beakr on PATH is now {escape(str(now))}."
+    )
     console.print("Restart Claude Code / Codex so they launch the new MCP server.")
     return {**report, "updated": True, "on_path": now}
 
@@ -299,7 +304,7 @@ def research(
         with get_sdk() as sdk:
             data = sdk.knowledge.research(query, project_id=project_id, quick=quick)
     except Exception as e:
-        err_console.print(f"[red]Error: {e}[/red]")
+        err_console.print(f"[red]Error: {escape(str(e))}[/red]")
         raise typer.Exit(1)
 
     if machine_output(data, json_out=json_out, lines=research_lines):

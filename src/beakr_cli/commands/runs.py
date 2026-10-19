@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.cited_answer import number_citations, print_cited_sources
 from beakr_cli.output import console, emit, err_console, page_rows, print_table, short
@@ -125,7 +126,9 @@ def ask(
         run_id = str(run.get("run_id") or run.get("id"))
         if not json_out:
             err_console.print(
-                f"[dim]Run {run_id} in thread {run.get('thread_id')}[/dim]", soft_wrap=True
+                f"[dim]Run {escape(str(run_id))} in thread "
+                f"{escape(str(run.get('thread_id')))}[/dim]",
+                soft_wrap=True,
             )
         sources: dict[str, dict[str, Any]] = {}
         order: list[str] = []
@@ -158,7 +161,7 @@ def ask(
                     if source.get("key"):
                         sources[str(source["key"])] = source
             elif kind == "error":
-                err_console.print(f"[red]{data.get('message') or data}[/red]")
+                err_console.print(f"[red]{escape(str(data.get('message') or data))}[/red]")
     if json_out:
         if errored or status in _FAILED:
             raise typer.Exit(1)
@@ -171,7 +174,7 @@ def ask(
         sys.stdout.write("\n")
     print_cited_sources(order, sources)
     if status in _FAILED:
-        err_console.print(f"[red]Run {run_id} ended {status}.[/red]")
+        err_console.print(f"[red]Run {escape(str(run_id))} ended {escape(str(status))}.[/red]")
     if errored or status in _FAILED:
         raise typer.Exit(1)
 
@@ -230,7 +233,7 @@ def show_run(
         ):
             value = data.get(key) or (data.get("id") if key == "run_id" else None)
             if value:
-                console.print(f"{label + ':':<10}{value}", highlight=False)
+                console.print(f"{label + ':':<10}{value}", highlight=False, markup=False)
         answer = _answer_lines(data)
         if answer:
             console.print()
@@ -279,7 +282,7 @@ def cancel_run(
     emit(
         result if isinstance(result, dict) else {"run_id": run_id, "cancel_requested": True},
         json_out=json_out,
-        render=lambda _: console.print(f"Asked run {run_id} to stop."),
+        render=lambda _: console.print(f"Asked run {run_id} to stop.", markup=False),
     )
 
 

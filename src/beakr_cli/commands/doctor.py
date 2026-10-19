@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 import httpx
 import typer
+from rich.markup import escape
 
 from beakr_cli.output import console, emit
 
@@ -242,7 +243,9 @@ def doctor_command(
     def render(rows: list[dict[str, Any]]) -> None:
         for c in rows:
             style = _STYLE[c["status"]]
-            console.print(f"[{style}]{c['status']:<4}[/{style}]  {c['name']:<8} {c['detail']}")
+            console.print(
+                f"[{style}]{c['status']:<4}[/{style}]  {c['name']:<8} {escape(str(c['detail']))}"
+            )
 
     def lines(data: dict[str, Any]) -> list[str]:
         # One check a line, as at a terminal: piped, the checks were one JSON column.

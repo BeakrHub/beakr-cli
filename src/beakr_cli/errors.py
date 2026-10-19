@@ -18,6 +18,7 @@ from beakr_sdk.errors import (
     NotFoundError,
     PermissionDeniedError,
 )
+from rich.markup import escape
 from typer.core import TyperGroup
 
 EXIT_OK = 0
@@ -146,7 +147,9 @@ class BeakrGroup(TyperGroup):
             code = exit_code_for(exc)
             if json_requested:
                 _print_json_error(exc, code)
-            err_console.print(f"[red]Error:[/red] {describe_error(exc)}", highlight=False)
+            err_console.print(
+                f"[red]Error:[/red] {escape(str(describe_error(exc)))}", highlight=False
+            )
             raise typer.Exit(code) from exc
         except click.ClickException as exc:
             # A usage error (exit 2) under --json is a JSON error too; Click

@@ -93,7 +93,9 @@ def add_project_member(
         result,
         json_out=json_out,
         render=lambda _: console.print(
-            f"Added {principal_id} to {found.get('name') or project} as {role}.", highlight=False
+            f"Added {principal_id} to {found.get('name') or project} as {role}.",
+            highlight=False,
+            markup=False,
         ),
     )
 
@@ -121,7 +123,7 @@ def remove_project_member(
             "removed": True,
         },
         json_out=json_out,
-        render=lambda _: err_console.print(f"Removed {principal_id}."),
+        render=lambda _: err_console.print(f"Removed {principal_id}.", markup=False),
         json_when_piped=False,
     )
 
@@ -144,7 +146,7 @@ def invite_to_project(
         result,
         json_out=json_out,
         render=lambda _: console.print(
-            f"Invited {email} to {found.get('name') or project}.", highlight=False
+            f"Invited {email} to {found.get('name') or project}.", highlight=False, markup=False
         ),
     )
 

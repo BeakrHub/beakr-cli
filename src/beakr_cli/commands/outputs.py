@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli._private_api.resources.outputs import EXPORT_FORMATS
 from beakr_cli.output import (
@@ -90,7 +91,8 @@ def _print_as_of(meta: dict[str, Any], *, list_sources: bool) -> None:
     total = meta.get("sources_read_total") or len(read)
     cited = sum(1 for source in read if source.get("cited"))
     console.print(
-        f"[dim]As of {generated_at}: the agent had read {total} source(s), {cited} cited.[/dim]",
+        f"[dim]As of {escape(str(generated_at))}: the agent had read {escape(str(total))} "
+        f"source(s), {cited} cited.[/dim]",
         highlight=False,
     )
     if not list_sources:
@@ -98,7 +100,8 @@ def _print_as_of(meta: dict[str, Any], *, list_sources: bool) -> None:
     for source in read:
         mark = "cited" if source.get("cited") else "read"
         console.print(
-            f"  ({mark}) {short(source.get('name'), 60)}  [dim]{_source_version(source)}[/dim]",
+            f"  ({mark}) {escape(short(source.get('name'), 60))}  "
+            f"[dim]{escape(str(_source_version(source)))}[/dim]",
             highlight=False,
         )
     if total > len(read):
@@ -128,7 +131,8 @@ def show_output(
         return
     shown = revision if revision is not None else meta.get("revision")
     console.print(
-        f"[bold]{meta.get('title')}[/bold] ({meta.get('canvas_type') or 'doc'}, revision {shown})",
+        f"[bold]{escape(str(meta.get('title')))}[/bold] "
+        f"({escape(str(meta.get('canvas_type') or 'doc'))}, revision {escape(str(shown))})",
         highlight=False,
     )
     _print_as_of(meta, list_sources=sources)
@@ -159,7 +163,7 @@ def export_output(
     emit(
         {"id": output_id, "format": fmt, "path": str(path)},
         json_out=json_out,
-        render=lambda d: console.print(f"Wrote {d['path']}"),
+        render=lambda d: console.print(f"Wrote {d['path']}", markup=False),
     )
 
 

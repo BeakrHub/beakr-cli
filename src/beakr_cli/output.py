@@ -36,7 +36,8 @@ def print_markdown(text: str) -> None:
 
 
 def print_table(columns: list[str], rows: list[list[str]], title: str = "") -> None:
-    table = Table(title=title, show_lines=False, pad_edge=False)
+    # A title can carry server data too (a page title, a project name).
+    table = Table(title=escape(title), show_lines=False, pad_edge=False)
     for col in columns:
         table.add_column(col)
     for row in rows:
@@ -101,9 +102,9 @@ def print_search_results(results: list[dict]) -> None:
         snippet = readable_snippet(
             str(r.get("content_snippet") or r.get("snippet") or r.get("summary") or "")
         )[:300]
-        console.print(f"[bold]{title}[/bold]  score={score:.2f}", markup=True, highlight=False)
+        console.print(f"[bold]{escape(str(title))}[/bold]  score={score:.2f}", highlight=False)
         if r.get("breadcrumb"):
-            console.print(f"  [dim]{r['breadcrumb']}[/dim]", highlight=False)
+            console.print(f"  [dim]{escape(str(r['breadcrumb']))}[/dim]", highlight=False)
         if snippet:
             console.print(f"  {snippet}", markup=False, highlight=False)
         console.print()
