@@ -11,10 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ccb7f99998cfb037b786dba10f0f6e26d6fe961056b57c72bb9ae72c04b1a965 changelog sha256=8459678e4c0dc1c056e1010f639076d47f38290ae8a86fecbfc2910bd5b4bb80 -->
+<!-- contract-stamp: public-openapi sha256=e7477ad687004664a4f4c8e1c23fec6cab114c66cb3c095938a3bcbc939b409c changelog sha256=06629ea2141ac843c94c596f4a9962abb16eb92546b1f15704b911389753c1a5 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack` for one a
+  person started by messaging Beakr in Slack.
 
 - `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
   and set a project's Knowledge profile, the description, goals, focus areas,
