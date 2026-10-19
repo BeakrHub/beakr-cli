@@ -10652,7 +10652,7 @@
               }
             ],
             "default": null,
-            "description": "The run label the agent declared, which `/v1/knowledge/runs` undoes.",
+            "description": "The run label the agent declared, which `POST /v1/knowledge/runs/{run}/undo` takes back.",
             "title": "Run"
           },
           "text": {
