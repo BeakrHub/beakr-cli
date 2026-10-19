@@ -12052,6 +12052,30 @@
             "title": "Created At",
             "type": "string"
           },
+          "delivery_channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the link was delivered: gmail or outlook (from the sender's own account), or links (minted for the sender to share).",
+            "title": "Delivery Channel"
+          },
+          "delivery_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why sending the link failed; the link still works.",
+            "title": "Delivery Error"
+          },
           "expires_at": {
             "description": "When it expires (ISO 8601, UTC).",
             "examples": [
@@ -12092,6 +12116,31 @@
             "format": "uuid",
             "title": "Link Id",
             "type": "string"
+          },
+          "recipient_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Email address the link was sent to, if it was sent.",
+            "title": "Recipient Email"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the link was last sent (ISO 8601, UTC).",
+            "title": "Sent At"
           },
           "status": {
             "description": "Current status of the sendable link.",
