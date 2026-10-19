@@ -46,3 +46,12 @@ Wiki Proposals
 └─────────┴────────┴─────────┴──────────────────────────┴──────────────────────────────────────────┘
 --- stderr
 
+
+$ beakr kb proposals ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/proposals?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&status=pending
+[exit 0]
+--- stdout
+71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68	type=edit	status=pending	page=Project Helios	Adds the Q3 stability results to the charter.
+0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51	type=create	status=pending	page=NW-217 Tox Read-out Plan	Creates a page for the November tox read-out on NW-217.
+--- stderr
+

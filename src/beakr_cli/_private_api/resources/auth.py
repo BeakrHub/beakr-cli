@@ -91,6 +91,24 @@ class Auth(Resource[M]):
 
         return self._drive(flow())
 
+    def app_url(self) -> str | None:
+        """The web app's URL as this API reports it (``app_url`` on ``GET /v1/auth/config``).
+
+        Each deployment knows its own web app (a self-hosted box serves it on its
+        own host and port), so links the CLI builds into the app start here.
+        None when the API does not say: an older server, or no sign-in config.
+        """
+
+        def flow() -> Flow:
+            try:
+                data = yield ops.build_auth_auth_config()
+            except (NotFoundError, ServerError):
+                return None
+            value = data.get("app_url") if isinstance(data, dict) else None
+            return str(value).rstrip("/") if isinstance(value, str) and value.strip() else None
+
+        return self._drive(flow())
+
     def issuer_metadata(self, issuer: str) -> IssuerMetadata:
         """The issuer's RFC 8414 metadata (falling back to OpenID Connect discovery)."""
 

@@ -51,13 +51,6 @@ _TEMPLATE_HELP = """\
 """
 
 
-def _no_profile(project_id: str) -> None:
-    err_console.print(
-        f"Project {project_id} has no Knowledge profile yet. Set one with "
-        "`beakr projects profile set` or `beakr projects profile edit`."
-    )
-
-
 def _is_missing(exc: NotFoundError) -> bool:
     return getattr(exc, "code", None) == "knowledge_profile_not_found"
 
@@ -167,8 +160,14 @@ def show_command(
     with get_sdk() as sdk:
         profile = _read(sdk, project_id)
     if profile is None:
-        _no_profile(project_id)
-        raise typer.Exit(4)
+        # Raised, not printed: the root group exits 4 and, under --json,
+        # prints the error as JSON.
+        raise NotFoundError(
+            f"Project {project_id} has no Knowledge profile yet. Set one with "
+            "`beakr projects profile set` or `beakr projects profile edit`.",
+            code="knowledge_profile_not_found",
+            status=404,
+        )
     emit(profile, json_out=json_out, render=_render, lines=_lines)
 
 

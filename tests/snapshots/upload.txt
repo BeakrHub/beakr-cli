@@ -66,3 +66,20 @@ Uploaded charter.md -> 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 Wait for it: beakr jobs wait 3b2a1f0e-9d8c-4b7a-9654-3210fedcba98
 --- stderr
 Uploading charter.md...
+
+$ beakr upload charter.md --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/uploads
+  {"content_hash": "162b6533033291adf144c73def90cf083c43b59b4318a3609bcbca4fc9ed2d6f", "content_length": 44, "content_type": "text/markdown", "ingest_to_wiki": true, "path": "charter.md", "target_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+> GET /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70
+> POST /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/parts
+  {"part_numbers": [1]}
+> PUT /uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/1?X-Amz-Signature=snapshot
+  body: 44 bytes
+> POST /v1/uploads/7a1e5c22-3f4b-4d8e-9a10-2b3c4d5e6f70/complete
+  {"artifact_type": "doc", "parts": [{"etag": "\"snapshot-etag\"", "part_number": 1}], "title": "charter.md"}
+[exit 0]
+--- stdout
+5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f	charter.md	job=3b2a1f0e-9d8c-4b7a-9654-3210fedcba98
+next: beakr jobs wait 3b2a1f0e-9d8c-4b7a-9654-3210fedcba98
+--- stderr
+Uploading charter.md...

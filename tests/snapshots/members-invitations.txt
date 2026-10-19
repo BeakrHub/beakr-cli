@@ -42,3 +42,12 @@ Invitations
 └─────────────────────────────────────┴───────────────────────────────┴────────────┴───────────┘
 --- stderr
 
+
+$ beakr members invitations
+> GET /v1/invitations?limit=200
+[exit 0]
+--- stdout
+500114c9-90da-4354-a5c2-27bcfeba84fd	expires=2026-10-07T10:00:00Z
+7a508964-45d3-4b47-be6e-fa8fc7877f50	expires=2026-09-08T16:30:00Z
+--- stderr
+

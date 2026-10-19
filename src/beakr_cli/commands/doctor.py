@@ -225,7 +225,16 @@ def doctor_command(
             style = _STYLE[c["status"]]
             console.print(f"[{style}]{c['status']:<4}[/{style}]  {c['name']:<8} {c['detail']}")
 
-    emit({"ok": ok, "checks": checks}, json_out=json_out, render=lambda d: render(d["checks"]))
+    def lines(data: dict[str, Any]) -> list[str]:
+        # One check a line, as at a terminal: piped, the checks were one JSON column.
+        return [f"{c['status']}\t{c['name']}\t{c['detail']}" for c in data["checks"]]
+
+    emit(
+        {"ok": ok, "checks": checks},
+        json_out=json_out,
+        render=lambda d: render(d["checks"]),
+        lines=lines,
+    )
     if not ok:
         raise typer.Exit(1)
 

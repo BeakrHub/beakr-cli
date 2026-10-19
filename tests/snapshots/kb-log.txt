@@ -52,3 +52,13 @@ Project Helios
 └────┴────────────────────────────────┴──────────────────────────────────────────┴─────────────────┘
 --- stderr
 
+
+$ beakr kb log 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/revisions
+[exit 0]
+--- stdout
+rev=7	2026-09-30T17:02	by=system	Records the committee's approval of NW-217 as the Helios lead.
+rev=6	2026-09-22T14:31	by=Dana Whitfield	Adds the Q3 stability results to the charter.
+--- stderr
+

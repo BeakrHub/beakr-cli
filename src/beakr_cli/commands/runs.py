@@ -231,8 +231,41 @@ def show_run(
             value = data.get(key) or (data.get("id") if key == "run_id" else None)
             if value:
                 console.print(f"{label + ':':<10}{value}", highlight=False)
+        answer = _answer_lines(data)
+        if answer:
+            console.print()
+            console.print("\n".join(answer), markup=False, highlight=False)
 
-    emit(run, json_out=json_out, render=render)
+    def lines(data: dict[str, Any]) -> list[str]:
+        from beakr_cli.compact import summary_line
+
+        answer = _answer_lines(data)
+        return [summary_line(data), *(["", *answer] if answer else [])]
+
+    emit(run, json_out=json_out, render=render, lines=lines)
+
+
+def _answer_lines(run: dict[str, Any]) -> list[str]:
+    """A completed run's answer (citations as [n]) and its numbered sources.
+
+    ``runs show`` printed the run's state only, so reading an answer later
+    meant re-running the question; the run carries it once it is completed.
+    A paused run shows the question it is waiting on instead.
+    """
+    from beakr_sdk.sources import source_where
+
+    answer = run.get("answer")
+    if isinstance(answer, dict) and isinstance(answer.get("text"), str):
+        out = [answer["text"].strip()]
+        sources = [s for s in answer.get("sources") or [] if isinstance(s, dict)]
+        if sources:
+            out += ["", "Sources:"]
+            out += [f"  [{n}] {source_where(s)}" for n, s in enumerate(sources, 1)]
+        return out
+    question = run.get("question")
+    if isinstance(question, dict) and question.get("text"):
+        return [f"Waiting on a question: {question['text']}"]
+    return []
 
 
 @app.command("cancel")

@@ -26,9 +26,11 @@ _EDIT_TABLES = ("facts", "connections", "findings")
 
 _scope_opt = typer.Option(
     None,
+    "--project",
+    "-P",
     "--scope",
     "-s",
-    help="Project name or ID. Defaults to the bound or default project.",
+    help="Project id, slug or name. Defaults to the bound or default project.",
 )
 _rationale_opt = typer.Option(..., "--rationale", help="Why this change is right.")
 _json_opt = typer.Option(False, "--json", "-j", help="Output the raw door result.")

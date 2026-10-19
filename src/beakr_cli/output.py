@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -63,6 +64,25 @@ def print_pages_table(pages: list[dict]) -> None:
     print_table(columns, rows)
 
 
+_HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+_CITATION_TOKEN = re.compile(r"\{\{[^{}]*\}\}")
+_WIKI_LINK = re.compile(r"\[\[([^\[\]|]+)(?:\|([^\[\]]+))?\]\]")
+
+
+def readable_snippet(text: str) -> str:
+    """A stored-markdown excerpt as prose: no section markers or citation tokens.
+
+    A search hit's snippet is cut from the page's stored markdown, which carries
+    ``<!-- sec:... -->`` markers, ``{{artifact:...}}`` citation tokens and
+    ``[[Page]]`` links. Shown raw they read as noise; the cited documents are one
+    ``kb cat`` away, where the door renders them as readable references.
+    """
+    text = _HTML_COMMENT.sub(" ", text)
+    text = _CITATION_TOKEN.sub("", text)
+    text = _WIKI_LINK.sub(lambda m: m.group(2) or m.group(1), text)
+    return " ".join(text.split())
+
+
 def print_search_results(results: list[dict]) -> None:
     if machine_output(results, json_out=False):
         return
@@ -74,8 +94,8 @@ def print_search_results(results: list[dict]) -> None:
         title = r.get("title", "Untitled")
         score = r.get("score") or 0
         # content_snippet is the part of the page that matched (WikiSearchHit).
-        snippet = " ".join(
-            str(r.get("content_snippet") or r.get("snippet") or r.get("summary") or "").split()
+        snippet = readable_snippet(
+            str(r.get("content_snippet") or r.get("snippet") or r.get("summary") or "")
         )[:300]
         console.print(f"[bold]{title}[/bold]  score={score:.2f}", markup=True, highlight=False)
         if r.get("breadcrumb"):

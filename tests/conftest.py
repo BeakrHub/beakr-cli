@@ -59,6 +59,25 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "real_project_refs: resolve --project slugs and names through the API"
     )
+    config.addinivalue_line(
+        "markers", "real_app_url_report: ask the API for its web app URL (GET /v1/auth/config)"
+    )
+
+
+@pytest.fixture(autouse=True)
+def app_url_not_reported(request, monkeypatch):
+    """The API reports no web app URL unless a test asks for the real request.
+
+    ``beakr_cli.app_url`` asks ``GET /v1/auth/config`` for ``app_url``; tests
+    that build app links would otherwise send that request to their fake API
+    host. Tests of the report itself are marked ``@pytest.mark.real_app_url_report``.
+    """
+    from beakr_cli import app_url
+
+    monkeypatch.setattr(app_url, "_reported", {}, raising=False)
+    if request.node.get_closest_marker("real_app_url_report"):
+        return
+    monkeypatch.setattr(app_url, "_reported_app_url", lambda base_url: None, raising=False)
 
 
 @pytest.fixture(autouse=True)

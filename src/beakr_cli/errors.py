@@ -129,10 +129,68 @@ class BeakrGroup(TyperGroup):
         return super().get_command(ctx, cmd_name)
 
     def invoke(self, ctx: click.Context) -> Any:
+        json_requested = _json_requested(ctx)
         try:
             return super().invoke(ctx)
         except HANDLED_EXCEPTIONS as exc:
             from beakr_cli.output import err_console
 
+            code = exit_code_for(exc)
+            if json_requested:
+                _print_json_error(exc, code)
             err_console.print(f"[red]Error:[/red] {describe_error(exc)}", highlight=False)
-            raise typer.Exit(exit_code_for(exc)) from exc
+            raise typer.Exit(code) from exc
+        except click.ClickException as exc:
+            # A usage error (exit 2) under --json is a JSON error too; Click
+            # still prints its usage text to stderr.
+            if json_requested:
+                _print_json_error(exc, exc.exit_code)
+            raise
+
+
+def _json_requested(ctx: click.Context) -> bool:
+    """Whether this invocation asked for JSON (``--json``/``-j`` or ``BEAKR_OUTPUT=json``)."""
+    import os
+
+    if os.environ.get("BEAKR_OUTPUT", "").strip().lower() == "json":
+        return True
+    remaining = [*(getattr(ctx, "_protected_args", None) or []), *ctx.args]
+    if "--" in remaining:
+        remaining = remaining[: remaining.index("--")]
+    return "--json" in remaining or "-j" in remaining
+
+
+#: The code an error without one from the API carries, by exit code.
+_CODE_FOR_EXIT = {EXIT_AUTH: "unauthorized", EXIT_NOT_FOUND: "not_found", EXIT_CONFLICT: "conflict"}
+
+
+def error_object(exc: BaseException, exit_code: int) -> dict[str, Any]:
+    """The JSON a failed ``--json`` command prints on stdout instead of nothing.
+
+    A script reading stdout gets one JSON document either way; with the error
+    it can branch on ``code`` (the API's machine-readable code, when it sent
+    one) as well as on the exit code.
+    """
+    message = getattr(exc, "message", None) or (
+        exc.format_message() if isinstance(exc, click.ClickException) else str(exc)
+    )
+    error: dict[str, Any] = {"message": str(message), "exit_code": exit_code}
+    if isinstance(exc, BeakrError):
+        error["code"] = exc.code or _CODE_FOR_EXIT.get(exit_code, "error")
+        if exc.status is not None:
+            error["status"] = exc.status
+        if exc.fix or exc.code in _CODE_HINTS:
+            error["fix"] = exc.fix or _CODE_HINTS[str(exc.code)]
+        if exc.request_id:
+            error["request_id"] = exc.request_id
+    elif isinstance(exc, click.UsageError):
+        error["code"] = "usage"
+    elif isinstance(exc, (FileNotFoundError, NotADirectoryError)):
+        error["code"] = "file_not_found"
+    return {"error": error}
+
+
+def _print_json_error(exc: BaseException, exit_code: int) -> None:
+    from beakr_cli.output import print_json
+
+    print_json(error_object(exc, exit_code))

@@ -22,3 +22,11 @@ $ beakr members role 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f admin --org 0b6f6a52-3
 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f is now admin.
 --- stderr
 
+
+$ beakr members role 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f admin --org 0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01
+> PATCH /v1/organizations/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01/members/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f?new_role=admin
+[exit 0]
+--- stdout
+7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11	Dana Whitfield	role=member	email=dana@northwind.example
+--- stderr
+

@@ -21,3 +21,12 @@ $ beakr integrations connect google_drive --no-browser
 Open: https://connect.nango.dev?session_token=nango_connect_session_4f2a9c7e1b8d4e6fa03c5b7d9e1f2a4c
 --- stderr
 Finish connecting in the browser; `beakr integrations ls` shows it once done.
+
+$ beakr integrations connect google_drive --no-browser
+> POST /v1/integrations/google_drive/connect
+  {"scope": "user"}
+[exit 0]
+--- stdout
+provider=google_drive	scope=user	connect_url=https://connect.nango.dev?session_token=nango_connect_session_4f2a9c7e1b8d4e6fa03c5b7d9e1f2a4c	expires_at=2026-10-01T12:30:00Z	opened=false
+--- stderr
+

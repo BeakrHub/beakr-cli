@@ -109,3 +109,12 @@ $ beakr conversations ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 └───────────────────┴─────────────┴────────────────────┴──────────┴──────────────┴─────────────────┘
 --- stderr
 
+
+$ beakr conversations ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/conversations?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64	Wire HX-01 stability import into the Helios pipeline	kind=imported	rev=3
+b7e1d3a9-5c24-4f8b-a6e0-3d9f2c1b8a47	Decision: Helios Lead Selection	kind=ask_thread
+--- stderr
+

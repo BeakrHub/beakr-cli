@@ -39,3 +39,12 @@ $ beakr kb timeline --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
   Page: Decision: Helios Lead Selection
 --- stderr
 
+
+$ beakr kb timeline --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/timeline?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41	Q3 thermostability panel	type=project
+5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62	Committee selects NW-217 as lead	type=decision
+--- stderr
+

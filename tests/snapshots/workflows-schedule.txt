@@ -77,3 +77,14 @@ $ beakr workflows schedule 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f '0 9 * * 1'
 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f runs Every Monday at 9:00 (next: 2026-10-12T13:00:00Z, 2026-10-19T13:00:00Z, 2026-10-26T13:00:00Z)
 --- stderr
 
+
+$ beakr workflows schedule 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f '0 9 * * 1'
+> POST /v1/workflows/schedule/preview
+  {"count": 3, "cron": "0 9 * * 1"}
+> PATCH /v1/workflows/configs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+  {"schedule_cron": "0 9 * * 1", "schedule_enabled": true}
+[exit 0]
+--- stdout
+6922f9a1-c15d-4c25-8f38-766a7e0cfaf2	Helios weekly update
+--- stderr
+

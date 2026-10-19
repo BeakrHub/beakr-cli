@@ -59,6 +59,8 @@ def test_keys_create_uses_the_app_url_from_sign_in_and_skips_the_browser_when_pi
 ):
     from beakr_cli import config
 
+    # Saved for this deployment: the API is in the same parent domain.
+    monkeypatch.setenv("BEAKR_API_URL", "https://api.example.test")
     config.set_key("app_url", "https://sandbox-app.example.test")
     opened: list[str] = []
     monkeypatch.setattr("beakr_cli.commands.keys.webbrowser.open", lambda u: opened.append(u))
@@ -72,10 +74,65 @@ def test_keys_create_uses_the_app_url_from_sign_in_and_skips_the_browser_when_pi
 
 
 def test_app_url_for_a_local_dev_instance(monkeypatch):
-    from beakr_cli.app_url import resolve_app_url
+    from beakr_cli.app_url import app_url
 
     monkeypatch.setenv("BEAKR_API_URL", "http://localhost:8003")
-    assert resolve_app_url() == "http://localhost:3003"
+    assert app_url().url == "http://localhost:3003"
+    assert app_url().guessed is True
+
+
+# Root cause: keys create sent a self-hosted box's users to http://localhost:3000
+# (API on localhost:8000, app on https://localhost:8443). The app URL came only
+# from a saved value or a port convention; the API now reports its own app_url
+# on GET /v1/auth/config, and that wins over any guess.
+@pytest.mark.real_app_url_report
+@respx.mock
+def test_keys_create_uses_the_app_url_the_api_reports(monkeypatch):
+    monkeypatch.setenv("BEAKR_API_URL", "http://localhost:8000")
+    respx.get("http://localhost:8000/v1/auth/config").respond(
+        json={
+            "client_id": "c",
+            "issuer": "https://clerk.test",
+            "issuer_url": "https://clerk.test",
+            "scopes": [],
+            "app_url": "https://localhost:8443/",
+        }
+    )
+
+    result = CliRunner().invoke(app, ["keys", "create", "--json"])
+
+    body = json.loads(result.stdout)
+    assert body["url"].startswith("https://localhost:8443/settings?tab=api-keys&newKey=")
+    assert body["app_url_guessed"] is False
+
+
+@pytest.mark.real_app_url_report
+@respx.mock
+def test_an_api_that_reports_no_app_url_falls_back_to_a_flagged_guess(monkeypatch):
+    monkeypatch.setenv("BEAKR_API_URL", "http://localhost:8000")
+    respx.get("http://localhost:8000/v1/auth/config").respond(
+        json={"client_id": "c", "issuer": "https://clerk.test", "scopes": []}
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+
+    result = CliRunner().invoke(app, ["keys", "create", "--no-browser"])
+
+    assert "http://localhost:3000/settings?tab=api-keys" in result.stdout
+    assert "BEAKR_APP_URL" in result.stderr
+
+
+# Root cause: an app_url saved by an earlier sign-in was used for every API
+# afterwards, so switching to a local box kept links on the first deployment.
+def test_a_saved_app_url_for_another_deployment_is_not_used(monkeypatch):
+    from beakr_cli import config
+    from beakr_cli.app_url import app_url
+
+    config.set_key("app_url", "https://app.thebeakr.com")
+    monkeypatch.setenv("BEAKR_API_URL", "http://localhost:8000")
+    assert app_url().url == "http://localhost:3000"
+
+    monkeypatch.setenv("BEAKR_API_URL", "https://api.thebeakr.com")
+    assert app_url().url == "https://app.thebeakr.com"
 
 
 @respx.mock

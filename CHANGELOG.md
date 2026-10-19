@@ -27,6 +27,22 @@ Each release lists the public API changes it supports, taken from the API change
   other missing object; `labels show` exited 2 and `kb cat` 1.
 - `beakr kb grep --after-title/--after-page-id`, `kb cat --lines` and `kb rows
   --after-card` follow the continuations those reads name.
+- With `--json` (or `BEAKR_OUTPUT=json`), a failed command prints
+  `{"error": {"code", "message", "exit_code", ...}}` on stdout instead of plain
+  text only; `projects profile show` with no profile is such an error (exit 4).
+- `-P/--project` works on `kb rows`, `query`, `add-fact`, `add-connection`,
+  `add-finding`, `edit-rows` (`--scope`/`-s` still work), `kb proposals show`
+  and `projects members ls`.
+- `kb proposals ls` takes `--cursor` and names the next page; piped it lists
+  type, page and summary.
+- Readable output: `runs show` prints the answer and its sources; piped
+  `conversations show` includes the messages; `kb log` without a page, `doctor`,
+  `hooks status`, `documents search`, `kb log PAGE` and `keys scopes` print
+  lines instead of field dumps; `kb search` snippets drop section markers and
+  citation tokens; `interviews link revoke --json` prints what it revoked.
+- `keys create` uses the web app URL the API reports (`app_url` on
+  `/v1/auth/config`), ignores an `app_url` saved for a different deployment, and
+  says when the address is only a guess (`BEAKR_APP_URL` overrides it).
 - `beakr projects members add` no longer offers `--type group`, which the server
   refuses.
 - `beakr context --format json --out FILE` writes the JSON response; it wrote

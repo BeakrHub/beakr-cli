@@ -142,7 +142,18 @@ def show_conversation(
         for message in data.get("messages") or []:
             console.print(f"\n[bold]{message.get('role')}[/bold]: {message.get('content')}")
 
-    emit(item, json_out=json_out, render=render)
+    def lines(data: dict[str, Any]) -> list[str]:
+        # Piped, the summary line alone dropped the summary and the messages.
+        from beakr_cli.compact import summary_line
+
+        out = [summary_line(data)]
+        if data.get("summary"):
+            out += ["", str(data["summary"])]
+        for message in data.get("messages") or []:
+            out += ["", f"{message.get('role')}: {message.get('content')}"]
+        return out
+
+    emit(item, json_out=json_out, render=render, lines=lines)
 
 
 @app.command("search")

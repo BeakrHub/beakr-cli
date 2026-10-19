@@ -13,6 +13,7 @@ from beakr_sdk.resources.knowledge import result_text
 
 from beakr_cli.citations import CitationValidationError, validate_proposal_sections
 from beakr_cli.cited_answer import print_research_result, research_lines
+from beakr_cli.compact import cell
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
 from beakr_cli.output import (
     console,
@@ -26,6 +27,7 @@ from beakr_cli.output import (
     print_pages_table,
     print_search_results,
     print_table,
+    readable_snippet,
 )
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
@@ -284,7 +286,7 @@ def _search_lines(results: list[dict]) -> list[str]:
     """``id<TAB>title<TAB>type=..<TAB>the matching passage`` per page."""
     lines = []
     for hit in results:
-        snippet = " ".join(str(hit.get("content_snippet") or hit.get("summary") or "").split())
+        snippet = readable_snippet(str(hit.get("content_snippet") or hit.get("summary") or ""))
         columns = [str(hit.get("id") or ""), str(hit.get("title") or "")]
         if hit.get("page_type"):
             columns.append(f"type={hit['page_type']}")
@@ -393,7 +395,7 @@ def log(
             data = sdk.knowledge.pages.revisions(page_id)
         revisions = page_rows(data)
 
-        if machine_output(revisions, json_out=json_out):
+        if machine_output(revisions, json_out=json_out, lines=_revision_lines):
             return
 
         columns = ["Rev", "Compiled By", "Summary", "Date"]
@@ -409,12 +411,23 @@ def log(
             )
         print_table(columns, rows, title=page_data.get("title", ""))
     else:
-        # The Knowledge door's `log` with no page: recent revisions in scope.
-        with get_sdk() as sdk:
-            result = sdk.knowledge.command("log", scope=_project_id(project=project, mine=mine))
-        if machine_output(result, json_out=json_out):
-            return
-        console.print(result_text(result), markup=False)
+        # The Knowledge door's `log` with no page: recent revisions in scope,
+        # printed as its text (piped too), not the reply's envelope.
+        _door_read("log", project=project, mine=mine, json_out=json_out)
+
+
+def _revision_lines(revisions: list[dict]) -> list[str]:
+    """``rev=N<TAB>date<TAB>by=..<TAB>summary`` per revision, newest first as listed."""
+    lines = []
+    for r in revisions:
+        columns = [f"rev={r.get('revision', '')}", str(r.get("created_at") or "")[:16]]
+        by = r.get("editor_name") or r.get("compiled_by")
+        if by:
+            columns.append(f"by={cell(by)}")
+        if r.get("summary"):
+            columns.append(cell(r["summary"], width=200))
+        lines.append("\t".join(columns))
+    return lines
 
 
 # ---------------------------------------------------------------------------
@@ -1045,20 +1058,36 @@ def proposals_list(
         "--status",
         help="pending, accepted, or dismissed.",
     ),
-    limit: int = typer.Option(50, "--limit", "-n", help="Max proposals."),
+    limit: int = typer.Option(50, "--limit", "-n", min=1, max=200, help="Proposals a page."),
+    cursor: str | None = typer.Option(
+        None, "--cursor", help="The next page: the cursor a previous listing printed."
+    ),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """List wiki proposals."""
+    """List wiki proposals, one page at a time (--cursor continues)."""
     params: dict = {
         "status": status_filter,
         "limit": limit,
+        "cursor": cursor,
         **_proposal_filter_scope(project, mine=mine),
     }
     with get_sdk() as sdk:
-        proposals = sdk.knowledge.proposals.list(**params)
-    if machine_output(proposals, json_out=json_out):
+        # The list route pages with a cursor; proposals.list returns one page's
+        # rows only, so the envelope is read here to say where the next page is.
+        page = sdk.request(
+            "GET",
+            "/v1/knowledge/wiki/proposals",
+            params={key: value for key, value in params.items() if value is not None},
+        )
+    proposals = page_rows(page)
+    has_more = isinstance(page, dict) and page.get("has_more")
+    next_cursor = page.get("next_cursor") if has_more else None
+    more = f"beakr kb proposals ls --cursor {next_cursor}" if next_cursor else None
+    if machine_output(proposals, json_out=json_out, lines=_proposal_lines, hint=more):
+        if more and output_mode(json_out) == "json":
+            err_console.print(f"More proposals: {more}", highlight=False, soft_wrap=True)
         return
     rows = [
         [
@@ -1071,19 +1100,56 @@ def proposals_list(
         for p in proposals
     ]
     print_table(["ID", "Type", "Status", "Page", "Summary"], rows, title="Wiki Proposals")
+    if more:
+        err_console.print(f"More proposals: {more}", highlight=False, soft_wrap=True)
+
+
+def _proposal_lines(proposals: list[dict]) -> list[str]:
+    """``id<TAB>type=..<TAB>status=..<TAB>page=..<TAB>summary`` per proposal."""
+    lines = []
+    for p in proposals:
+        columns = [str(p.get("id") or "")]
+        for key, name in (("proposal_type", "type"), ("status", "status"), ("page_title", "page")):
+            if p.get(key):
+                columns.append(f"{name}={cell(p[key])}")
+        if p.get("summary"):
+            columns.append(cell(p["summary"], width=200))
+        lines.append("\t".join(columns))
+    return lines
 
 
 @proposals_app.command("show")
 def proposals_show(
     proposal_id: str = typer.Argument(..., help="Proposal ID."),
+    project: str | None = typer.Option(
+        None,
+        "--project",
+        "-P",
+        "--scope",
+        help="Only if the proposal is in this project (id, slug or name).",
+        callback=project_ref_callback,
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """Show one wiki proposal."""
+    """Show one wiki proposal: its change as a diff, and the content hash to accept it with."""
     with get_sdk() as sdk:
         proposal = sdk.knowledge.proposals.show(proposal_id)
-    if machine_output(proposal, json_out=json_out):
+    if project and proposal.get("project_id") and str(proposal["project_id"]) != project:
+        raise NotFoundError(f"Proposal {proposal_id} is not in project {project}.")
+    if machine_output(proposal, json_out=json_out, lines=_proposal_show_lines):
         return
     _print_proposal(proposal, with_payload=True)
+
+
+def _proposal_show_lines(proposal: dict) -> list[str]:
+    """The proposal for an agent: its summary line, the payload as read, the hash last."""
+    lines = _proposal_lines([proposal])
+    payload = proposal.get("payload")
+    if isinstance(payload, dict):
+        lines += ["", *(text for text, _style in payload_lines(payload))]
+    if proposal.get("content_hash"):
+        lines += ["", f"content_hash={proposal['content_hash']}"]
+    return lines
 
 
 @proposals_app.command("accept")

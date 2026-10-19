@@ -90,3 +90,20 @@ warn  hooks    not installed (beakr hooks install)
 ok    queue    no pending session imports
 --- stderr
 
+
+$ beakr doctor
+> GET /v1/public/openapi.json
+> GET /v1/me
+> GET /v1/me/api-keys?limit=200
+[exit 0]
+--- stdout
+ok	version	beakr-cli 0.4.0
+ok	api	https://api.test (HTTP 200)
+ok	auth	Dana Whitfield via env
+warn	scopes	unknown
+warn	project	this directory is not bound (beakr init)
+warn	mcp	not registered (beakr setup)
+warn	hooks	not installed (beakr hooks install)
+ok	queue	no pending session imports
+--- stderr
+

@@ -135,7 +135,18 @@ def status(json_out: bool = _json_opt) -> None:
         codex_state = "installed" if info["codex"]["installed"] else "not installed"
         console.print(f"Codex:  context block {codex_state} ({info['codex']['agents_md']})")
 
-    emit(data, json_out=json_out, render=render)
+    def lines(info: dict[str, Any]) -> list[str]:
+        # One client a line, as at a terminal, instead of nested JSON columns.
+        claude, codex = info["claude"], info["codex"]
+        events = ",".join(claude["events"]) or "none"
+        complete = "true" if claude.get("complete") else "false"
+        installed = "true" if codex["installed"] else "false"
+        return [
+            f"claude\tevents={events}\tcomplete={complete}\t{claude['settings_path']}",
+            f"codex\tinstalled={installed}\t{codex['agents_md']}",
+        ]
+
+    emit(data, json_out=json_out, render=render, lines=lines)
 
 
 @app.command("capture")
