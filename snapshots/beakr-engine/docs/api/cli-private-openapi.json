@@ -2566,6 +2566,18 @@
       "description": "Id of the role.",
       "title": "Role Id"
      },
+     "role_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Name of the role.",
+      "title": "Role Name"
+     },
      "secret_redacted": {
       "anyOf": [
        {
@@ -2714,6 +2726,18 @@
       ],
       "description": "Role granted upon acceptance.",
       "title": "Role Id"
+     },
+     "role_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Name of the role.",
+      "title": "Role Name"
      }
     },
     "required": [
