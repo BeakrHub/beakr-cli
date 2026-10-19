@@ -12,6 +12,7 @@ from typing import Any
 
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.markup import escape
 from rich.table import Table
 
 console = Console()
@@ -39,7 +40,10 @@ def print_table(columns: list[str], rows: list[list[str]], title: str = "") -> N
     for col in columns:
         table.add_column(col)
     for row in rows:
-        table.add_row(*row)
+        # Cells carry server data (page titles, summaries, the agent name a
+        # caller declared in X-Beakr-Agent): escape it so Rich prints it as text
+        # instead of reading "[...]" as markup that could restyle or hide it.
+        table.add_row(*(escape(str(cell)) for cell in row))
     console.print(table)
 
 
