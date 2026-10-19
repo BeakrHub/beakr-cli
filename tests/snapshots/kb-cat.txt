@@ -83,44 +83,65 @@ $ beakr kb cat 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 -
 
 $ beakr kb cat 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+> POST /v1/knowledge/wiki/command
+  {"command": "cat", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-Project Helios
-Type: project  Rev: 7
+# Project Helios
+KB page ID: 9d08f9fb-ac64-4094-a3e1-24c25bc01480
+Path: Project Helios (root)
+Type: project | Rev: 1 | Created: 2026-10-14 | Updated: 2026-10-14 | Sources: 7 | Wiki: Synthetic KB 003085a3 (project id 2c5cd7a8-2225-4170-b71d-b49fd1bb4b9b)
+Children: Decision: Helios Lead Selection, Helios HX-01 Thermal Stability Screen, Helios HX-02 Buffer Blocking Optimization, Helios HX-03 Signal Artifact Characterization, Helios HX-04 Dose Response in Primary Cells, Helios HX-05 Scale-up Feasibility (Draft), Helios Q2 2024 Review
+Linked from (3 pages, by type):
+  person (2): Dana Whitfield, Maja Lindqvist
+  organization (1): Northwind Biosciences
+Links to: Dana Whitfield
 
-Project Helios
+<!-- sec:sec_charter -->
+## Charter
 
+The program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery (helios-program-charter.pdf › block 1). It is headed by [[Dana Whitfield]] (helios-program-charter.pdf › block 2).
 
-Charter
+<!-- sec:sec_budget -->
+## Budget
 
-The program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-1}} It is headed by [[Dana Whitfield]].{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-2}}
+Fiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee (helios-program-charter.pdf › block 3).
 
+<!-- sec:sec_success_criterion -->
+## Success criterion
 
-Budget
+A lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius (helios-program-charter.pdf › block 4).
 
-Fiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-3}}
+<!-- sec:sec_lead_decision -->
+## Lead decision  [2024-09-09]
 
+The portfolio committee approved NW-217 as the lead on 9 September 2024 (helios-go-decision-memo.docx › block 1).
 
-Success criterion
+Section date metadata:
+- sec_lead_decision (Lead decision): event_start=2024-09-09; date_precision=day
 
-A lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-4}}
+---
+Sources cited above:
+  - [artifact:upload:synthetic_kb] helios-go-decision-memo.docx
+  - [artifact:upload:synthetic_kb] helios-program-charter.pdf
 
+Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which read_file opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
 
-Lead decision  [2024-09-09]
+Sources (2 documents, 8 Knowledge pages):
+- Project Helios · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480
+- Project Helios › Budget · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_budget
+- Project Helios › Charter · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_charter
+- Project Helios › Lead decision · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_lead_decision
+- Project Helios › Success criterion · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_success_criterion
+- Dana Whitfield · source_ref beakr-source:v1:wiki:36800931-7856-4645-97ab-b9a2eff4b92d
+- Maja Lindqvist · source_ref beakr-source:v1:wiki:2609a4fa-cdb2-449a-b3ac-07746866c8e4
+- Northwind Biosciences · source_ref beakr-source:v1:wiki:7e825a5b-2165-45de-8501-bd9f1e013e99
+- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · read_file bbcc04f9-a0ba-4d86-a5b3-911a43c5139a · source_ref beakr-source:v1:5047ddc4-1775-4f71-8c48-4fcd488ee840
+  "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+- helios-go-decision-memo.docx › block 1 · read_file fc6ec327-a862-48fd-b445-7bdf4f1121e2 · source_ref beakr-source:v1:b0d1df17-ce40-4c6c-9445-dd44fcf684d4
+  "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
 
-The portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifact:bb4de0e9-1f4e-4c2e-88aa-efcd4352de0c-document-block-1}}
-
-Sources
-┏━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃# ┃ Source                                                               ┃ Citations ┃ Stance     ┃
-┡━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│1 │ helios-charter.pdf · upload · file                                   │ 1         │ support    │
-│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13 (`beakr files download          │           │            │
-│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13`)                               │           │            │
-│2 │ NW-217 Accelerated Stability Report · upload · file                  │ 1         │ contradicts│
-│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37 (`beakr files download          │           │            │
-│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37`)                               │           │            │
-└──┴──────────────────────────────────────────────────────────────────────┴───────────┴────────────┘
+next: Follow an edge with links, references or timeline.
+next: Check where a claim came from with provenance {page} or sources {page}.
 --- stderr
 

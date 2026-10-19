@@ -8,6 +8,27 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `beakr ask` lets the agent read Knowledge by default (`--no-knowledge` turns it
+  off); it answered "Knowledge is turned off for this message". `--mode` takes
+  only the server's modes (free, quick, deep, extreme, custom, auto, auto_free),
+  so a mode the server lacks, such as `fast`, is a usage error, not a 422.
+- `beakr kb rows`, `query`, `add-fact`, `add-connection`, `add-finding` and
+  `edit-rows` resolve a `--scope` slug or name to the project id like every
+  other project option.
+- `beakr kb cat` prints the page as the Knowledge door's `cat` renders it, with
+  each citation as a readable reference instead of a raw `{{artifact:...}}`
+  token; `--json` still prints the stored page and its sources. `--section-id`,
+  `--full` and `--source-offset` follow the continuation a cut read names.
+- `beakr kb proposals show` (and the review in `accept`) shows the payload as a
+  diff and labelled fields instead of JSON, with the content hash last.
+  `accept --reviewed-hash` needs no `--yes`: the reviewed hash is the
+  confirmation.
+- `beakr projects members add` no longer offers `--type group`, which the server
+  refuses.
+- `beakr context --format json --out FILE` writes the JSON response; it wrote
+  the markdown.
+- Piped output prints an object with neither an id nor a name as `key=value`
+  columns instead of raw JSON.
 - `beakr projects profile show|set|edit`: read and set a project's Knowledge
   profile. `set --file` replaces the whole profile from JSON or YAML and
   refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,

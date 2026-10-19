@@ -20,7 +20,11 @@ app = typer.Typer(help="Members of a project: list, add, remove, invite by email
 
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 _project_arg = typer.Argument(..., help="Project id, slug or name.")
-_principal_type_opt = typer.Option("user", "--type", help="user, or group for a label/group id.")
+# Only `rm` takes a type: the server no longer adds group memberships, but a
+# project can still carry one from before, and removing it names its type.
+_principal_type_opt = typer.Option(
+    "user", "--type", help="user, or group to remove an existing group membership."
+)
 
 
 @app.command("ls")
@@ -57,15 +61,16 @@ def add_project_member(
     project: str = _project_arg,
     principal_id: str = typer.Argument(..., help="User id (from `beakr members ls`)."),
     role: str = typer.Option("member", "--role", help="member, editor, viewer or owner."),
-    principal_type: str = _principal_type_opt,
     json_out: bool = _json_opt,
 ) -> None:
-    """Give an organization member (or group) a role in the project."""
+    """Give an organization member a role in the project.
+
+    Members are people (or service accounts); the server refuses group
+    memberships, so there is no --type to ask for one.
+    """
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
-        result = sdk.projects.add_member(
-            str(found["id"]), principal_id, role=role, principal_type=principal_type
-        )
+        result = sdk.projects.add_member(str(found["id"]), principal_id, role=role)
     emit(
         result,
         json_out=json_out,

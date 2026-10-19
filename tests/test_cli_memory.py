@@ -114,6 +114,21 @@ def test_context_prints_content_and_writes_out_file(tmp_path: Path) -> None:
     assert out.read_text() == "## Memories\n- a"
 
 
+# Root cause: --out wrote result["content"] (the rendered markdown) for every
+# format, so `--format json --out ctx.json` produced a markdown file. A JSON
+# file now holds the response JSON, the same thing stdout prints.
+@respx.mock
+def test_context_format_json_out_writes_the_json_response(tmp_path: Path) -> None:
+    response = {"content": "## Memories\n- a", "sections": [{"kind": "memories"}]}
+    respx.post(f"{API}/v1/context").mock(return_value=httpx.Response(200, json=response))
+
+    out = tmp_path / "ctx.json"
+    written = CliRunner().invoke(app, ["context", "--format", "json", "--out", str(out)])
+
+    assert written.exit_code == 0, written.output
+    assert json.loads(out.read_text()) == response
+
+
 def test_context_rejects_unknown_format() -> None:
     result = CliRunner().invoke(app, ["context", "--format", "yaml"])
     assert result.exit_code == 2

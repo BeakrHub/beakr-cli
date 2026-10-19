@@ -85,27 +85,6 @@ def print_search_results(results: list[dict]) -> None:
         console.print()
 
 
-def print_page(page: dict, *, content_only: bool = False) -> None:
-    if machine_output(page, json_out=False, lines=page_lines):
-        return
-    if content_only:
-        print_markdown(page.get("content", ""))
-        return
-
-    console.print(f"[bold]{page.get('title', 'Untitled')}[/bold]")
-    console.print(f"Type: {page.get('page_type', '')}  Rev: {page.get('revision', '')}")
-    console.print()
-    print_markdown(page.get("content", ""))
-
-
-def page_lines(page: dict) -> list[str]:
-    """A page for an agent: one summary line, then its markdown exactly as stored."""
-    from beakr_cli.compact import summary_line
-
-    head = {k: page.get(k) for k in ("id", "title", "page_type", "revision", "slug")}
-    return [summary_line(head), "", str(page.get("content") or "").rstrip()]
-
-
 def is_interactive() -> bool:
     """True when a person can answer a prompt: never prompt when stdin is piped."""
     return sys.stdin.isatty()

@@ -90,6 +90,33 @@ def test_a_one_time_secret_is_never_dropped_from_a_summary():
     assert "key=bk_live_secret" in line.split("\t")
 
 
+# Root cause: summary_line printed an object with neither an id nor a name (an
+# accept result, a context reply, a count) as raw JSON, the one compact shape a
+# reader had to parse. Its fields are now key=value columns, nested objects as
+# key.field=value; a list of objects stays whole so nothing is dropped.
+def test_an_object_without_id_or_name_is_key_value_columns_not_json():
+    from beakr_cli.compact import summary_line
+
+    line = summary_line(
+        {
+            "accepted": True,
+            "count": 3,
+            "note": None,
+            "outcome": {"status": "success", "error_code": None},
+            "tags": ["a", "b"],
+            "rows": [{"v": 1}],
+        }
+    )
+
+    assert line.split("\t") == [
+        "accepted=true",
+        "count=3",
+        "outcome.status=success",
+        "tags=a,b",
+        'rows=[{"v": 1}]',
+    ]
+
+
 def test_an_envelope_with_more_rows_names_the_next_page(monkeypatch):
     import click
 
@@ -285,9 +312,16 @@ def test_kb_sources_says_where_each_document_lives():
 @respx.mock
 def test_kb_cat_prints_the_page_then_its_sources():
     _page_with_sources()
+    respx.post(f"{API}/v1/knowledge/wiki/command").respond(
+        json={
+            "content": [{"type": "text", "text": "# Runtime\n\nBody (runtime.md)."}],
+            "outcome": {"status": "success"},
+            "sources": [UPLOADED, SYNCED],
+        }
+    )
     result = runner.invoke(app, ["kb", "cat", PAGE_ID])
     assert result.exit_code == 0, result.output
-    assert "# Runtime\n\nBody." in result.stdout
-    assert result.stdout.rstrip().splitlines()[-1].startswith("[2]\tQ3 plan.pdf · google_drive")
+    assert "# Runtime\n\nBody (runtime.md)." in result.stdout
+    assert "Q3 plan.pdf" in result.stdout
     as_json = json.loads(runner.invoke(app, ["kb", "cat", PAGE_ID, "--json"]).stdout)
     assert as_json["sources"][0]["citation_key"] == "artifact:v1-u1"

@@ -117,7 +117,12 @@ CASES: list[SnapshotCase] = [
     ),
     # --- Knowledge ------------------------------------------------------------------
     c("kb-ls", "kb", "ls", "--project", PROJECT),
-    c("kb-cat", "kb", "cat", PAGE, "--project", PROJECT),
+    # The text is the door's `cat` (readable references); --json the stored page.
+    c(
+        "kb-cat",
+        "kb", "cat", PAGE, "--project", PROJECT,
+        variants={"POST /v1/knowledge/wiki/command": "cat"},
+    ),
     # The revisions list has no text: the revision's text is read from as-of.
     c(
         "kb-cat-rev",

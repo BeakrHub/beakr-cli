@@ -42,20 +42,14 @@ Status: pending
 Page:   Project Helios
 Summary: Record the committee's choice of NW-217 as the Helios lead.
 
-{
-  "type": "edit",
-  "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
-  "page_title": "Project Helios",
-  "current_content": "# Project Helios\n\nHelios is Northwind Biosciences' oral small-molecule program. The selection committee is weighing NW-205 and NW-217 as lead candidates.",
-  "proposed_content": "# Project Helios\n\nHelios is Northwind Biosciences' oral small-molecule program. The committee approved NW-217.",
-  "current_title": "Project Helios",
-  "proposed_title": null,
-  "summary": "Record the committee's choice of NW-217 as the Helios lead.",
-  "rationale": "The 2026-09-30 selection committee minutes name NW-217 as the lead.",
-  "expected_revision": 7,
-  "sections": [],
-  "group_id": null,
-  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"
-}
+Page id: 9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41
+Rationale: The 2026-09-30 selection committee minutes name NW-217 as the lead.
+Expected revision: 7
+Changes:
+  @@ -1,3 +1,3 @@
+   # Project Helios
+   
+  -Helios is Northwind Biosciences' oral small-molecule program. The selection committee is weighing NW-205 and NW-217 as lead candidates.
+  +Helios is Northwind Biosciences' oral small-molecule program. The committee approved NW-217.
 --- stderr
 

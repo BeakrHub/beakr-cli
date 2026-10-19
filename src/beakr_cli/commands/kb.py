@@ -19,11 +19,9 @@ from beakr_cli.output import (
     is_interactive,
     machine_output,
     output_mode,
-    page_lines,
     page_rows,
     print_json,
     print_markdown,
-    print_page,
     print_pages_table,
     print_search_results,
     print_table,
@@ -31,6 +29,7 @@ from beakr_cli.output import (
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
+from beakr_cli.proposal_view import payload_lines
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
@@ -140,43 +139,57 @@ def ls(
 def cat(
     page: str = typer.Argument(help="Page title or UUID."),
     rev: int | None = typer.Option(None, "--rev", "-r", help="Specific revision number."),
+    section_id: str | None = typer.Option(
+        None, "--section-id", help="Read only this section (the id a cut read names)."
+    ),
+    full: bool = typer.Option(
+        False, "--full", help="Every source record with its excerpt, not one per document."
+    ),
+    source_offset: int | None = typer.Option(
+        None,
+        "--source-offset",
+        min=0,
+        help="With --full: the first source record to return (a cut read names it).",
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Read a knowledge base page's content."""
+    """Read a knowledge base page's content, with its citations as readable references.
+
+    The text is the Knowledge door's `cat`, as the MCP tool shows it: each
+    {{key}} citation is the name of what it cites, and the cited documents are
+    listed after it. A read cut to the response budget names how to continue
+    (section_id=, source_offset=); --section-id and --source-offset take those.
+    --json prints the stored page record and its sources (the door's reply with
+    --rev, --section-id, --full or --source-offset).
+    """
+    if source_offset is not None and not full:
+        err_console.print("--source-offset pages the records of a --full read; add --full.")
+        raise typer.Exit(EXIT_USAGE)
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
-    if rev is not None:
-        # The Knowledge door's `cat` reads a past revision (`rev`).
+    door_only = rev is not None or section_id is not None or full
+    if json_out and not door_only:
         with get_sdk() as sdk:
-            result = sdk.knowledge.cat(
-                str(page_data["id"]), rev=rev, scope=_project_id(project=project, mine=mine)
-            )
-        if json_out:
-            print_json(result)
-        else:
-            print_markdown(result_text(result))
+            source_list = sdk.knowledge.pages.sources(str(page_data["id"]))
+        print_json({**page_data, "sources": source_list})
         return
-
-    with get_sdk() as sdk:
-        source_list = sdk.knowledge.pages.sources(str(page_data["id"]))
-    if machine_output(
-        {**page_data, "sources": source_list},
+    # The stored markdown carries raw {{artifact:...}} tokens; the door's `cat`
+    # renders them as the references a reader can follow.
+    _door_read(
+        "cat",
+        project=project,
+        mine=mine,
         json_out=json_out,
-        lines=lambda data: (
-            [*page_lines(data), "", "sources:", *document_lines(source_list)]
-            if source_list
-            else page_lines(data)
-        ),
-    ):
-        return
-    print_page(page_data)
-    if source_list:
-        console.print("\n[bold]Sources[/bold]")
-        _print_documents(source_list)
+        page=str(page_data["id"]),
+        rev=rev,
+        section_id=section_id,
+        detail="full" if full else None,
+        source_offset=source_offset,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -754,8 +767,12 @@ def _create_proposal(body: dict) -> dict:
         return sdk.knowledge.proposals.create(action, **fields)
 
 
-def _print_proposal(proposal: dict) -> None:
-    """Print a concise proposal summary."""
+def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
+    """Print a proposal's summary, its payload when asked, and its content hash last.
+
+    The hash comes last so it is on screen when the reviewer copies it into
+    `kb proposals accept --reviewed-hash`; above a long payload it scrolled away.
+    """
     console.print(f"[bold]Proposal:[/bold] {proposal.get('id')}")
     console.print(f"Type:   {proposal.get('proposal_type')}")
     console.print(f"Status: {proposal.get('status')}")
@@ -763,11 +780,6 @@ def _print_proposal(proposal: dict) -> None:
         console.print(f"Page:   {proposal.get('page_title')}")
     if proposal.get("summary"):
         console.print(f"Summary: {proposal.get('summary')}")
-    if proposal.get("content_hash"):
-        # Printed plainly: `kb proposals accept --reviewed-hash` takes it back.
-        console.print(f"Content hash: {proposal['content_hash']}", markup=False)
-    if proposal.get("changes_card_tables"):
-        console.print("Changes card table rows: accept with --reviewed-hash and this content hash.")
     payload = proposal.get("payload") or {}
     if proposal.get("proposal_type") == "find_replace":
         console.print(
@@ -778,6 +790,16 @@ def _print_proposal(proposal: dict) -> None:
         console.print(f"Pages:  {len(payload.get('archive_items') or [])}")
     elif proposal.get("proposal_type") == "mv":
         console.print(f"Moves:  {len(payload.get('reorg') or [])}")
+    if with_payload and isinstance(payload, dict):
+        console.print()
+        for text, style in payload_lines(payload):
+            console.print(text, style=style, markup=False, highlight=False)
+        console.print()
+    if proposal.get("changes_card_tables"):
+        console.print("Changes card table rows: accept with --reviewed-hash and this content hash.")
+    if proposal.get("content_hash"):
+        # Printed plainly: `kb proposals accept --reviewed-hash` takes it back.
+        console.print(f"Content hash: {proposal['content_hash']}", markup=False)
 
 
 def _accept_created_proposal(proposal: dict, *, accept: bool, yes: bool) -> None:
@@ -1044,9 +1066,7 @@ def proposals_show(
         proposal = sdk.knowledge.proposals.show(proposal_id)
     if machine_output(proposal, json_out=json_out):
         return
-    _print_proposal(proposal)
-    console.print()
-    print_json(proposal.get("payload", {}))
+    _print_proposal(proposal, with_payload=True)
 
 
 @proposals_app.command("accept")
@@ -1075,13 +1095,13 @@ def proposals_accept(
         # Review here: show the proposal and bind the accept to exactly this read.
         with get_sdk() as sdk:
             proposal = sdk.knowledge.proposals.show(proposal_id) or {}
-        _print_proposal(proposal)
-        console.print()
-        print_json(proposal.get("payload", {}))
+        _print_proposal(proposal, with_payload=True)
         if not confirmed("Accept and apply this proposal?", False):
             raise typer.Exit(EXIT_ERROR)
         given = proposal.get("content_hash")
-    else:
+    elif given is None:
+        # A reviewed hash is the confirmation: it names the exact read that was
+        # reviewed, and the server refuses it if the proposal has changed since.
         confirm_or_require_yes(f"Accept and apply proposal {proposal_id}?", yes)
     result = _accept_bound(proposal_id, given)
     if not machine_output(result, json_out=json_out):
