@@ -11,13 +11,13 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=282b5342997db587fa197ff02ee6d6d1841b8be4c6896e7be93142dac02196ad changelog sha256=cbd8f23b202215334822ac2f501cbbe118b36fd828765aafce0d8c37efacf6c3 -->
+<!-- contract-stamp: public-openapi sha256=c97b46a769a85964a76462dce99b8de5cb828d2f752cb4097d682d9caa8c9181 changelog sha256=facf2acf8e612d8eadc2bb8c36d932dcb929f4d6ca56f699c2d1cde82ceea5e5 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- Proposal `filed_by.run`: the description names the operation that takes a
-  run back, `POST /v1/knowledge/runs/{run}/undo`.
+- Proposal `filed_by.run`: the description says what the label is for: writes
+  that share it can be undone together.
 - `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
   declare is written as the closest declared type when one answers to that
   name (its key, an alias or its label; `project` is `initiative`), and the
