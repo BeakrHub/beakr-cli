@@ -72,13 +72,36 @@ def test_upload_folder_mirrors_subdirectories(tmp_path):
 
     assert result.exit_code == 0, result.output
     assert routes["complete"].call_count == 2
-    assert json.loads(routes["folder"].calls[0].request.content) == {
-        "name": "sub",
-        "project_id": "p1",
-    }
-    assert [c.get("parent_folder_id") for c in routes["created"]] == ["fold-sub", None]
+    # The uploaded directory becomes a folder of its own, and its tree goes under it.
+    assert [json.loads(c.request.content) for c in routes["folder"].calls] == [
+        {"name": "docs", "project_id": "p1"},
+        {"name": "sub", "project_id": "p1", "parent_folder_id": "fold-docs"},
+    ]
+    assert [c.get("parent_folder_id") for c in routes["created"]] == ["fold-sub", "fold-docs"]
     paths = [row["path"] for row in json.loads(result.stdout)]
     assert [Path(p).name for p in paths] == ["deep.txt", "top.txt"]
+
+
+@respx.mock
+def test_upload_folder_reuses_a_folder_name_already_in_the_project(tmp_path):
+    # Root cause: upload_folder always created folders, so a second matter with a
+    # "Closing" subfolder failed with "A folder named 'Closing' already exists".
+    routes = mock_resumable_uploads(
+        API,
+        folders=[
+            {"id": "fold-1005", "name": "1005-00001", "parent_folder_id": None},
+            {"id": "fold-closing", "name": "Closing", "parent_folder_id": "fold-1005"},
+        ],
+    )
+    root = tmp_path / "1005-00001"
+    (root / "Closing").mkdir(parents=True)
+    (root / "Closing" / "memo.txt").write_text("1")
+
+    result = CliRunner().invoke(app, ["upload", str(root), "--project", "p1", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert routes["folder"].call_count == 0
+    assert [c.get("parent_folder_id") for c in routes["created"]] == ["fold-closing"]
 
 
 @respx.mock
