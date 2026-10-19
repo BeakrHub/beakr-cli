@@ -8,6 +8,20 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `beakr projects profile show|set|edit`: read and set a project's Knowledge
+  profile. `set --file` replaces the whole profile from JSON or YAML and
+  refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,
+  `--entity-type`, `--person`, `--organization`, `--topic`, `--guidance`)
+  change only those fields and create the profile when the project has none;
+  `edit` opens it as YAML in `$EDITOR`.
+- `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
+  and set a project's Knowledge profile, the description, goals, focus areas,
+  people, organizations, topics, entity types and extraction guidance that
+  steer how Knowledge compiles the project's files. `GET` needs `kb:read`;
+  `PUT` (the whole profile; answers 201 when it created the profile, 200 when it
+  replaced one) and `PATCH` (the fields sent) need `kb:write` and the project's
+  owners. A project with no profile answers 404 `knowledge_profile_not_found`. A
+  project-restricted credential reaches its own projects' profiles.
 - `beakr interviews link ls` lists each interview's links with their link id,
   who each is for and its status (the table, and one line per link for agents
   and scripts); it listed interview ids only, which `show`, `send` and `revoke`

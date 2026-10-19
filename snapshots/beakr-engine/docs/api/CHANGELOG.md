@@ -11,10 +11,20 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9418b85c7ebda6ee68a031aa808722d3eab9c316c64dd55c699c0fb94428e0de changelog sha256=d3ec9beb5b68b17faea0aa435a4771abab9b1c14f774f8cd593e282175f5734a -->
+<!-- contract-stamp: public-openapi sha256=ccb7f99998cfb037b786dba10f0f6e26d6fe961056b57c72bb9ae72c04b1a965 changelog sha256=8459678e4c0dc1c056e1010f639076d47f38290ae8a86fecbfc2910bd5b4bb80 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
+  and set a project's Knowledge profile, the description, goals, focus areas,
+  people, organizations, topics, entity types and extraction guidance that
+  steer how Knowledge compiles the project's files. `GET` needs `kb:read`;
+  `PUT` (the whole profile; answers 201 when it created the profile, 200 when it
+  replaced one) and
+  `PATCH` (the fields sent) need `kb:write` and the project's owners. A project
+  with no profile answers 404 `knowledge_profile_not_found`. A
+  project-restricted credential reaches its own projects' profiles.
 
 - `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
   counts each value of a cell listing several (`A; B`) in each value's group,

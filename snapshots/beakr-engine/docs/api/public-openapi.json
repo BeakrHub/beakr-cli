@@ -6432,6 +6432,95 @@
         "title": "KnowledgeFailedFilePage",
         "type": "object"
       },
+      "KnowledgeProfileOrganization": {
+        "additionalProperties": false,
+        "description": "An organization Knowledge should recognize and follow in this project.",
+        "properties": {
+          "name": {
+            "description": "The organization's name.",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "relevance": {
+            "default": "",
+            "description": "Why it matters to this project, in a sentence.",
+            "maxLength": 20000,
+            "title": "Relevance",
+            "type": "string"
+          },
+          "type": {
+            "default": "",
+            "description": "What kind of organization it is, such as `supplier` or `regulator`.",
+            "maxLength": 500,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "KnowledgeProfileOrganization",
+        "type": "object"
+      },
+      "KnowledgeProfilePerson": {
+        "additionalProperties": false,
+        "description": "A person Knowledge should recognize and follow in this project.",
+        "properties": {
+          "name": {
+            "description": "The person's name.",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "relevance": {
+            "default": "",
+            "description": "Why they matter to this project, in a sentence.",
+            "maxLength": 20000,
+            "title": "Relevance",
+            "type": "string"
+          },
+          "role": {
+            "default": "",
+            "description": "Their role, such as `QA lead`.",
+            "maxLength": 500,
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "KnowledgeProfilePerson",
+        "type": "object"
+      },
+      "KnowledgeProfileTopic": {
+        "additionalProperties": false,
+        "description": "A topic or concept Knowledge should recognize and follow in this project.",
+        "properties": {
+          "name": {
+            "description": "The topic's name.",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "relevance": {
+            "default": "",
+            "description": "Why it matters to this project, in a sentence.",
+            "maxLength": 20000,
+            "title": "Relevance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "KnowledgeProfileTopic",
+        "type": "object"
+      },
       "KnowledgeQueryMissingField": {
         "additionalProperties": true,
         "description": "Cards of the queried types with no value for a field the query filters on.",
@@ -9426,6 +9515,369 @@
           }
         },
         "title": "ProjectKnowledgeActivity",
+        "type": "object"
+      },
+      "ProjectKnowledgeProfile": {
+        "description": "A project's Knowledge profile.",
+        "properties": {
+          "core_organizations": {
+            "description": "Organizations Knowledge follows.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileOrganization"
+            },
+            "title": "Core Organizations",
+            "type": "array"
+          },
+          "core_people": {
+            "description": "People Knowledge follows.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfilePerson"
+            },
+            "title": "Core People",
+            "type": "array"
+          },
+          "core_topics": {
+            "description": "Topics Knowledge follows.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileTopic"
+            },
+            "title": "Core Topics",
+            "type": "array"
+          },
+          "created_at": {
+            "description": "When the profile was created.",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "description": "What the project is about and what it is for.",
+            "title": "Description",
+            "type": "string"
+          },
+          "entity_types": {
+            "description": "The kinds of things Knowledge builds a page for.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Types",
+            "type": "array"
+          },
+          "extraction_guidance": {
+            "description": "How to read this project's documents.",
+            "title": "Extraction Guidance",
+            "type": "string"
+          },
+          "focus_areas": {
+            "description": "Areas Knowledge pays most attention to.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Focus Areas",
+            "type": "array"
+          },
+          "goals": {
+            "description": "What the project wants Knowledge to help answer or track.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "industry": {
+            "description": "The field the project works in.",
+            "title": "Industry",
+            "type": "string"
+          },
+          "name": {
+            "description": "A short title for the profile.",
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "description": "Id of the project the profile belongs to.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the profile last changed.",
+            "examples": [
+              "2026-10-03T09:15:42Z"
+            ],
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "description",
+          "industry",
+          "goals",
+          "focus_areas",
+          "core_people",
+          "core_organizations",
+          "core_topics",
+          "entity_types",
+          "extraction_guidance",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectKnowledgeProfile",
+        "type": "object"
+      },
+      "ProjectKnowledgeProfileIn": {
+        "additionalProperties": false,
+        "description": "A whole Knowledge profile. A field left out is set to its empty value.",
+        "properties": {
+          "core_organizations": {
+            "description": "Organizations to recognize and follow.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileOrganization"
+            },
+            "maxItems": 200,
+            "title": "Core Organizations",
+            "type": "array"
+          },
+          "core_people": {
+            "description": "People to recognize and follow.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfilePerson"
+            },
+            "maxItems": 200,
+            "title": "Core People",
+            "type": "array"
+          },
+          "core_topics": {
+            "description": "Topics to recognize and follow.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileTopic"
+            },
+            "maxItems": 200,
+            "title": "Core Topics",
+            "type": "array"
+          },
+          "description": {
+            "default": "",
+            "description": "What the project is about and what it is for, in a few sentences.",
+            "maxLength": 20000,
+            "title": "Description",
+            "type": "string"
+          },
+          "entity_types": {
+            "description": "The kinds of things Knowledge should build a page for, such as `batch`, `deviation` or `supplier`.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Entity Types",
+            "type": "array"
+          },
+          "extraction_guidance": {
+            "default": "",
+            "description": "How to read this project's documents: what to look for and what to skip.",
+            "maxLength": 20000,
+            "title": "Extraction Guidance",
+            "type": "string"
+          },
+          "focus_areas": {
+            "description": "Areas Knowledge should pay most attention to.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Focus Areas",
+            "type": "array"
+          },
+          "goals": {
+            "description": "What the project wants Knowledge to help answer or track.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Goals",
+            "type": "array"
+          },
+          "industry": {
+            "default": "",
+            "description": "The field the project works in.",
+            "maxLength": 500,
+            "title": "Industry",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "description": "A short title for the profile.",
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "ProjectKnowledgeProfileIn",
+        "type": "object"
+      },
+      "ProjectKnowledgeProfilePatch": {
+        "additionalProperties": false,
+        "description": "Fields to change on the Knowledge profile. A field left out is kept as it is.",
+        "properties": {
+          "core_organizations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/KnowledgeProfileOrganization"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Organizations to recognize and follow. Replaces the list.",
+            "title": "Core Organizations"
+          },
+          "core_people": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/KnowledgeProfilePerson"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "People to recognize and follow. Replaces the list.",
+            "title": "Core People"
+          },
+          "core_topics": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/KnowledgeProfileTopic"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Topics to recognize and follow. Replaces the list.",
+            "title": "Core Topics"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the project is about and what it is for, in a few sentences.",
+            "title": "Description"
+          },
+          "entity_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The kinds of things Knowledge should build a page for. Replaces the list.",
+            "title": "Entity Types"
+          },
+          "extraction_guidance": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How to read this project's documents: what to look for and what to skip.",
+            "title": "Extraction Guidance"
+          },
+          "focus_areas": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Areas Knowledge should pay most attention to. Replaces the list.",
+            "title": "Focus Areas"
+          },
+          "goals": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the project wants Knowledge to help answer or track. Replaces the list.",
+            "title": "Goals"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The field the project works in.",
+            "title": "Industry"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A short title for the profile.",
+            "title": "Name"
+          }
+        },
+        "title": "ProjectKnowledgeProfilePatch",
         "type": "object"
       },
       "ProjectKnowledgeStatusResponse": {
@@ -25944,6 +26396,254 @@
           "projects"
         ],
         "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/knowledge-profile": {
+      "get": {
+        "description": "The project's Knowledge profile: what Knowledge should understand about the project.\n\nA 404 with `knowledge_profile_not_found` when the project has none yet; a\nproject you cannot read is the shared project 404. The project's members\nand owners read it; a viewer is refused.",
+        "operationId": "get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a project's Knowledge profile",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:read"
+      },
+      "patch": {
+        "description": "Change some fields of the project's Knowledge profile; fields left out are kept.\n\nA list sent replaces that list. A 404 with `knowledge_profile_not_found`\nwhen the project has no profile yet (create it with PUT). Only the\nproject's owners may change it.",
+        "operationId": "patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectKnowledgeProfilePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a project's Knowledge profile",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:write"
+      },
+      "put": {
+        "description": "Set the project's whole Knowledge profile, creating it if it has none.\n\nFields left out are set to their empty value, so a repeat of the same body\nleaves the same profile (201 when it was created, 200 when it replaced\none). Knowledge reads the profile when it next compiles files: it steers\nwhich pages are built and what they record. Only the project's owners may\nset it.",
+        "operationId": "put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectKnowledgeProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "The project had no profile; this one was created."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set a project's Knowledge profile",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:write"
       }
     },
     "/v1/projects/{project_id}/knowledge-summary": {
