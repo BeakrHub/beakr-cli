@@ -8,6 +8,15 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `beakr interviews link ls` lists each interview's links with their link id,
+  who each is for and its status (the table, and one line per link for agents
+  and scripts); it listed interview ids only, which `show`, `send` and `revoke`
+  answered 404 for.
+- `beakr interviews link show`, `send` and `revoke` also take an interview id
+  when the interview has exactly one link, and name the links when it has more.
+- `beakr interviews link show` prints the write-up, the transcript and the
+  projects it was filed into; it printed only the status because the API
+  returns the write-up as an object.
 - `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
   counts each value of a cell listing several (`A; B`) in each value's group,
   as `rows` `group_by=value` does; a value repeated in one cell counts once.
