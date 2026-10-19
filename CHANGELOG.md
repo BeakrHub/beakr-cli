@@ -8,6 +8,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- MCP writes record the agent that made them: the stdio server sends the MCP
+  client's `initialize` name and version (`claude-code/2.1.283`) as
+  `X-Beakr-Agent`, so they no longer read as `beakr-mcp` with no agent.
+  `BEAKR_AGENT` still overrides it, to tell several agents under one key
+  apart; the CLI at a terminal declares no agent.
 - The MCP server lists every tool by default, so Claude Code (which calls
   only listed tools) can call `documents`, `wiki_stats`, `wiki_graph`,
   `get_profile`, the proposal tools, `conversations_search`,

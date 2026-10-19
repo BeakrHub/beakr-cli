@@ -283,6 +283,30 @@ class TieredFastMCP(FastMCP):
         fix; an API refusal or an error outcome becomes ``{status, error_code,
         message, fix}`` marked ``isError``.
         """
+        from beakr_cli.sdk import MCP_CLIENT_AGENT
+
+        # Writes are attributed to the agent that made them: the MCP client's
+        # clientInfo, unless BEAKR_AGENT names one (sdk._agent).
+        token = MCP_CLIENT_AGENT.set(self._client_agent())
+        try:
+            return await self._call_tool(name, arguments)
+        finally:
+            MCP_CLIENT_AGENT.reset(token)
+
+    def _client_agent(self) -> str | None:
+        """``name/version`` of the client that sent ``initialize``, when a request is running."""
+        from beakr_cli.sdk import client_agent
+
+        try:
+            params = self.get_context().session.client_params
+        except ValueError:
+            return None
+        info = getattr(params, "clientInfo", None)
+        if info is None:
+            return None
+        return client_agent(info.name, info.version)
+
+    async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         from beakr_cli import mcp_call_shaping
         from beakr_cli.capabilities import NOT_PROVIDED_CODE
         from beakr_cli.mcp_errors import ApiCallError

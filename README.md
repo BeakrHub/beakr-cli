@@ -479,6 +479,12 @@ plus `discover_tools`, which returns every other tool's name, description and
 input schema and adds the tools it finds to the listing (the server sends
 `notifications/tools/list_changed`, so the client reads the listing again).
 
+Every Knowledge write the MCP server makes records its agent (`X-Beakr-Agent`):
+the MCP client's own name and version from its `initialize` handshake
+(`claude-code/2.1.283`, `codex-mcp-client/0.40.0`). When several agents run
+under one key, give each its own label with `BEAKR_AGENT` in its MCP entry
+(`"env": {"BEAKR_AGENT": "reviewer"}`); it overrides the client's name.
+
 On a self-hosted Beakr installation, which leaves out hosted features
 (organization administration, external users, end-user tokens, service
 accounts, integrations, skills), the server does not list the tools for what
@@ -668,7 +674,7 @@ This writes:
 |----------|-------------|
 | `BEAKR_API_KEY` | API key (overrides stored config) |
 | `BEAKR_BASE_URL` / `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
-| `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute CLI writes to an agent session |
+| `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute writes to an agent. The MCP server defaults to its client's name and version (`claude-code/2.1.283`); set this to tell apart several agents that share one key. The CLI at a terminal sends none. |
 | `BEAKR_APP_URL` | Web app URL for pages the CLI opens (default: saved at `beakr auth login`, else `https://app.thebeakr.com`) |
 | `BEAKR_HOME` | Directory for config, credentials and hook state (default: `~/.beakr`) |
 | `BEAKR_NO_KEYRING` | Set to `1` to store sign-in tokens in `~/.beakr/credentials` instead of the keychain |
