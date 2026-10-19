@@ -73,3 +73,12 @@ $ beakr workflows create 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --name 'Weekly Hel
 Saved workflow Helios weekly update (ca46bc66-2acc-456b-b903-a8fbced45cf2).
 --- stderr
 Run it now with `beakr workflows run ca46bc66-2acc-456b-b903-a8fbced45cf2`.
+
+$ beakr workflows create 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --name 'Weekly Helios digest'
+> POST /v1/workflows/configs
+  {"inputs": {}, "is_saved": true, "name": "Weekly Helios digest", "template_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f"}
+[exit 0]
+--- stdout
+ca46bc66-2acc-456b-b903-a8fbced45cf2	Helios weekly update
+--- stderr
+

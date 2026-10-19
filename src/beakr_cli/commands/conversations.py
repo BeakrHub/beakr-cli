@@ -19,6 +19,10 @@ from beakr_cli.sdk import get_sdk
 from beakr_cli.transcripts import HEADLESS, client_summary, parse_transcript
 
 app = typer.Typer(help="List, read, import and delete imported agent conversations.")
+compound_app = typer.Typer(
+    help="Control a conversation's compounding (`beakr compound` starts it)."
+)
+app.add_typer(compound_app, name="compound")
 
 #: What each ``compound_status`` means for the person reading it. ``none`` is
 #: the engine's state for a conversation never sent to the compounder (its
@@ -35,6 +39,7 @@ _COMPOUND_STATES = {
     "partial": "partial (the rest is kept and retried on the next compound)",
     "skipped": "skipped (too little to learn from yet; kept for later)",
     "failed": "failed (kept; run `beakr compound` to retry)",
+    "cancelled": "cancelled (kept; run `beakr compound` to resume)",
 }
 
 
@@ -142,7 +147,18 @@ def show_conversation(
         for message in data.get("messages") or []:
             console.print(f"\n[bold]{message.get('role')}[/bold]: {message.get('content')}")
 
-    emit(item, json_out=json_out, render=render)
+    def lines(data: dict[str, Any]) -> list[str]:
+        # Piped, the summary line alone dropped the summary and the messages.
+        from beakr_cli.compact import summary_line
+
+        out = [summary_line(data)]
+        if data.get("summary"):
+            out += ["", str(data["summary"])]
+        for message in data.get("messages") or []:
+            out += ["", f"{message.get('role')}: {message.get('content')}"]
+        return out
+
+    emit(item, json_out=json_out, render=render, lines=lines)
 
 
 @app.command("search")
@@ -509,3 +525,33 @@ def remove_conversation(
         json_out=json_out,
         render=lambda _: console.print(f"Deleted conversation {conversation_id}."),
     )
+
+
+@compound_app.command("cancel")
+def cancel_compound(
+    conversation_id: str = typer.Argument(..., help="An imported conversation being compounded."),
+    json_out: bool = _json_opt,
+) -> None:
+    """Stop a queued or running compound; `beakr compound ID` resumes it.
+
+    The batch being read finishes and its proposals stay; no further batch
+    starts. With nothing queued or running the status is `nothing_to_cancel`.
+    """
+    with get_sdk() as sdk:
+        result = sdk.engine.cancel_compound(conversation_id)
+
+    def render(data: dict[str, Any]) -> None:
+        if data.get("status") == "nothing_to_cancel":
+            console.print(f"Nothing to cancel: {conversation_id} is not being compounded.")
+            return
+        pending = data.get("pending_messages")
+        kept = f" {pending} message(s) are kept." if pending else ""
+        console.print(
+            f"Cancelled compounding of {conversation_id}.{kept} "
+            f"Resume with `beakr compound {conversation_id}`.",
+            highlight=False,
+            # The resume command must stay copyable: never break it across lines.
+            soft_wrap=True,
+        )
+
+    emit(result, json_out=json_out, render=render)

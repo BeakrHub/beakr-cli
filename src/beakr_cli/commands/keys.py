@@ -13,7 +13,7 @@ from typing import Any
 
 import typer
 
-from beakr_cli.app_url import api_keys_page
+from beakr_cli.app_url import API_KEYS_PATH, app_url
 from beakr_cli.output import console, emit, err_console, is_interactive, print_table, short
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.sdk import get_sdk
@@ -178,7 +178,8 @@ def create_key(
     if never_expires:
         request["never_expires"] = True
 
-    url = f"{api_keys_page()}&newKey={_encode_request(request)}"
+    web = app_url()
+    url = f"{web.url}{API_KEYS_PATH}&newKey={_encode_request(request)}"
     opened = False
     if not no_browser and is_interactive():
         try:
@@ -190,12 +191,23 @@ def create_key(
         console.print("API keys are created in the Beakr web app, from a signed-in browser.")
         console.print("The form is filled in with your request; review it and press Create.")
         console.print(f"{'Opened' if data['opened'] else 'Open'}: {data['url']}", highlight=False)
+        if web.guessed:
+            err_console.print(
+                f"The web app address {web.url} is a guess from the API URL; if the page "
+                "does not load, set BEAKR_APP_URL to your Beakr web app's address.",
+                highlight=False,
+            )
         console.print(
             "[dim]Then use it with: beakr auth login --with-api-key (paste it), "
             "or BEAKR_API_KEY.[/dim]"
         )
 
-    result: dict[str, Any] = {"url": url, "opened": opened, "request": request}
+    result: dict[str, Any] = {
+        "url": url,
+        "opened": opened,
+        "request": request,
+        "app_url_guessed": web.guessed,
+    }
     emit(result, json_out=json_out, render=render)
 
 
@@ -226,7 +238,12 @@ def list_scopes(json_out: bool = _json_opt) -> None:
             [[str(s.get("name", "")), str(s.get("description", ""))] for s in rows],
         )
 
-    emit(scopes, json_out=json_out, render=render)
+    def lines(rows: list[dict[str, Any]]) -> list[str]:
+        # name<TAB>description: the generic summary had no id column for a scope
+        # and printed "-" where its description belongs.
+        return [f"{s.get('name', '')}\t{s.get('description', '')}" for s in rows]
+
+    emit(scopes, json_out=json_out, render=render, lines=lines)
 
 
 def register(root: typer.Typer) -> None:

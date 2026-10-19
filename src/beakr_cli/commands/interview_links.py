@@ -245,7 +245,11 @@ def revoke(
 ) -> None:
     """Stop a link working; a finished participant keeps their result."""
     with get_sdk() as sdk:
-        result = sdk.interviews.revoke_link(_resolve_link_id(sdk, link_id))
+        resolved = _resolve_link_id(sdk, link_id)
+        result = sdk.interviews.revoke_link(resolved)
+    # The route answers with no body; --json printed `null`. Say what happened.
+    if not isinstance(result, dict):
+        result = {"link_id": resolved, "revoked": True}
 
     def render(_data: Any) -> None:
         err_console.print(f"Revoked link {link_id}.")

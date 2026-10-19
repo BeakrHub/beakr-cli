@@ -29,9 +29,50 @@ Each release lists the public API changes it supports, taken from the API change
   users, end-user tokens, service accounts, integrations and skills print
   "This Beakr installation does not provide <area>." instead of a bare 404.
   `beakr doctor` lists the areas the installation does not provide.
-- `beakr ask` reads the project's Knowledge: runs it starts turn Knowledge on
-  (`scope.knowledge_graph`), so they no longer answer "Knowledge is turned off
-  for this message".
+- `beakr ask` lets the agent read Knowledge by default (`--no-knowledge` turns it
+  off); it answered "Knowledge is turned off for this message". `--mode` takes
+  only the server's modes (free, quick, deep, extreme, custom, auto, auto_free),
+  so a mode the server lacks, such as `fast`, is a usage error, not a 422.
+- `beakr kb rows`, `query`, `add-fact`, `add-connection`, `add-finding` and
+  `edit-rows` resolve a `--scope` slug or name to the project id like every
+  other project option.
+- `beakr kb cat` prints the page as the Knowledge door's `cat` renders it, with
+  each citation as a readable reference instead of a raw `{{artifact:...}}`
+  token; `--json` still prints the stored page and its sources. `--section-id`,
+  `--full` and `--source-offset` follow the continuation a cut read names.
+- `beakr kb proposals show` (and the review in `accept`) shows the payload as a
+  diff and labelled fields instead of JSON, with the content hash last.
+  `accept --reviewed-hash` needs no `--yes`: the reviewed hash is the
+  confirmation.
+- A label or Knowledge page that does not exist exits 4 (not found), like every
+  other missing object; `labels show` exited 2 and `kb cat` 1.
+- `beakr kb grep --after-title/--after-page-id`, `kb cat --lines` and `kb rows
+  --after-card` follow the continuations those reads name.
+- With `--json` (or `BEAKR_OUTPUT=json`), a failed command prints
+  `{"error": {"code", "message", "exit_code", ...}}` on stdout instead of plain
+  text only; `projects profile show` with no profile is such an error (exit 4).
+- `-P/--project` works on `kb rows`, `query`, `add-fact`, `add-connection`,
+  `add-finding`, `edit-rows` (`--scope`/`-s` still work), `kb proposals show`
+  and `projects members ls`.
+- `kb proposals ls` takes `--cursor` and names the next page; piped it lists
+  type, page and summary.
+- Readable output: `runs show` prints the answer and its sources; piped
+  `conversations show` includes the messages; `kb log` without a page, `doctor`,
+  `hooks status`, `documents search`, `kb log PAGE` and `keys scopes` print
+  lines instead of field dumps; `kb search` snippets drop section markers and
+  citation tokens; `interviews link revoke --json` prints what it revoked.
+- `keys create` uses the web app URL the API reports (`app_url` on
+  `/v1/auth/config`) before a saved one, and
+  says when the address is only a guess (`BEAKR_APP_URL` overrides it).
+- `beakr projects members add` no longer offers `--type group`, which the server
+  refuses.
+- `beakr context --format json --out FILE` writes the JSON response; it wrote
+  the markdown.
+- Piped output prints an object with neither an id nor a name as `key=value`
+  columns instead of raw JSON.
+- `beakr conversations compound cancel ID` stops a queued or running compound
+  of an imported conversation; `beakr compound ID` resumes it. `conversations
+  show` reads a stopped one's status as `cancelled`.
 - `beakr projects profile show|set|edit`: read and set a project's Knowledge
   profile. `set --file` replaces the whole profile from JSON or YAML and
   refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,

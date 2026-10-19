@@ -56,3 +56,12 @@ Skill proposals (2)
 └─────────────────────────────────────┴──────────────────────────┴──────┴────────┘
 --- stderr
 Keep one with `beakr skills approve PROPOSAL_ID`.
+
+$ beakr skills proposals
+> GET /v1/me/skills/proposals?limit=200
+[exit 0]
+--- stdout
+28c2ea96-e2f8-4482-9a07-f57e87a7f2af	Helios stability readout	status=pending
+49065a5c-fe85-451e-9777-d214525ef181	Committee decision memo	status=pending
+--- stderr
+

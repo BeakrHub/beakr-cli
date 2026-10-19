@@ -13,6 +13,7 @@ import typer
 from beakr_cli.commands.projects import _resolve_project_ref
 from beakr_cli.commands.projects import app as projects_app
 from beakr_cli.output import console, emit, err_console, print_table, short
+from beakr_cli.project_binding import resolve_project
 from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
 
@@ -20,12 +21,33 @@ app = typer.Typer(help="Members of a project: list, add, remove, invite by email
 
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 _project_arg = typer.Argument(..., help="Project id, slug or name.")
-_principal_type_opt = typer.Option("user", "--type", help="user, or group for a label/group id.")
+# Only `rm` takes a type: the server no longer adds group memberships, but a
+# project can still carry one from before, and removing it names its type.
+_principal_type_opt = typer.Option(
+    "user", "--type", help="user, or group to remove an existing group membership."
+)
 
 
 @app.command("ls")
-def list_project_members(project: str = _project_arg, json_out: bool = _json_opt) -> None:
+def list_project_members(
+    project: str | None = typer.Argument(
+        None, help="Project id, slug or name (or pass -P). Default: the bound project."
+    ),
+    project_opt: str | None = typer.Option(
+        None, "--project", "-P", "--scope", help="Project id, slug or name."
+    ),
+    json_out: bool = _json_opt,
+) -> None:
     """Members of a project and their roles (including access inherited from a group)."""
+    # -P like every other command; the positional stays for existing scripts.
+    if project and project_opt and project != project_opt:
+        raise typer.BadParameter("Give the project once: as an argument or with -P.")
+    ref = project or project_opt or resolve_project(None)
+    if not ref:
+        raise typer.BadParameter(
+            "Name the project (an argument or -P), or bind this directory with `beakr init`."
+        )
+    project = ref
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
         members = sdk.projects.members(str(found["id"]))
@@ -57,15 +79,16 @@ def add_project_member(
     project: str = _project_arg,
     principal_id: str = typer.Argument(..., help="User id (from `beakr members ls`)."),
     role: str = typer.Option("member", "--role", help="member, editor, viewer or owner."),
-    principal_type: str = _principal_type_opt,
     json_out: bool = _json_opt,
 ) -> None:
-    """Give an organization member (or group) a role in the project."""
+    """Give an organization member a role in the project.
+
+    Members are people (or service accounts); the server refuses group
+    memberships, so there is no --type to ask for one.
+    """
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
-        result = sdk.projects.add_member(
-            str(found["id"]), principal_id, role=role, principal_type=principal_type
-        )
+        result = sdk.projects.add_member(str(found["id"]), principal_id, role=role)
     emit(
         result,
         json_out=json_out,

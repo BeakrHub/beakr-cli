@@ -30,3 +30,12 @@ goals: Capture who signs off on HX-01 stability results and how open deviations 
   - Which HX-01 deviations are still open?
 --- stderr
 Still reading: hx-01-stability.xlsx
+
+$ beakr interviews draft 'Ask the team what slowed Helios'
+> POST /v1/interview/sendables/maker
+  {"message": "Ask the team what slowed Helios"}
+[exit 0]
+--- stdout
+changes.goals=Capture who signs off on HX-01 stability results and how open deviations are ...	changes.key_questions=Who reviews HX-01 results before they reach the charter?,Which HX-01 deviatio...	pending_files=hx-01-stability.xlsx	reply=I tightened the goals around HX-01 sign-off and added a question about open d...
+--- stderr
+

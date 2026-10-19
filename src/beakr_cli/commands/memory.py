@@ -6,6 +6,7 @@ session: errors go to ``~/.beakr/hooks.log`` and the exit code is 0.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -101,6 +102,10 @@ def context(
         )
     content = str(result.get("content") or "")
     if out is not None:
+        if fmt == "json":
+            # The file holds what stdout would print for this format: the whole
+            # response as JSON, not its rendered markdown.
+            content = json.dumps(result, indent=2, default=str, ensure_ascii=False) + "\n"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(content)
         err_console.print(f"Wrote {len(content)} characters to {out}")

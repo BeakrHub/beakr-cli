@@ -9,6 +9,7 @@ state and ``runs cancel RUN_ID`` stops it.
 from __future__ import annotations
 
 import sys
+from enum import Enum
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,22 @@ _FAILED = {"error", "failed", "cancelled"}
 #: A citation key is short; text held back waiting for a closing ``}}`` longer
 #: than this is ordinary text and is released rather than stalling the stream.
 _MAX_PENDING = 256
+
+
+class AgentMode(str, Enum):
+    """The research tiers ``POST /v1/runs`` accepts (the engine's ``StartRunRequest.mode``).
+
+    Offering only these means a mistyped or retired name ("fast") is a usage
+    error here instead of a 422 from the server after the files are uploaded.
+    """
+
+    free = "free"
+    quick = "quick"
+    deep = "deep"
+    extreme = "extreme"
+    custom = "custom"
+    auto = "auto"
+    auto_free = "auto_free"
 
 
 class _CitationStream:
@@ -75,7 +92,14 @@ def ask(
     thread: str | None = typer.Option(
         None, "--thread", "-t", help="Continue a thread instead of starting one."
     ),
-    mode: str | None = typer.Option(None, "--mode", help="Agent mode, e.g. fast or deep."),
+    mode: AgentMode | None = typer.Option(
+        None, "--mode", help="Research tier, e.g. quick or deep. Default: your seat's default."
+    ),
+    knowledge: bool = typer.Option(
+        True,
+        "--knowledge/--no-knowledge",
+        help="Let the agent read Knowledge while it answers (on by default).",
+    ),
     json_out: bool = typer.Option(
         False, "--json", "-j", help="Print the run's events as JSON lines."
     ),
@@ -91,7 +115,12 @@ def ask(
             str(sdk.files.upload(path, project_id=project)["artifact"]["id"]) for path in file
         ]
         run = sdk.runs.start(
-            prompt, project_id=project, thread_id=thread, mode=mode, files=file_ids or None
+            prompt,
+            project_id=project,
+            thread_id=thread,
+            mode=mode.value if mode else None,
+            files=file_ids or None,
+            knowledge=knowledge,
         )
         run_id = str(run.get("run_id") or run.get("id"))
         if not json_out:
@@ -202,8 +231,41 @@ def show_run(
             value = data.get(key) or (data.get("id") if key == "run_id" else None)
             if value:
                 console.print(f"{label + ':':<10}{value}", highlight=False)
+        answer = _answer_lines(data)
+        if answer:
+            console.print()
+            console.print("\n".join(answer), markup=False, highlight=False)
 
-    emit(run, json_out=json_out, render=render)
+    def lines(data: dict[str, Any]) -> list[str]:
+        from beakr_cli.compact import summary_line
+
+        answer = _answer_lines(data)
+        return [summary_line(data), *(["", *answer] if answer else [])]
+
+    emit(run, json_out=json_out, render=render, lines=lines)
+
+
+def _answer_lines(run: dict[str, Any]) -> list[str]:
+    """A completed run's answer (citations as [n]) and its numbered sources.
+
+    ``runs show`` printed the run's state only, so reading an answer later
+    meant re-running the question; the run carries it once it is completed.
+    A paused run shows the question it is waiting on instead.
+    """
+    from beakr_sdk.sources import source_where
+
+    answer = run.get("answer")
+    if isinstance(answer, dict) and isinstance(answer.get("text"), str):
+        out = [answer["text"].strip()]
+        sources = [s for s in answer.get("sources") or [] if isinstance(s, dict)]
+        if sources:
+            out += ["", "Sources:"]
+            out += [f"  [{n}] {source_where(s)}" for n, s in enumerate(sources, 1)]
+        return out
+    question = run.get("question")
+    if isinstance(question, dict) and question.get("text"):
+        return [f"Waiting on a question: {question['text']}"]
+    return []
 
 
 @app.command("cancel")

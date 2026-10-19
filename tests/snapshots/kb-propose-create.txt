@@ -42,3 +42,13 @@ Status: pending
 Page:   Helios Budget
 --- stderr
 
+
+$ beakr kb propose create --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --title 'Helios Budget' --content 'Fiscal 2024 funding is USD 2.4 million.'
+> POST /v1/knowledge/wiki/proposals
+  {"action": "create", "content": "Fiscal 2024 funding is USD 2.4 million.", "page_type": "topic", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "sections": [], "summary": "", "title": "Helios Budget"}
+[exit 0]
+--- stdout
+c41e8b27-93d5-4a6f-b0e2-6d8f1a3c5e97	status=pending
+next: beakr kb proposals accept c41e8b27-93d5-4a6f-b0e2-6d8f1a3c5e97
+--- stderr
+

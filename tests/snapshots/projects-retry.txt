@@ -33,3 +33,13 @@ Sent 1 file to Knowledge again.
   2b7c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4  already_queued
 --- stderr
 
+
+$ beakr projects retry --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/knowledge/retry-failed
+[exit 0]
+--- stdout
+6e9422f6-04ea-41a2-87c1-d41ed1f62713	queued
+2b7c9d1e-3f4a-4b5c-8d6e-7f8091a2b3c4	already_queued
+next: beakr projects status -P 4dd25154-0d80-44ab-b4c2-167319bfacb4
+--- stderr
+

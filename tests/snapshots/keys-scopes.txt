@@ -148,3 +148,36 @@ $ beakr keys scopes
 └────────────────────┴─────────────────────────────────────────────────────────────────────────────┘
 --- stderr
 
+
+$ beakr keys scopes
+> GET /v1/me/api-keys/scopes
+[exit 0]
+--- stdout
+kb:read	Read Knowledge: cards, findings, rows, history, proposals.
+kb:write	Add facts, connections and findings; stage and resolve proposals.
+projects:read	List and read projects and their members.
+projects:admin	Create, edit and archive projects; manage project members.
+members:admin	Invite, remove and change roles of organization members.
+uploads:write	Upload, edit, move and delete files and folders.
+integrations:read	List connected integrations and their scope.
+integrations:admin	Connect integrations, set their scope and trigger syncs.
+profiles:read	Read profiles and memories.
+profiles:write	Confirm, edit and dismiss profile claims and memories.
+skills:read	List and read skills.
+skills:write	Create, edit, import and approve skills.
+conversations:read	List and read conversations, including imported ones.
+conversations:write	Import conversations and send them to be compounded.
+agent:run	Start, follow and cancel agent runs; build agent context.
+workflows:run	List, configure and run workflows.
+outputs:read	List and read outputs (documents, sheets, decks), their revisions and exports.
+outputs:write	Create, edit, roll back and delete outputs.
+interviews:read	List and read interview requests, sessions and notes.
+interviews:write	Create interview requests and send interview links.
+usage:read	Read usage and quotas.
+exports:create	Export a project's knowledge.
+imports:create	Create a project from an exported archive.
+webhooks:admin	Create, edit and test webhook endpoints.
+events:read	Read the organization's event stream.
+audit:read	Read the audit log.
+--- stderr
+

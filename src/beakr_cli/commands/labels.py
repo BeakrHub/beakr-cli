@@ -15,6 +15,7 @@ from __future__ import annotations
 from typing import Any
 
 import typer
+from beakr_sdk.errors import NotFoundError
 
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_ref import resolve_project_ref
@@ -44,7 +45,9 @@ def _label_id(sdk: Any, ref: str) -> str:
     if matches:
         raise typer.BadParameter(f"Several labels are named {ref!r}; pass its id.")
     names = ", ".join(str(label.get("name")) for label in labels[:10]) or "none yet"
-    raise typer.BadParameter(f"No label with id or name {ref!r}. Labels: {names}.")
+    # Not found (exit 4), as a missing project, page or API object is: a label
+    # that does not exist is not a mistyped command line.
+    raise NotFoundError(f"No label with id or name {ref!r}. Labels: {names}.")
 
 
 def _render_labels(rows: list[dict[str, Any]]) -> None:
