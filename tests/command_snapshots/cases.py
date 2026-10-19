@@ -343,4 +343,7 @@ EXEMPT: dict[str, str] = {
     "interviews link show": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link send": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link revoke": "no recorded response yet; tests/test_cli_core_surface.py",
+    "projects profile show": "no recorded response yet; tests/test_cli_project_profile.py",
+    "projects profile set": "no recorded response yet; tests/test_cli_project_profile.py",
+    "projects profile edit": "opens $EDITOR; tests/test_cli_project_profile.py",
 }

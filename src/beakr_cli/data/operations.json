@@ -4286,6 +4286,28 @@
    "summary": "Get a project"
   },
   {
+   "action": "get-project-knowledge-profile",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/knowledge-profile",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge-profile",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a project's Knowledge profile"
+  },
+  {
    "action": "get-project-knowledge-status",
    "anonymous": false,
    "area": "projects",
@@ -4477,6 +4499,192 @@
    "response": "json",
    "scope": "projects:read",
    "summary": "List projects"
+  },
+  {
+   "action": "patch-project-knowledge-profile",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Organizations to recognize and follow. Replaces the list.",
+      "name": "core_organizations",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "People to recognize and follow. Replaces the list.",
+      "name": "core_people",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Topics to recognize and follow. Replaces the list.",
+      "name": "core_topics",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "What the project is about and what it is for, in a few sentences.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The kinds of things Knowledge should build a page for. Replaces the list.",
+      "multiple": true,
+      "name": "entity_types",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "How to read this project's documents: what to look for and what to skip.",
+      "name": "extraction_guidance",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Areas Knowledge should pay most attention to. Replaces the list.",
+      "multiple": true,
+      "name": "focus_areas",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What the project wants Knowledge to help answer or track. Replaces the list.",
+      "multiple": true,
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The field the project works in.",
+      "name": "industry",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "A short title for the profile.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/projects/{project_id}/knowledge-profile",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge-profile",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Update a project's Knowledge profile"
+  },
+  {
+   "action": "put-project-knowledge-profile",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Organizations to recognize and follow.",
+      "name": "core_organizations",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "People to recognize and follow.",
+      "name": "core_people",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Topics to recognize and follow.",
+      "name": "core_topics",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "default": "",
+      "description": "What the project is about and what it is for, in a few sentences.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The kinds of things Knowledge should build a page for, such as `batch`, `deviation` or `supplier`.",
+      "multiple": true,
+      "name": "entity_types",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "How to read this project's documents: what to look for and what to skip.",
+      "name": "extraction_guidance",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Areas Knowledge should pay most attention to.",
+      "multiple": true,
+      "name": "focus_areas",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What the project wants Knowledge to help answer or track.",
+      "multiple": true,
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "The field the project works in.",
+      "name": "industry",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "A short title for the profile.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/projects/{project_id}/knowledge-profile",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge-profile",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Set a project's Knowledge profile"
   },
   {
    "action": "remove-member",
