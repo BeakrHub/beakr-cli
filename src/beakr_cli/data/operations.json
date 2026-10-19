@@ -154,7 +154,7 @@
     "fields": [
      {
       "default": 24000,
-      "description": "Most characters of context to return (2,000 to 100,000).",
+      "description": "Most characters the rendered context may use, from 2000 to 100000 (default 24000). A value below 2000 is refused with 422.",
       "name": "budget_chars",
       "required": false,
       "type": "integer"
@@ -2774,7 +2774,7 @@
       "type": "string"
      },
      {
-      "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
+      "description": "rows, proposals: rows to skip (continue a NOT ALL ROWS reply).",
       "name": "offset",
       "required": false,
       "type": "integer"
@@ -2899,11 +2899,7 @@
       "type": "string"
      },
      {
-      "description": "For proposals: 'pending' (default, awaiting approval) or 'dismissed' (the user rejected them).",
-      "enum": [
-       "pending",
-       "dismissed"
-      ],
+      "description": "For proposals: pending (default), accepted, dismissed, superseded (says why) or resolved.",
       "name": "status",
       "required": false,
       "type": "string"

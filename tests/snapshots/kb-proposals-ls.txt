@@ -5,6 +5,15 @@ $ beakr kb proposals ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
 [
   {
     "created_at": "2026-09-22T14:35:00Z",
+    "filed_by": {
+      "user_id": null,
+      "user_name": null,
+      "credential": null,
+      "client": null,
+      "agent": null,
+      "run": null,
+      "text": "filed by Beakr (health)"
+    },
     "id": "71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68",
     "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
     "page_title": "Project Helios",
@@ -17,13 +26,22 @@ $ beakr kb proposals ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
   },
   {
     "created_at": "2026-10-01T09:02:00Z",
+    "filed_by": {
+      "user_id": "5c1e7a92-3d4b-4f60-8a2e-9b7d1c3f5e08",
+      "user_name": "Dana Reyes",
+      "credential": "c2f9a7e1-6b3d-4c8e-9f12-7a5d3b1e0c64",
+      "client": "beakr-mcp",
+      "agent": "claude-code/2.1",
+      "run": null,
+      "text": "filed by Dana Reyes via claude-code/2.1"
+    },
     "id": "0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51",
     "page_id": null,
     "page_title": "NW-217 Tox Read-out Plan",
     "payload": {},
     "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
     "proposal_type": "create",
-    "source": "capture",
+    "source": "mcp",
     "status": "pending",
     "summary": "Creates a page for the November tox read-out on NW-217."
   }
@@ -36,14 +54,16 @@ $ beakr kb proposals ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 [exit 0]
 --- stdout
 Wiki Proposals
-┏━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃ID       ┃ Type   ┃ Status  ┃ Page                     ┃ Summary                                  ┃
-┡━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│71d3b8e5 │ edit   │ pending │ Project Helios           │ Adds the Q3 stability results to the     │
-│         │        │         │                          │ charter.                                 │
-│0f4b6d82 │ create │ pending │ NW-217 Tox Read-out Plan │ Creates a page for the November tox      │
-│         │        │         │                          │ read-out on                              │
-└─────────┴────────┴─────────┴──────────────────────────┴──────────────────────────────────────────┘
+┏━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ID       ┃ Type   ┃ Status  ┃ Page                 ┃ Summary              ┃ Filed by              ┃
+┡━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━┩
+│71d3b8e5 │ edit   │ pending │ Project Helios       │ Adds the Q3          │ Beakr (health)        │
+│         │        │         │                      │ stability results to │                       │
+│         │        │         │                      │ the charter.         │                       │
+│0f4b6d82 │ create │ pending │ NW-217 Tox Read-out  │ Creates a page for   │ Dana Reyes via        │
+│         │        │         │ Plan                 │ the November tox     │ claude-code/2.1       │
+│         │        │         │                      │ read-out on          │                       │
+└─────────┴────────┴─────────┴──────────────────────┴──────────────────────┴───────────────────────┘
 --- stderr
 
 
@@ -51,7 +71,7 @@ $ beakr kb proposals ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/knowledge/wiki/proposals?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&status=pending
 [exit 0]
 --- stdout
-71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68	type=edit	status=pending	page=Project Helios	Adds the Q3 stability results to the charter.
-0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51	type=create	status=pending	page=NW-217 Tox Read-out Plan	Creates a page for the November tox read-out on NW-217.
+71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68	type=edit	status=pending	page=Project Helios	filed_by=Beakr (health)	Adds the Q3 stability results to the charter.
+0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51	type=create	status=pending	page=NW-217 Tox Read-out Plan	filed_by=Dana Reyes via claude-code/2.1	Creates a page for the November tox read-out on NW-217.
 --- stderr
 

@@ -17,6 +17,7 @@ from beakr_sdk.resources.knowledge import result_text
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.output import console, emit, err_console
 from beakr_cli.project_binding import resolve_project
+from beakr_cli.proposal_view import staged_proposal_lines
 from beakr_cli.sdk import get_sdk
 
 _FINDING_KINDS = ("result", "lesson", "decision", "question", "correction")
@@ -44,12 +45,16 @@ def _scope(explicit: str | None) -> str | None:
 
 def _print_result(result: dict[str, Any], *, json_out: bool) -> None:
     # Piped, an agent reads the door's text too (the rows table, the staged
-    # proposal), not a summary of the reply's fields.
+    # proposal), not a summary of the reply's fields. A staged write's content
+    # hash follows it: `kb proposals accept --reviewed-hash` takes it back.
+    def text_lines(r: dict[str, Any]) -> list[str]:
+        return [*result_text(r).splitlines(), *staged_proposal_lines(r)]
+
     emit(
         result,
         json_out=json_out,
-        render=lambda r: console.print(result_text(r), markup=False),
-        lines=lambda r: result_text(r).splitlines(),
+        render=lambda r: console.print("\n".join(text_lines(r)), markup=False),
+        lines=text_lines,
     )
 
 

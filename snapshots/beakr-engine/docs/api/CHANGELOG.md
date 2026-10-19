@@ -11,10 +11,22 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=7a5f091c032854dc4d41e6855b2650520c0aa13b3386fd1e374d7dbebc8496bf changelog sha256=a65734beff202e265a4d9ad3b40aeee47e0535eb5e7386a74004fde1aa2da58d -->
+<!-- contract-stamp: public-openapi sha256=f7d5872d314217c7ff3507f48b906e8eaed2db47414c8dc3f3002ffed111e353 changelog sha256=7c4a41a649ab0566629596b48871fcfc69dde339c5bac7f5b5ea4a9238587869 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
+  declare is written as the closest declared type when one answers to that
+  name (its key, an alias or its label; `project` is `initiative`), and the
+  result says which type was used. A type nothing declared is close to answers
+  `invalid_page_type` with the declared types listed. Citations sent in
+  `citations` beside `sections` are kept with the sections that use them.
+
+- `POST /v1/knowledge/wiki/write` `mv`: the result names the final title when
+  the requested one was taken, and lists the pages whose links still show the
+  old title (`[[Old title]]`). Those links keep resolving to the renamed page;
+  `find_replace` updates their text.
 
 - `POST /v1/compound/cancel`: stop the queued or running compound of an
   imported conversation (`conversations:write`). A batch already being read
@@ -22,6 +34,33 @@ The first public version.
   conversation's `compound_status` reads `cancelled`. Answers
   `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
   resumes from where it stopped.
+
+- `POST /v1/knowledge/wiki/write`: a write that stages a proposal for one
+  section or card row (`edit_section`, `add_fact`, `add_connection`,
+  `add_finding`, `edit_rows`) answers with `proposal`: its `id` and
+  `content_hash`, the value an accept takes back as `reviewed_hash`, and
+  `filed_by`. A rejected accept of such a proposal (409) now says why it cannot
+  apply.
+
+- `GET /v1/knowledge/wiki/proposals` and `GET /v1/knowledge/wiki/proposals/{proposal_id}`:
+  each proposal carries `filed_by`: the person (`user_id`, `user_name`), the
+  API `credential`, `client`, `agent` and `run` that filed it, and a `text`
+  line such as "filed by Dana Reyes via claude-code/2.1". The
+  `POST /v1/knowledge/wiki/command` `proposals` listing prints that line.
+  A pending listing's `cursor` (and the `proposals` command's `offset`) now
+  reaches every pending proposal: behind 500 proposals that could no longer
+  apply, a page used to end the listing early.
+
+- `POST /v1/knowledge/wiki/command` `proposals`: `status` also takes
+  `accepted`, `superseded` and `resolved`, besides `pending` (the default) and
+  `dismissed`; it is no longer an enum in the schema, and an unknown value
+  answers `invalid_arguments` naming every status. `proposals` pages with
+  `offset` (and `limit`, at most 200): a page that stops short says which
+  `offset` continues it. A superseded proposal is listed with the reason it can no longer
+  apply. A pending proposal to a card's Facts, Connections or Findings no longer
+  stops applying when the table is re-sorted or another row changes; only a
+  change to a row it edits supersedes it, and the first row written to a card
+  section the page does not have yet is placed and accepted as it was shown.
 
 - `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
   and set a project's Knowledge profile, the description, goals, focus areas,

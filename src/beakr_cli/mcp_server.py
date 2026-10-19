@@ -115,6 +115,11 @@ def _format_proposal(data: dict) -> str:
     if data.get("summary"):
         lines.append(f"Summary: {data['summary']}")
     from beakr_cli.proposal_accept import review_lines
+    from beakr_cli.proposal_view import filed_by_line
+
+    filed = filed_by_line(data)
+    if filed:
+        lines.append(filed)
 
     # Printed plainly: accept_proposal takes content_hash back as reviewed_hash.
     lines.extend(review_lines(data))
@@ -314,6 +319,12 @@ def _wiki_result(result: dict) -> dict:
         # A read's coverage and next-step hints, as the engine sent them
         # (beakr/engines/tools/graph/kb_result_coverage.py in beakr-engine).
         **({"coverage": result["coverage"]} if isinstance(result.get("coverage"), dict) else {}),
+        # A staged write's id, content hash and filer, so the caller can accept it.
+        **(
+            {"proposal": dict(result["proposal"])}
+            if isinstance(result.get("proposal"), dict)
+            else {}
+        ),
         # Older compact API responses report truncation only through next.
         "next": list(result.get("next") or []),
     }
