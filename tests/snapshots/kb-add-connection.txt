@@ -32,3 +32,14 @@ Summary: add_connection: | Follows | [[Protocol: Thermal Shift Assay]] |  | {{ar
 Waiting for user approval.
 --- stderr
 
+
+$ beakr kb add-connection 'Helios HX-07 Solubility Card' --relation Follows --to 'Protocol: Thermal Shift Assay' --evidence {{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}} --rationale 'Shape parity check for add_connection.' --scope 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/write
+  {"action": "add_connection", "evidence": "{{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}}", "page": "Helios HX-07 Solubility Card", "rationale": "Shape parity check for add_connection.", "relation": "Follows", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "to": "Protocol: Thermal Shift Assay"}
+[exit 0]
+--- stdout
+Proposed section edit to "Helios HX-07 Solubility Card" (section: sec_connections, rev 1).
+Summary: add_connection: | Follows | [[Protocol: Thermal Shift Assay]] |  | {{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}} |
+Waiting for user approval.
+--- stderr
+

@@ -37,3 +37,12 @@ Sync
 └─────────────────────────────────────┴────────┴────────┴───────┘
 --- stderr
 
+
+$ beakr integrations sync 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> POST /v1/integrations/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/sync
+[exit 0]
+--- stdout
+4dd25154-0d80-44ab-b4c2-167319bfacb4	Helios	status=queued
+connector_id=a1d5e8c2-4b7f-4e39-9c60-8f2b1d3a7e95
+--- stderr
+

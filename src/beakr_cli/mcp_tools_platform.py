@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from beakr_cli import mcp_result, tool_surface
 from beakr_cli.mcp_errors import ApiCallError, call_api
+from beakr_cli.scope import scope_params
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -98,16 +99,19 @@ async def context(
     factual question -- use research or knowledge_base for that.
 
     Args:
-        project: Project ID to focus on. Omit for org-wide context.
+        project: Project name or ID to focus on. Omit for org-wide context.
         question: The task or question, to rank what is included.
         format: markdown (default), claude_md, agents_md or json.
         budget_chars: Approximate size of the result (max 20000).
     """
     if format not in _CONTEXT_FORMATS:
         return f"Invalid format '{format}'. Use one of: {', '.join(_CONTEXT_FORMATS)}."
+    # The route takes a project id; agents pass the name list_projects printed.
+    # Omitted, the context stays org-wide, as the tool says.
+    project_id = await _project_by_name_or_id(project) if project.strip() else None
     data = await call_api(
         lambda sdk: sdk.engine.context(
-            project_id=project or None,
+            project_id=project_id,
             question=question or None,
             format=format,
             budget_chars=max(500, min(budget_chars, MAX_CONTEXT_BUDGET)),
@@ -546,6 +550,38 @@ async def _project_id(project: str) -> str | None:
     return str(matches[0]["id"]) if len(matches) == 1 else None
 
 
+def _scoped_project(project: str | None = None, project_id: str | None = None) -> str | None:
+    """The project filter the non-vocabulary routes still take (argument, else the binding).
+
+    There is no ``personal`` argument, deliberately. Personal is not a special
+    scope -- it is a project with ``project_type='personal'`` that
+    ``list_projects`` already reports -- so it is named like any other and needs
+    no resolution step of its own. The flag used to cost a ``/v1/projects`` round
+    trip and a module-level cache to hide it.
+    """
+    return scope_params(project=project_id or project).get("project_id")
+
+
+async def _project_by_name_or_id(
+    project: str | None = None, project_id: str | None = None
+) -> str | None:
+    """``_scoped_project`` for a ``project`` that may be a name, as list_projects suggests.
+
+    The research, stats and graph routes take a project id; an agent passes the
+    name it read from list_projects (or the ``scope`` it gives knowledge_base) and
+    was refused with "project_id must be a valid UUID".
+    """
+    given = (project_id or project or "").strip()
+    if not given:
+        return _scoped_project()
+    resolved = await _project_id(given)
+    if resolved is None:
+        raise ValueError(
+            f"No single project named {given!r}; pass its id or exact name from list_projects."
+        )
+    return resolved
+
+
 async def workboard(project: str = "", label_id: str = "") -> dict[str, Any]:
     project, label_id = (project or "").strip(), (label_id or "").strip()
     if not project and not label_id:
@@ -613,9 +649,11 @@ _SERVER: FastMCP | None = None
 
 
 async def discover_tools(search: str = "") -> str | dict[str, Any]:
-    """Describe the tools not listed by default (W8.2); each is callable by name.
+    """Describe the discovery-tier tools (W8.2); each is callable by name.
 
-    Answers the hosted server's shape: one ``- name: description`` line per tool,
+    In the eager listing mode (``BEAKR_MCP_TOOLS=eager``) the tools found are
+    added to the listing and the client is told to re-read it. Answers the
+    hosted server's shape: one ``- name: description`` line per tool,
     and the tools with their input schemas under ``tools``.
     """
     if _SERVER is None:
@@ -637,6 +675,11 @@ async def discover_tools(search: str = "") -> str | dict[str, Any]:
         if tool.name not in eager
         and (not query or query in tool.name.lower() or query in (tool.description or "").lower())
     ]
+    # In the eager listing mode the tools found join the listing, so a client
+    # that calls only listed tools (Claude Code) can call them next.
+    reveal = getattr(_SERVER, "reveal", None)
+    if reveal is not None:
+        await reveal([tool["name"] for tool in found])
     text = "\n".join(f"- {tool['name']}: {tool['description']}" for tool in found)
     return {
         "content": text or "No tool matches that search.",

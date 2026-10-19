@@ -27,3 +27,15 @@ description: Turn an HX-01 stability export into the Helios charter's results ta
 ---
 --- stderr
 
+
+$ beakr skills show 'Stability study summary'
+> GET /v1/me/skills/library?limit=200
+> GET /v1/me/skills/Stability%20study%20summary/bundle
+[exit 0]
+--- stdout
+---
+name: helios-stability-readout
+description: Turn an HX-01 stability export into the Helios charter's results table.
+---
+--- stderr
+

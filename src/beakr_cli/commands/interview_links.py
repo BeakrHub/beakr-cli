@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console, print_markdown, print_table, short
 from beakr_cli.project_ref import project_ref_callback
@@ -56,6 +57,7 @@ def create(
             f" (expires {data.get('expires_at')}). Read the result with "
             f"`beakr interviews link show {data.get('link_id')}`.",
             highlight=False,
+            markup=False,
         )
 
     emit(link, json_out=json_out, render=render)
@@ -83,7 +85,8 @@ def _resolve_link_id(sdk: Any, ref: str) -> str:
             ids = ", ".join(_link_id(link) for link in links) or "none"
             err_console.print(
                 f"Interview {ref} has {len(links)} links; pass one of their link ids: {ids}. "
-                "`beakr interviews link ls` lists them."
+                "`beakr interviews link ls` lists them.",
+                markup=False,
             )
             raise typer.Exit(2)
     return ref
@@ -183,7 +186,7 @@ def show(
         result = sdk.interviews.link_result(_resolve_link_id(sdk, link_id))
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"Status: {data.get('status')}", highlight=False)
+        console.print(f"Status: {data.get('status')}", highlight=False, markup=False)
         if not data.get("completed_at"):
             err_console.print("Not finished yet.")
         write_up = _write_up_text(data)
@@ -195,7 +198,7 @@ def show(
             console.rule("Transcript")
             for turn in turns:
                 who = "Interviewer" if turn.get("type") == "agent_question" else "Answer"
-                console.print(f"[bold]{who}:[/bold] ", end="")
+                console.print(f"[bold]{escape(str(who))}:[/bold] ", end="")
                 console.print(str(turn.get("text") or ""), highlight=False, markup=False)
         filed = data.get("knowledge") or []
         if filed:
@@ -245,10 +248,14 @@ def revoke(
 ) -> None:
     """Stop a link working; a finished participant keeps their result."""
     with get_sdk() as sdk:
-        result = sdk.interviews.revoke_link(_resolve_link_id(sdk, link_id))
+        resolved = _resolve_link_id(sdk, link_id)
+        result = sdk.interviews.revoke_link(resolved)
+    # The route answers with no body; --json printed `null`. Say what happened.
+    if not isinstance(result, dict):
+        result = {"link_id": resolved, "revoked": True}
 
     def render(_data: Any) -> None:
-        err_console.print(f"Revoked link {link_id}.")
+        err_console.print(f"Revoked link {link_id}.", markup=False)
 
     emit(result, json_out=json_out, render=render, json_when_piped=False)
 

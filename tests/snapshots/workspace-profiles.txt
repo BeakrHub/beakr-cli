@@ -177,3 +177,16 @@ Knowledge Profiles
 └──────────────────────┴─────────┴──────────────────────────────────────┴───────────────┘
 --- stderr
 
+
+$ beakr workspace profiles
+> GET /v1/knowledge/profiles/org
+> GET /v1/projects?limit=200
+> GET /v1/knowledge/profiles/project/4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/profiles/project/7034917d-cab8-45a6-839a-b1aec49a5ac0
+[exit 0]
+--- stdout
+3e01869a-6949-47bf-beb8-655215964ff2	Northwind Biosciences
+a28eaeac-88e6-4aa5-adfa-15232b874674	Helios
+a28eaeac-88e6-4aa5-adfa-15232b874674	Helios
+--- stderr
+

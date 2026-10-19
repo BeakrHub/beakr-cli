@@ -74,7 +74,7 @@ def connect(
 
     def render(data: dict[str, Any]) -> None:
         verb = "Opened" if opened else "Open"
-        console.print(f"{verb}: {data.get('connect_url')}", highlight=False)
+        console.print(f"{verb}: {data.get('connect_url')}", highlight=False, markup=False)
         err_console.print(
             "Finish connecting in the browser; `beakr integrations ls` shows it once done."
         )
@@ -95,9 +95,10 @@ def status(
         console.print(
             f"{data.get('provider')} {data.get('label') or ''}: health {data.get('health_status')}",
             highlight=False,
+            markup=False,
         )
         if data.get("health_error"):
-            err_console.print(f"Last error: {data['health_error']}")
+            err_console.print(f"Last error: {data['health_error']}", markup=False)
         print_table(
             ["Project", "Source", "Sync", "Files done", "Failed"],
             [
@@ -131,6 +132,7 @@ def coverage(
             f"compiled {data.get('compiled', 0)}, not readable {data.get('not_readable', 0)}, "
             f"removed {data.get('removed', 0)}.",
             highlight=False,
+            markup=False,
         )
         rows = [
             [status, reason, str(count)]
@@ -190,7 +192,7 @@ def disconnect(
     emit(
         {"id": connector_id, "disconnected": True},
         json_out=json_out,
-        render=lambda _: err_console.print(f"Disconnected {connector_id}."),
+        render=lambda _: err_console.print(f"Disconnected {connector_id}.", markup=False),
         json_when_piped=False,
     )
 
@@ -234,13 +236,15 @@ def scope(
         data = data if isinstance(data, dict) else {}
         mode = data.get("mode") or ("all" if all_items else "restricted" if item else "unknown")
         if mode == "all":
-            console.print(f"{connector_id} reads everything the connected account can see.")
+            console.print(
+                f"{connector_id} reads everything the connected account can see.", markup=False
+            )
             return
         items = data.get("items") or []
-        console.print(f"{connector_id} reads {len(items)} selected item(s):")
+        console.print(f"{connector_id} reads {len(items)} selected item(s):", markup=False)
         for entry in items:
             label = entry.get("name") or entry.get("title") or entry.get("id")
-            console.print(f"  {entry.get('id')}  {label}", highlight=False)
+            console.print(f"  {entry.get('id')}  {label}", highlight=False, markup=False)
 
     emit(result, json_out=json_out, render=render)
 

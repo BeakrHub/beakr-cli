@@ -68,3 +68,12 @@ Memories (2)
 └───────────────────────────────┴────────────┴────────────┴────────────────────────────────┴───────┘
 --- stderr
 
+
+$ beakr memory ls
+> GET /v1/me/memories?limit=200
+[exit 0]
+--- stdout
+f256ee28-e9ef-43ef-bfcb-a52ee92a9c5d	kind=preference
+2fa9b6c4-0874-43ba-87f2-56c9e30a6973	kind=fact
+--- stderr
+

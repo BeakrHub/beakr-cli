@@ -19,6 +19,7 @@ from beakr_cli.mcp_tools_platform import (
 )
 
 API = "https://api.test"
+PROJECT_ID = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
 
 
 @pytest.fixture(autouse=True)
@@ -33,7 +34,7 @@ async def test_context_posts_and_identifies_as_mcp() -> None:
         return_value=httpx.Response(200, json={"content": "# You\nPlatform lead"})
     )
 
-    text = await context(project="p1", question="billing", budget_chars=999_999)
+    text = await context(project=PROJECT_ID, question="billing", budget_chars=999_999)
 
     assert "Platform lead" in text
     request = route.calls.last.request
@@ -41,9 +42,55 @@ async def test_context_posts_and_identifies_as_mcp() -> None:
     assert json.loads(request.content) == {
         "format": "markdown",
         "budget_chars": 20_000,
-        "project_id": "p1",
+        "project_id": PROJECT_ID,
         "question": "billing",
     }
+
+
+@respx.mock
+async def test_context_resolves_a_project_name() -> None:
+    """context takes the project name list_projects prints, as every other tool does.
+
+    Root cause guarded: the name went to /v1/context as ``project_id``, a UUID
+    there, so a name was refused with a bare HTTP 422.
+    """
+    respx.get(f"{API}/v1/projects").respond(
+        json={"data": [{"id": PROJECT_ID, "name": "Platform"}], "has_more": False}
+    )
+    route = respx.post(f"{API}/v1/context").respond(json={"content": "ctx"})
+
+    assert await context(project="platform") == "ctx"
+    assert json.loads(route.calls.last.request.content)["project_id"] == PROJECT_ID
+
+    with pytest.raises(ValueError, match="No single project named 'Nope'"):
+        await context(project="Nope")
+
+    await context()
+    assert "project_id" not in json.loads(route.calls.last.request.content)
+
+
+@respx.mock
+async def test_a_validation_refusal_keeps_the_field_and_its_text() -> None:
+    """A 422 reads as the API's field errors, never "HTTP 422"."""
+    from beakr_cli import mcp_server
+
+    respx.post(f"{API}/v1/context").respond(
+        422,
+        json={
+            "detail": [
+                {
+                    "loc": ["body", "budget_chars"],
+                    "msg": "Input should be greater than or equal to 2000",
+                    "type": "greater_than_equal",
+                }
+            ]
+        },
+    )
+    result = await mcp_server.mcp.call_tool("context", {"budget_chars": 600})
+    text = result.content[0].text
+    assert result.isError
+    assert "budget_chars: Input should be greater than or equal to 2000" in text
+    assert "HTTP 422" not in text
 
 
 @respx.mock

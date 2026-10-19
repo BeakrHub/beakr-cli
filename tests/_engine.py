@@ -136,6 +136,17 @@ def cli_reachable_contract() -> dict[str, Any]:
     return merged
 
 
+def hosted_render() -> Any:
+    """The hosted MCP server's renderer (``beakr/api/mcp_remote/render.py``), loaded
+    from the engine checkout: the module the stdio text must equal byte for byte."""
+    path = engine_checkout("beakr/api/mcp_remote/render.py")
+    spec = importlib.util.spec_from_file_location("_hosted_mcp_render", path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _private_api_generator() -> Any:
     return _script("generate_private_api")
 
