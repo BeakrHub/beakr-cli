@@ -173,3 +173,12 @@ Threads (2)
 └──────────────────────┴─────────────────────┴────────────┴──────────────────────┴─────────────────┘
 --- stderr
 
+
+$ beakr runs ls
+> GET /v1/me/threads?limit=20
+[exit 0]
+--- stdout
+a65f5ede-be21-4933-bd39-c3dfe0a8153c	Project Helios	run=cd980c98-30e9-4a8d-8d96-51fdc0cdf2b9
+22a1dde3-d376-4f48-9176-89fd88c1b915	Decision: Helios Lead Selection	run=fc8c6a1a-54c4-40fc-a42c-13b83c19860c
+--- stderr
+

@@ -51,3 +51,14 @@ Usage 2026-09-01 to 2026-10-01 (self)
 Total: 67 calls, $1.8057, 442505 tokens
 --- stderr
 
+
+$ beakr usage --group-by day
+> GET /v1/usage?group_by=day&scope=self
+[exit 0]
+--- stdout
+day=2026-09-29	calls=42	cost_usd=1.284512	tokens=318240
+day=2026-09-30	calls=17	cost_usd=0.402275	tokens=96410
+day=2026-10-01	calls=8	cost_usd=0.118904	tokens=27855
+group_by=day	from=2026-09-01T12:00:00Z	to=2026-10-01T12:00:00Z	scope=self
+--- stderr
+

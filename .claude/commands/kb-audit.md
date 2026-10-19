@@ -33,4 +33,4 @@ If no specific focus is given, run a general health check. Pass a project's name
    - **Minor** -- style inconsistencies, missing Related Pages sections
    - **Recommendations** -- specific pages to create, merge, or reorganize
 
-Offer to stage fixes with `knowledge_base_write` (actions `edit_section`, `merge` for duplicates, `mv`, `new`) if the user approves. Never call `accept_proposal` unless the user explicitly asks.
+Offer to stage fixes with `knowledge_base_write` (actions `edit_section`, `merge` for duplicates, `mv`, `new`) if the user approves. A `merge` moves only the duplicate sections its `merge_sections` names; the rest are archived with the duplicate. After an `mv`, links elsewhere keep resolving but still show the old title until a `find_replace` updates them. Never call `accept_proposal` unless the user explicitly asks.

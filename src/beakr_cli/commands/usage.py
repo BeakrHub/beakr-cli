@@ -61,6 +61,7 @@ def usage(
             f"Total: {total.get('calls', 0)} calls, ${total.get('cost_usd', 0):.4f}, "
             f"{total.get('tokens', 0)} tokens",
             highlight=False,
+            markup=False,
         )
 
     emit(report, json_out=json_out, render=render)
@@ -153,7 +154,11 @@ def trace(
             result = sdk.trace.get(kind_or_id, item_id)  # type: ignore[arg-type]
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"{data.get('kind')} {data.get('title') or data.get('id')}", highlight=False)
+        console.print(
+            f"{data.get('kind')} {data.get('title') or data.get('id')}",
+            highlight=False,
+            markup=False,
+        )
         inputs = data.get("inputs")
         if isinstance(inputs, list) and inputs:
             print_table(
@@ -180,7 +185,9 @@ def trace(
         if data.get("versions"):
             console.print(f"{len(data['versions'])} versions", highlight=False)
         for actor in data.get("actors") or []:
-            console.print(f"{actor.get('user_id')}: {', '.join(actor.get('roles') or [])}")
+            console.print(
+                f"{actor.get('user_id')}: {', '.join(actor.get('roles') or [])}", markup=False
+            )
 
     emit(result, json_out=json_out, render=render)
 
@@ -242,9 +249,12 @@ def _render_row(data: dict[str, Any]) -> None:
         f"{data.get('title')} / {data.get('table')} row {row.get('index')}: "
         + " | ".join(str(v) for v in cells.values() if v),
         highlight=False,
+        markup=False,
     )
-    console.print(f"Introduced: {_who(data.get('introduced_by'))}", highlight=False)
-    console.print(f"Last changed: {_who(data.get('last_changed_by'))}", highlight=False)
+    console.print(f"Introduced: {_who(data.get('introduced_by'))}", highlight=False, markup=False)
+    console.print(
+        f"Last changed: {_who(data.get('last_changed_by'))}", highlight=False, markup=False
+    )
     inputs = data.get("inputs") or []
     if inputs:
         print_table(

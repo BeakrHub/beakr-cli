@@ -56,3 +56,18 @@ Confidence: high | Gaps: The November tox read-out is not yet in Knowledge.
 Research usage: {"cost_usd": 0.0412, "duration_s": 18.4, "turns": 4}
 --- stderr
 
+
+$ beakr kb research 'Which lead was selected?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/research
+  {"project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "query": "Which lead was selected?"}
+[exit 0]
+--- stdout
+The portfolio committee approved NW-217 as the Helios lead on 2026-09-30, citing its four-week stability at 40 C. [1]
+
+sources:
+[1]	helios-charter.pdf
+
+confidence=high	gaps=The November tox read-out is not yet in Knowledge.
+Research usage: {"cost_usd": 0.0412, "duration_s": 18.4, "turns": 4}
+--- stderr
+

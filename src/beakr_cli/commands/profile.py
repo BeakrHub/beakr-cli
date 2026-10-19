@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console, short
 from beakr_cli.project_ref import project_ref_callback
@@ -47,25 +48,28 @@ def _render_claims(claims: list[dict[str, Any]]) -> None:
             str(claim.get("profile_layer") or claim.get("section") or claim.get("layer") or "other")
         ].append(claim)
     for section, items in grouped.items():
-        console.print(f"\n[bold]{section}[/bold]")
+        console.print(f"\n[bold]{escape(str(section))}[/bold]")
         for claim in items:
             state = claim.get("confirmation_state") or ""
             status = claim.get("status") or ""
             marks = ", ".join(value for value in (state, status) if value)
             console.print(
-                f"  {short(claim.get('content'), 90)}  [dim]({marks}) {claim.get('id')}[/dim]",
+                f"  {escape(short(claim.get('content'), 90))}  [dim]({escape(marks)}) "
+                f"{escape(str(claim.get('id')))}[/dim]",
                 highlight=False,
             )
 
 
 def _render_project_profile(profile: dict[str, Any]) -> None:
-    console.print(f"[bold]{profile.get('name') or 'Project profile'}[/bold]")
+    console.print(f"[bold]{escape(str(profile.get('name') or 'Project profile'))}[/bold]")
     if profile.get("description"):
-        console.print(profile["description"], highlight=False)
+        console.print(profile["description"], highlight=False, markup=False)
     for label, key in (("Goals", "goals"), ("Focus areas", "focus_areas")):
         values = profile.get(key) or []
         if values:
-            console.print(f"{label}: " + ", ".join(str(v) for v in values), highlight=False)
+            console.print(
+                f"{label}: " + ", ".join(str(v) for v in values), highlight=False, markup=False
+            )
     for label, key in (
         ("Key people", "core_people"),
         ("Key organizations", "core_organizations"),
@@ -73,10 +77,10 @@ def _render_project_profile(profile: dict[str, Any]) -> None:
     ):
         values = profile.get(key) or []
         if values:
-            console.print(f"{label}:")
+            console.print(f"{label}:", markup=False)
             for item in values:
                 name = item.get("name") if isinstance(item, dict) else item
-                console.print(f"  - {name}", highlight=False)
+                console.print(f"  - {name}", highlight=False, markup=False)
 
 
 @app.command("show")
@@ -120,7 +124,7 @@ def show(
                 _render_project_profile(document)
             else:
                 name = f"Project {project}" if project else "The organization"
-                err_console.print(f"{name} has no knowledge profile yet.")
+                err_console.print(f"{name} has no knowledge profile yet.", markup=False)
             return
         claims = sdk.profile.claims(include_inactive=include_inactive or None, layer=layer or None)
     emit(claims, json_out=json_out, render=_render_claims)
@@ -157,7 +161,7 @@ def create(
         created,
         json_out=json_out,
         render=lambda p: console.print(
-            f"Created {p.get('profile_type', 'profile')} profile {p.get('id')}."
+            f"Created {p.get('profile_type', 'profile')} profile {p.get('id')}.", markup=False
         ),
     )
 
@@ -172,7 +176,11 @@ def confirm(
 
     with get_sdk() as sdk:
         claim = sdk.profile.confirm(claim_id)
-    emit(claim, json_out=json_out, render=lambda c: console.print(f"Confirmed {claim_id}."))
+    emit(
+        claim,
+        json_out=json_out,
+        render=lambda c: console.print(f"Confirmed {claim_id}.", markup=False),
+    )
 
 
 @app.command("dismiss")
@@ -185,7 +193,11 @@ def dismiss(
 
     with get_sdk() as sdk:
         claim = sdk.profile.dismiss(claim_id)
-    emit(claim, json_out=json_out, render=lambda c: console.print(f"Dismissed {claim_id}."))
+    emit(
+        claim,
+        json_out=json_out,
+        render=lambda c: console.print(f"Dismissed {claim_id}.", markup=False),
+    )
 
 
 @app.command("edit")
@@ -205,7 +217,11 @@ def edit(
         raise typer.BadParameter("Give at least one of --content, --status or --next-step.")
     with get_sdk() as sdk:
         claim = sdk.profile.edit(claim_id, content=content, status=status, next_step=next_step)
-    emit(claim, json_out=json_out, render=lambda c: console.print(f"Updated {claim_id}."))
+    emit(
+        claim,
+        json_out=json_out,
+        render=lambda c: console.print(f"Updated {claim_id}.", markup=False),
+    )
 
 
 _CHANGE_ACTIONS = ("confirm", "dismiss", "edit", "restore")
@@ -219,12 +235,12 @@ def _read_changes(file: str) -> list[dict[str, Any]]:
     try:
         text = sys.stdin.read() if file == "-" else Path(file).read_text()
     except OSError as exc:
-        err_console.print(f"Cannot read {file}: {exc.strerror or exc}.")
+        err_console.print(f"Cannot read {file}: {exc.strerror or exc}.", markup=False)
         raise typer.Exit(2) from exc
     try:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
-        err_console.print(f"{file} is not JSON: {exc.msg} (line {exc.lineno}).")
+        err_console.print(f"{file} is not JSON: {exc.msg} (line {exc.lineno}).", markup=False)
         raise typer.Exit(2) from exc
     changes = data.get("changes") if isinstance(data, dict) else data
     if not isinstance(changes, list) or not changes:
@@ -234,11 +250,11 @@ def _read_changes(file: str) -> list[dict[str, Any]]:
         raise typer.Exit(2)
     for index, change in enumerate(changes):
         if not isinstance(change, dict) or not change.get("claim_id"):
-            err_console.print(f"Change {index} needs a claim_id.")
+            err_console.print(f"Change {index} needs a claim_id.", markup=False)
             raise typer.Exit(2)
         if change.get("action") not in _CHANGE_ACTIONS:
             actions = ", ".join(_CHANGE_ACTIONS)
-            err_console.print(f"Change {index}: action must be one of {actions}.")
+            err_console.print(f"Change {index}: action must be one of {actions}.", markup=False)
             raise typer.Exit(2)
     return changes
 
@@ -246,7 +262,7 @@ def _read_changes(file: str) -> list[dict[str, Any]]:
 def _render_applied(result: dict[str, Any], changes: list[dict[str, Any]]) -> None:
     counts = Counter(str(change["action"]) for change in changes)
     done = ", ".join(f"{counts[action]} {action}" for action in _CHANGE_ACTIONS if counts[action])
-    console.print(f"Applied {len(changes)} change(s): {done}.")
+    console.print(f"Applied {len(changes)} change(s): {done}.", markup=False)
     _render_claims(result.get("claims") or [])
 
 
@@ -293,7 +309,7 @@ def forget(
     emit(
         {"forgotten": claim_id},
         json_out=json_out,
-        render=lambda _: console.print(f"Forgot {claim_id}."),
+        render=lambda _: console.print(f"Forgot {claim_id}.", markup=False),
     )
 
 
@@ -307,7 +323,11 @@ def restore(
 
     with get_sdk() as sdk:
         claim = sdk.profile.restore(claim_id)
-    emit(claim, json_out=json_out, render=lambda c: console.print(f"Restored {claim_id}."))
+    emit(
+        claim,
+        json_out=json_out,
+        render=lambda c: console.print(f"Restored {claim_id}.", markup=False),
+    )
 
 
 def register(root: typer.Typer) -> None:

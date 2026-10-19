@@ -24,7 +24,7 @@ Use this workflow when the user wants to create or update a page. Every change g
 
 ## Adding to a project-map card
 
-A map card has a Description, a Facts table (`| Attribute | Value | When | Evidence |`), a Connections table (`| Relation | To | When | Evidence |`) and dated Findings. Nuance stays in the value's own words. Add to it one row at a time; each is merged into the live card, so never resend a whole table. Its Facts, Connections and Findings rows are protected: they change only through `add_fact`, `add_connection`, `add_finding`, `edit_rows` and `sort_table`, and an `edit_section`, `edit` or `find_replace` that would change a row is refused. `edit_rows` takes `table` `facts`, `connections` or `findings` (a finding is named by its `date` and `text`):
+A map card has a Description, a Facts table (`| Attribute | Value | When | Evidence |`), a Connections table (`| Relation | To | When | Evidence |`) and dated Findings. Nuance stays in the value's own words. Add to it one row at a time; each is merged into the live card, so never resend a whole table. Its Facts, Connections and Findings rows are protected: they change only through `add_fact`, `add_connection`, `add_finding`, `edit_rows` and `sort_table`. An `edit_section` or `edit` that would change a row is refused; a `find_replace` changes the text outside the tables and reports the row matches it left for `edit_rows`. `edit_rows` takes `table` `facts`, `connections` or `findings` (a finding is named by its `date` and `text`):
 
 ```
 knowledge_base_write(
@@ -41,6 +41,8 @@ knowledge_base_write(
   },
 )
 ```
+
+For a source Beakr already has, `evidence` is the readable reference a read printed (`"evidence": "memo.pdf › p. 7"`); Beakr stores it as that citation. A `{{conversation:...}}` token is only for this conversation or a note, with its record in `citations` as above. A value written another way than the row already on the card (`2026-06-02` or `June 2, 2026`, `48,000` or `48000`) joins that row, and the result says so.
 
 Pass `rows=[{...}, ...]` to add several rows in one call; each item inherits the call's `evidence` and `when`. `sort_table` with `table` and `order_by` (e.g. `"attribute, when desc"`) orders a table and keeps it sorted on every later write. `add_connection` takes `relation` (a short verb phrase carrying any detail), `to` (the other page's title) and `when?`. `add_finding` takes `date`, `kind` (result, lesson, decision, question, correction), `text`, and optional `about`, `finding_scope` and `supersedes`: use it for a conclusion you reached, which is not a fact a source states. Keep attribute names stable so rows line up; a new value under the same attribute sits beside the old one as its history, and which one answers a question is decided by its `when` and the scope written in its value. Outside a project map these actions are refused on pages that are not cards; use `edit_section` there.
 
@@ -94,6 +96,12 @@ knowledge_base_write(
 
 To add a section, pass a new `section_id` plus `section_title` (and `after` to position it). For several changes at once, use `edit` with `patches`.
 
+## Renaming, merging and replacing text
+
+- **`mv`** renames a page. The result names the final title (`Title (1)` when the one asked for was taken) and lists the pages whose `[[links]]` still show the old title. Those links keep resolving to the renamed page; their text changes only if you stage a `find_replace` for it.
+- **`merge`** folds a duplicate (`page`) into the page to keep (`canonical`), carrying its titles over as aliases so links keep resolving. Pass `merge_sections`, the ordered list the survivor leads with (`["canonical:sec_overview", "duplicate:sec_findings"]`): only the duplicate sections it names are moved across, whole with their citations; an unnamed duplicate section is archived with the duplicate and reported in `sections_left_behind`. Read every duplicate section before leaving one out.
+- **`find_replace`** replaces text across pages; on a map card it skips the Facts, Connections and Findings rows and reports them, so change those with `edit_rows`.
+
 ## Creating a page
 
 Use `new` with `title`, `page_type`, `summary`, `parent`, `rationale`, and `sections`.
@@ -124,4 +132,4 @@ Set `stance` to `support`, `qualifies`, or `contradicts`. It defaults to `suppor
 
 ## After proposing
 
-Show the user what you staged with `show_proposal`, which prints its `content_hash`. Call `accept_proposal` only when the user explicitly asks to apply that proposal, with that hash as `reviewed_hash`: the accept then applies exactly what was shown, and a proposal that changed in between is refused (`proposal_changed`; show it again). Take the hash from the read the user reviewed, never from a fresh read made just before accepting. A proposal that changes a card's table rows is not accepted without it. `knowledge_base` command `proposals` lists what is still pending; a proposed page does not exist in `ls`, `cat`, or search until accepted.
+A write to one section or card row (`edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`) prints its proposal's id and `content_hash`. Show the user what you staged with `show_proposal`, which prints the hash again and who filed the proposal. Call `accept_proposal` only when the user explicitly asks to apply that proposal, with that hash as `reviewed_hash`: the accept then applies exactly what was shown, and a proposal that changed in between is refused (`proposal_changed`; show it again). Take the hash from the read the user reviewed, never from a fresh read made just before accepting. A proposal that changes a card's table rows is not accepted without it; it stays acceptable when the table is re-sorted or other rows change, and only a change to a row it edits supersedes it. `knowledge_base` command `proposals` lists pending proposals by default; `status` also takes `accepted`, `dismissed`, `superseded` (each with the reason it can no longer apply) and `resolved`, and a page that stops short names the `offset` that continues it; a proposed page does not exist in `ls`, `cat`, or search until accepted.

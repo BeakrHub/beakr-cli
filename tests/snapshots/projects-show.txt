@@ -53,3 +53,12 @@ Updated: 2026-10-08T15:12:40Z
 Thermostable lead selection for the NW-200 series.
 --- stderr
 
+
+$ beakr projects show 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects?limit=200
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+4dd25154-0d80-44ab-b4c2-167319bfacb4	Helios	slug=helios	type=standard	status=active	members=3
+--- stderr
+

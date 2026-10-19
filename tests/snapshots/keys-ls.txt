@@ -58,3 +58,12 @@ API keys
 └───────────────────┴──────────────────┴──────────────┴───────────────────┴────────────┴───────────┘
 --- stderr
 Legacy keys have full access. Replace them with scoped keys (`beakr keys create`) and revoke the old ones.
+
+$ beakr keys ls
+> GET /v1/me/api-keys?limit=200
+[exit 0]
+--- stdout
+8c3e5a17-2f9d-4b60-a1e4-7d0b9c6f2a38	Helios CLI	expires=2027-09-03T14:22:00Z
+2b9f6d41-7e3a-4c85-9d02-5a1e8c4b7f63	Northwind Onboarding
+--- stderr
+

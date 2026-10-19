@@ -12,8 +12,8 @@ Follow this procedure:
 
 5. **Write the content** following these conventions:
    - The page is `sections`: an ordered list of `{"title": ..., "body": ...}` objects. Beakr writes the `<!-- sec:ID -->` markers and IDs; do not author markers or pass `content`.
-   - Put an inline citation token `{{key}}` immediately after every factual claim, table value, date, title, and relationship.
-   - Give each token a record in that section's `citations`: `{"key": ..., "source_ref": ..., "stance": ...}` using the `source_ref` from a `knowledge_base` read for sources Beakr already has. For this conversation or a note, use a stable key with `source_type` `conversation`, `agent_note`, or `user_note`, plus `source_title` and `meta.excerpt`.
+   - Cite every factual claim, table value, date, title, and relationship right after it. For a source Beakr already has, write the readable reference a `knowledge_base` read printed, in parentheses (`(memo.pdf › p. 7)`); Beakr stores it as that citation. To set its stance, also list it in `citations` as `{"reference": ..., "stance": ...}` or with the read's `source_ref`.
+   - For this conversation or a note, put `{{conversation:<label>}}` after the claim and give it a record in that section's `citations` with the same `key`, `source_type` `conversation` (or `agent_note`, `user_note`), `source_title`, and `meta.excerpt`.
    - Set `stance` to `support`, `qualifies`, or `contradicts`.
    - Add `event_start`, `event_end`, and `date_precision` (day, month, quarter, year, approx) to dated decisions, meetings, milestones, launches, incidents, and other timeline-worthy sections.
    - Use `[[Page Title]]` for cross-references (check targets exist) and `[[Display Text|Page Title]]` when the text differs.
@@ -24,7 +24,8 @@ Follow this procedure:
 6. **Stage the proposal** with `knowledge_base_write`:
    - New page: action `new` with `title`, `page_type`, `summary` (one line on what the page is about), `parent`, `sections`, and `rationale`.
    - Existing page: action `edit_section` with `page`, `section_id`, `new_section_body`, `citations`, `edit_note`, and `rationale`. Read the page first; the new body replaces the whole section.
+   - An `edit_section` write prints the proposal's id and `content_hash`.
 
-7. **Review.** Show the result with `show_proposal`. Call `accept_proposal` only when the user explicitly asks to apply it, with the `content_hash` `show_proposal` printed as `reviewed_hash`.
+7. **Review.** Show the result with `show_proposal`, which also names who filed it. Call `accept_proposal` only when the user explicitly asks to apply it, with the `content_hash` the user reviewed as `reviewed_hash`.
 
 Do NOT create stub pages. Every page should have substantive content.

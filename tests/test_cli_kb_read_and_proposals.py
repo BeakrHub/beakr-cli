@@ -63,13 +63,100 @@ def test_cat_by_id_prints_the_page_as_json():
 @respx.mock
 def test_cat_by_title_resolves_through_by_title(terminal):
     route = respx.get(f"{PAGES}/by-title").respond(json=PAGE)
-    respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(json=_envelope([]))
+    door = respx.post(f"{API}/v1/knowledge/wiki/command").respond(
+        json={
+            "content": [{"type": "text", "text": "# Onboarding\nRev: 3\n\nNew hires pair."}],
+            "outcome": {"status": "success"},
+        }
+    )
     result = runner.invoke(app, ["kb", "cat", "Onboarding"])
     assert result.exit_code == 0, result.output
     assert route.calls[0].request.url.params["title"] == "Onboarding"
-    assert "Onboarding" in result.stdout
+    assert json.loads(door.calls.last.request.content)["page"] == PAGE_ID
     assert "Rev: 3" in result.stdout
-    assert "New hires pair for a week." in result.stdout
+    assert "New hires pair." in result.stdout
+
+
+# Root cause: the default `kb cat` printed the stored markdown, whose citations
+# are raw {{artifact:...}} tokens, while `--rev` read the door's `cat`, which
+# renders each as the reference a reader can follow. Every text read now goes
+# through the door; --json keeps the stored page record.
+@respx.mock
+@pytest.mark.parametrize("as_terminal", [True, False], ids=["terminal", "piped"])
+def test_cat_prints_readable_references_not_raw_tokens(monkeypatch, as_terminal):
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: not as_terminal)
+    stored = {**PAGE, "content": "# Onboarding\n\nPair for a week {{artifact:v1-u1}}."}
+    respx.get(f"{PAGES}/{PAGE_ID}").respond(json=stored)
+    respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(json=_envelope([]))
+    door = respx.post(f"{API}/v1/knowledge/wiki/command").respond(
+        json={
+            "content": [{"type": "text", "text": "Pair for a week (handbook.pdf \u203a p. 2)."}],
+            "outcome": {"status": "success"},
+        }
+    )
+
+    result = runner.invoke(app, ["kb", "cat", PAGE_ID])
+
+    assert result.exit_code == 0, result.output
+    assert "{{artifact:" not in result.stdout
+    assert "Pair for a week (handbook.pdf \u203a p. 2)." in result.stdout
+    assert json.loads(door.calls.last.request.content) == {"command": "cat", "page": PAGE_ID}
+    as_json = runner.invoke(app, ["kb", "cat", PAGE_ID, "--json"])
+    assert json.loads(as_json.stdout) == {**stored, "sources": []}
+
+
+# Root cause: a cut `cat` names how to continue (section_id=, source_offset=)
+# but the CLI had no options for them, so the hint could not be followed.
+@respx.mock
+def test_cat_takes_the_continuation_arguments_a_cut_read_names():
+    respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
+    door = respx.post(f"{API}/v1/knowledge/wiki/command").respond(json=_door("Records 4-6."))
+
+    result = runner.invoke(
+        app,
+        ["kb", "cat", PAGE_ID, "--section-id", "sec_a", "--full", "--source-offset", "3"],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(door.calls.last.request.content) == {
+        "command": "cat",
+        "page": PAGE_ID,
+        "section_id": "sec_a",
+        "detail": "full",
+        "source_offset": 3,
+    }
+
+
+# Root cause: grep's continuation ("continue with after_title=... after_page_id=...")
+# and a grep hit's line address (cat lines=) named arguments the CLI had no
+# options for. Every continuation the door names now has a flag.
+@respx.mock
+def test_grep_and_cat_take_every_continuation_the_door_names():
+    respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
+    door = respx.post(f"{API}/v1/knowledge/wiki/command").respond(json=_door("ok"))
+
+    grep = runner.invoke(
+        app,
+        ["kb", "grep", "NW-217", "--after-title", "Helios", "--after-page-id", PAGE_ID],
+    )
+    cat = runner.invoke(app, ["kb", "cat", PAGE_ID, "--lines", "4-9"])
+
+    assert grep.exit_code == 0, grep.output
+    assert cat.exit_code == 0, cat.output
+    sent = [json.loads(call.request.content) for call in door.calls]
+    assert sent[0] == {
+        "command": "grep",
+        "query": "NW-217",
+        "after_title": "Helios",
+        "after_page_id": PAGE_ID,
+    }
+    assert sent[1] == {"command": "cat", "page": PAGE_ID, "lines": "4-9"}
+
+
+def test_cat_source_offset_needs_full():
+    result = runner.invoke(app, ["kb", "cat", PAGE_ID, "--source-offset", "3"])
+    assert result.exit_code == 2
+    assert "--full" in result.output
 
 
 # Root cause: `kb cat --rev` read `content` from the revisions list, whose
@@ -153,7 +240,8 @@ def test_cat_missing_page_fails():
     respx.get(url__regex=rf"{PAGES}/search.*").respond(json=_envelope([]))
     respx.get(url__regex=rf"{API}/v1/knowledge/search.*").respond(json=_envelope([]))
     result = runner.invoke(app, ["kb", "cat", "No Such Page"])
-    assert result.exit_code == 1
+    # Not found is exit 4 everywhere; a missing page used to exit 1.
+    assert result.exit_code == 4
     assert "Page not found: No Such Page" in result.stderr
 
 
@@ -436,3 +524,70 @@ def test_a_reviewed_hash_that_is_not_a_content_hash_is_a_usage_error():
 
     assert result.exit_code == 2, result.output
     assert not accept.called
+
+
+# Root cause: accept ran confirm_or_require_yes whenever the interactive review
+# was skipped, so --reviewed-hash without --yes still exited 2 without a
+# terminal. The reviewed hash names the read that was reviewed and confirmed;
+# it is the confirmation.
+@respx.mock
+def test_accept_with_a_reviewed_hash_needs_no_yes_without_a_terminal():
+    accept = respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1", "--reviewed-hash", HASH_B])
+
+    assert result.exit_code == 0, result.output
+    assert _body(accept) == {"reviewed_hash": HASH_B}
+
+
+_EDIT_PROPOSAL = {
+    "id": "prop-1",
+    "proposal_type": "edit",
+    "status": "pending",
+    "page_title": "Onboarding",
+    "summary": "Extend pairing",
+    "content_hash": HASH_B,
+    "payload": {
+        "type": "edit",
+        "page_title": "Onboarding",
+        "current_content": "# Onboarding\n\nNew hires pair for a week.\nThen they ship.",
+        "proposed_content": "# Onboarding\n\nNew hires pair for two weeks.\nThen they ship.",
+        "rationale": "The 2026-10 retro asked for longer pairing.",
+        "expected_revision": 3,
+        "sections": [],
+    },
+}
+
+
+# Root cause: show (and accept's review step) printed the payload as indented
+# JSON, an edit as two whole copies of the page with \n escapes, and the content
+# hash printed above it scrolled out of view. The payload is now a diff and
+# labelled fields, and the hash is the last line.
+@respx.mock
+def test_proposals_show_renders_the_payload_readably_with_the_hash_last(terminal):
+    respx.get(f"{PROPOSALS}/prop-1").respond(json=_EDIT_PROPOSAL)
+
+    result = runner.invoke(app, ["kb", "proposals", "show", "prop-1"])
+
+    assert result.exit_code == 0, result.output
+    out = result.stdout
+    assert '"current_content"' not in out and "{" not in out
+    assert "-New hires pair for a week." in out
+    assert "+New hires pair for two weeks." in out
+    assert "Rationale: The 2026-10 retro asked for longer pairing." in out
+    assert "Expected revision: 3" in out
+    assert out.rstrip().splitlines()[-1] == f"Content hash: {HASH_B}"
+
+
+@respx.mock
+def test_an_interactive_accept_review_shows_the_readable_payload(terminal, monkeypatch):
+    monkeypatch.setattr("beakr_cli.commands.kb.is_interactive", lambda: True)
+    monkeypatch.setattr("beakr_cli.output.is_interactive", lambda: True)
+    respx.get(f"{PROPOSALS}/prop-1").respond(json=_EDIT_PROPOSAL)
+    respx.post(f"{PROPOSALS}/prop-1/accept").respond(json={"proposal_id": "prop-1"})
+
+    result = runner.invoke(app, ["kb", "proposals", "accept", "prop-1"], input="y\n")
+
+    assert result.exit_code == 0, result.output
+    assert '"proposed_content"' not in result.stdout
+    assert "+New hires pair for two weeks." in result.stdout
