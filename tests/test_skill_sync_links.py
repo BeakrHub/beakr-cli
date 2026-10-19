@@ -103,5 +103,3 @@ def test_a_pull_never_writes_through_a_link(tmp_path):
         write_local_files(directory, {"SKILL.md": "x", "notes.md": "overwritten"})
     assert victim.read_text() == "keep me"
     assert not (directory / "SKILL.md").exists()
-
-

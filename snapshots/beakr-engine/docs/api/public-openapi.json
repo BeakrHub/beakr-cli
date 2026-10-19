@@ -3385,6 +3385,98 @@
         "title": "CreatedLinkOut",
         "type": "object"
       },
+      "DocumentsCoverage": {
+        "properties": {
+          "complete": {
+            "description": "Whether this answer covers every match in scope; when false, see `reason`.",
+            "title": "Complete",
+            "type": "boolean"
+          },
+          "continue_with": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The `arguments` to change in the same call to continue it: `offset` while pages remain, then `after_document` with `offset` 0 to resume a stopped scan.",
+            "title": "Continue With"
+          },
+          "documents_checked": {
+            "description": "Of those, the documents this call checked (fewer when it stopped early).",
+            "title": "Documents Checked",
+            "type": "integer"
+          },
+          "documents_considered": {
+            "description": "Documents in scope after the filters.",
+            "title": "Documents Considered",
+            "type": "integer"
+          },
+          "next_offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The offset of the next page, if any.",
+            "title": "Next Offset"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Why it is not complete: `page` (more entries than this page), `time_budget` or `scan_budget` (the scan stopped early; counts cover what it checked), or `catalog_cap` (the scope held more documents than one call considers).",
+            "title": "Reason"
+          },
+          "resume_after_document": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`grep`: the last document checked, when the scan stopped early.",
+            "title": "Resume After Document"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Entries found: matching lines (content) or documents.",
+            "title": "Total"
+          }
+        },
+        "required": [
+          "complete",
+          "documents_considered",
+          "documents_checked"
+        ],
+        "title": "DocumentsCoverage",
+        "type": "object"
+      },
       "DocumentsResult": {
         "properties": {
           "content": {
@@ -3392,11 +3484,68 @@
             "title": "Content",
             "type": "string"
           },
+          "coverage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocumentsCoverage"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`grep` and `search`: whether the answer is complete, and the next call."
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When `is_error`: `invalid_arguments`, `invalid_pattern`, `document_not_found`, `timeout` or `scope_unavailable`.",
+            "title": "Error Code"
+          },
           "is_error": {
             "default": false,
             "description": "Whether it is error.",
             "title": "Is Error",
             "type": "boolean"
+          },
+          "next": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`search` only: what the response budget left out, and how to get it.",
+            "title": "Next"
+          },
+          "results": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/DocumentsSearchResult"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`search` only: one public source record per matching document, best first, with `location.file_id` and `location.version_id`, its `match` and `score`, and its best `passages`. Pass a record's or passage's `source_ref` to `POST /v1/artifacts/download-url` for the original file.",
+            "title": "Results"
           },
           "sources": {
             "additionalProperties": {
@@ -3411,6 +3560,250 @@
           "content"
         ],
         "title": "DocumentsResult",
+        "type": "object"
+      },
+      "DocumentsSearchPassage": {
+        "additionalProperties": true,
+        "description": "One matching passage of a document a ``search`` found.",
+        "properties": {
+          "citation_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Key to cite it with.",
+            "title": "Citation Key"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A brief excerpt of the passage, centred on the query's words.",
+            "title": "Excerpt"
+          },
+          "line_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Last indexed line of the passage.",
+            "title": "Line End"
+          },
+          "line_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "First indexed line of the passage, as `documents read` numbers lines (`start_line`).",
+            "title": "Line Start"
+          },
+          "match": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`strong`, `moderate` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.",
+            "title": "Match"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ranking score (meaning and word overlap); higher is better.",
+            "title": "Score"
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The heading path the passage sits under.",
+            "title": "Section"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.",
+            "title": "Source Ref"
+          },
+          "unit_locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where the passage sits: `p. 7`, ...",
+            "title": "Unit Locator"
+          }
+        },
+        "title": "DocumentsSearchPassage",
+        "type": "object"
+      },
+      "DocumentsSearchResult": {
+        "additionalProperties": true,
+        "description": "One document a ``search`` found: its public source record and its best passages.",
+        "properties": {
+          "filename": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The document's file name.",
+            "title": "Filename"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceLocation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where the document lives: `display_path`, `file_id` and `version_id`."
+          },
+          "match": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Its best passage's match label.",
+            "title": "Match"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The document's title in Beakr.",
+            "title": "Name"
+          },
+          "passages": {
+            "description": "Its best matching passages, best first.",
+            "items": {
+              "$ref": "#/components/schemas/DocumentsSearchPassage"
+            },
+            "title": "Passages",
+            "type": "array"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`upload` for a file Beakr holds, else the connected service.",
+            "title": "Provider"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Its best passage's score.",
+            "title": "Score"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What kind of source the document is.",
+            "title": "Source Kind"
+          },
+          "source_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Reusable reference to the document: a later Knowledge write cites it, `POST /v1/artifacts/read` opens it, `POST /v1/artifacts/download-url` downloads it.",
+            "title": "Source Ref"
+          }
+        },
+        "title": "DocumentsSearchResult",
         "type": "object"
       },
       "DownloadUrl": {
@@ -4225,6 +4618,73 @@
           "error"
         ],
         "title": "FailedFileOut",
+        "type": "object"
+      },
+      "FileDownloadOut": {
+        "description": "A short-lived signed URL for one file version's original bytes.",
+        "properties": {
+          "expires_in": {
+            "description": "Seconds the URL stays valid",
+            "title": "Expires In",
+            "type": "integer"
+          },
+          "file": {
+            "$ref": "#/components/schemas/FileReadFileOut",
+            "description": "The file and the version the URL downloads"
+          },
+          "filename": {
+            "description": "The file name the download is saved as",
+            "title": "Filename",
+            "type": "string"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The stored file's content type",
+            "title": "Mime Type"
+          },
+          "url": {
+            "description": "Signed URL; fetch it without Beakr credentials before it expires",
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expires_in",
+          "filename",
+          "file"
+        ],
+        "title": "FileDownloadOut",
+        "type": "object"
+      },
+      "FileDownloadRequest": {
+        "description": "Sign a download of one file's original bytes, named by any reference a read hands out.",
+        "properties": {
+          "inline": {
+            "default": false,
+            "description": "Ask a browser to display the file instead of saving it.",
+            "title": "Inline",
+            "type": "boolean"
+          },
+          "reference": {
+            "description": "The file to download, in any form POST /v1/artifacts/read takes: a source record's source_ref (beakr-source:v1:...), its id or a version id, a citation token, or its path. A ` \u203a <unit>` suffix is accepted and ignored. A reference that names a version downloads that version; any other, the current version. Knowledge pages, connected items and canvases have no stored file and are refused (knowledge_page, not_a_file, no_original_file).",
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Reference",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reference"
+        ],
+        "title": "FileDownloadRequest",
         "type": "object"
       },
       "FileReadFileOut": {
@@ -5970,6 +6430,312 @@
           "data"
         ],
         "title": "KnowledgeFailedFilePage",
+        "type": "object"
+      },
+      "KnowledgeProfileOrganization": {
+        "additionalProperties": false,
+        "description": "An organization Knowledge should recognize and follow in this project.",
+        "properties": {
+          "name": {
+            "description": "The organization's name.",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "relevance": {
+            "default": "",
+            "description": "Why it matters to this project, in a sentence.",
+            "maxLength": 20000,
+            "title": "Relevance",
+            "type": "string"
+          },
+          "type": {
+            "default": "",
+            "description": "What kind of organization it is, such as `supplier` or `regulator`.",
+            "maxLength": 500,
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "KnowledgeProfileOrganization",
+        "type": "object"
+      },
+      "KnowledgeProfilePerson": {
+        "additionalProperties": false,
+        "description": "A person Knowledge should recognize and follow in this project.",
+        "properties": {
+          "name": {
+            "description": "The person's name.",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "relevance": {
+            "default": "",
+            "description": "Why they matter to this project, in a sentence.",
+            "maxLength": 20000,
+            "title": "Relevance",
+            "type": "string"
+          },
+          "role": {
+            "default": "",
+            "description": "Their role, such as `QA lead`.",
+            "maxLength": 500,
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "KnowledgeProfilePerson",
+        "type": "object"
+      },
+      "KnowledgeProfileTopic": {
+        "additionalProperties": false,
+        "description": "A topic or concept Knowledge should recognize and follow in this project.",
+        "properties": {
+          "name": {
+            "description": "The topic's name.",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "relevance": {
+            "default": "",
+            "description": "Why it matters to this project, in a sentence.",
+            "maxLength": 20000,
+            "title": "Relevance",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "KnowledgeProfileTopic",
+        "type": "object"
+      },
+      "KnowledgeQueryMissingField": {
+        "additionalProperties": true,
+        "description": "Cards of the queried types with no value for a field the query filters on.",
+        "properties": {
+          "cards": {
+            "description": "Cards of those types you can read in the query's scope.",
+            "title": "Cards",
+            "type": "integer"
+          },
+          "field": {
+            "description": "The field as the query named it.",
+            "title": "Field",
+            "type": "string"
+          },
+          "missing": {
+            "description": "Cards of those types with no value for the field.",
+            "title": "Missing",
+            "type": "integer"
+          },
+          "page_types": {
+            "description": "The card types the query was held to.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Page Types",
+            "type": "array"
+          },
+          "titles": {
+            "description": "Up to 10 of the missing cards' titles, sorted; open them to check.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Titles",
+            "type": "array"
+          }
+        },
+        "required": [
+          "field",
+          "page_types",
+          "missing",
+          "cards",
+          "titles"
+        ],
+        "title": "KnowledgeQueryMissingField",
+        "type": "object"
+      },
+      "KnowledgeQueryResult": {
+        "additionalProperties": true,
+        "description": "``query`` only: the spec that ran and the window as data, beside the text.",
+        "properties": {
+          "applied": {
+            "default": [],
+            "description": "What the query defaulted, capped or applied that was not written: a default LIMIT or ORDER BY, a capped LIMIT, AS OF per card, an added COUNT, a sum split by unit.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Applied",
+            "type": "array"
+          },
+          "columns": {
+            "default": [],
+            "description": "The window's column names, in order.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Columns",
+            "type": "array"
+          },
+          "elapsed_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Milliseconds the query took to run.",
+            "title": "Elapsed Ms"
+          },
+          "form": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How the query was sent: `sql` (compiled to the spec) or `spec`.",
+            "title": "Form"
+          },
+          "missing": {
+            "default": [],
+            "description": "For a field condition held to card types (`entity_type`): the cards of those types that hold no value for the field, which no condition on it can list. The text says the same in a line `K of N <type> cards have no <field>: ...`.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeQueryMissingField"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Send with the same sql or spec as `cursor` for the next window.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          },
+          "notices": {
+            "default": [],
+            "description": "Warnings that lead the text, e.g. a field asked by a name few cards hold while a near name is on many more.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Notices",
+            "type": "array"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Rows before this window.",
+            "title": "Offset"
+          },
+          "ran": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What ran, in words (the text's `Ran:`).",
+            "title": "Ran"
+          },
+          "resolved": {
+            "default": [],
+            "description": "How each field, card-type and title condition resolved: the stored name, how it was found (exact, alias, words, meaning) and the exact name's card count.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Resolved",
+            "type": "array"
+          },
+          "rows": {
+            "default": [],
+            "description": "The window's rows: dates as YYYY-MM-DD, long text cut at 2,000 characters.",
+            "items": {
+              "items": {},
+              "type": "array"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "spec": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The JSON spec that ran (for `sql`, what the SELECT compiled to; `AS OF CURRENT_DATE` appears as `\"as_of\": \"today\"`). Present on a refusal too once the query compiled.",
+            "title": "Spec"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Rows (or groups) matching in all.",
+            "title": "Total"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What one result row is: `row`, `group` or `field` (a ranking).",
+            "title": "Unit"
+          }
+        },
+        "title": "KnowledgeQueryResult",
         "type": "object"
       },
       "KnowledgeRetryFileResult": {
@@ -8751,6 +9517,369 @@
         "title": "ProjectKnowledgeActivity",
         "type": "object"
       },
+      "ProjectKnowledgeProfile": {
+        "description": "A project's Knowledge profile.",
+        "properties": {
+          "core_organizations": {
+            "description": "Organizations Knowledge follows.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileOrganization"
+            },
+            "title": "Core Organizations",
+            "type": "array"
+          },
+          "core_people": {
+            "description": "People Knowledge follows.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfilePerson"
+            },
+            "title": "Core People",
+            "type": "array"
+          },
+          "core_topics": {
+            "description": "Topics Knowledge follows.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileTopic"
+            },
+            "title": "Core Topics",
+            "type": "array"
+          },
+          "created_at": {
+            "description": "When the profile was created.",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "description": "What the project is about and what it is for.",
+            "title": "Description",
+            "type": "string"
+          },
+          "entity_types": {
+            "description": "The kinds of things Knowledge builds a page for.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Entity Types",
+            "type": "array"
+          },
+          "extraction_guidance": {
+            "description": "How to read this project's documents.",
+            "title": "Extraction Guidance",
+            "type": "string"
+          },
+          "focus_areas": {
+            "description": "Areas Knowledge pays most attention to.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Focus Areas",
+            "type": "array"
+          },
+          "goals": {
+            "description": "What the project wants Knowledge to help answer or track.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Goals",
+            "type": "array"
+          },
+          "industry": {
+            "description": "The field the project works in.",
+            "title": "Industry",
+            "type": "string"
+          },
+          "name": {
+            "description": "A short title for the profile.",
+            "title": "Name",
+            "type": "string"
+          },
+          "project_id": {
+            "description": "Id of the project the profile belongs to.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the profile last changed.",
+            "examples": [
+              "2026-10-03T09:15:42Z"
+            ],
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "name",
+          "description",
+          "industry",
+          "goals",
+          "focus_areas",
+          "core_people",
+          "core_organizations",
+          "core_topics",
+          "entity_types",
+          "extraction_guidance",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ProjectKnowledgeProfile",
+        "type": "object"
+      },
+      "ProjectKnowledgeProfileIn": {
+        "additionalProperties": false,
+        "description": "A whole Knowledge profile. A field left out is set to its empty value.",
+        "properties": {
+          "core_organizations": {
+            "description": "Organizations to recognize and follow.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileOrganization"
+            },
+            "maxItems": 200,
+            "title": "Core Organizations",
+            "type": "array"
+          },
+          "core_people": {
+            "description": "People to recognize and follow.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfilePerson"
+            },
+            "maxItems": 200,
+            "title": "Core People",
+            "type": "array"
+          },
+          "core_topics": {
+            "description": "Topics to recognize and follow.",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeProfileTopic"
+            },
+            "maxItems": 200,
+            "title": "Core Topics",
+            "type": "array"
+          },
+          "description": {
+            "default": "",
+            "description": "What the project is about and what it is for, in a few sentences.",
+            "maxLength": 20000,
+            "title": "Description",
+            "type": "string"
+          },
+          "entity_types": {
+            "description": "The kinds of things Knowledge should build a page for, such as `batch`, `deviation` or `supplier`.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Entity Types",
+            "type": "array"
+          },
+          "extraction_guidance": {
+            "default": "",
+            "description": "How to read this project's documents: what to look for and what to skip.",
+            "maxLength": 20000,
+            "title": "Extraction Guidance",
+            "type": "string"
+          },
+          "focus_areas": {
+            "description": "Areas Knowledge should pay most attention to.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Focus Areas",
+            "type": "array"
+          },
+          "goals": {
+            "description": "What the project wants Knowledge to help answer or track.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Goals",
+            "type": "array"
+          },
+          "industry": {
+            "default": "",
+            "description": "The field the project works in.",
+            "maxLength": 500,
+            "title": "Industry",
+            "type": "string"
+          },
+          "name": {
+            "default": "",
+            "description": "A short title for the profile.",
+            "maxLength": 500,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "title": "ProjectKnowledgeProfileIn",
+        "type": "object"
+      },
+      "ProjectKnowledgeProfilePatch": {
+        "additionalProperties": false,
+        "description": "Fields to change on the Knowledge profile. A field left out is kept as it is.",
+        "properties": {
+          "core_organizations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/KnowledgeProfileOrganization"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Organizations to recognize and follow. Replaces the list.",
+            "title": "Core Organizations"
+          },
+          "core_people": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/KnowledgeProfilePerson"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "People to recognize and follow. Replaces the list.",
+            "title": "Core People"
+          },
+          "core_topics": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/KnowledgeProfileTopic"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Topics to recognize and follow. Replaces the list.",
+            "title": "Core Topics"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the project is about and what it is for, in a few sentences.",
+            "title": "Description"
+          },
+          "entity_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The kinds of things Knowledge should build a page for. Replaces the list.",
+            "title": "Entity Types"
+          },
+          "extraction_guidance": {
+            "anyOf": [
+              {
+                "maxLength": 20000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How to read this project's documents: what to look for and what to skip.",
+            "title": "Extraction Guidance"
+          },
+          "focus_areas": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Areas Knowledge should pay most attention to. Replaces the list.",
+            "title": "Focus Areas"
+          },
+          "goals": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the project wants Knowledge to help answer or track. Replaces the list.",
+            "title": "Goals"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The field the project works in.",
+            "title": "Industry"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A short title for the profile.",
+            "title": "Name"
+          }
+        },
+        "title": "ProjectKnowledgeProfilePatch",
+        "type": "object"
+      },
       "ProjectKnowledgeStatusResponse": {
         "description": "A project's Knowledge status: coverage counts, readiness and the files that failed.\n\nCounts cover the files the caller can read. ``queued``, ``running`` and\n``failed`` break the coverage counts down further: ``queued + running`` is\n``syncing``, and ``failed`` is part of ``eligible``.",
         "properties": {
@@ -11358,6 +12487,23 @@
             "default": null,
             "description": "The source's address in its service.",
             "title": "Url"
+          },
+          "version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a documents `search` result: the version of the file the passage was read from, in the Files API; `GET /v1/artifacts/versions/{version_id}/download-url` signs a download of exactly that version. From any file record, pass its `source_ref` to `POST /v1/artifacts/download-url` to download in one step. Knowledge pages and connected items have no version and no download.",
+            "examples": [
+              "c1a7e5d2-4b9f-4f38-a612-7d0e9b3c5f81"
+            ],
+            "title": "Version Id"
           }
         },
         "title": "SourceLocation",
@@ -13442,6 +14588,18 @@
             "$ref": "#/components/schemas/WikiToolOutcome",
             "description": "How it turned out."
           },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnowledgeQueryResult"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`query` only: the spec that ran and the window as columns and rows."
+          },
           "sources": {
             "default": [],
             "description": "The sources it cites or draws on.",
@@ -13528,6 +14686,17 @@
             "description": "The wiki page detail's content.",
             "title": "Content"
           },
+          "contradicting_citations": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "On a project-map card, per protected section, the citation keys its sources cite as contradicting what the card states. A card's text does not carry a citation's stance. Empty on any other page.",
+            "title": "Contradicting Citations",
+            "type": "object"
+          },
           "created_at": {
             "description": "When it was created (ISO 8601, UTC).",
             "examples": [
@@ -13536,6 +14705,17 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "disputed_rows": {
+            "additionalProperties": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "description": "On a project-map card, per protected section, the row_ids of the rows the contradicting citations mark as disputing (the ids the table and proposal reads use). Empty on any other page.",
+            "title": "Disputed Rows",
+            "type": "object"
           },
           "group_id": {
             "anyOf": [
@@ -13629,6 +14809,14 @@
               "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
             ],
             "title": "Project Id"
+          },
+          "protected_sections": {
+            "description": "On a project-map card, the section ids of its Facts, Connections and Findings, whose rows change only through row operations (add_fact, add_connection, add_finding, edit_rows). Empty on any other page.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Protected Sections",
+            "type": "array"
           },
           "revision": {
             "description": "Revision number.",
@@ -14282,6 +15470,26 @@
         "title": "WikiPatchIn",
         "type": "object"
       },
+      "WikiProposalAccept": {
+        "additionalProperties": false,
+        "description": "Optional accept body: bind the accept to the content that was reviewed.",
+        "properties": {
+          "reviewed_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The proposal's content_hash exactly as the proposal read returned it (echo it; do not compute it). When the stored proposal no longer hashes to it, nothing is applied (409 proposal_changed).",
+            "title": "Reviewed Hash"
+          }
+        },
+        "title": "WikiProposalAccept",
+        "type": "object"
+      },
       "WikiProposalBatchCopyItem": {
         "description": "One page to copy as part of a proposal batch.",
         "properties": {
@@ -14528,6 +15736,19 @@
       "WikiProposalOut": {
         "additionalProperties": true,
         "properties": {
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "SHA-256 of this proposal as stored (its id, type and whole payload). Echo it back as reviewed_hash when accepting, so a proposal that changed after it was read is not applied.",
+            "title": "Content Hash"
+          },
           "created_at": {
             "description": "When it was created (ISO 8601, UTC).",
             "examples": [
@@ -14647,6 +15868,21 @@
             "default": null,
             "description": "A short summary.",
             "title": "Summary"
+          },
+          "table_changes": {
+            "description": "How this proposal changes map cards' Facts, Connections and Findings, read as rows: per table its added, removed and changed rows (changed_cells names what changed), each with its citations, and the reasons given for the edit.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Table Changes",
+            "type": "array"
+          },
+          "table_changes_complete": {
+            "default": true,
+            "description": "False when part of this proposal's change to a map card's Facts, Connections or Findings is not expressed by table_changes (text that is not a row, or a section not in canonical form): review the markdown diff then.",
+            "title": "Table Changes Complete",
+            "type": "boolean"
           }
         },
         "required": [
@@ -15618,6 +16854,75 @@
           }
         ],
         "summary": "List files",
+        "tags": [
+          "public",
+          "files"
+        ],
+        "x-beakr-scope": "projects:read"
+      }
+    },
+    "/v1/artifacts/download-url": {
+      "post": {
+        "description": "A short-lived signed URL for a file's original bytes, by any reference a read hands out.\n\nThe reference resolves exactly as ``POST /v1/artifacts/read`` resolves it, so a\nsource record's ``source_ref`` from a Knowledge read, research or a documents\nsearch downloads its file in one call. A reference that reaches no readable\nfile (none, another organization's, outside a project-restricted credential's\nprojects) is the same ``404``.\n\nThe URL signs the version row the caller's lookup returned; its storage key\nwas checked against the file's organization where it was written, as\n``GET /v1/artifacts/versions/{version_id}/download-url`` relies on.",
+        "operationId": "download_url_route_v1_artifacts_download_url_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileDownloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileDownloadOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a download link by reference",
         "tags": [
           "public",
           "files"
@@ -19099,7 +20404,7 @@
     },
     "/v1/knowledge/documents": {
       "post": {
-        "description": "Search and read the original documents' text: the `documents` tool for API callers. Search and read the original documents' text: the ``documents`` tool for API callers.\n\nBehind the ``documents_api`` flag. Same commands and arguments as Beakr's own\nagents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across\nevery document in scope), ``read`` (line-numbered text of one document) and ``ls``.\n\nBody:\n    command: grep | read | ls (required).\n    arguments: that command's options, e.g. {\"pattern\": \"comfort letter\", \"output_mode\": \"files_with_matches\"}.\n    project_id: Optional project scope (UUID).",
+        "description": "Search and read the original documents: the `documents` tool for API callers. Search and read the original documents: the ``documents`` tool for API callers.\n\nBehind the ``documents_api`` flag. Same commands and arguments as Beakr's own\nagents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across\nevery document in scope), ``read`` (line-numbered text of one document), ``ls``,\nand ``search`` (passages ranked by meaning, grouped by document; the response\nadds ``results``, one public source record per document with its passages).\n\nBody:\n    command: grep | read | ls | search (required).\n    arguments: that command's options, e.g. {\"pattern\": \"comfort letter\", \"output_mode\": \"files_with_matches\"}.\n    project_id: Optional scope: a project id or name (``project`` is accepted too).\n        Without one, a command covers everything the caller can read; a\n        project-restricted credential, all of its projects.",
         "operationId": "documents_v1_knowledge_documents_post",
         "requestBody": {
           "content": {
@@ -19119,21 +20424,21 @@
                 "properties": {
                   "arguments": {
                     "additionalProperties": true,
-                    "description": "Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document.",
+                    "description": "Options for the selected documents command. grep: pattern, output_mode, group_by (\"folder\") and folder_depth, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, glob, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
                     "type": "object"
                   },
                   "command": {
-                    "description": "Search indexed text, read a document window, or list files.",
+                    "description": "grep: literal/regex matches across indexed text; read: a document's lines; ls: the file tree; search: passages ranked by meaning, grouped by document (adds `results`).",
                     "enum": [
                       "grep",
                       "read",
-                      "ls"
+                      "ls",
+                      "search"
                     ],
                     "type": "string"
                   },
                   "project_id": {
-                    "description": "Limit to this project. Required for project-restricted credentials.",
-                    "format": "uuid",
+                    "description": "Limit to this project: its id or name (a name may match several projects you can read). Without it a command covers everything you can read; a project-restricted credential, all of its projects.",
                     "type": "string"
                   }
                 },
@@ -19339,8 +20644,12 @@
                     "description": "Keyset cursor for ls, grep and sources: return only rows whose title sorts after this value. Pass the last title of the previous window to walk a full population. Required for any complete enumeration -- one window is never proof that nothing else matches. For sources, pass after_source_id alongside it: titles repeat, and a title-only cursor cannot reach past a run of files sharing one.",
                     "type": "string"
                   },
+                  "as_of": {
+                    "description": "rows, facts: each card's value on this date.",
+                    "type": "string"
+                  },
                   "attribute": {
-                    "description": "rows: Attribute, Relation or kind containing this.",
+                    "description": "rows: the field by name, alias or meaning; replies say which field.",
                     "type": "string"
                   },
                   "command": {
@@ -19366,8 +20675,13 @@
                       "completions",
                       "proposals",
                       "suggest_parent",
-                      "help"
+                      "help",
+                      "query"
                     ],
+                    "type": "string"
+                  },
+                  "connected_to": {
+                    "description": "rows: cards linked to this page.",
                     "type": "string"
                   },
                   "content": {
@@ -19383,7 +20697,7 @@
                     "type": "boolean"
                   },
                   "cursor": {
-                    "description": "timeline without timeline_query: next_cursor from the previous result; keep the same filters.",
+                    "description": "timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec.",
                     "type": "string"
                   },
                   "descending": {
@@ -19410,7 +20724,7 @@
                     "type": "string"
                   },
                   "entity": {
-                    "description": "rows: card titles containing this.",
+                    "description": "rows: card title(s), as a|b|c.",
                     "type": "string"
                   },
                   "field_id": {
@@ -19445,6 +20759,15 @@
                     "description": "cat only. Read an exact line range, `start-end` or a single line, 1-indexed and inclusive -- what grep's `section:line` addresses point at. Prefer `section_id` when the hit sits inside a marked section; use this for a long section, or a page with no section markers, instead of opening the whole page.",
                     "type": "string"
                   },
+                  "match": {
+                    "description": "rows: exact = the name or an alias; similar adds words; meaning (default) adds closest meaning.",
+                    "enum": [
+                      "meaning",
+                      "similar",
+                      "exact"
+                    ],
+                    "type": "string"
+                  },
                   "matches_per_page": {
                     "description": "grep only. Snippets kept per page (default 10, max 200). Every match is addressed in the result regardless; this controls how many also carry their text. Raise it to enumerate a term ACROSS pages in one call -- every version of a component, every date a decision moved -- where the alternative is opening each page in turn. For everything on ONE page, reading that page is usually simpler.",
                     "type": "integer"
@@ -19460,11 +20783,11 @@
                     "type": "string"
                   },
                   "offset": {
-                    "description": "rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names.",
+                    "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
                     "type": "integer"
                   },
                   "order_by": {
-                    "description": "rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first.",
+                    "description": "rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first.",
                     "type": "string"
                   },
                   "outline": {
@@ -19533,6 +20856,15 @@
                     "description": "provenance: how many citing sources to show per section (default 5, max 50). Contradicting and qualifying sources are listed first, so a dispute is never the entry that falls off the end.",
                     "type": "integer"
                   },
+                  "spec": {
+                    "additionalProperties": true,
+                    "description": "query (where enabled for the organization): the same query as a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys.",
+                    "type": "object"
+                  },
+                  "sql": {
+                    "description": "query (where enabled for the organization): one SELECT over every card's rows, parsed and compiled into a spec; the text is never run as SQL. The reply's `query` object holds the spec it compiled to. Send sql or spec, not both; `topic: query` on `help` gives the grammar. one SELECT over every card's rows, parsed into a query (never run as SQL). FROM facts|connections|findings [AS OF 'YYYY-MM-DD'|CURRENT_DATE]; JOIN <table> b ON SAME_CARD(a)|TARGET_CARD(a) (up to 2); WHERE with AND/OR/NOT on entity, entity_type, field (= exact name, LIKE words, ~ meaning), value (=, <>, IN, CONTAINS, >, >=, <, <=, BETWEEN on numbers and dates), when, to, connected_to; GROUP BY field|value|entity|entity_type; COUNT(*), COUNT(DISTINCT entity), MIN|MAX|SUM|AVG(value_number|value_amount|value_date); ORDER BY; LIMIT (50, max 200). Example: SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC. help: query has the grammar.",
+                    "type": "string"
+                  },
                   "start_date": {
                     "description": "Start date YYYY-MM-DD (for timeline).",
                     "type": "string"
@@ -19571,11 +20903,13 @@
                     "type": "string"
                   },
                   "view": {
-                    "description": "rows: values (default), fields (field names, counts, examples) or groups (one page_type's likely synonym names).",
+                    "description": "rows: values (default), census (entity and value only, 300 rows), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).",
                     "enum": [
                       "values",
+                      "census",
                       "fields",
-                      "groups"
+                      "groups",
+                      "conflicts"
                     ],
                     "type": "string"
                   }
@@ -20651,6 +21985,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/WikiProposalAccept"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -21213,7 +22564,7 @@
                     "type": "string"
                   },
                   "old_rows": {
-                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value} or {relation, to}, or the row copied from cat.",
+                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so.",
                     "items": {
                       "type": [
                         "object",
@@ -21509,10 +22860,11 @@
                     "type": "string"
                   },
                   "table": {
-                    "description": "sort_table / edit_rows: which table.",
+                    "description": "sort_table (facts | connections) / edit_rows: which table.",
                     "enum": [
                       "facts",
-                      "connections"
+                      "connections",
+                      "findings"
                     ],
                     "type": "string"
                   },
@@ -25068,6 +26420,254 @@
           "projects"
         ],
         "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/knowledge-profile": {
+      "get": {
+        "description": "The project's Knowledge profile: what Knowledge should understand about the project.\n\nA 404 with `knowledge_profile_not_found` when the project has none yet; a\nproject you cannot read is the shared project 404. The project's members\nand owners read it; a viewer is refused.",
+        "operationId": "get_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a project's Knowledge profile",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:read"
+      },
+      "patch": {
+        "description": "Change some fields of the project's Knowledge profile; fields left out are kept.\n\nA list sent replaces that list. A 404 with `knowledge_profile_not_found`\nwhen the project has no profile yet (create it with PUT). Only the\nproject's owners may change it.",
+        "operationId": "patch_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectKnowledgeProfilePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Update a project's Knowledge profile",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:write"
+      },
+      "put": {
+        "description": "Set the project's whole Knowledge profile, creating it if it has none.\n\nFields left out are set to their empty value, so a repeat of the same body\nleaves the same profile (201 when it was created, 200 when it replaced\none). Knowledge reads the profile when it next compiles files: it steers\nwhich pages are built and what they record. Only the project's owners may\nset it.",
+        "operationId": "put_project_knowledge_profile_route_v1_projects__project_id__knowledge_profile_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectKnowledgeProfileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectKnowledgeProfile"
+                }
+              }
+            },
+            "description": "The project had no profile; this one was created."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set a project's Knowledge profile",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:write"
       }
     },
     "/v1/projects/{project_id}/knowledge-summary": {

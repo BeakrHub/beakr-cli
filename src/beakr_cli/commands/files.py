@@ -388,13 +388,17 @@ def show_file(
 
 @app.command("download")
 def download_file(
-    artifact_id: str = typer.Argument(..., help="File id."),
+    artifact_id: str = typer.Argument(
+        ...,
+        help="File id, or any reference a read hands out: a source_ref, a version id, a "
+        "citation token or a path.",
+    ),
     out: Path = typer.Option(Path("."), "--out", "-o", help="Destination file or directory."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Download a file's original bytes."""
+    """Download a file's original bytes, by its id or a source record's source_ref."""
     with get_sdk(timeout=300.0) as sdk:
-        saved = sdk.files.download(artifact_id, out)
+        saved = sdk.files.download_reference(artifact_id, out)
     emit(
         {"id": artifact_id, "path": str(saved), "bytes": Path(saved).stat().st_size},
         json_out=json_out,

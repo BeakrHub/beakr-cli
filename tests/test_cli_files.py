@@ -176,11 +176,9 @@ def test_files_ls_passes_filters():
 
 @respx.mock
 def test_files_download_writes_original_bytes_into_a_directory(tmp_path):
-    respx.get(f"{API}/v1/artifacts/a1").respond(
-        json={"id": "a1", "title": "report.pdf", "current_version_id": "v1"}
-    )
-    signed = respx.get(f"{API}/v1/artifacts/versions/v1/download-url").respond(
-        json={"url": f"{S3}/report.pdf?sig=1"}
+    # One request signs any reference (an id here; a source_ref works the same).
+    signed = respx.post(f"{API}/v1/artifacts/download-url").respond(
+        json={"url": f"{S3}/report.pdf?sig=1", "expires_in": 120, "filename": "report.pdf"}
     )
     respx.get(url__startswith=f"{S3}/report.pdf").respond(content=b"%PDF-1.7")
 

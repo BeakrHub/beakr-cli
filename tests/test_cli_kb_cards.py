@@ -76,6 +76,59 @@ def test_rows_sends_the_rows_command_with_door_argument_names() -> None:
 
 
 @respx.mock
+def test_rows_sends_the_database_arguments_by_their_door_names() -> None:
+    # as_of, to, connected_to and group_by are rows arguments the SDK's rows()
+    # does not name; the CLI sends them through the generic door call.
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "kb",
+            "rows",
+            "--as-of",
+            "2024-06-30",
+            "--connected-to",
+            "Northwind Fund",
+            "--group-by",
+            "entity",
+            "--order-by",
+            "amount",
+            "--scope",
+            "Platform",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {
+        "command": "rows",
+        "table": "facts",
+        "as_of": "2024-06-30",
+        "connected_to": "Northwind Fund",
+        "group_by": "entity",
+        "order_by": "amount",
+        "scope": "Platform",
+    }
+
+
+@respx.mock
+def test_rows_sends_match_and_refuses_an_unknown_mode() -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+
+    sent = CliRunner().invoke(
+        app, ["kb", "rows", "--attribute", "start date", "--match", "similar"]
+    )
+    refused = CliRunner().invoke(
+        app, ["kb", "rows", "--attribute", "start date", "--match", "fuzzy"]
+    )
+
+    assert sent.exit_code == 0, sent.output
+    assert _body(route)["match"] == "similar"
+    assert refused.exit_code != 0
+    assert route.call_count == 1
+
+
+@respx.mock
 def test_rows_scope_defaults_to_the_bound_project(monkeypatch) -> None:
     monkeypatch.setenv("BEAKR_PROJECT_ID", "proj-1")
     route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
@@ -300,3 +353,45 @@ def test_a_door_refusal_exits_1_with_its_guidance() -> None:
 
     assert result.exit_code == 1
     assert "not a card" in result.output
+
+
+@respx.mock
+def test_query_sends_the_json_spec_through_the_command_door(tmp_path) -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+    spec = {"from": "facts", "where": {"field": "Status"}, "group_by": ["value"]}
+
+    inline = CliRunner().invoke(app, ["kb", "query", json.dumps(spec), "--scope", "Platform"])
+    path = tmp_path / "q.json"
+    path.write_text(json.dumps(spec))
+    from_file = CliRunner().invoke(app, ["kb", "query", "--file", str(path)])
+
+    assert inline.exit_code == 0, inline.output
+    assert from_file.exit_code == 0, from_file.output
+    assert json.loads(route.calls[0].request.content) == {
+        "command": "query",
+        "spec": spec,
+        "scope": "Platform",
+    }
+    assert json.loads(route.calls[1].request.content)["spec"] == spec
+
+
+@respx.mock
+def test_query_sends_sql_with_a_cursor() -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+    sql = "SELECT value, COUNT(*) AS n FROM facts WHERE field = 'Status' GROUP BY value"
+
+    result = CliRunner().invoke(app, ["kb", "query", sql, "--cursor", "abc"])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls[0].request.content) == {
+        "command": "query",
+        "sql": sql,
+        "cursor": "abc",
+    }
+
+
+def test_query_refuses_a_json_spec_that_is_not_json_before_sending() -> None:
+    result = CliRunner().invoke(app, ["kb", "query", '{"from": facts}'])
+
+    assert result.exit_code == 1
+    assert "not valid JSON" in result.output

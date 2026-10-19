@@ -136,7 +136,12 @@ def test_auth_set_scope_without_a_project_refuses_when_not_interactive(authentic
 
 def _proposal_routes():
     created = respx.post(f"{API}/v1/knowledge/wiki/proposals").respond(
-        json={"id": "prop-1", "status": "pending", "proposal_type": "create"}
+        json={
+            "id": "prop-1",
+            "status": "pending",
+            "proposal_type": "create",
+            "content_hash": "ab" * 32,
+        }
     )
     accepted = respx.post(f"{API}/v1/knowledge/wiki/proposals/prop-1/accept").respond(
         json={"proposal_id": "prop-1", "status": "accepted"}

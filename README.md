@@ -175,6 +175,10 @@ that takes `--project` uses it by default. `--project` (also `-P`, and `--scope`
 the word the MCP tools use) takes a project id, slug or exact name. Project
 resolution order: the flag, `BEAKR_PROJECT_ID`, the nearest
 `.beakr/project.json`, then the default set by `beakr auth set-scope`.
+When the MCP server starts inside a bound directory or with `BEAKR_PROJECT_ID`
+set, the tools that read that project by default (`documents`, `research`,
+`wiki_stats`, `wiki_graph`) are listed without their `project` parameter, so
+an agent works in the pinned project instead of guessing a name.
 
 At a terminal, results are tables and text. When stdout is not a terminal (an
 agent or a script), each object is one tab-separated line -- its id, its name,
@@ -255,6 +259,7 @@ key can carry). A call outside a key's scopes exits 3 and names the missing scop
 ```bash
 beakr projects ls | create NAME | show ID | archive ID | rm ID
 beakr projects status -P ID | retry -P ID [--file FILE_ID]   # Knowledge: ready? what failed?
+beakr projects profile show -P ID | set -P ID ... | edit -P ID # what Knowledge should understand
 beakr projects members ls ID | add ID USER_ID | invite ID EMAIL | rm ID TYPE PRINCIPAL_ID
 beakr members ls | role USER_ID admin | rm USER_ID
 beakr upload report.pdf data/ --project <id> --folder <folder-id>
@@ -265,6 +270,27 @@ beakr integrations tools --provider slack           # what your connected integr
 beakr integrations call slack_search --arg query="assay handover"
 beakr doctor                                        # auth, scopes, API, MCP, hooks, version
 ```
+
+### Tell Knowledge what a project is about
+
+A project's Knowledge profile steers how its files are compiled: what the
+project is for, the people, organizations and topics that matter, and the kinds
+of things to build pages for. Set it before or after uploading; Knowledge reads
+it when it next compiles files. Only the project's owners may change it.
+
+```bash
+beakr projects profile set -P Basel \
+  --description "Batch records, deviations and CAPAs for the Basel site" \
+  -t batch -t deviation -t capa -t supplier \
+  --person "Priya Natarajan:Batch owner" --goal "Track deviations to closure"
+beakr projects profile set -P Basel --file profile.yaml   # the whole profile (JSON or YAML)
+beakr projects profile edit -P Basel                      # as YAML in $EDITOR
+beakr projects profile show -P Basel
+```
+
+Flags change only the fields they name (a repeated flag replaces that list) and
+create the profile when the project has none; `--file` replaces the whole
+profile and refuses unknown fields.
 
 ### Know when Knowledge is ready
 
@@ -329,11 +355,21 @@ beakr interviews link ls | revoke LINK_ID
 
 ## Knowledge cards
 
-Project-map cards hold Facts, Connections and dated Findings. Writes stage a
-proposal (or apply at once when your auto-approve is on):
+Project-map cards hold Facts, Connections and dated Findings. Knowledge reads
+four ways, and they combine: as a file system (`kb ls`, `kb cat`, `kb grep`), a
+graph (links, hover, timeline), a database (`kb rows`) or by meaning (`kb
+sections`). `kb rows` is every card's rows as one table; each row shows its
+entity (card title), entity_type (page type), the field, the value (or to),
+When and sources, and the header names the table. `--match exact|similar|meaning`
+sets how `--attribute` finds a field (meaning, the default, also takes the
+closest name by meaning where the rows index is on). Writes stage a proposal
+(or apply at once when your auto-approve is on):
 
 ```bash
 beakr kb rows --table facts --entity "Stripe" --current-only
+beakr kb rows --table facts --type matter --attribute "start date" --match similar
+# where enabled: one SELECT over every card's rows, parsed (never run as SQL)
+beakr kb query "SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC"
 beakr kb add-fact "Stripe" --attribute "contract renewal" --value "2027-01-31" \
     --evidence "{{doc:abc123}}" --rationale "From the signed order form"
 beakr kb add-connection "Stripe" --relation "billing provider for" --to "Platform" \
@@ -344,7 +380,8 @@ beakr kb edit-rows "Stripe" --table facts \
     --old-row '{"attribute": "tier", "value": "Basic"}' --row '{"attribute": "tier", "value": "Pro"}' \
     --rationale "Upgraded"
 beakr kb proposals ls
-beakr kb proposals accept <proposal-id>
+beakr kb proposals show <proposal-id>   # prints its content hash
+beakr kb proposals accept <proposal-id> --reviewed-hash <content-hash>
 ```
 
 ## Agents: context, session capture, skills
@@ -535,6 +572,7 @@ beakr kb ls --roots              # top-level pages only
 beakr kb ls --parent "My Page"   # children of a page
 beakr kb cat "Page Title"
 beakr kb search "authentication flow"
+beakr documents search "who covers losses from defects"   # the original files, by meaning
 beakr kb sources "API Design"
 beakr kb log
 
@@ -549,7 +587,9 @@ beakr kb propose edit --project <project-id> "Launch Plan" --file launch.md --se
 beakr kb proposals ls
 beakr kb proposals ls --mine
 beakr kb proposals show <proposal-id>
-beakr kb proposals accept <proposal-id>
+# Bound to the read you reviewed: a proposal changed since is refused. At a
+# terminal without --yes, accept shows the proposal and asks instead.
+beakr kb proposals accept <proposal-id> --reviewed-hash <content-hash>
 
 # Output JSON (for piping)
 beakr kb ls --json
@@ -594,7 +634,9 @@ The MCP contract intentionally does not expose Unit IDs, connector IDs, artifact
 MCP writes follow the same proposal workflow as the CLI. Pass `scope` with a
 project name or ID. They do not write immediately; the assistant should show or
 list the proposal and only call `accept_proposal` after the user explicitly asks
-to apply that proposal.
+to apply that proposal, passing the `content_hash` that `show_proposal` printed as
+`reviewed_hash`. A proposal that changed after it was shown is refused, and one
+that changes card table rows is not accepted without the hash.
 
 ## Project-scoped install
 

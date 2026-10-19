@@ -28,18 +28,27 @@ from beakr_cli.updates import (
 _INSTRUCTIONS = (
     "Beakr is the team's organizational memory: decisions, processes, ownership and "
     "dated events, so 'why did we do X' is one search away.\n\n"
-    "Answer questions about the user's org with citations. Start with knowledge_base "
-    "command='sections' to find relevant cited sections. Check the excerpt's fidelity "
-    "before quoting it, and open the source when a deciding detail is missing. For "
-    "'every X', counts and superlatives use 'ls' (by page_type) or 'rows' to compare "
-    "cards, then inspect coverage: compilation, scan and result limits can omit records. "
+    "Answer questions about the user's org with citations. Knowledge reads four ways that "
+    "combine: by meaning (knowledge_base command='sections', for what you can describe), "
+    "as a file system (ls, cat, grep for pages, exact names and ids), as a graph (links, "
+    "hover, timeline: a record's parties, documents and events) and as a database ('rows': "
+    "every card's Facts, Connections and Findings, each row with its entity, entity_type, "
+    "table, field, value, When and sources; filter by page_type, entity and table). Find by "
+    "meaning or in the database, walk the graph, confirm in the original. Check the "
+    "excerpt's fidelity before quoting it, and open the source when a deciding detail is "
+    "missing. For 'every X', counts and superlatives use 'rows' or 'ls' (by page_type), "
+    "then inspect coverage: rows holds only what was structured, and compilation, scan and "
+    "result limits can omit records. "
     "An absent row or graph link does not establish absence from the source documents. "
     "When 'next' appears, follow it; a card scan cap requires narrower searches, "
     "whereas row offset only pages rows already found. Exact wording: "
     "command='sources' {page} lists every cited passage. Each citation reads as the "
-    "document and the place in it, in parentheses (memo.pdf \u203a p. 7), and each Sources "
+    "document and the place in it, in parentheses, naming the file by its drive path "
+    "when it is known (deals/acme/memo.pdf \u203a p. 7), and each Sources "
     "line names where a document lives and every place cited in it: read_file with that "
-    "path \u203a place or a file id opens the original there. Check a "
+    "path \u203a place or a file id opens the original there. A cited message, email, "
+    "event or comment is dated by its own time, and its url opens that item when the "
+    "connector gives one. Check a "
     "decisive value in the file; when the file and a card disagree, the file wins. In a "
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
@@ -139,6 +148,10 @@ def _format_proposal(data: dict) -> str:
         lines.append(f"Page: {data['page_title']}")
     if data.get("summary"):
         lines.append(f"Summary: {data['summary']}")
+    from beakr_cli.proposal_accept import review_lines
+
+    # Printed plainly: accept_proposal takes content_hash back as reviewed_hash.
+    lines.extend(review_lines(data))
     if data.get("proposal_type") == "find_replace":
         lines.append(
             f"Changes: {payload.get('total_matches', 0)} match(es) across "
@@ -492,11 +505,21 @@ async def knowledge_base(
     Graph:
       links      {page}  Backlinks.     references {page}  Links plus prose mentions.
       timeline   {timeline_query?, start_date?, end_date?, include_content?, include_approx?}
-      rows       {table: facts|connections|findings, page_type?, entity?, attribute?, query?,
-                  start_date?, end_date?, current_only?, order_by?, descending?, limit?, offset?,
-                  include_evidence?}
-                 Every map card's rows as one table, each tagged with its card (entity).
+      rows       {table: facts|connections|findings, page_type?, entity?, to?, connected_to?,
+                  attribute?, match?, query?, start_date?, end_date?, current_only?, as_of?,
+                  order_by?, descending?, group_by?, limit?, offset?, include_evidence?}
+                 A database over every map card's rows, each tagged with its card (entity):
+                 use it first for every, how many, latest, largest and as-of questions.
+                 as_of gives each card's value on a date; connected_to keeps cards linked
+                 to a page; order_by amount or date sorts typed values.
+                 match: exact (the field name or an alias), similar (also names holding
+                 its words) or meaning (default; also the closest name by meaning where
+                 the rows index is on); the reply says which field it used.
                  include_evidence adds each row's cited passage (at most 50 rows).
+      query      {spec}  Where enabled: structured filters, joins, groups and aggregates
+                 over every card's rows when rows can't express it. spec is JSON, never
+                 SQL: from, where (and/or/not), join (up to 2: same_card, target_card),
+                 group_by, aggregate, order_by, limit (50, max 200), cursor, semantic.
                  current_only keeps the latest When per attribute; a connection's `to` is
                  an entity, so facts and connections join on it.
       ontology   {include_proposed?}   suggest_parent {page | title, content?}
@@ -620,7 +643,7 @@ async def documents(
     data = await _call_api(
         lambda sdk: sdk.knowledge.documents(command, project_id=scoped, **(arguments or {}))
     )
-    return {
+    result: dict[str, Any] = {
         "content": data.get("content", ""),
         "sources": [
             _public_source(source, citation_key=key)
@@ -628,6 +651,13 @@ async def documents(
         ],
         "status": "error" if data.get("is_error") else "ok",
     }
+    # A search's documents, each a public record with its passages, already
+    # projected and budgeted by the engine (as the hosted server passes them).
+    if isinstance(data.get("results"), list):
+        result["results"] = data["results"]
+    if data.get("next"):
+        result["next"] = list(data["next"])
+    return result
 
 
 @mcp.tool(**tool_surface.tool_kwargs("research"))
@@ -888,15 +918,58 @@ async def show_proposal(proposal_id: str) -> str:
 
 
 @mcp.tool(**tool_surface.tool_kwargs("accept_proposal"))
-async def accept_proposal(proposal_id: str) -> str:
+async def accept_proposal(proposal_id: str, reviewed_hash: str = "") -> str | dict[str, Any]:
     """Accept and apply a wiki proposal.
 
     Only call this after the user explicitly asks to accept/apply this specific
     proposal. Do not create and accept a proposal in the same assistant step
-    unless the user already explicitly requested that behavior.
+    unless the user already explicitly requested that behavior. ``reviewed_hash``
+    is the content_hash show_proposal printed for the proposal that was reviewed.
     """
-    data = await _call_api(lambda sdk: sdk.knowledge.proposals.accept(proposal_id))
-    return f"Accepted proposal {data.get('proposal_id', proposal_id)}."
+    from beakr_cli.mcp_errors import ApiCallError
+    from beakr_cli.proposal_accept import (
+        CHANGED_FIX,
+        CHANGED_MESSAGE,
+        PROPOSAL_CHANGED,
+        REVIEW_REQUIRED,
+        REVIEW_REQUIRED_MESSAGE,
+        ReviewRequired,
+        accept_reviewed_async,
+        accepted_text,
+        checked_hash,
+    )
+
+    try:
+        reviewed = checked_hash(reviewed_hash)
+    except ValueError as exc:
+        return {
+            "status": "error",
+            "error_code": "invalid_arguments",
+            "message": str(exc),
+            "fix": "Call show_proposal and pass its content_hash unchanged.",
+        }
+    # Bound to the caller's review: the hash is never taken from a read made here.
+    try:
+        result = await _call_api(lambda sdk: accept_reviewed_async(sdk, proposal_id, reviewed))
+    except ReviewRequired:
+        return {
+            "status": "error",
+            "error_code": REVIEW_REQUIRED,
+            "message": REVIEW_REQUIRED_MESSAGE,
+            "fix": "Call show_proposal, review it, then call accept_proposal again with its "
+            "content_hash as reviewed_hash.",
+        }
+    except ApiCallError as exc:
+        if exc.fields.get("error_code") != PROPOSAL_CHANGED:
+            raise
+        changed = ApiCallError(
+            f"{CHANGED_MESSAGE} To fix: {CHANGED_FIX}",
+            request=exc.request,
+            response=exc.response,
+        )
+        changed.fields = {**exc.fields, "message": CHANGED_MESSAGE, "fix": CHANGED_FIX}
+        raise changed from exc
+    return accepted_text(result, proposal_id)
 
 
 @mcp.tool(**tool_surface.tool_kwargs("dismiss_proposal"))

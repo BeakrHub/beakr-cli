@@ -222,13 +222,34 @@ def test_interviews_link_create_show_send_and_revoke():
         json={
             "link_id": "l1",
             "status": "completed",
-            "write_up": "They run controls first.",
+            "write_up": {"text": "They run controls first.", "revision": 1},
+            "transcript": [
+                {"type": "agent_question", "text": "How do you run controls?"},
+                {"type": "user_answer", "text": "Controls go first on every plate."},
+            ],
+            "knowledge": [{"project_id": "p1", "project_name": "Assays", "status": "done"}],
             "completed_at": "2026-10-13T00:00:00Z",
         },
     )
-    shown = runner.invoke(app, ["interviews", "link", "show", "l1"])
-    assert shown.exit_code == 0, shown.output
-    assert "They run controls first." in shown.output
+    respx.get(f"{API}/v1/interview/sendables").respond(
+        200,
+        json={
+            "data": [{"id": "s1", "title": "Assay handover", "links": [{"link_id": "l1"}]}],
+            "next_cursor": None,
+            "has_more": False,
+        },
+    )
+    # The API returns the write-up as {"text", ...}: show printed only the status
+    # when it expected a plain string, so the write-up, transcript and filings
+    # must reach a person and an agent alike.
+    for mode in ("human", "compact"):
+        shown = runner.invoke(
+            app, ["interviews", "link", "show", "l1"], env={"COLUMNS": "200", "BEAKR_OUTPUT": mode}
+        )
+        assert shown.exit_code == 0, (mode, shown.output)
+        assert "They run controls first." in shown.output, mode
+        assert "Controls go first on every plate." in shown.output, mode
+        assert "Assays" in shown.output and "done" in shown.output, mode
 
     send = respx.post(f"{API}/v1/interview/sendables/links/l1/knowledge").respond(
         200, json=[{"project_id": "p1", "status": "queued"}]
@@ -247,6 +268,64 @@ def test_interviews_link_create_show_send_and_revoke():
 def test_interviews_link_create_needs_a_goal_or_a_question():
     result = runner.invoke(app, ["interviews", "link", "create", "Assay handover"])
     assert result.exit_code == 2
+
+
+@respx.mock
+def test_interviews_link_ls_shows_each_links_id():
+    # ls listed only interview ids while show/send/revoke need a link id, so the
+    # id people copied from ls answered 404; each link's id must be in the table.
+    respx.get(f"{API}/v1/interview/sendables").respond(
+        200,
+        json={
+            "data": [
+                {
+                    "id": "s1",
+                    "title": "Assay handover",
+                    "links": [{"link_id": "link-abc", "label": "Ada", "status": "completed"}],
+                }
+            ],
+            "next_cursor": None,
+            "has_more": False,
+        },
+    )
+    for mode in ("human", "compact"):
+        result = runner.invoke(
+            app, ["interviews", "link", "ls"], env={"COLUMNS": "200", "BEAKR_OUTPUT": mode}
+        )
+        assert result.exit_code == 0, (mode, result.output)
+        assert "link-abc" in result.output, mode
+        assert "completed" in result.output, mode
+
+
+@respx.mock
+def test_interviews_link_show_accepts_an_interview_id_with_one_link():
+    respx.get(f"{API}/v1/interview/sendables").respond(
+        200,
+        json={
+            "data": [{"id": "s1", "title": "T", "links": [{"link_id": "l1"}]}],
+            "has_more": False,
+        },
+    )
+    route = respx.get(f"{API}/v1/interview/sendables/links/l1/result").respond(
+        200, json={"link_id": "l1", "status": "pending"}
+    )
+    result = runner.invoke(app, ["interviews", "link", "show", "s1"])
+    assert result.exit_code == 0, result.output
+    assert route.called
+
+
+@respx.mock
+def test_interviews_link_show_names_the_links_of_an_interview_with_several():
+    respx.get(f"{API}/v1/interview/sendables").respond(
+        200,
+        json={
+            "data": [{"id": "s1", "title": "T", "links": [{"link_id": "l1"}, {"link_id": "l2"}]}],
+            "has_more": False,
+        },
+    )
+    result = runner.invoke(app, ["interviews", "link", "show", "s1"])
+    assert result.exit_code == 2
+    assert "l1" in result.output and "l2" in result.output
 
 
 @respx.mock

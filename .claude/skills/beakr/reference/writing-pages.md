@@ -24,7 +24,7 @@ Use this workflow when the user wants to create or update a page. Every change g
 
 ## Adding to a project-map card
 
-A map card has a Description, a Facts table (`| Attribute | Value | When | Evidence |`), a Connections table (`| Relation | To | When | Evidence |`) and dated Findings. Nuance stays in the value's own words. Add to it one row at a time; each is merged into the live card, so never resend a whole table:
+A map card has a Description, a Facts table (`| Attribute | Value | When | Evidence |`), a Connections table (`| Relation | To | When | Evidence |`) and dated Findings. Nuance stays in the value's own words. Add to it one row at a time; each is merged into the live card, so never resend a whole table. Its Facts, Connections and Findings rows are protected: they change only through `add_fact`, `add_connection`, `add_finding`, `edit_rows` and `sort_table`, and an `edit_section`, `edit` or `find_replace` that would change a row is refused. `edit_rows` takes `table` `facts`, `connections` or `findings` (a finding is named by its `date` and `text`):
 
 ```
 knowledge_base_write(
@@ -124,4 +124,4 @@ Set `stance` to `support`, `qualifies`, or `contradicts`. It defaults to `suppor
 
 ## After proposing
 
-Show the user what you staged with `show_proposal`. Call `accept_proposal` only when the user explicitly asks to apply that proposal. `knowledge_base` command `proposals` lists what is still pending; a proposed page does not exist in `ls`, `cat`, or search until accepted.
+Show the user what you staged with `show_proposal`, which prints its `content_hash`. Call `accept_proposal` only when the user explicitly asks to apply that proposal, with that hash as `reviewed_hash`: the accept then applies exactly what was shown, and a proposal that changed in between is refused (`proposal_changed`; show it again). Take the hash from the read the user reviewed, never from a fresh read made just before accepting. A proposal that changes a card's table rows is not accepted without it. `knowledge_base` command `proposals` lists what is still pending; a proposed page does not exist in `ls`, `cat`, or search until accepted.

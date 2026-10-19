@@ -1,0 +1,19 @@
+{
+  "operation": "POST /v1/artifacts/download-url",
+  "source": "synthesized",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "url": "https://storage.test/artifacts/helios-charter.pdf?X-Amz-Signature=snapshot",
+    "expires_in": 120,
+    "filename": "helios-charter.pdf",
+    "mime_type": "application/pdf",
+    "file": {
+      "id": "7b0e2f1c-4a9d-4c38-9f61-2d5e8a3b9c10",
+      "version_id": "1f2e3d4c-5b6a-4978-8a9b-0c1d2e3f4a5b",
+      "title": "helios-charter.pdf",
+      "display_path": "Helios/helios-charter.pdf",
+      "upload_path": null
+    }
+  }
+}

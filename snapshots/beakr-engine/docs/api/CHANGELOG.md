@@ -11,21 +11,372 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c5f919d170b2ecf76957d8f8dae2bccfd091ca891327a9350bb3285af345eb81 changelog sha256=c1b70592e1a74a91f35fccb355be709d400466d955c62598d1c7fb868202d966 -->
+<!-- contract-stamp: public-openapi sha256=ccb7f99998cfb037b786dba10f0f6e26d6fe961056b57c72bb9ae72c04b1a965 changelog sha256=8459678e4c0dc1c056e1010f639076d47f38290ae8a86fecbfc2910bd5b4bb80 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
-  `GET /v1/threads/{thread_id}` return `origin`: null for a
-  conversation started in the web app or through the API, or `slack`, `email`
-  or `text` for one a person started by messaging Beakr there.
+- `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
+  and set a project's Knowledge profile, the description, goals, focus areas,
+  people, organizations, topics, entity types and extraction guidance that
+  steer how Knowledge compiles the project's files. `GET` needs `kb:read`;
+  `PUT` (the whole profile; answers 201 when it created the profile, 200 when it
+  replaced one) and
+  `PATCH` (the fields sent) need `kb:write` and the project's owners. A project
+  with no profile answers 404 `knowledge_profile_not_found`. A
+  project-restricted credential reaches its own projects' profiles.
+
+- `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
+  counts each value of a cell listing several (`A; B`) in each value's group,
+  as `rows` `group_by=value` does; a value repeated in one cell counts once.
+
+- `POST /v1/knowledge/wiki/command` reads (`cat`, `sections`, `grep` and the
+  rest) and research answers name a cited file inline by its drive path when
+  it is known, `(deals/acme/memo.pdf › p. 7)`, instead of its file name alone,
+  in body citations and in each `sections` hit's documents line. The path is
+  what `documents` `read` and `POST /v1/artifacts/read` open and what a write
+  accepts as a citation `reference`.
+
+- `POST /v1/knowledge/documents` `read`: a path that names no document, whose
+  file name is one document's in the same record folder, opens that document,
+  and the reply's first line names the path it opened; the same name in other
+  folders is suggested. A read of a spreadsheet (.xlsx or .csv) whose indexed
+  text is a profile ends with the first 50 rows of each sheet, read from the
+  original file.
+- `POST /v1/knowledge/wiki/command` `rows`: `entity` takes several titles, as
+  a list, `a|b|c`, or `^(a|b)$`, and reads the cards each one names (it was
+  read as one title and matched nothing); the reply names any title that
+  matched no card, with the closest title, and the `entity` description says
+  so. `attribute` with `match=exact` is
+  compared by name when `regex` is true. `group_by=value` counts each value of
+  a cell listing several (`A; B`) in each value's group. A `page_type` no card
+  in scope has names the closest card types. A regex that runs out of time
+  says how many rows it read and which filters narrow the read.
+- `POST /v1/knowledge/wiki/command` `query`: `JOIN ... ON a.entity = b.entity`
+  reads as `SAME_CARD(a)`, and `to_title` is the connection's `to`. A query
+  over a scope where only some cards are being reindexed runs, and its first
+  line says how many cards are reindexing; only a scope whose every card is
+  being reindexed is refused with `index_not_ready`. An empty result for an
+  `entity_type` no card in scope has names the closest card types.
+
+- `POST /v1/knowledge/wiki/command` `cat` and `hover`: a reference such as
+  `"matter PRJ-118"` opens the page `PRJ-118` names, and when the title given
+  after an identifier disagrees with the page it opens, the first line says
+  so. Titles suggested on a miss are those led by an identifier sharing its
+  first segment. `grep` and `sections` refused for `offset` name `grep`'s
+  `after_title` and `after_page_id` (`sections` does not page), and `grep`
+  refused for `page` points to `cat`.
+- `POST /v1/knowledge/documents` `grep`: a regex with a global inline flag
+  after its start, such as `MFN|(?i)most favored`, runs with the flag moved to
+  the start (it applies to the whole pattern), and the reply says so. It used
+  to be refused.
+
+- `POST /v1/knowledge/documents` `grep` given `query` and no `pattern` uses the
+  query as the pattern, and the reply's first line says so (it was refused with
+  `pattern is required`). `read` takes a document key carrying the full id, such
+  as `artifact:<id>` from a Knowledge source list, with or without braces (it
+  was looked up as a title).
+
+- `POST /v1/knowledge/wiki/command` `query` with an `entity_type` and a `field`
+  condition, and `rows` with `page_type` and an `attribute` or `field_id`, say
+  which cards of that type hold no value for the field, since no filter on the
+  field can list them: a line `K of N <type> cards have no <field>: <up to 10
+  titles> (open them to check).` The `query` result carries it as `missing`
+  (`field`, `page_types`, `missing`, `cards`, `titles`). Only cards you can
+  read are counted or named.
+- `POST /v1/knowledge/wiki/command` reads `rows` `value` as `query` and `rows`
+  `entity_type` as `page_type`, and a `timeline` cursor sent as `offset` as
+  `cursor`, instead of answering `400`; the reply's first line names each one
+  (for example "Read `entity_type` as page_type (the card type)."). Sent beside
+  a different value for that option, it is still refused. `query` reads an
+  `offset` beside `sql` or `spec` as the cursor that many rows in (it was
+  ignored), said in `Applied:`.
+- `POST /v1/knowledge/wiki/command` `cat` and `hover` given a reference that
+  names no page but starts with an identifier and a title separator (for
+  example `"PRJ-118 — Lease Dispute"`) open the one page that identifier
+  names, as its exact title, alias, or the start of its title, and say so on
+  the first line. When it names several pages or none, the `page_not_found`
+  error lists the titles to retry.
+- `POST /v1/knowledge/documents` `ls` with a `glob` lists the matching
+  documents, flat, with or without `recursive`. It used to list only the
+  folders holding them.
+
+- `POST /v1/knowledge/documents` and `POST /v1/knowledge/wiki/command` accept a
+  call that sends every option, as clients using strict function calling do.
+  An unset option may be sent as `""`, `0` or `false` on `documents`, and
+  `group_by` takes `"none"`; `0` for a count, a limit or a line number means its
+  default (it used to be raised to 1, or refused for `end_line`), and `read`
+  with `start_line` `0` reads the passage its citation token names. On
+  `wiki/command`, `0` for `limit`, `rev`, `rev2`, `matches_per_page` or
+  `sources_per_section` means its default, and an option the command does not
+  take is accepted when it is `0` or its default (`mode` `text`, `table`
+  `facts`, ...). `cat` resolves a page given as a citation token with a missing
+  closing brace.
+
+- `POST /v1/knowledge/wiki/command` `query` `sql` reads `SELECT DISTINCT keys`
+  as `GROUP BY` those keys, and accepts `LOWER()` and `UPPER()` around a
+  condition's column or text (matching is already case-insensitive); the reply's
+  `Applied:` line says so, with `adjustment_kinds` `distinct_grouped` and
+  `case_function_ignored`. In `LIKE`, `%` and a leading or trailing `_` are
+  wildcards: `field LIKE '%ettlement%'` (and `spec` `{"field": {"contains":
+  "..."}}`, match `contains`) is every field whose name contains the text, any
+  case, each listed in `Resolved:`; `value LIKE 'settle%'` means the value
+  contains "settle". A field condition in an OR that matches no field leaves
+  that branch out (`adjustment_kinds` `or_branch_dropped`) instead of refusing
+  the query.
+  `field CONTAINS 'x'` matches field names too (at most 25 fields, the rest
+  counted in `Resolved:`); an entity naming no readable card is said in
+  `Applied:` (`or_branch_dropped`, `entity_unmatched`). Backticked names,
+  `when_end`, `when_date` and `valid_from` (as `when`) are accepted; a
+  subquery, `GROUP_CONCAT`, an unsupported JOIN shape, the evidence columns
+  and more than 24 conditions are refused with the call that answers each.
+  Field-name lookups across a whole project no longer run out of time.
+  A `value` text condition alone runs card first; one on too many cards is
+  refused at once (`invalid_arguments`) with the narrower call.
+- `POST /v1/knowledge/wiki/command` `grep` given a `documents grep` option
+  (`path`, `glob`, `document`, ...) is refused with the `documents grep` call
+  that takes it.
+
+- `POST /v1/knowledge/wiki/write` `edit_rows`: an `old_rows` entry may give a
+  long value by its start, up to a word end or ending in `...`, when exactly one
+  row of that field starts that way. A start that several rows share is refused
+  with each row's start. Refusals show long values by their start.
+
+- `POST /v1/knowledge/wiki/command` `rows` with `current_only` (and `as_of`):
+  rows of one field that one document gives for the same When, or all without a
+  When, are a list, and every one of them is current. Only the last such row
+  used to be current. A later When, or another document's value, still replaces
+  the earlier one.
+
+- `POST /v1/knowledge/research` and `GET /v1/knowledge/wiki/search` no longer
+  slow down other requests while they wait on the database. When every
+  research worker on a server stays busy for 30 seconds, research answers
+  `503 server_busy` with `Retry-After` and is not charged; retry once after
+  that wait.
+
+- `POST /v1/knowledge/documents` answers carry their outcome as data. A refused
+  call has `error_code` (`invalid_arguments`, `invalid_pattern`,
+  `document_not_found`, `timeout`, `scope_unavailable`). A `grep` or `search`
+  has `coverage`: `complete`, `reason` (`page`, `time_budget`, `scan_budget`,
+  `catalog_cap`), `documents_considered`, `documents_checked`, `total`,
+  `resume_after_document`, `next_offset` and `continue_with`, the arguments to
+  change in the same call to continue it, as Knowledge reads' `coverage` has. A `grep` whose pattern is made of
+  common or short words (for example `Form RW`) no longer times out with no
+  answer: it answers within about 20 seconds with the documents it checked,
+  marked partial, and how to resume or narrow it. `grep` takes `group_by:
+  "folder"` with `folder_depth` (default 2) to count matches per folder with
+  `output_mode` `count` or `files_with_matches`. `ls` applies `glob`, which it
+  used to ignore.
+
+- `POST /v1/knowledge/wiki/command` answers 400 when the body carries an option
+  the command does not take, naming each one, the likely option meant (`rows`
+  `value` -> `query` with `attribute`; `pattern` -> `query`; `max_results` ->
+  `limit`) and every option the command takes. Such options used to be ignored,
+  so a filtered read ran unfiltered. An option sent as `null`, `""`, `[]`, `{}`
+  or `false` is still accepted. `query` validates its own input as before.
+
+- `POST /v1/knowledge/wiki/command`: a `rows`, `ls`, `grep`, `sources` or
+  `sections` reply cut to fit the response budget is cut between whole rows,
+  pages, documents or hits, and its text says what it shows: the range
+  (`Showing 1-98 (cut to fit the response budget)`), the NOT ALL notice and the
+  continuation (`offset=98`, or `after_title`/`after_page_id`/`after_source_id`
+  of the last item shown) all describe the items kept. `coverage.returned` and
+  `coverage.next_offset` count what was shown, and the new
+  `coverage.continue_with` holds the arguments that continue the read. The
+  first `next` step says how to continue. These used to describe the uncut
+  window, so the stated offset skipped the rows that were cut.
+
+- `POST /v1/knowledge/wiki/command` `rows` takes `view: "census"`: each row's
+  entity and value only (the field's name only when the window holds more than
+  one, When only when stated), 300 rows by default (at most 500), with every
+  `rows` filter. It is held to the hard response cap rather than the target so
+  one field over a few hundred records fits one call. Cite a row as
+  `(entity › Facts)`. `group_by` and `include_evidence` are refused with it.
+
+- `POST /v1/knowledge/wiki/command` `grep` in text mode reads a hyphen, a space
+  and an en dash alike: `key person` finds `Key-Person`, and
+  `patent-infringement` finds `patent infringement`. Regex mode is unchanged.
+
+- The hosted MCP server repairs a call whose shape has one reading (options
+  beside `arguments` instead of inside it, `arguments` sent as a JSON string,
+  tool-call markup such as `<arg_key>` inside a value, a `knowledge_base`
+  `read_file` command, which runs as the `read_file` tool) and says what it
+  repaired on the reply's first line. A call with more than one reading is
+  refused with `invalid_arguments` and the tool's shape.
+
+- `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write` and
+  `POST /v1/knowledge/documents` no longer slow down other requests while one
+  of them waits on a long database read. When every reader on a server stays
+  busy for 30 seconds they answer `503 server_busy` with `Retry-After`; retry
+  the same call once after that wait.
+
+- `POST /v1/knowledge/documents` `search` answers within about 8 seconds when
+  the embedding service is slow or failing: it ranks the passages by wording
+  alone and says so (the first line reads "ranked by wording only", a notice
+  gives the reason, and `results` carry no `match` label), where it used to
+  wait for two full attempts or fail. A repeated query reuses its embedding
+  for 15 minutes. `grep` `glob` (and `path`) take `{a,b}` alternatives, for
+  example `*.{docx,pdf}`, which used to select no document; a comma inside
+  braces does not split a comma-separated `glob` list. A `grep` pattern that
+  requires two terms with lookaheads, `(?s)(?=.*first)(?=.*second).*` with
+  `multiline`, now reads only the passages holding both terms instead of
+  scanning every document until the time budget ran out. A `pattern` that
+  reads as a file-name glob (`*.docx`) is refused with a pointer to `glob`.
+
+- `POST /v1/knowledge/wiki/command` answers 400 when the body nests the
+  command's options under `arguments` or `args`: the options go at the top
+  level of the body, next to `command`. They used to be ignored, so the read
+  ran without them.
+
+- `POST /v1/knowledge/wiki/command` `query` with `as_of` (`AS OF` in `sql`)
+  keeps, for a card whose field has no dated value at all, its current undated
+  value instead of leaving the card out; the answer's `Applied:` line (and the
+  `query` object's `applied`) says how many cards were answered that way. A
+  `spec` sent with its keys at the top level beside `command`, and a SELECT sent
+  as `query`, now run, and the answer says how they were read; a guessed
+  `{"table": ..., "filters": [...]}` is refused with the `sql` call it most
+  likely meant. In a `spec`, `field` also takes `{"equals"|"contains"|"like"|
+  "meaning": name}`. Knowledge text that points at a cited file names `read_file`
+  to the hosted MCP server and `documents read` to other callers.
+
+- `POST /v1/knowledge/wiki/command` `query` answers open with what the query
+  was understood as: for `sql`, a `Translated to spec:` line with the spec as
+  JSON; then the total and the query in words; a `Resolved:` line naming the
+  stored field and card type each condition matched, how (exact, alias, words,
+  meaning) and the exact name's card count, with a near name held by many more
+  cards when the exact name is sparse; and an `Applied:` line listing what was
+  defaulted, capped or applied (a default LIMIT or ORDER BY, AS OF per card, an
+  added COUNT, a sum split by unit). The `query` object adds the same as
+  `resolved` and `applied`, and `unit` (`row`, `group` or `field`). A `sql`
+  LIMIT above 200 is capped to 200 and said, instead of refused. A SUM or AVG
+  of `value_amount` or `value_number` is split by a `unit` column (the
+  currency, `%`, or the word after the number), so different units and
+  currencies are never added into one total.
+
+- `POST /v1/knowledge/wiki/command` `query` takes `sql`: one SELECT, such as
+  `SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE
+  WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER
+  BY cards DESC`. The text is parsed into the same query a `spec` describes and
+  never runs as SQL: it reads facts, connections or findings, joins along
+  `SAME_CARD(a)` or `TARGET_CARD(a)` (up to two), filters with WHERE (AND, OR,
+  NOT, parentheses; `field =` the exact name, `LIKE` by words, `~` by meaning;
+  `value` text, `IN`, `CONTAINS` and typed `>`, `>=`, `<`, `<=`, `BETWEEN`),
+  `AS OF` a day or `CURRENT_DATE`, groups with GROUP BY, aggregates with
+  `COUNT(*)`, `COUNT(DISTINCT key)`, `MIN`, `MAX`, `SUM`, `AVG`, and takes
+  ORDER BY and LIMIT. Text outside the grammar answers `invalid_arguments`
+  stating the grammar and an example; sending both `sql` and `spec` is refused.
+  Every `query` answer adds a `query` object: the `spec` that ran, the query
+  in words (`ran`), `notices`, the window's `columns` and `rows`, `total` and
+  `next_cursor` (send it as `cursor` with the same `sql` or `spec`) and
+  `elapsed_ms`. A field asked by a name few cards hold while a near name
+  holds it on many more is named on the answer's first line and in `notices`. In a `spec`, `as_of`
+  takes `today`, and an `aggregate` without `group_by` answers one row over
+  every match (it used to be ignored).
+
+- `POST /v1/knowledge/wiki/command` adds the `query` command (where enabled for
+  the organization): `spec` is a JSON object, not SQL, run over every map
+  card's rows under the caller's access and the request's scope. `from` is
+  facts, connections or findings; `where` is an and/or/not tree of conditions
+  on entity, entity_type, field (`match` exact, similar or meaning), value (eq,
+  ne, contains, in, and gt, gte, lt, lte, between on typed numbers and dates),
+  when, as_of, to and connected_to; `join` takes up to two joins, on
+  `same_card` or `target_card`; `group_by` takes field, value, entity_type or
+  entity; `aggregate` takes count, count_distinct, min, max, sum and avg;
+  `order_by`, `limit` (default 50, at most 200) and `cursor` page the result;
+  `semantic` ranks field names by meaning (`rank_fields_by`) or keeps rows
+  whose field means about a text (`field_near`). Every answer gives the total,
+  one window of rows or groups, the query described in words, and a cursor when
+  more follow. A refused spec answers `invalid_arguments` naming the key, what
+  is allowed and, for an unknown field, the closest field names; where the
+  feature is off, `feature_disabled`.
+
+- `POST /v1/knowledge/wiki/command` `rows` takes `as_of` (Facts: each card's
+  value on that date, the row with the latest When on or before it),
+  `connected_to` (only cards linked to that page, in either direction) and
+  `order_by` `amount` or `date` (Facts: money values with their scale, and
+  date values, in order). Where the rows index is enabled, a `rows` read
+  covers every card in scope with no card scan cap, `view` `fields` with a
+  `query` ranks the field names by meaning, an `attribute` that no field is
+  named resolves to the closest field by words or meaning (the reply's first
+  line names the field it used, and a field meaning the opposite is never
+  used), a `query` that no row matches in full matches the rows holding most
+  of its words, and an empty reply lists the closest fields with their card
+  counts and an example value. `rows` also takes `match`: `exact` (the field
+  name or a recorded alias, and no retry of a `query` by words), `similar`
+  (also a field holding its words) or `meaning` (the default: also the closest
+  field by meaning); without the rows index, `similar` and `meaning` match the
+  phrase or every word, as before.
+
+- `POST /v1/knowledge/wiki/command` `rows` takes `view` `conflicts` (Facts):
+  each pair of rows on one card that gives one field different values with
+  overlapping or missing When, both sides with their citations. A different
+  value with a later When is an update and is not listed.
+
+- **Search documents by meaning.** `POST /v1/knowledge/documents` (behind the
+  documents feature) adds the `search` command: passages of the original
+  documents ranked by meaning and wording, grouped by document, best first.
+  `arguments` takes `query`, `limit` (documents per page, default 8, max 25),
+  `offset`, `passages` (per document, default 2, max 5), and the same `path`,
+  `glob`, `type`, `document` and `project` filters as `grep`. Besides `content`
+  and `sources`, a search answers `results`: one source record per matching
+  document (`source_ref`, `name`, `filename`, `location` with `display_path`,
+  `file_id` and `version_id`), its `match` (`strong`, `moderate` or `weak`) and
+  `score`, and its best `passages`, each with its own `source_ref`,
+  `unit_locator`, `line_start`/`line_end` (the lines `read` takes), `section`,
+  a brief `excerpt`, `match` and `score`. A search is a ranked selection, not a
+  census: use `grep` to find or count every mention.
+- `POST /v1/knowledge/documents` takes a project name as well as an id in
+  `project_id` (or `project`); a name may match several projects you can read.
+  Without one, a command covers everything the caller can read, and a
+  project-restricted credential now covers all of its projects (it was refused
+  with `403 insufficient_scope` before). A restricted credential naming a
+  project outside its list by name answers `404 not_found`, the same as a name
+  that matches nothing.
+- **Download a file from any source record in one step.**
+  `POST /v1/artifacts/download-url` (`projects:read`) takes the `reference`
+  `POST /v1/artifacts/read` takes, including a source record's `source_ref`,
+  and answers a short-lived signed `url` for the file's original bytes, with
+  `expires_in`, `filename`, `mime_type` and the `file` (`id`, `version_id`,
+  `title`, `display_path`). A reference that names a version downloads that
+  version; any other, the current one. `inline: true` asks a browser to display
+  the file. A Knowledge page's reference answers `400 knowledge_page`, a
+  connected item's `400 not_a_file`, a Beakr document with no stored original
+  `409 no_original_file`, and a file the caller cannot read `404 not_found`,
+  the same as no file.
 - `POST /v1/knowledge/research` takes `quick`: `true` answers within 15
   seconds from one search of Knowledge and uploaded files, with a short cited
   answer. Connected integrations are not searched. The response's `engine` is
   `quick`, and `stopped_early` is `true` when the answer is the cited results
   without a written summary. Leaving `quick` out keeps research as before;
   a `quick` that is not a boolean is `422 invalid_quick`.
+- A map card's Facts, Connections and Findings rows change only through row
+  operations. `POST /v1/knowledge/wiki/write` refuses an `edit_section`,
+  `edit` or `find_replace` that would change one of their rows as markdown
+  (`invalid_arguments`, naming the row action to use); `add_fact`,
+  `add_connection`, `add_finding`, `edit_rows` and `sort_table` change them,
+  and `find_replace` may still retarget a `[[link]]` in a row. `edit_rows`
+  takes `table` `findings`, naming each finding by `date` and `text`. No
+  write may store a table row that does not parse. `GET /v1/knowledge/wiki/pages/{page_id}` adds
+  `protected_sections`, and `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` add `table_changes`: each
+  changed table's `added`, `removed` and `changed` rows (`changed_cells` names
+  what changed) with their citations, whether the table was `reordered`, and
+  the `reasons` given for the edit; `table_changes_complete` is `false` when
+  part of the change is not expressed as rows. Those protected sections hold
+  only their rows, in one canonical form: a write that puts other text in them
+  is refused with `noncanonical_table`. Proposal reads also add
+  `content_hash`, and `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept`
+  takes `reviewed_hash`, the `content_hash` echoed back: when the stored
+  proposal no longer hashes to it, nothing is applied and the answer is `409`
+  with `code` `proposal_changed`. Accepting a proposal that changes a card's
+  table rows may require it (`422` `review_required`); proposal reads say so
+  with `changes_card_tables`.
+- `GET /v1/knowledge/wiki/pages/{page_id}` adds, for a map card,
+  `contradicting_citations` (per protected section, the citation keys its
+  sources cite as contradicting what the card states) and `disputed_rows` (per
+  protected section, the `row_id`s of the rows those citations mark as
+  disputing, the ids the table and proposal reads use). A card's text does not
+  carry a citation's stance; read it here. Both are empty on any other page.
 - `POST /v1/knowledge/wiki/command` adds to the Knowledge reads:
   `links` with `direction` `out` lists the pages a page links to, with the
   relation it states (`limit`, `offset`); `rows` takes `to`, `regex`,

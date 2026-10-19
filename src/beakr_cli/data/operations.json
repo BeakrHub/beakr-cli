@@ -845,6 +845,41 @@
    "summary": "Delete a file"
   },
   {
+   "action": "download-url",
+   "anonymous": false,
+   "area": "files",
+   "body": {
+    "fields": [
+     {
+      "default": false,
+      "description": "Ask a browser to display the file instead of saving it.",
+      "name": "inline",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The file to download, in any form POST /v1/artifacts/read takes: a source record's source_ref (beakr-source:v1:...), its id or a version id, a citation token, or its path. A ` \u203a <unit>` suffix is accepted and ignored. A reference that names a version downloads that version; any other, the current version. Knowledge pages, connected items and canvases have no stored file and are refused (knowledge_page, not_a_file, no_original_file).",
+      "name": "reference",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/artifacts/download-url",
+   "paginated": false,
+   "path": "/v1/artifacts/download-url",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a download link by reference"
+  },
+  {
    "action": "get-artifact",
    "anonymous": false,
    "area": "files",
@@ -1913,7 +1948,19 @@
    "action": "accept-proposal",
    "anonymous": false,
    "area": "knowledge",
-   "body": null,
+   "body": {
+    "fields": [
+     {
+      "description": "The proposal's content_hash exactly as the proposal read returned it (echo it; do not compute it). When the stored proposal no longer hashes to it, nothing is applied (409 proposal_changed).",
+      "name": "reviewed_hash",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
    "destructive": false,
    "method": "POST",
    "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/accept",
@@ -2096,24 +2143,25 @@
    "body": {
     "fields": [
      {
-      "description": "Options for the selected documents command: pattern, document, start_line/end_line, project, path, glob, head_limit, offset, after_document.",
+      "description": "Options for the selected documents command. grep: pattern, output_mode, group_by (\"folder\") and folder_depth, path/glob/type, document, head_limit, offset, after_document. read: document, start_line/end_line. ls: path, recursive, type, glob, limit, after_document. search: query, limit (documents per page, default 8, max 25), offset, passages (per document, default 2, max 5), path/glob/type, document. Every command takes project (an id or name) to narrow further.",
       "name": "arguments",
       "required": false,
       "type": "object"
      },
      {
-      "description": "Search indexed text, read a document window, or list files.",
+      "description": "grep: literal/regex matches across indexed text; read: a document's lines; ls: the file tree; search: passages ranked by meaning, grouped by document (adds `results`).",
       "enum": [
        "grep",
        "read",
-       "ls"
+       "ls",
+       "search"
       ],
       "name": "command",
       "required": true,
       "type": "string"
      },
      {
-      "description": "Limit to this project. Required for project-restricted credentials.",
+      "description": "Limit to this project: its id or name (a name may match several projects you can read). Without it a command covers everything you can read; a project-restricted credential, all of its projects.",
       "name": "project_id",
       "required": false,
       "type": "string"
@@ -2512,7 +2560,13 @@
       "type": "string"
      },
      {
-      "description": "rows: Attribute, Relation or kind containing this.",
+      "description": "rows, facts: each card's value on this date.",
+      "name": "as_of",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "rows: the field by name, alias or meaning; replies say which field.",
       "name": "attribute",
       "required": false,
       "type": "string"
@@ -2540,10 +2594,17 @@
        "completions",
        "proposals",
        "suggest_parent",
-       "help"
+       "help",
+       "query"
       ],
       "name": "command",
       "required": true,
+      "type": "string"
+     },
+     {
+      "description": "rows: cards linked to this page.",
+      "name": "connected_to",
+      "required": false,
       "type": "string"
      },
      {
@@ -2565,7 +2626,7 @@
       "type": "boolean"
      },
      {
-      "description": "timeline without timeline_query: next_cursor from the previous result; keep the same filters.",
+      "description": "timeline without timeline_query: next_cursor from the previous result; keep the same filters. query: the cursor a reply gives, sent with the same sql or spec.",
       "name": "cursor",
       "required": false,
       "type": "string"
@@ -2602,7 +2663,7 @@
       "type": "string"
      },
      {
-      "description": "rows: card titles containing this.",
+      "description": "rows: card title(s), as a|b|c.",
       "name": "entity",
       "required": false,
       "type": "string"
@@ -2656,6 +2717,17 @@
       "type": "string"
      },
      {
+      "description": "rows: exact = the name or an alias; similar adds words; meaning (default) adds closest meaning.",
+      "enum": [
+       "meaning",
+       "similar",
+       "exact"
+      ],
+      "name": "match",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "grep only. Snippets kept per page (default 10, max 200). Every match is addressed in the result regardless; this controls how many also carry their text. Raise it to enumerate a term ACROSS pages in one call -- every version of a component, every date a decision moved -- where the alternative is opening each page in turn. For everything on ONE page, reading that page is usually simpler.",
       "name": "matches_per_page",
       "required": false,
@@ -2674,13 +2746,13 @@
       "type": "string"
      },
      {
-      "description": "rows: rows to skip; continue a NOT ALL ROWS reply with the offset it names.",
+      "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
       "name": "offset",
       "required": false,
       "type": "integer"
      },
      {
-      "description": "rows: entity (default), when, or a column name; a column sorts by the number in it, so descending=true puts the largest first.",
+      "description": "rows: entity (default), when, amount, date, or a column (sorted by the number in it); descending=true puts the largest first.",
       "name": "order_by",
       "required": false,
       "type": "string"
@@ -2781,6 +2853,18 @@
       "type": "integer"
      },
      {
+      "description": "query (where enabled for the organization): the same query as a JSON spec of filters, up to two joins along card relationships, groups and aggregates over every card's rows; see the command's guide for the keys.",
+      "name": "spec",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "query (where enabled for the organization): one SELECT over every card's rows, parsed and compiled into a spec; the text is never run as SQL. The reply's `query` object holds the spec it compiled to. Send sql or spec, not both; `topic: query` on `help` gives the grammar. one SELECT over every card's rows, parsed into a query (never run as SQL). FROM facts|connections|findings [AS OF 'YYYY-MM-DD'|CURRENT_DATE]; JOIN <table> b ON SAME_CARD(a)|TARGET_CARD(a) (up to 2); WHERE with AND/OR/NOT on entity, entity_type, field (= exact name, LIKE words, ~ meaning), value (=, <>, IN, CONTAINS, >, >=, <, <=, BETWEEN on numbers and dates), when, to, connected_to; GROUP BY field|value|entity|entity_type; COUNT(*), COUNT(DISTINCT entity), MIN|MAX|SUM|AVG(value_number|value_amount|value_date); ORDER BY; LIMIT (50, max 200). Example: SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC. help: query has the grammar.",
+      "name": "sql",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "Start date YYYY-MM-DD (for timeline).",
       "name": "start_date",
       "required": false,
@@ -2832,11 +2916,13 @@
       "type": "string"
      },
      {
-      "description": "rows: values (default), fields (field names, counts, examples) or groups (one page_type's likely synonym names).",
+      "description": "rows: values (default), census (entity and value only, 300 rows), fields (field names, counts, examples), groups (one page_type's likely synonym names) or conflicts (facts: one card's different values for one field at one time, both sides cited).",
       "enum": [
        "values",
+       "census",
        "fields",
-       "groups"
+       "groups",
+       "conflicts"
       ],
       "name": "view",
       "required": false,
@@ -3056,7 +3142,7 @@
       "type": "string"
      },
      {
-      "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value} or {relation, to}, or the row copied from cat.",
+      "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so.",
       "name": "old_rows",
       "required": false,
       "type": "object"
@@ -3204,10 +3290,11 @@
       "type": "string"
      },
      {
-      "description": "sort_table / edit_rows: which table.",
+      "description": "sort_table (facts | connections) / edit_rows: which table.",
       "enum": [
        "facts",
-       "connections"
+       "connections",
+       "findings"
       ],
       "name": "table",
       "required": false,
@@ -4199,6 +4286,28 @@
    "summary": "Get a project"
   },
   {
+   "action": "get-project-knowledge-profile",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/knowledge-profile",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge-profile",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a project's Knowledge profile"
+  },
+  {
    "action": "get-project-knowledge-status",
    "anonymous": false,
    "area": "projects",
@@ -4390,6 +4499,192 @@
    "response": "json",
    "scope": "projects:read",
    "summary": "List projects"
+  },
+  {
+   "action": "patch-project-knowledge-profile",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Organizations to recognize and follow. Replaces the list.",
+      "name": "core_organizations",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "People to recognize and follow. Replaces the list.",
+      "name": "core_people",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Topics to recognize and follow. Replaces the list.",
+      "name": "core_topics",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "What the project is about and what it is for, in a few sentences.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The kinds of things Knowledge should build a page for. Replaces the list.",
+      "multiple": true,
+      "name": "entity_types",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "How to read this project's documents: what to look for and what to skip.",
+      "name": "extraction_guidance",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Areas Knowledge should pay most attention to. Replaces the list.",
+      "multiple": true,
+      "name": "focus_areas",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What the project wants Knowledge to help answer or track. Replaces the list.",
+      "multiple": true,
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The field the project works in.",
+      "name": "industry",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "A short title for the profile.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/projects/{project_id}/knowledge-profile",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge-profile",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Update a project's Knowledge profile"
+  },
+  {
+   "action": "put-project-knowledge-profile",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "Organizations to recognize and follow.",
+      "name": "core_organizations",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "People to recognize and follow.",
+      "name": "core_people",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Topics to recognize and follow.",
+      "name": "core_topics",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "default": "",
+      "description": "What the project is about and what it is for, in a few sentences.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The kinds of things Knowledge should build a page for, such as `batch`, `deviation` or `supplier`.",
+      "multiple": true,
+      "name": "entity_types",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "How to read this project's documents: what to look for and what to skip.",
+      "name": "extraction_guidance",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Areas Knowledge should pay most attention to.",
+      "multiple": true,
+      "name": "focus_areas",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What the project wants Knowledge to help answer or track.",
+      "multiple": true,
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "The field the project works in.",
+      "name": "industry",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "",
+      "description": "A short title for the profile.",
+      "name": "name",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/projects/{project_id}/knowledge-profile",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge-profile",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Set a project's Knowledge profile"
   },
   {
    "action": "remove-member",

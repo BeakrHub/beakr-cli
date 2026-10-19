@@ -104,6 +104,10 @@ CASES: list[SnapshotCase] = [
     c("files-ls", "files", "ls", "--project", PROJECT),
     c("files-show", "files", "show", ID),
     c("files-download", "files", "download", ID, "--out", "charter.pdf"),
+    c(
+        "files-download-ref",
+        "files", "download", "Helios/helios-charter.pdf", "--out", "charter.pdf",
+    ),
     c("files-rm", "files", "rm", ID, "--yes"),
     c("files-versions", "files", "versions", ID),
     c(
@@ -122,6 +126,7 @@ CASES: list[SnapshotCase] = [
     ),
     c("kb-search", "kb", "search", "thermostable lead", "--project", PROJECT),
     c("kb-grep", "kb", "grep", "NW-217", "--project", PROJECT),
+    c("documents-search", "documents", "search", "heat-stable lead", "--project", PROJECT),
     c("kb-sections", "kb", "sections", "Helios lead", "--project", PROJECT),
     c("kb-blame", "kb", "blame", PAGE, "--project", PROJECT),
     c("kb-log", "kb", "log", PAGE, "--project", PROJECT),
@@ -285,6 +290,11 @@ _NO_LABELS_FIXTURE = (
 
 #: Visible hand-written commands with no snapshot, each with the reason.
 EXEMPT: dict[str, str] = {
+    "kb query": (
+        "behind the engine flag wiki_card_rows_query, which the snapshot engine leaves off "
+        "(it would answer feature_disabled); the request it sends is pinned in "
+        "tests/test_cli_kb_cards.py"
+    ),
     "external-users ls": _NO_EXTERNAL_USERS_FIXTURE,
     "external-users create": _NO_EXTERNAL_USERS_FIXTURE,
     "external-users show": _NO_EXTERNAL_USERS_FIXTURE,
@@ -333,4 +343,7 @@ EXEMPT: dict[str, str] = {
     "interviews link show": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link send": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link revoke": "no recorded response yet; tests/test_cli_core_surface.py",
+    "projects profile show": "no recorded response yet; tests/test_cli_project_profile.py",
+    "projects profile set": "no recorded response yet; tests/test_cli_project_profile.py",
+    "projects profile edit": "opens $EDITOR; tests/test_cli_project_profile.py",
 }

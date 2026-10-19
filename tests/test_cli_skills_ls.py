@@ -77,5 +77,3 @@ def test_ls_empty_library_says_so(monkeypatch):
     result = runner.invoke(app, ["skills", "ls"])
     assert result.exit_code == 0, result.output
     assert "No skills in your library." in result.stderr
-
-

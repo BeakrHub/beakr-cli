@@ -2541,6 +2541,18 @@
       "description": "Id of the resource.",
       "title": "Resource Id"
      },
+     "resource_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Resource kind.",
+      "title": "Resource Kind"
+     },
      "role_id": {
       "anyOf": [
        {
@@ -2677,6 +2689,18 @@
       ],
       "description": "Optional resource the invitation grants access to.",
       "title": "Resource Id"
+     },
+     "resource_kind": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Resource kind.",
+      "title": "Resource Kind"
      },
      "role_id": {
       "anyOf": [

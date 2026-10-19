@@ -26,4 +26,3 @@ def test_the_python_package_declares_apache_2_only():
     project = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]
     assert project["license"] == "Apache-2.0"
     assert not any("License ::" in c for c in project.get("classifiers", []))
-

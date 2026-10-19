@@ -1,6 +1,6 @@
 $ beakr files download 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --out charter.pdf --json
-> GET /v1/artifacts/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
-> GET /v1/artifacts/versions/da7d3920-230d-4678-9f76-3be63eefbb2b/download-url
+> POST /v1/artifacts/download-url
+  {"reference": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f"}
 > GET /artifacts/helios-charter.pdf?X-Amz-Signature=snapshot
 [exit 0]
 --- stdout
@@ -13,8 +13,8 @@ $ beakr files download 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --out charter.pdf --
 
 
 $ beakr files download 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --out charter.pdf
-> GET /v1/artifacts/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
-> GET /v1/artifacts/versions/da7d3920-230d-4678-9f76-3be63eefbb2b/download-url
+> POST /v1/artifacts/download-url
+  {"reference": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f"}
 > GET /artifacts/helios-charter.pdf?X-Amz-Signature=snapshot
 [exit 0]
 --- stdout
