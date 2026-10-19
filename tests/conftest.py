@@ -59,6 +59,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "real_project_refs: resolve --project slugs and names through the API"
     )
+    config.addinivalue_line(
+        "markers", "real_capabilities: let the MCP listing read the server's capabilities"
+    )
 
 
 @pytest.fixture(autouse=True)
@@ -75,6 +78,31 @@ def project_refs_are_ids(request, monkeypatch):
     from beakr_cli import project_ref
 
     monkeypatch.setattr(project_ref, "looks_like_id", lambda value: True)
+
+
+@pytest.fixture(autouse=True)
+def capabilities_unread(request, monkeypatch):
+    """List MCP tools without reading the server's OpenAPI document, unless a test asks.
+
+    The stdio server's listing leaves out tools the installation does not
+    serve, which costs a request for the public OpenAPI document
+    (beakr_cli/tool_surface.py). Tests across the suite list tools against a
+    mocked API with no such route; tests of the narrowing itself are marked
+    ``@pytest.mark.real_capabilities``. The SDK's per-URL cache is cleared
+    either way, so no test sees another's document.
+    """
+    from beakr_sdk.capabilities import forget_capabilities
+
+    forget_capabilities()
+    request.addfinalizer(forget_capabilities)
+    if request.node.get_closest_marker("real_capabilities"):
+        return
+    from beakr_cli import tool_surface
+
+    async def nothing_unserved(self, names):
+        return set()
+
+    monkeypatch.setattr(tool_surface.TieredFastMCP, "_unserved", nothing_unserved)
 
 
 @pytest.fixture

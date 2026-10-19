@@ -92,6 +92,14 @@ _CODE_HINTS = {
 
 def describe_error(exc: BaseException) -> str:
     """One readable line, with the fix when there is an obvious one."""
+    if isinstance(exc, NotFoundError):
+        from beakr_cli.capabilities import not_provided
+
+        # A route this installation does not have (a self-hosted one leaves
+        # out organization administration, integrations, embedded mode...).
+        message = not_provided(exc)
+        if message:
+            return message
     if isinstance(exc, BeakrError) and exc.code in _CODE_HINTS:
         return f"{exc}\n{_CODE_HINTS[exc.code]}"
     if isinstance(exc, PermissionDeniedError) and exc.required_scope:

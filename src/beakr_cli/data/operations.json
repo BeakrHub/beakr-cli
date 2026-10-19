@@ -201,6 +201,34 @@
    "summary": "Get context for an agent session"
   },
   {
+   "action": "cancel-compound",
+   "anonymous": false,
+   "area": "conversations",
+   "body": {
+    "fields": [
+     {
+      "description": "Id of the conversation.",
+      "name": "conversation_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/compound/cancel",
+   "paginated": false,
+   "path": "/v1/compound/cancel",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "conversations:write",
+   "summary": "Cancel compounding a conversation"
+  },
+  {
    "action": "compound",
    "anonymous": false,
    "area": "conversations",

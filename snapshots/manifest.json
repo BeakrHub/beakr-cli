@@ -2,7 +2,7 @@
   "sources": {
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
-      "commit": "a31b2c2a1bb990d552742dca2c9a223a6742800f",
+      "commit": "1999b8dac63b11fe9041521d02dff3c0ff06bdca",
       "uncommitted_changes": false,
       "files": {
         "beakr/api/mcp_remote/document_listing.py": "sha256:375389207c8e84b6d0f2a45075ede6d52a50cc5cd3fae64d9a54dc0712e2486e",
@@ -11,10 +11,10 @@
         "beakr/api/public/compat.py": "sha256:1b89503c00b6e5451ff3ad02e8e8b8016d4dd0a5f9220717d1649d52e6deb7ee",
         "derived/mcp_result_helpers.py.txt": "sha256:edd7771c3fb005e3b6c34bbcd427356a971184ddc85f3799b5736eeab6bcca97",
         "derived/replaying-creates.json": "sha256:33ac768f2de2b84b35fca8fdbf1a1d2a4b4b0f7ac8fed6acc2c364d460e237b7",
-        "docs/api/CHANGELOG.md": "sha256:5d8327de4b220956fb534a3a8031ec18bb5977f6f357d29cf8319191a64c4ac3",
+        "docs/api/CHANGELOG.md": "sha256:3420797e868f3c386021a5224e1d283e707d27044db2d6299708aa803c527dce",
         "docs/api/agent-tool-surface.json": "sha256:bacd8b7ebd9d7662e949191f17166fa2053c890370084409905c663a7e281d71",
         "docs/api/cli-private-openapi.json": "sha256:d3dbf1a65503684444a22a06b859be005857715932dfa578068a65e52e7cd215",
-        "docs/api/public-openapi.json": "sha256:ccb7f99998cfb037b786dba10f0f6e26d6fe961056b57c72bb9ae72c04b1a965"
+        "docs/api/public-openapi.json": "sha256:7a5f091c032854dc4d41e6855b2650520c0aa13b3386fd1e374d7dbebc8496bf"
       }
     }
   }

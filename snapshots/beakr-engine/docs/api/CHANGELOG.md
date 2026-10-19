@@ -11,10 +11,17 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ccb7f99998cfb037b786dba10f0f6e26d6fe961056b57c72bb9ae72c04b1a965 changelog sha256=8459678e4c0dc1c056e1010f639076d47f38290ae8a86fecbfc2910bd5b4bb80 -->
+<!-- contract-stamp: public-openapi sha256=7a5f091c032854dc4d41e6855b2650520c0aa13b3386fd1e374d7dbebc8496bf changelog sha256=a65734beff202e265a4d9ad3b40aeee47e0535eb5e7386a74004fde1aa2da58d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/compound/cancel`: stop the queued or running compound of an
+  imported conversation (`conversations:write`). A batch already being read
+  finishes and its proposals stay; no further batch starts, and the
+  conversation's `compound_status` reads `cancelled`. Answers
+  `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
+  resumes from where it stopped.
 
 - `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
   and set a project's Knowledge profile, the description, goals, focus areas,
