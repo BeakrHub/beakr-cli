@@ -307,6 +307,11 @@
    },
    "AuthConfigResponse": {
     "properties": {
+     "app_url": {
+      "description": "This installation's web app base URL, for pages a client sends people to (such as creating an API key).",
+      "title": "App Url",
+      "type": "string"
+     },
      "client_id": {
       "description": "The public OAuth client the CLI signs in as.",
       "title": "Client Id",
@@ -335,7 +340,8 @@
      "issuer",
      "issuer_url",
      "client_id",
-     "scopes"
+     "scopes",
+     "app_url"
     ],
     "title": "AuthConfigResponse",
     "type": "object"
@@ -7994,7 +8000,7 @@
   },
   "/v1/auth/config": {
    "get": {
-    "description": "The OAuth sign-in the CLI uses on this server: the identity provider's issuer, the CLI's client id and the scopes to request. Answers 503 when the server has no CLI sign-in configured.",
+    "description": "The OAuth sign-in the CLI uses on this server: the identity provider's issuer, the CLI's client id, the scopes to request and the web app's base URL. Answers 503 when the server has no CLI sign-in configured.",
     "operationId": "auth_config_v1_auth_config_get",
     "responses": {
      "200": {

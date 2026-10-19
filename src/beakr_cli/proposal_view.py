@@ -110,3 +110,29 @@ def _object_lines(
 def payload_lines(payload: dict[str, Any]) -> list[Line]:
     """The payload's fields, a content change last as a diff, for a terminal."""
     return _object_lines(payload, "", skip=_HEADER_KEYS)
+
+
+def filed_by_line(proposal: dict[str, Any]) -> str | None:
+    """Who filed the proposal, e.g. ``Filed by Dana Reyes via claude-code/2.1``.
+
+    The engine's ``filed_by.text`` names the person and the agent (else the
+    client) that filed it; an engine without it gives no line.
+    """
+    filed_by = proposal.get("filed_by")
+    text = filed_by.get("text") if isinstance(filed_by, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        return None
+    text = text.strip()
+    return text[:1].upper() + text[1:]
+
+
+def staged_proposal_lines(result: dict[str, Any]) -> list[str]:
+    """What a write that staged a proposal adds below its text: the content hash.
+
+    The text already names the proposal id; ``kb proposals accept --reviewed-hash``
+    takes this hash back, as the MCP servers print it (``mcp_render.render``).
+    """
+    proposal = result.get("proposal") if isinstance(result, dict) else None
+    if isinstance(proposal, dict) and proposal.get("content_hash"):
+        return [f"content_hash: {proposal['content_hash']}"]
+    return []

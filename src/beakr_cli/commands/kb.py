@@ -32,7 +32,7 @@ from beakr_cli.output import (
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
-from beakr_cli.proposal_view import payload_lines
+from beakr_cli.proposal_view import filed_by_line, payload_lines
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
@@ -810,6 +810,8 @@ def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
         console.print(f"Page:   {proposal.get('page_title')}")
     if proposal.get("summary"):
         console.print(f"Summary: {proposal.get('summary')}")
+    if filed_by_line(proposal):
+        console.print(filed_by_line(proposal), markup=False)
     payload = proposal.get("payload") or {}
     if proposal.get("proposal_type") == "find_replace":
         console.print(
@@ -1056,7 +1058,7 @@ def proposals_list(
     status_filter: str = typer.Option(
         "pending",
         "--status",
-        help="pending, accepted, or dismissed.",
+        help="pending, accepted, dismissed, superseded or resolved.",
     ),
     limit: int = typer.Option(50, "--limit", "-n", min=1, max=200, help="Proposals a page."),
     cursor: str | None = typer.Option(
@@ -1096,22 +1098,36 @@ def proposals_list(
             p.get("status", ""),
             p.get("page_title", "")[:32],
             p.get("summary", "")[:48],
+            _filer(p)[:32],
         ]
         for p in proposals
     ]
-    print_table(["ID", "Type", "Status", "Page", "Summary"], rows, title="Wiki Proposals")
+    print_table(
+        ["ID", "Type", "Status", "Page", "Summary", "Filed by"], rows, title="Wiki Proposals"
+    )
     if more:
         err_console.print(f"More proposals: {more}", highlight=False, soft_wrap=True)
 
 
+def _filer(proposal: dict) -> str:
+    """Who filed it, without the "filed by" lead: ``Dana Reyes via claude-code/2.1``."""
+    filed_by = proposal.get("filed_by")
+    text = filed_by.get("text") if isinstance(filed_by, dict) else None
+    if not isinstance(text, str):
+        return ""
+    return text.strip().removeprefix("filed by ")
+
+
 def _proposal_lines(proposals: list[dict]) -> list[str]:
-    """``id<TAB>type=..<TAB>status=..<TAB>page=..<TAB>summary`` per proposal."""
+    """``id<TAB>type=..<TAB>status=..<TAB>page=..<TAB>filed_by=..<TAB>summary`` per proposal."""
     lines = []
     for p in proposals:
         columns = [str(p.get("id") or "")]
         for key, name in (("proposal_type", "type"), ("status", "status"), ("page_title", "page")):
             if p.get(key):
                 columns.append(f"{name}={cell(p[key])}")
+        if _filer(p):
+            columns.append(f"filed_by={cell(_filer(p))}")
         if p.get("summary"):
             columns.append(cell(p["summary"], width=200))
         lines.append("\t".join(columns))
