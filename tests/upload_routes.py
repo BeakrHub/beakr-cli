@@ -16,12 +16,36 @@ import respx
 S3 = "https://bucket.s3.test"
 
 
-def mock_resumable_uploads(api: str) -> dict[str, Any]:
+def mock_resumable_uploads(
+    api: str, *, folders: list[dict[str, Any]] | None = None
+) -> dict[str, Any]:
     """Register the routes on the active respx router; returns them plus ``created``.
 
-    ``created`` lists each ``POST /v1/uploads`` body in order.
+    ``created`` lists each ``POST /v1/uploads`` body in order. ``folders`` seeds the
+    project's existing folders (``{"id", "name", "parent_folder_id"}``); the folder
+    routes behave like the API: ``GET /v1/folders`` lists one level, and creating a
+    folder whose name is taken under the same parent answers 400.
     """
     created: list[dict[str, Any]] = []
+    store: list[dict[str, Any]] = [dict(f) for f in folders or []]
+
+    def list_folders(request: httpx.Request) -> httpx.Response:
+        parent = request.url.params.get("parent_folder_id")
+        rows = [f for f in store if f.get("parent_folder_id") == parent]
+        return httpx.Response(200, json={"data": rows, "next_cursor": None, "has_more": False})
+
+    def create_folder(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        parent = body.get("parent_folder_id")
+        if any(f["name"] == body["name"] and f.get("parent_folder_id") == parent for f in store):
+            message = f"A folder named '{body['name']}' already exists at this location"
+            return httpx.Response(400, json={"detail": {"code": "bad_request", "message": message}})
+        taken = {f["id"] for f in store}
+        folder_id = "fold-" + body["name"]
+        while folder_id in taken:
+            folder_id += "+"
+        store.append({"id": folder_id, "name": body["name"], "parent_folder_id": parent})
+        return httpx.Response(201, json={"id": folder_id})
 
     def state(upload_id: str) -> dict[str, Any]:
         body = created[int(upload_id.removeprefix("up-")) - 1]
@@ -75,9 +99,7 @@ def mock_resumable_uploads(api: str) -> dict[str, Any]:
         "complete": respx.post(url__regex=rf"{api}/v1/uploads/up-\d+/complete").mock(
             side_effect=complete
         ),
-        "folder": respx.post(f"{api}/v1/folders").mock(
-            side_effect=lambda r: httpx.Response(
-                201, json={"id": "fold-" + json.loads(r.content)["name"]}
-            )
-        ),
+        "folders": store,
+        "folder": respx.post(f"{api}/v1/folders").mock(side_effect=create_folder),
+        "list_folders": respx.get(f"{api}/v1/folders").mock(side_effect=list_folders),
     }
