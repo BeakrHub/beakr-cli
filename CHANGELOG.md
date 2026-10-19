@@ -8,6 +8,27 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- MCP writes record the agent that made them: the stdio server sends the MCP
+  client's `initialize` name and version (`claude-code/2.1.283`) as
+  `X-Beakr-Agent`, so they no longer read as `beakr-mcp` with no agent.
+  `BEAKR_AGENT` still overrides it, to tell several agents under one key
+  apart; the CLI at a terminal declares no agent.
+- The MCP server lists every tool by default, so Claude Code (which calls
+  only listed tools) can call `documents`, `wiki_stats`, `wiki_graph`,
+  `get_profile`, the proposal tools, `conversations_search`,
+  `import_conversation`, `beakr_version` and `org_audit_log`.
+  `BEAKR_MCP_TOOLS=eager` keeps the small listing; there `discover_tools` adds
+  the tools it finds and the server sends `notifications/tools/list_changed`
+  (it now declares `tools.listChanged`).
+- The MCP `context` tool takes a project name as well as an id; a name was
+  refused with a bare "HTTP 422". A validation refusal now names each field
+  and the API's text for it.
+- On a self-hosted installation, tools for areas it leaves out are not listed
+  (read from its `/v1/public/openapi.json`, or from a call that meets a route
+  the server does not have), and commands for organization members, external
+  users, end-user tokens, service accounts, integrations and skills print
+  "This Beakr installation does not provide <area>." instead of a bare 404.
+  `beakr doctor` lists the areas the installation does not provide.
 - `beakr ask` lets the agent read Knowledge by default (`--no-knowledge` turns it
   off); it answered "Knowledge is turned off for this message". `--mode` takes
   only the server's modes (free, quick, deep, extreme, custom, auto, auto_free),
@@ -52,18 +73,18 @@ Each release lists the public API changes it supports, taken from the API change
 - `beakr conversations compound cancel ID` stops a queued or running compound
   of an imported conversation; `beakr compound ID` resumes it. `conversations
   show` reads a stopped one's status as `cancelled`.
-- `POST /v1/compound/cancel`: stop the queued or running compound of an
-  imported conversation (`conversations:write`). A batch already being read
-  finishes and its proposals stay; no further batch starts, and the
-  conversation's `compound_status` reads `cancelled`. Answers
-  `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
-  resumes from where it stopped.
 - `beakr projects profile show|set|edit`: read and set a project's Knowledge
   profile. `set --file` replaces the whole profile from JSON or YAML and
   refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,
   `--entity-type`, `--person`, `--organization`, `--topic`, `--guidance`)
   change only those fields and create the profile when the project has none;
   `edit` opens it as YAML in `$EDITOR`.
+- `POST /v1/compound/cancel`: stop the queued or running compound of an
+  imported conversation (`conversations:write`). A batch already being read
+  finishes and its proposals stay; no further batch starts, and the
+  conversation's `compound_status` reads `cancelled`. Answers
+  `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
+  resumes from where it stopped.
 - `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
   and set a project's Knowledge profile, the description, goals, focus areas,
   people, organizations, topics, entity types and extraction guidance that

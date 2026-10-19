@@ -2,6 +2,7 @@ $ beakr doctor --json
 > GET /v1/public/openapi.json
 > GET /v1/me
 > GET /v1/me/api-keys?limit=200
+> GET /v1/public/openapi.json
 [exit 0]
 --- stdout
 {
@@ -29,6 +30,20 @@ $ beakr doctor --json
       "name": "scopes",
       "status": "warn",
       "detail": "unknown"
+    },
+    {
+      "name": "surface",
+      "status": "ok",
+      "detail": "this installation does not provide organization members, external users, service accounts, organization administration, end-user tokens, integrations",
+      "documented": true,
+      "unavailable": [
+        "organization members",
+        "external users",
+        "service accounts",
+        "organization administration",
+        "end-user tokens",
+        "integrations"
+      ]
     },
     {
       "name": "project",
@@ -84,6 +99,7 @@ ok    version  beakr-cli 0.4.0
 ok    api      https://api.test (HTTP 200)
 ok    auth     Dana Whitfield via env
 warn  scopes   unknown
+ok    surface  this installation does not provide organization members, external users, service accounts, organization administration, end-user tokens, integrations
 warn  project  this directory is not bound (beakr init)
 warn  mcp      not registered (beakr setup)
 warn  hooks    not installed (beakr hooks install)
@@ -101,6 +117,7 @@ ok	version	beakr-cli 0.4.0
 ok	api	https://api.test (HTTP 200)
 ok	auth	Dana Whitfield via env
 warn	scopes	unknown
+ok	surface	this installation does not provide organization members, external users, service accounts, organization administration, end-user tokens, integrations
 warn	project	this directory is not bound (beakr init)
 warn	mcp	not registered (beakr setup)
 warn	hooks	not installed (beakr hooks install)

@@ -47,6 +47,23 @@ def check_reachable(base_url: str) -> dict[str, Any]:
     return _check("api", "ok", f"{base_url} (HTTP {response.status_code})", base_url=base_url)
 
 
+def check_surface(sdk: Any) -> dict[str, Any]:
+    """What this installation leaves out, from its own public OpenAPI document.
+
+    A self-hosted installation serves part of the API on purpose; the
+    commands for the rest answer "does not provide" rather than a 404.
+    """
+    from beakr_cli.capabilities import describe_capabilities
+
+    summary = describe_capabilities(sdk.meta.capabilities())
+    if not summary["documented"]:
+        return _check("surface", "ok", "the server does not list its operations", **summary)
+    if summary["unavailable"]:
+        detail = "this installation does not provide " + ", ".join(summary["unavailable"])
+        return _check("surface", "ok", detail, **summary)
+    return _check("surface", "ok", "every documented area is provided", **summary)
+
+
 def _check_clerk_token_scopes(sdk: Any) -> dict[str, Any]:
     """A Clerk-issued token holds only the Beakr scopes it was granted (none by default).
 
@@ -198,16 +215,18 @@ def run_checks() -> list[dict[str, Any]]:
     with get_sdk(timeout=10.0) as sdk:
         checks.append(check_reachable(sdk.base_url))
         checks.extend(check_auth_and_scopes(sdk))
+        checks.append(_safe(lambda: check_surface(sdk), name="surface"))
     for check in (check_binding, check_mcp, check_hooks, check_hook_queue):
         checks.append(_safe(check))
     return checks
 
 
-def _safe(check: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+def _safe(check: Callable[[], dict[str, Any]], *, name: str | None = None) -> dict[str, Any]:
     try:
         return check()
     except Exception as exc:
-        return _check(check.__name__.removeprefix("check_"), "warn", f"check failed: {exc}")
+        label = name or check.__name__.removeprefix("check_")
+        return _check(label, "warn", f"check failed: {exc}")
 
 
 _STYLE = {"ok": "green", "warn": "yellow", "fail": "red"}
