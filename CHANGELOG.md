@@ -29,12 +29,21 @@ Each release lists the public API changes it supports, taken from the API change
   users, end-user tokens, service accounts, integrations and skills print
   "This Beakr installation does not provide <area>." instead of a bare 404.
   `beakr doctor` lists the areas the installation does not provide.
+- `beakr ask` reads the project's Knowledge: runs it starts turn Knowledge on
+  (`scope.knowledge_graph`), so they no longer answer "Knowledge is turned off
+  for this message".
 - `beakr projects profile show|set|edit`: read and set a project's Knowledge
   profile. `set --file` replaces the whole profile from JSON or YAML and
   refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,
   `--entity-type`, `--person`, `--organization`, `--topic`, `--guidance`)
   change only those fields and create the profile when the project has none;
   `edit` opens it as YAML in `$EDITOR`.
+- `POST /v1/compound/cancel`: stop the queued or running compound of an
+  imported conversation (`conversations:write`). A batch already being read
+  finishes and its proposals stay; no further batch starts, and the
+  conversation's `compound_status` reads `cancelled`. Answers
+  `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
+  resumes from where it stopped.
 - `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
   and set a project's Knowledge profile, the description, goals, focus areas,
   people, organizations, topics, entity types and extraction guidance that

@@ -1,6 +1,6 @@
 $ beakr ask 'Which lead did the committee pick?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
 > POST /v1/runs
-  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
+  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"knowledge_graph": true, "projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
 > GET /v1/runs/6dcbaafb-7432-47cc-813a-d4f51196e99e/events
 [exit 0]
 --- stdout
@@ -17,7 +17,7 @@ $ beakr ask 'Which lead did the committee pick?' --project 4dd25154-0d80-44ab-b4
 
 $ beakr ask 'Which lead did the committee pick?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > POST /v1/runs
-  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
+  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"knowledge_graph": true, "projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
 > GET /v1/runs/6dcbaafb-7432-47cc-813a-d4f51196e99e/events
 [exit 0]
 --- stdout
