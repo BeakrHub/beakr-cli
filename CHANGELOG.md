@@ -8,6 +8,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/interview/sendables`: each link carries who it was sent to and how:
+  `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
+  and `delivery_error`. All are null for a link that was not sent.
+- Proposal `filed_by.run`: the description says what the label is for: writes
+  that share it can be undone together.
 - MCP writes record the agent that made them: the stdio server sends the MCP
   client's `initialize` name and version (`claude-code/2.1.283`) as
   `X-Beakr-Agent`, so they no longer read as `beakr-mcp` with no agent.
