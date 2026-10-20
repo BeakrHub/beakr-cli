@@ -11,10 +11,31 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=8224d1bfebe4c86064e563618b9f770b51c9a7093c7a054e005f1244a5fbb26c changelog sha256=4ad00227ba52693022d51c2e906289c60d662156a5959877a46bf0f4d6d5b227 -->
+<!-- contract-stamp: public-openapi sha256=1d6cd5d19c7f8b9ad38b15f6f86c329d7f88493ef8050f9580add5b0bc630c88 changelog sha256=ca018aad751e259d1a75cb55efaa9b7a58bad07bda4c2f2cd117d045513ae19d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- Skills (`skills:read`, `skills:write`) join the documented API.
+  `GET /v1/skills` lists every skill you can use or install: your own, your
+  organization's, the built-in ones and public skills from anywhere, by name.
+  Each skill carries `visibility` (`private`, `org`, `public`), `owner` (`me`,
+  `org`, `system`, `anyone`), `origin` (`created`, `mined`, `imported`,
+  `system`) and `installed`, and the list filters on each (repeat a parameter
+  for more than one value), on `search` and `domain`; `include_content=true`
+  adds each skill's `files`. `GET /v1/skills/{skill_id}` reads one skill by id
+  or slug, with `latest_revision`; a slug resolves to your own skill first, then
+  a built-in, then one you installed, then your organization's, and never to a
+  skill from another organization you have not installed. `POST /v1/skills`
+  creates a skill from a SKILL.md folder (`files`, path to text) and honours
+  `Idempotency-Key`; `GET` and `PUT /v1/skills/{skill_id}/bundle` read and
+  replace its files, `GET /v1/skills/{skill_id}/bundle.zip` downloads them as a
+  zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST` and
+  `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill, and
+  `GET /v1/me/skills/proposals` with `POST .../accept` and `POST .../dismiss`
+  review the skills Beakr drafted from your work. A skill you wrote in another
+  organization cannot be installed here and answers 404 here, by id or slug,
+  unless it was already installed here.
 
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`

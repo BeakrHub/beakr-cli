@@ -117,7 +117,7 @@ async def test_context_rejects_unknown_format_without_a_request() -> None:
 async def test_skills_lists_a_bounded_library() -> None:
     # One page at a time (SPEC-488): the page shows its rows and says how to go on.
     first = [{"id": f"s{i}", "slug": f"skill-{i}", "name": f"S{i}"} for i in range(MAX_LIST_ITEMS)]
-    route = respx.get(f"{API}/v1/me/skills/library").mock(
+    route = respx.get(f"{API}/v1/skills").mock(
         return_value=httpx.Response(
             200, json={"data": first, "has_more": True, "next_cursor": "page-2"}
         )
@@ -137,10 +137,10 @@ async def test_skills_lists_a_bounded_library() -> None:
 
 @respx.mock
 async def test_skills_reads_one_skill_md_by_slug() -> None:
-    respx.get(f"{API}/v1/me/skills/library").mock(
+    respx.get(f"{API}/v1/skills").mock(
         return_value=httpx.Response(200, json=[{"id": "s1", "slug": "deploy", "name": "Deploy"}])
     )
-    bundle = respx.get(f"{API}/v1/me/skills/s1/bundle").mock(
+    bundle = respx.get(f"{API}/v1/skills/s1/bundle").mock(
         return_value=httpx.Response(
             200,
             json={"files": {"SKILL.md": "---\nname: deploy\n---\nSteps", "run.sh": "echo"}},
@@ -154,7 +154,7 @@ async def test_skills_reads_one_skill_md_by_slug() -> None:
 
 @respx.mock
 async def test_skills_unknown_slug_says_how_to_list() -> None:
-    respx.get(f"{API}/v1/me/skills/library").mock(return_value=httpx.Response(200, json=[]))
+    respx.get(f"{API}/v1/skills").mock(return_value=httpx.Response(200, json=[]))
     assert "no argument" in (await skills("missing"))["content"]
 
 

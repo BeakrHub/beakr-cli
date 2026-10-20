@@ -30,26 +30,20 @@ def _library(updated_at: str = "2026-10-01T00:00:00Z") -> list[dict]:
 
 def _mock_remote(updated_at: str = "2026-10-01T00:00:00Z") -> dict[str, respx.Route]:
     return {
-        "library": respx.get(f"{API}/v1/me/skills/library").mock(
+        "library": respx.get(f"{API}/v1/skills").mock(
             return_value=httpx.Response(200, json=_library(updated_at))
         ),
-        "bundle": respx.get(f"{API}/v1/me/skills/s1/bundle").mock(
+        "bundle": respx.get(f"{API}/v1/skills/s1/bundle").mock(
             return_value=httpx.Response(
                 200, json={"skill_id": "s1", "slug": "triage", "files": REMOTE_FILES}
             )
         ),
-        "replace": respx.put(f"{API}/v1/me/skills/s1/bundle").mock(
+        "replace": respx.put(f"{API}/v1/skills/s1/bundle").mock(
             return_value=httpx.Response(200, json={"skill_id": "s1", "slug": "triage"})
         ),
-        "import": respx.post(f"{API}/v1/me/skills/import/bundle").mock(
+        "import": respx.post(f"{API}/v1/skills").mock(
             return_value=httpx.Response(
                 201, json={"id": "s2", "slug": "notes", "updated_at": "2026-10-02T00:00:00Z"}
-            )
-        ),
-        # Shared scopes: none in these library-only cases.
-        "scoped": respx.get(f"{API}/v1/skills").mock(
-            return_value=httpx.Response(
-                200, json={"data": [], "next_cursor": None, "has_more": False}
             )
         ),
     }
@@ -89,7 +83,7 @@ def test_pull_reports_conflict_when_both_sides_changed(isolated_home: Path) -> N
     _sync("--direction", "pull", "--target", "claude")
     skill_md = _skill_dir(isolated_home, "claude", "triage") / "SKILL.md"
     skill_md.write_text(REMOTE_SKILL_MD + "My local edit.\n")
-    respx.get(f"{API}/v1/me/skills/library").mock(
+    respx.get(f"{API}/v1/skills").mock(
         return_value=httpx.Response(200, json=_library("2026-10-05T00:00:00Z"))
     )
 
@@ -180,7 +174,11 @@ def test_dry_run_changes_nothing(isolated_home: Path) -> None:
 
 @respx.mock
 def test_skills_show_prints_skill_md_by_slug() -> None:
-    _mock_remote()
+    respx.get(f"{API}/v1/skills/triage").mock(
+        return_value=httpx.Response(
+            200, json={"id": "s1", "slug": "triage", "owner": "me", "files": REMOTE_FILES}
+        )
+    )
     result = CliRunner().invoke(app, ["skills", "show", "triage"])
     assert result.exit_code == 0
     assert result.stdout == REMOTE_SKILL_MD

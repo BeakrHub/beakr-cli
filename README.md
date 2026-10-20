@@ -509,6 +509,31 @@ Unrecognized response formats keep the generic truncation warning and narrower
 request guidance. This formatting does not change the SDK or terminal CLI's
 API response, perform additional searches, or summarize source evidence.
 
+### Skills
+
+A skill is a SKILL.md folder your agent loads on demand. `beakr skills ls`
+lists every skill you can use or install, with its visibility, owner (`me`,
+`org`, `system` for built-ins, `anyone` for public skills from outside your
+organization), origin (`created`, `mined`, `imported`, `system`) and whether it
+is installed in your library.
+
+```bash
+beakr skills ls --mine                 # yours; --org, --public, --builtin combine
+beakr skills ls --available --public   # public skills you could install
+beakr skills ls --origin mined         # the ones Beakr drafted and you kept
+beakr skills show plate-reader         # its SKILL.md (--json: labels, revision, files)
+beakr skills download plate-reader ./  # ./plate-reader/ (--zip for a zip)
+beakr skills add ./plate-reader        # a SKILL.md folder or a .zip of one
+beakr skills install lab-notebook-entry
+beakr skills uninstall lab-notebook-entry
+beakr skills rm plate-reader --yes     # delete a skill you wrote
+beakr skills proposals                 # drafted from your work: approve or dismiss
+beakr skills sync                      # your library <-> ~/.claude/skills, ~/.codex/skills
+```
+
+A skill is named by its id or its slug; a slug means your own skill first, then
+a built-in, then one you installed, then your organization's.
+
 ## Python SDK
 
 The CLI is built on Beakr's Python SDK, `beakr-sdk` (`import beakr_sdk`), which
@@ -527,7 +552,7 @@ The TypeScript SDK, `@beakr/sdk`, is
 [BeakrHub/beakr-typescript](https://github.com/BeakrHub/beakr-typescript).
 
 The SDK covers only the documented contract. The CLI and its MCP server also
-call a few routes the API serves without documenting them (profile, skills,
+call a few routes the API serves without documenting them (profile,
 memories, outputs, workflows, org administration...), through the CLI's own
 private client, `beakr_cli._private_api`. Each of those operations is listed in
 `src/beakr_cli/_private_api/operations.allowlist`, and only those are generated

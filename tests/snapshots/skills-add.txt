@@ -1,0 +1,41 @@
+$ beakr skills add helios-digest --json
+> POST /v1/skills
+  {"files": {"SKILL.md": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}, "visibility": "private"}
+[exit 0]
+--- stdout
+{
+  "id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+  "slug": "helios-stability-readout",
+  "name": "Helios stability readout",
+  "description": "Turn an HX-01 stability export into the Helios charter's results table.",
+  "domain": "biology",
+  "triggers": null,
+  "knowledge": "Read the export, then fill the table.",
+  "scripts": null,
+  "packages": [],
+  "source": "imported",
+  "owner_type": "user",
+  "visibility": "private",
+  "created_at": "2026-10-01T12:00:00Z",
+  "updated_at": "2026-10-01T12:00:00Z"
+}
+--- stderr
+
+
+$ beakr skills add helios-digest
+> POST /v1/skills
+  {"files": {"SKILL.md": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}, "visibility": "private"}
+[exit 0]
+--- stdout
+Added skill helios-stability-readout (5e6e6be8-d5cf-4216-aae7-b4aa6eed776a).
+--- stderr
+
+
+$ beakr skills add helios-digest
+> POST /v1/skills
+  {"files": {"SKILL.md": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}, "visibility": "private"}
+[exit 0]
+--- stdout
+5e6e6be8-d5cf-4216-aae7-b4aa6eed776a	Helios stability readout	slug=helios-stability-readout
+--- stderr
+

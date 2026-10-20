@@ -1,0 +1,22 @@
+{
+  "operation": "POST /v1/skills",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 201,
+  "content_type": "application/json",
+  "body": {
+    "id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+    "slug": "helios-stability-readout",
+    "name": "Helios stability readout",
+    "description": "Turn an HX-01 stability export into the Helios charter's results table.",
+    "domain": "biology",
+    "triggers": null,
+    "knowledge": "Read the export, then fill the table.",
+    "scripts": null,
+    "packages": [],
+    "source": "imported",
+    "owner_type": "user",
+    "visibility": "private",
+    "created_at": "2026-10-01T12:00:00Z",
+    "updated_at": "2026-10-01T12:00:00Z"
+  }
+}

@@ -103,6 +103,8 @@ def test_doctor_lists_the_areas_the_installation_does_not_provide():
         "organization administration",
         "end-user tokens",
         "integrations",
+        # Documented now, and a box leaves it out.
+        "skills",
     ]
     assert surface["detail"].startswith("this installation does not provide organization members")
 

@@ -5298,6 +5298,429 @@
    "summary": "Mint a service account key"
   },
   {
+   "action": "accept-mined-skill-proposal",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/me/skills/proposals/{proposal_id}/accept",
+   "paginated": false,
+   "path": "/v1/me/skills/proposals/{proposal_id}/accept",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "default": false,
+     "description": "Import even when the draft duplicates a skill the user already has.",
+     "name": "force",
+     "required": false,
+     "type": "boolean"
+    }
+   ],
+   "response": "json",
+   "scope": "skills:write",
+   "summary": "Accept a proposed skill"
+  },
+  {
+   "action": "delete-skill",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/skills/{skill_id}",
+   "paginated": false,
+   "path": "/v1/skills/{skill_id}",
+   "path_params": [
+    {
+     "name": "skill_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "skills:write",
+   "summary": "Delete a skill"
+  },
+  {
+   "action": "dismiss-mined-skill-proposal",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/me/skills/proposals/{proposal_id}/dismiss",
+   "paginated": false,
+   "path": "/v1/me/skills/proposals/{proposal_id}/dismiss",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "skills:write",
+   "summary": "Dismiss a proposed skill"
+  },
+  {
+   "action": "download-skill-bundle-zip",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/skills/{skill_id}/bundle.zip",
+   "paginated": false,
+   "path": "/v1/skills/{skill_id}/bundle.zip",
+   "path_params": [
+    {
+     "name": "skill_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "bytes",
+   "scope": "skills:read",
+   "summary": "Download a skill as a zip"
+  },
+  {
+   "action": "get-skill",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/skills/{skill_id}",
+   "paginated": false,
+   "path": "/v1/skills/{skill_id}",
+   "path_params": [
+    {
+     "name": "skill_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "default": false,
+     "description": "Add the skill's SKILL.md folder as `files`.",
+     "name": "include_content",
+     "required": false,
+     "type": "boolean"
+    }
+   ],
+   "response": "json",
+   "scope": "skills:read",
+   "summary": "Get a skill"
+  },
+  {
+   "action": "get-skill-bundle",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/skills/{skill_id}/bundle",
+   "paginated": false,
+   "path": "/v1/skills/{skill_id}/bundle",
+   "path_params": [
+    {
+     "name": "skill_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "skills:read",
+   "summary": "Download a skill's files"
+  },
+  {
+   "action": "import-skill-bundle",
+   "anonymous": false,
+   "area": "skills",
+   "body": {
+    "fields": [
+     {
+      "description": "The skill's SKILL.md folder: each path in it, such as `SKILL.md` or a script under `scripts/`, mapped to its text.",
+      "name": "files",
+      "required": true,
+      "type": "object"
+     },
+     {
+      "description": "The handle to give the skill when its SKILL.md does not name one.",
+      "name": "slug_hint",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "imported",
+      "description": "Where the folder came from, such as `claude-code` or `codex`; kept with the skill.",
+      "name": "source",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "private",
+      "description": "Who may see the skill: `private` (you), `org` (your organization) or `public`.",
+      "name": "visibility",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/skills",
+   "paginated": false,
+   "path": "/v1/skills",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "skills:write",
+   "summary": "Create a skill"
+  },
+  {
+   "action": "install-skill",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/me/skills/library/{skill_id}",
+   "paginated": false,
+   "path": "/v1/me/skills/library/{skill_id}",
+   "path_params": [
+    {
+     "name": "skill_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "skills:write",
+   "summary": "Install a skill"
+  },
+  {
+   "action": "list-mined-skill-proposals",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/me/skills/proposals",
+   "paginated": true,
+   "path": "/v1/me/skills/proposals",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "default": "pending",
+     "name": "status",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "skills:read",
+   "summary": "List proposed skills"
+  },
+  {
+   "action": "list-skills",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/skills",
+   "paginated": true,
+   "path": "/v1/skills",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Only skills of this domain.",
+     "name": "domain",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "Add each skill's SKILL.md folder as `files`.",
+     "name": "include_content",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "`true` for the skills in your library, `false` for the ones you could install.",
+     "name": "installed",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "Only skills of these origins: `created`, `mined`, `imported` or `system`. Repeat for more than one.",
+     "enum": [
+      "created",
+      "mined",
+      "imported",
+      "system"
+     ],
+     "multiple": true,
+     "name": "origin",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Only skills with these owners: `me`, `org`, `system` (built-in) or `anyone` (public skills from outside your organization). Repeat for more than one.",
+     "enum": [
+      "me",
+      "org",
+      "system",
+      "anyone"
+     ],
+     "multiple": true,
+     "name": "owner",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Words to match in the name, description or body.",
+     "name": "search",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Only skills with these visibilities. Repeat the parameter for more than one.",
+     "enum": [
+      "private",
+      "org",
+      "public"
+     ],
+     "multiple": true,
+     "name": "visibility",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "skills:read",
+   "summary": "List skills"
+  },
+  {
+   "action": "replace-skill-bundle",
+   "anonymous": false,
+   "area": "skills",
+   "body": {
+    "fields": [
+     {
+      "description": "The bundle's `files_sha256` when you read it. If the skill has changed since, the write is refused with 409 `skill_conflict` (unless `force`), so a newer edit is never silently overwritten. Omitted: the write is unconditional.",
+      "name": "expected_sha256",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The SKILL.md folder, each path mapped to its text.",
+      "name": "files",
+      "required": true,
+      "type": "object"
+     },
+     {
+      "default": false,
+      "description": "Write even when `expected_sha256` no longer matches.",
+      "name": "force",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": true,
+      "description": "Whether to replace every file (true) or only the files sent.",
+      "name": "replace",
+      "required": false,
+      "type": "boolean"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/skills/{skill_id}/bundle",
+   "paginated": false,
+   "path": "/v1/skills/{skill_id}/bundle",
+   "path_params": [
+    {
+     "name": "skill_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "skills:write",
+   "summary": "Replace a skill's files"
+  },
+  {
+   "action": "uninstall-skill",
+   "anonymous": false,
+   "area": "skills",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/me/skills/library/{skill_id}",
+   "paginated": false,
+   "path": "/v1/me/skills/library/{skill_id}",
+   "path_params": [
+    {
+     "name": "skill_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "none",
+   "scope": "skills:write",
+   "summary": "Uninstall a skill"
+  },
+  {
    "action": "get-thread-detail",
    "anonymous": false,
    "area": "threads",

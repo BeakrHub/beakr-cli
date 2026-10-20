@@ -5050,6 +5050,52 @@
         "title": "FolderUpdate",
         "type": "object"
       },
+      "ImportBundleIn": {
+        "description": "Import a full SKILL.md folder bundle (Anthropic / Hermes / Codex / OpenAI).",
+        "properties": {
+          "files": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The skill's SKILL.md folder: each path in it, such as `SKILL.md` or a script under `scripts/`, mapped to its text.",
+            "minProperties": 1,
+            "title": "Files",
+            "type": "object"
+          },
+          "slug_hint": {
+            "anyOf": [
+              {
+                "maxLength": 80,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The handle to give the skill when its SKILL.md does not name one.",
+            "title": "Slug Hint"
+          },
+          "source": {
+            "default": "imported",
+            "description": "Where the folder came from, such as `claude-code` or `codex`; kept with the skill.",
+            "maxLength": 64,
+            "title": "Source",
+            "type": "string"
+          },
+          "visibility": {
+            "default": "private",
+            "description": "Who may see the skill: `private` (you), `org` (your organization) or `public`.",
+            "pattern": "^(private|org|public)$",
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "ImportBundleIn",
+        "type": "object"
+      },
       "ImportIn": {
         "properties": {
           "base_index": {
@@ -7677,6 +7723,147 @@
         "title": "LabelUpdate",
         "type": "object"
       },
+      "LibrarySkillOut": {
+        "description": "Installed skill with full knowledge.",
+        "properties": {
+          "created_at": {
+            "description": "When it was created (ISO 8601, UTC).",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the library skill, in plain text.",
+            "title": "Description"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Subject area the skill covers.",
+            "title": "Domain"
+          },
+          "id": {
+            "description": "Unique id of this library skill.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "knowledge": {
+            "description": "The body of the skill's SKILL.md.",
+            "title": "Knowledge",
+            "type": "string"
+          },
+          "name": {
+            "description": "Name of the library skill.",
+            "title": "Name",
+            "type": "string"
+          },
+          "owner_type": {
+            "description": "What owns the skill: `user` (a person), `org` (an organization) or `system`.",
+            "title": "Owner Type",
+            "type": "string"
+          },
+          "packages": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Packages the skill's scripts need.",
+            "title": "Packages"
+          },
+          "scripts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SkillScriptOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Scripts bundled with the skill.",
+            "title": "Scripts"
+          },
+          "slug": {
+            "description": "URL-safe short name, unique where it lives.",
+            "title": "Slug",
+            "type": "string"
+          },
+          "source": {
+            "description": "How the skill was made: `user-created`, `curator-mined`, `system`, or the source an import named (`imported` by default).",
+            "title": "Source",
+            "type": "string"
+          },
+          "triggers": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Legacy: when an agent should use the skill. Usually null.",
+            "title": "Triggers"
+          },
+          "updated_at": {
+            "description": "When it last changed (ISO 8601, UTC).",
+            "examples": [
+              "2026-10-03T09:15:42Z"
+            ],
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "visibility": {
+            "description": "Who can see it.",
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "domain",
+          "description",
+          "triggers",
+          "source",
+          "owner_type",
+          "visibility",
+          "created_at",
+          "updated_at",
+          "knowledge"
+        ],
+        "title": "LibrarySkillOut",
+        "type": "object"
+      },
       "LinkKnowledgeOut": {
         "description": "A project the sender sent this interview to, and how its ingest is going.",
         "properties": {
@@ -8677,6 +8864,147 @@
           "enroll_url"
         ],
         "title": "MfaStatusOut",
+        "type": "object"
+      },
+      "MinedSkillProposalOut": {
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the mined skill proposal, in plain text.",
+            "title": "Description"
+          },
+          "draft_files": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The proposed skill's files, keyed by path.",
+            "title": "Draft Files",
+            "type": "object"
+          },
+          "draft_skill_md": {
+            "description": "The proposed SKILL.md.",
+            "title": "Draft Skill Md",
+            "type": "string"
+          },
+          "evidence": {
+            "additionalProperties": true,
+            "description": "Why Beakr proposed it: the repeated, successful work the draft was drawn from.",
+            "title": "Evidence",
+            "type": "object"
+          },
+          "first_seen_at": {
+            "description": "Time of the first seen (ISO 8601, UTC).",
+            "format": "date-time",
+            "title": "First Seen At",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique id of this mined skill proposal.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "last_seen_at": {
+            "description": "When it was last seen.",
+            "format": "date-time",
+            "title": "Last Seen At",
+            "type": "string"
+          },
+          "occurrence_count": {
+            "description": "How many times the pattern was seen.",
+            "title": "Occurrence Count",
+            "type": "integer"
+          },
+          "source_page_ids": {
+            "description": "Ids of the source pages.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Page Ids",
+            "type": "array"
+          },
+          "source_thread_ids": {
+            "description": "Ids of the source threads.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Thread Ids",
+            "type": "array"
+          },
+          "status": {
+            "description": "`pending`, `accepted` or `dismissed`.",
+            "title": "Status",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title of the mined skill proposal.",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "draft_skill_md",
+          "draft_files",
+          "evidence",
+          "source_thread_ids",
+          "source_page_ids",
+          "occurrence_count",
+          "status",
+          "first_seen_at",
+          "last_seen_at"
+        ],
+        "title": "MinedSkillProposalOut",
+        "type": "object"
+      },
+      "MinedSkillProposalOutPage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/MinedSkillProposalOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "MinedSkillProposalOutPage",
         "type": "object"
       },
       "ObjectPage": {
@@ -12486,6 +12814,560 @@
           "client_name"
         ],
         "title": "ServiceKeyIn",
+        "type": "object"
+      },
+      "SkillBundleOut": {
+        "properties": {
+          "file_count": {
+            "description": "How many files the skill has.",
+            "title": "File Count",
+            "type": "integer"
+          },
+          "files": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The skill's SKILL.md folder, each path mapped to its text.",
+            "title": "Files",
+            "type": "object"
+          },
+          "files_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Digest of the whole bundle as stored. Send it back as `expected_sha256` on the next replace so an edit made in between is not overwritten.",
+            "title": "Files Sha256"
+          },
+          "skill_id": {
+            "description": "Id of the skill.",
+            "format": "uuid",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "slug": {
+            "description": "URL-safe short name, unique where it lives.",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "skill_id",
+          "slug",
+          "files",
+          "file_count"
+        ],
+        "title": "SkillBundleOut",
+        "type": "object"
+      },
+      "SkillBundleReplaceIn": {
+        "properties": {
+          "expected_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The bundle's `files_sha256` when you read it. If the skill has changed since, the write is refused with 409 `skill_conflict` (unless `force`), so a newer edit is never silently overwritten. Omitted: the write is unconditional.",
+            "title": "Expected Sha256"
+          },
+          "files": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "The SKILL.md folder, each path mapped to its text.",
+            "minProperties": 1,
+            "title": "Files",
+            "type": "object"
+          },
+          "force": {
+            "default": false,
+            "description": "Write even when `expected_sha256` no longer matches.",
+            "title": "Force",
+            "type": "boolean"
+          },
+          "replace": {
+            "default": true,
+            "description": "Whether to replace every file (true) or only the files sent.",
+            "title": "Replace",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "files"
+        ],
+        "title": "SkillBundleReplaceIn",
+        "type": "object"
+      },
+      "SkillDetailOut": {
+        "description": "A skill, with the revision its files are at.",
+        "properties": {
+          "created_at": {
+            "description": "When the skill was created.",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the skill does and when to use it, from its SKILL.md.",
+            "title": "Description"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Subject area the skill covers.",
+            "title": "Domain"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The skill's SKILL.md folder, by path. Only with `include_content=true`.",
+            "title": "Files"
+          },
+          "id": {
+            "description": "The skill's id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "installed": {
+            "description": "Whether it is in your library, so your agent is told about it.",
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "latest_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SkillRevisionRefOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The revision the skill's files are at. Null for a built-in skill (versioned with Beakr itself) and for a skill not changed since revisions were recorded."
+          },
+          "name": {
+            "description": "The skill's display name, from its SKILL.md.",
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "description": "How it came to exist: `created` (written in Beakr, by a person or their agent), `mined` (Beakr drafted it from repeated work and it was accepted), `imported` (uploaded as a SKILL.md folder) or `system` (built in).",
+            "enum": [
+              "created",
+              "mined",
+              "imported",
+              "system"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "owner": {
+            "description": "Whose skill it is: `me` (you wrote it), `org` (someone in your organization, or the organization itself), `system` (built into Beakr) or `anyone` (a public skill from outside your organization).",
+            "enum": [
+              "me",
+              "org",
+              "system",
+              "anyone"
+            ],
+            "title": "Owner",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.",
+            "title": "Slug",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the skill last changed.",
+            "examples": [
+              "2026-10-03T09:15:42Z"
+            ],
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "visibility": {
+            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (anyone).",
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "visibility",
+          "owner",
+          "origin",
+          "installed",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SkillDetailOut",
+        "type": "object"
+      },
+      "SkillInstalled": {
+        "properties": {
+          "skill_id": {
+            "description": "Id of the skill.",
+            "format": "uuid",
+            "title": "Skill Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "`installed`.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "skill_id"
+        ],
+        "title": "SkillInstalled",
+        "type": "object"
+      },
+      "SkillOut": {
+        "description": "A skill the caller can use or install.",
+        "properties": {
+          "created_at": {
+            "description": "When the skill was created.",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What the skill does and when to use it, from its SKILL.md.",
+            "title": "Description"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Subject area the skill covers.",
+            "title": "Domain"
+          },
+          "files": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The skill's SKILL.md folder, by path. Only with `include_content=true`.",
+            "title": "Files"
+          },
+          "id": {
+            "description": "The skill's id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "installed": {
+            "description": "Whether it is in your library, so your agent is told about it.",
+            "title": "Installed",
+            "type": "boolean"
+          },
+          "name": {
+            "description": "The skill's display name, from its SKILL.md.",
+            "title": "Name",
+            "type": "string"
+          },
+          "origin": {
+            "description": "How it came to exist: `created` (written in Beakr, by a person or their agent), `mined` (Beakr drafted it from repeated work and it was accepted), `imported` (uploaded as a SKILL.md folder) or `system` (built in).",
+            "enum": [
+              "created",
+              "mined",
+              "imported",
+              "system"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "owner": {
+            "description": "Whose skill it is: `me` (you wrote it), `org` (someone in your organization, or the organization itself), `system` (built into Beakr) or `anyone` (a public skill from outside your organization).",
+            "enum": [
+              "me",
+              "org",
+              "system",
+              "anyone"
+            ],
+            "title": "Owner",
+            "type": "string"
+          },
+          "slug": {
+            "description": "The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.",
+            "title": "Slug",
+            "type": "string"
+          },
+          "updated_at": {
+            "description": "When the skill last changed.",
+            "examples": [
+              "2026-10-03T09:15:42Z"
+            ],
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "visibility": {
+            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (anyone).",
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
+            "title": "Visibility",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "visibility",
+          "owner",
+          "origin",
+          "installed",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "SkillOut",
+        "type": "object"
+      },
+      "SkillPageOut": {
+        "description": "One page of skills, by name.",
+        "properties": {
+          "data": {
+            "description": "The skills on this page.",
+            "items": {
+              "$ref": "#/components/schemas/SkillOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` for the next page; null on the last.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data",
+          "has_more"
+        ],
+        "title": "SkillPageOut",
+        "type": "object"
+      },
+      "SkillProposalDismissed": {
+        "properties": {
+          "proposal_id": {
+            "description": "The proposal that was dismissed.",
+            "format": "uuid",
+            "title": "Proposal Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "`dismissed`.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "proposal_id"
+        ],
+        "title": "SkillProposalDismissed",
+        "type": "object"
+      },
+      "SkillRevisionRefOut": {
+        "description": "The revision a skill's files are at now.",
+        "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it became the skill's current files.",
+            "title": "Applied At"
+          },
+          "author_kind": {
+            "description": "Who made it, such as `user`, `agent`, `curator` or `system`.",
+            "title": "Author Kind",
+            "type": "string"
+          },
+          "change_summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A one-line summary of the change, when recorded.",
+            "title": "Change Summary"
+          },
+          "created_at": {
+            "description": "When the revision was recorded.",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "file_count": {
+            "description": "How many files the skill has at this revision.",
+            "title": "File Count",
+            "type": "integer"
+          },
+          "files_sha256": {
+            "description": "Digest of the files at this revision. Send it as `expected_sha256` when replacing the files, so a change made in between is not overwritten.",
+            "title": "Files Sha256",
+            "type": "string"
+          },
+          "id": {
+            "description": "The revision's id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "What made it, such as `initial`, `user_edit`, `auto_revision` or `baseline`.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "revision_number": {
+            "description": "Its number in the skill's history, from 1.",
+            "title": "Revision Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "revision_number",
+          "kind",
+          "author_kind",
+          "files_sha256",
+          "file_count",
+          "created_at"
+        ],
+        "title": "SkillRevisionRefOut",
+        "type": "object"
+      },
+      "SkillScriptOut": {
+        "properties": {
+          "content": {
+            "description": "The skill script's content.",
+            "title": "Content",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the skill script, in plain text.",
+            "title": "Description"
+          },
+          "name": {
+            "description": "Name of the skill script.",
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "content"
+        ],
+        "title": "SkillScriptOut",
         "type": "object"
       },
       "SourceExcerpt": {
@@ -24630,6 +25512,398 @@
         "x-beakr-replaces": "/v1/organizations/me/active"
       }
     },
+    "/v1/me/skills/library/{skill_id}": {
+      "delete": {
+        "description": "Remove a skill from your library, so your agent stops being told about it. The skill itself is kept, and installing it again brings it back. 404 when it is not in your library.",
+        "operationId": "uninstall_skill_v1_me_skills_library__skill_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Uninstall a skill",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-destructive": true,
+        "x-beakr-scope": "skills:write"
+      },
+      "post": {
+        "description": "Add a skill you can see to your library, so your agent is told about it. Installing an installed skill changes nothing.",
+        "operationId": "install_skill_v1_me_skills_library__skill_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillInstalled"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Install a skill",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-scope": "skills:write"
+      }
+    },
+    "/v1/me/skills/proposals": {
+      "get": {
+        "description": "Skills Beakr drafted from work you repeated successfully, most recently seen first, with the draft's files and the evidence behind it. `status` is `pending` (the default), `accepted` or `dismissed`.",
+        "operationId": "list_mined_skill_proposals_v1_me_skills_proposals_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "pending",
+              "pattern": "^(pending|accepted|dismissed)$",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MinedSkillProposalOutPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List proposed skills",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-scope": "skills:read"
+      }
+    },
+    "/v1/me/skills/proposals/{proposal_id}/accept": {
+      "post": {
+        "description": "Turn a pending proposal into a private skill of yours, installed in your library. 409 `already_reviewed` when it was already decided, `duplicate_candidate` when it repeats a skill you have (`force=true` creates it anyway) and `import_conflict` when a concurrent change won; retry that one.",
+        "operationId": "accept_mined_skill_proposal_v1_me_skills_proposals__proposal_id__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Import even when the draft duplicates a skill the user already has.",
+            "in": "query",
+            "name": "force",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Import even when the draft duplicates a skill the user already has.",
+              "title": "Force",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarySkillOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Accept a proposed skill",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-scope": "skills:write"
+      }
+    },
+    "/v1/me/skills/proposals/{proposal_id}/dismiss": {
+      "post": {
+        "description": "Decline a pending proposal; it moves to `status=dismissed` and its evidence is kept. If later work shows the same pattern again, Beakr may propose it again. 409 when it was already decided.",
+        "operationId": "dismiss_mined_skill_proposal_v1_me_skills_proposals__proposal_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillProposalDismissed"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dismiss a proposed skill",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-scope": "skills:write"
+      }
+    },
     "/v1/me/threads": {
       "get": {
         "description": "Threads the caller created in the active organization, latest activity first. Filter with `project_ids`; `q` searches titles. `group_id` is deprecated.",
@@ -28152,6 +29426,686 @@
         "x-beakr-scope": "agent:run"
       }
     },
+    "/v1/skills": {
+      "get": {
+        "description": "The skills you can use or install, by name, one page at a time: your own, your organization's, the ones built into Beakr and public skills from anywhere. Each is labelled with its `visibility`, its `owner` (`me`, `org`, `system` or `anyone`), its `origin` (`created`, `mined`, `imported` or `system`) and whether it is `installed` in your library, and each label is also a filter: `owner=me` lists your own skills, `owner=system` the built-in ones, `visibility=public` the public ones and `installed=false` the ones you could add. Repeat a filter for more than one value. `include_content=true` adds each skill's files.",
+        "operationId": "list_skills_route_v1_skills_get",
+        "parameters": [
+          {
+            "description": "Only skills with these visibilities. Repeat the parameter for more than one.",
+            "in": "query",
+            "name": "visibility",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "enum": [
+                      "private",
+                      "org",
+                      "public"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only skills with these visibilities. Repeat the parameter for more than one.",
+              "title": "Visibility"
+            }
+          },
+          {
+            "description": "Only skills with these owners: `me`, `org`, `system` (built-in) or `anyone` (public skills from outside your organization). Repeat for more than one.",
+            "in": "query",
+            "name": "owner",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "enum": [
+                      "me",
+                      "org",
+                      "system",
+                      "anyone"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only skills with these owners: `me`, `org`, `system` (built-in) or `anyone` (public skills from outside your organization). Repeat for more than one.",
+              "title": "Owner"
+            }
+          },
+          {
+            "description": "Only skills of these origins: `created`, `mined`, `imported` or `system`. Repeat for more than one.",
+            "in": "query",
+            "name": "origin",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "enum": [
+                      "created",
+                      "mined",
+                      "imported",
+                      "system"
+                    ],
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only skills of these origins: `created`, `mined`, `imported` or `system`. Repeat for more than one.",
+              "title": "Origin"
+            }
+          },
+          {
+            "description": "`true` for the skills in your library, `false` for the ones you could install.",
+            "in": "query",
+            "name": "installed",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`true` for the skills in your library, `false` for the ones you could install.",
+              "title": "Installed"
+            }
+          },
+          {
+            "description": "Words to match in the name, description or body.",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Words to match in the name, description or body.",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Only skills of this domain.",
+            "in": "query",
+            "name": "domain",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 100,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only skills of this domain.",
+              "title": "Domain"
+            }
+          },
+          {
+            "description": "Add each skill's SKILL.md folder as `files`.",
+            "in": "query",
+            "name": "include_content",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Add each skill's SKILL.md folder as `files`.",
+              "title": "Include Content",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillPageOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List skills",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-scope": "skills:read"
+      },
+      "post": {
+        "description": "Create a skill from a SKILL.md folder: `files` maps each path to its text, and must include `SKILL.md`, which names the skill in its frontmatter (`name`, `description`). Other files go under `scripts/`, `references/`, `templates/` or `assets/`. The skill is yours, installed in your library, and private unless `visibility` says otherwise. Honours `Idempotency-Key`. 422 when the folder is not a valid skill.",
+        "operationId": "import_skill_bundle_v1_skills_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportBundleIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibrarySkillOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Create a skill",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-replaces": "/v1/me/skills/import/bundle",
+        "x-beakr-scope": "skills:write"
+      }
+    },
+    "/v1/skills/{skill_id}": {
+      "delete": {
+        "description": "Delete a skill you wrote, for everyone who installed it. 404 for a skill you did not write; to stop using someone else's skill, uninstall it.",
+        "operationId": "delete_skill_v1_skills__skill_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Delete a skill",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-destructive": true,
+        "x-beakr-replaces": "/v1/me/skills/{skill_id}",
+        "x-beakr-scope": "skills:write"
+      },
+      "get": {
+        "description": "One skill, by id or slug, with its labels and the revision its files are at. A slug is not unique (your own skill and a built-in can share one), so it resolves the way your agent loads skills: your own first, then a built-in, then one you installed, then your organization's. A slug never reaches a skill from another organization that you have not installed; use its id. 404 when no skill you can see matches.",
+        "operationId": "get_skill_route_v1_skills__skill_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "title": "Skill Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Add the skill's SKILL.md folder as `files`.",
+            "in": "query",
+            "name": "include_content",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Add the skill's SKILL.md folder as `files`.",
+              "title": "Include Content",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillDetailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a skill",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-scope": "skills:read"
+      }
+    },
+    "/v1/skills/{skill_id}/bundle": {
+      "get": {
+        "description": "The SKILL.md folder of a skill you can see, as `{path: text}`, with `files_sha256`, the digest to send back when replacing the files. 404 when the skill is not visible to you.",
+        "operationId": "get_skill_bundle_v1_skills__skill_id__bundle_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillBundleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a skill's files",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-replaces": "/v1/me/skills/{skill_id}/bundle",
+        "x-beakr-scope": "skills:read"
+      },
+      "put": {
+        "description": "Replace the SKILL.md folder of a skill you own (`replace=false` adds and overwrites the files sent and keeps the rest). Send the `files_sha256` you read as `expected_sha256` and a change made since is refused with 409 `skill_conflict` instead of overwritten. 403 for a skill you can see but do not own.",
+        "operationId": "replace_skill_bundle_v1_skills__skill_id__bundle_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkillBundleReplaceIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkillBundleOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Replace a skill's files",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-replaces": "/v1/me/skills/{skill_id}/bundle",
+        "x-beakr-scope": "skills:write"
+      }
+    },
+    "/v1/skills/{skill_id}/bundle.zip": {
+      "get": {
+        "description": "The SKILL.md folder of a skill you can see, as a zip archive whose folder unpacks straight into Claude Code, Codex or any agent that reads SKILL.md folders. 404 when the skill is not visible to you or has no files.",
+        "operationId": "download_skill_bundle_zip_v1_skills__skill_id__bundle_zip_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "skill_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Skill Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Download a skill as a zip",
+        "tags": [
+          "public",
+          "skills"
+        ],
+        "x-beakr-replaces": "/v1/me/skills/{skill_id}/bundle.zip",
+        "x-beakr-scope": "skills:read"
+      }
+    },
     "/v1/threads/{thread_id}": {
       "get": {
         "description": "The conversation of any thread the caller can see, including threads shared with them. People who did not create the thread can read it but not send to it, and do not see its scope. Messages page backwards from the newest with `limit` and `before_message_id`/`before_created_at`. Documents produced in the thread are returned as metadata.",
@@ -29001,6 +30955,11 @@
       "x-displayName": "Knowledge"
     },
     {
+      "description": "SKILL.md folders your agent loads on demand: browse, install, write and review them.",
+      "name": "skills",
+      "x-displayName": "Skills"
+    },
+    {
       "description": "Agent runs: start, stream, read and cancel.",
       "name": "runs",
       "x-displayName": "Runs"
@@ -29076,6 +31035,12 @@
       "name": "Knowledge",
       "tags": [
         "knowledge"
+      ]
+    },
+    {
+      "name": "Skills",
+      "tags": [
+        "skills"
       ]
     },
     {
