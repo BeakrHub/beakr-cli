@@ -25,3 +25,12 @@ $ beakr kb proposals accept 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --yes
 Accepted proposal 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f.
 --- stderr
 
+
+$ beakr kb proposals accept 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --yes
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/accept
+[exit 0]
+--- stdout
+5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f	status=accepted
+--- stderr
+

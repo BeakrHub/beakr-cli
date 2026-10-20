@@ -75,3 +75,15 @@ Helios Lead Selection Brief
 The portfolio committee approved NW-217 as the lead. {{1}}
 --- stderr
 
+
+$ beakr outputs show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/outputs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+Helios Lead Selection Brief (doc, revision 3)
+As of 2026-10-01T12:04:00Z: the agent had read 1 source(s), 0 cited.
+Helios Lead Selection Brief
+
+The portfolio committee approved NW-217 as the lead. {{1}}
+--- stderr
+

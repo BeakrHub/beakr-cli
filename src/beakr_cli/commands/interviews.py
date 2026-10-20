@@ -13,6 +13,7 @@ import re
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.app_url import resolve_app_url
 from beakr_cli.output import console, emit, err_console, print_markdown, print_table, short
@@ -110,11 +111,12 @@ def request_interview(
                 f"Asked {to}: the request is in their interview inbox "
                 f"(request {data.get('request_id')}).",
                 highlight=False,
+                markup=False,
             )
             return
         status = data.get("email_status")
         if status == "queued":
-            console.print(f"Emailed {to} a link to the interview.", highlight=False)
+            console.print(f"Emailed {to} a link to the interview.", highlight=False, markup=False)
         else:
             path = str(data.get("path") or "")
             url = f"{resolve_app_url().rstrip('/')}{path}" if path.startswith("/") else path
@@ -123,11 +125,14 @@ def request_interview(
                 if status == "not_sent_sandbox"
                 else "the email may not have been sent"
             )
-            console.print(f"Made a link for {to}, but {reason}.", highlight=False)
+            console.print(f"Made a link for {to}, but {reason}.", highlight=False, markup=False)
             if url:
-                console.print(f"Send this link yourself (shown once): {url}", highlight=False)
+                console.print(
+                    f"Send this link yourself (shown once): {url}", highlight=False, markup=False
+                )
         err_console.print(
-            f"Read the answers with `beakr interviews show --link {data.get('link_id')}`."
+            f"Read the answers with `beakr interviews show --link {data.get('link_id')}`.",
+            markup=False,
         )
 
     emit(result, json_out=json_out, render=render)
@@ -154,10 +159,11 @@ def _request_by_link(
     def render(data: dict[str, Any]) -> None:
         path = str(data["link"].get("path") or "")
         url = f"{resolve_app_url().rstrip('/')}{path}" if path.startswith("/") else path
-        console.print(f"Interview {sendable.get('id')}: {title}", highlight=False)
-        console.print(f"Send this link (shown once): {url}", highlight=False)
+        console.print(f"Interview {sendable.get('id')}: {title}", highlight=False, markup=False)
+        console.print(f"Send this link (shown once): {url}", highlight=False, markup=False)
         err_console.print(
-            f"Read the answers with `beakr interviews show --link {data['link'].get('link_id')}`."
+            f"Read the answers with `beakr interviews show --link {data['link'].get('link_id')}`.",
+            markup=False,
         )
 
     emit(result, json_out=json_out, render=render)
@@ -191,16 +197,16 @@ def draft_interview(
         drafted = sdk.interviews.draft_sendable(message, draft=draft or None)
 
     def render(data: dict[str, Any]) -> None:
-        console.print(str(data.get("reply") or ""), highlight=False)
+        console.print(str(data.get("reply") or ""), highlight=False, markup=False)
         changes = data.get("changes") or {}
         for key in ("title", "goals", "supporting_info"):
             if changes.get(key):
-                console.print(f"{key}: {changes[key]}", highlight=False)
+                console.print(f"{key}: {changes[key]}", highlight=False, markup=False)
         for item in changes.get("key_questions") or []:
-            console.print(f"  - {item}", highlight=False)
+            console.print(f"  - {item}", highlight=False, markup=False)
         pending = data.get("pending_files") or []
         if pending:
-            err_console.print(f"Still reading: {', '.join(map(str, pending))}")
+            err_console.print(f"Still reading: {', '.join(map(str, pending))}", markup=False)
 
     emit(drafted, json_out=json_out, render=render)
 
@@ -297,20 +303,24 @@ def show_interview(
 
     def render(data: dict[str, Any]) -> None:
         if link:
-            console.print(f"[bold]Link {link}[/bold]: {data.get('status')}", highlight=False)
+            console.print(
+                f"[bold]Link {escape(str(link))}[/bold]: {escape(str(data.get('status')))}",
+                highlight=False,
+            )
             print_markdown(str(data.get("summary") or "(no answers yet)"))
             uploads = data.get("uploads") or []
             if uploads:
                 console.print(f"{len(uploads)} file(s) uploaded by the person.")
             return
         console.print(
-            f"[bold]{data.get('title') or session_id}[/bold] ({data.get('status')}, "
-            f"{data.get('proposal_count') or 0} Knowledge proposal(s))",
+            f"[bold]{escape(str(data.get('title') or session_id))}[/bold] "
+            f"({escape(str(data.get('status')))}, "
+            f"{escape(str(data.get('proposal_count') or 0))} Knowledge proposal(s))",
             highlight=False,
         )
         for turn in data.get("prior_turns") or []:
             speaker = "Q" if turn.get("role") in {"assistant", "interviewer"} else "A"
-            console.print(f"{speaker}: {turn.get('text') or ''}", highlight=False)
+            console.print(f"{speaker}: {turn.get('text') or ''}", highlight=False, markup=False)
 
     emit(result, json_out=json_out, render=render)
 

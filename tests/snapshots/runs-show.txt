@@ -37,3 +37,11 @@ Status:   interrupted
 Started:  2026-10-01T12:00:02Z
 --- stderr
 
+
+$ beakr runs show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/runs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+9bc43756-28ed-4a78-961a-31154e35ad49	status=interrupted	thread=1b8a2e91-6b4f-467e-aa3a-60670b2542cb
+--- stderr
+

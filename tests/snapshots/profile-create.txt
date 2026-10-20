@@ -63,3 +63,12 @@ $ beakr profile create --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --goal 'Pi
 Created project profile caa38196-d3a2-4236-8147-14b1ae2605db.
 --- stderr
 
+
+$ beakr profile create --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --goal 'Pick a lead'
+> POST /v1/knowledge/profiles
+  {"description": "", "focus_areas": [], "goals": ["Pick a lead"], "profile_type": "project", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+[exit 0]
+--- stdout
+caa38196-d3a2-4236-8147-14b1ae2605db	Helios
+--- stderr
+

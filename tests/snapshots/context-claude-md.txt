@@ -29,3 +29,14 @@ $ beakr context --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --format claude_m
 Helios develops a thermostable enzyme candidate for the NW-200 series. Lead compound: NW-217 (selected 2026-09-18).
 --- stderr
 
+
+$ beakr context --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --format claude_md
+> POST /v1/context
+  {"format": "claude_md", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+[exit 0]
+--- stdout
+## Project
+
+Helios develops a thermostable enzyme candidate for the NW-200 series. Lead compound: NW-217 (selected 2026-09-18).
+--- stderr
+

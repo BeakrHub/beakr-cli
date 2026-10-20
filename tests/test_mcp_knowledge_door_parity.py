@@ -36,6 +36,7 @@ from mcp import types
 
 from beakr_cli.mcp_render import render
 from beakr_cli.mcp_server import mcp
+from tests._engine import hosted_render
 
 API = "https://api.example.com"
 FIXTURE = Path(__file__).parent / "fixtures" / "knowledge_door_results.json"
@@ -73,6 +74,9 @@ async def _replay(tool: str, verb: str, path: str, name: str, case: dict[str, An
     assert result.structuredContent is None
     assert len(result.content) == 1
     assert result.content[0].text == render(tool, case["mcp"])
+    # And as the hosted server renders it: a staged write's content_hash, which
+    # accept_proposal needs, was dropped here (the stdio result had no proposal).
+    assert result.content[0].text == hosted_render().render(tool, case["mcp"])
 
 
 def test_the_fixture_covers_every_command_and_action_this_server_documents() -> None:
@@ -93,6 +97,11 @@ async def test_read_returns_the_rest_payload_in_the_hosted_shape(command: str) -
     await _replay(
         "knowledge_base", "command", "/v1/knowledge/wiki/command", command, CASES["reads"][command]
     )
+
+
+def test_the_fixture_has_writes_that_staged_a_proposal() -> None:
+    staged = [case for case in CASES["writes"].values() if case["mcp"].get("proposal")]
+    assert staged, "recapture the fixture from an engine that returns `proposal`"
 
 
 @pytest.mark.asyncio

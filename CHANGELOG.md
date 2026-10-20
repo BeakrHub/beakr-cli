@@ -8,12 +8,132 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack` for one a
+  person started by messaging Beakr in Slack.
+- `GET /v1/interview/sendables`: each link carries who it was sent to and how:
+  `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
+  and `delivery_error`. All are null for a link that was not sent.
+- Proposal `filed_by.run`: the description says what the label is for: writes
+  that share it can be undone together.
+- MCP writes record the agent that made them: the stdio server sends the MCP
+  client's `initialize` name and version (`claude-code/2.1.283`) as
+  `X-Beakr-Agent`, so they no longer read as `beakr-mcp` with no agent.
+  `BEAKR_AGENT` still overrides it, to tell several agents under one key
+  apart; the CLI at a terminal declares no agent.
+- The MCP server lists every tool by default, so Claude Code (which calls
+  only listed tools) can call `documents`, `wiki_stats`, `wiki_graph`,
+  `get_profile`, the proposal tools, `conversations_search`,
+  `import_conversation`, `beakr_version` and `org_audit_log`.
+  `BEAKR_MCP_TOOLS=eager` keeps the small listing; there `discover_tools` adds
+  the tools it finds and the server sends `notifications/tools/list_changed`
+  (it now declares `tools.listChanged`).
+- The MCP `context` tool takes a project name as well as an id; a name was
+  refused with a bare "HTTP 422". A validation refusal now names each field
+  and the API's text for it.
+- On a self-hosted installation, tools for areas it leaves out are not listed
+  (read from its `/v1/public/openapi.json`, or from a call that meets a route
+  the server does not have), and commands for organization members, external
+  users, end-user tokens, service accounts, integrations and skills print
+  "This Beakr installation does not provide <area>." instead of a bare 404.
+  `beakr doctor` lists the areas the installation does not provide.
+- `beakr ask` lets the agent read Knowledge by default (`--no-knowledge` turns it
+  off); it answered "Knowledge is turned off for this message". `--mode` takes
+  only the server's modes (free, quick, deep, extreme, custom, auto, auto_free),
+  so a mode the server lacks, such as `fast`, is a usage error, not a 422.
+- `beakr kb rows`, `query`, `add-fact`, `add-connection`, `add-finding` and
+  `edit-rows` resolve a `--scope` slug or name to the project id like every
+  other project option.
+- `beakr kb cat` prints the page as the Knowledge door's `cat` renders it, with
+  each citation as a readable reference instead of a raw `{{artifact:...}}`
+  token; `--json` still prints the stored page and its sources. `--section-id`,
+  `--full` and `--source-offset` follow the continuation a cut read names.
+- `beakr kb proposals show` (and the review in `accept`) shows the payload as a
+  diff and labelled fields instead of JSON, with the content hash last.
+  `accept --reviewed-hash` needs no `--yes`: the reviewed hash is the
+  confirmation.
+- A label or Knowledge page that does not exist exits 4 (not found), like every
+  other missing object; `labels show` exited 2 and `kb cat` 1.
+- `beakr kb grep --after-title/--after-page-id`, `kb cat --lines` and `kb rows
+  --after-card` follow the continuations those reads name.
+- With `--json` (or `BEAKR_OUTPUT=json`), a failed command prints
+  `{"error": {"code", "message", "exit_code", ...}}` on stdout instead of plain
+  text only; `projects profile show` with no profile is such an error (exit 4).
+- `-P/--project` works on `kb rows`, `query`, `add-fact`, `add-connection`,
+  `add-finding`, `edit-rows` (`--scope`/`-s` still work), `kb proposals show`
+  and `projects members ls`.
+- `kb proposals ls` takes `--cursor` and names the next page; piped it lists
+  type, page and summary.
+- `kb proposals ls` and `show`, and the MCP `show_proposal`, say who filed each
+  proposal ("Filed by Dana Reyes via claude-code/2.1"); `ls --status` names
+  every status. `kb add-fact`, `add-connection`, `add-finding` and `edit-rows`
+  print the staged proposal's content hash under its id (`--json` carries the
+  whole `proposal`), and the MCP `knowledge_base_write` result prints it as the
+  hosted server does, for `accept_proposal`'s `reviewed_hash`.
+- Readable output: `runs show` prints the answer and its sources; piped
+  `conversations show` includes the messages; `kb log` without a page, `doctor`,
+  `hooks status`, `documents search`, `kb log PAGE` and `keys scopes` print
+  lines instead of field dumps; `kb search` snippets drop section markers and
+  citation tokens; `interviews link revoke --json` prints what it revoked.
+- `keys create` uses the web app URL the API reports (`app_url` on
+  `/v1/auth/config`) before a saved one, and
+  says when the address is only a guess (`BEAKR_APP_URL` overrides it).
+- `beakr projects members add` no longer offers `--type group`, which the server
+  refuses.
+- `beakr context --format json --out FILE` writes the JSON response; it wrote
+  the markdown.
+- Piped output prints an object with neither an id nor a name as `key=value`
+  columns instead of raw JSON.
+- `beakr conversations compound cancel ID` stops a queued or running compound
+  of an imported conversation; `beakr compound ID` resumes it. `conversations
+  show` reads a stopped one's status as `cancelled`.
 - `beakr projects profile show|set|edit`: read and set a project's Knowledge
   profile. `set --file` replaces the whole profile from JSON or YAML and
   refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,
   `--entity-type`, `--person`, `--organization`, `--topic`, `--guidance`)
   change only those fields and create the profile when the project has none;
   `edit` opens it as YAML in `$EDITOR`.
+- `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
+  declare is written as the closest declared type when one answers to that
+  name (its key, an alias or its label; `project` is `initiative`), and the
+  result says which type was used. A type nothing declared is close to answers
+  `invalid_page_type` with the declared types listed. Citations sent in
+  `citations` beside `sections` are kept with the sections that use them.
+- `POST /v1/knowledge/wiki/write` `mv`: the result names the final title when
+  the requested one was taken, and lists the pages whose links still show the
+  old title (`[[Old title]]`). Those links keep resolving to the renamed page;
+  `find_replace` updates their text.
+- `POST /v1/compound/cancel`: stop the queued or running compound of an
+  imported conversation (`conversations:write`). A batch already being read
+  finishes and its proposals stay; no further batch starts, and the
+  conversation's `compound_status` reads `cancelled`. Answers
+  `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound`
+  resumes from where it stopped.
+- `POST /v1/knowledge/wiki/write`: a write that stages a proposal for one
+  section or card row (`edit_section`, `add_fact`, `add_connection`,
+  `add_finding`, `edit_rows`) answers with `proposal`: its `id` and
+  `content_hash`, the value an accept takes back as `reviewed_hash`, and
+  `filed_by`. A rejected accept of such a proposal (409) now says why it cannot
+  apply.
+- `GET /v1/knowledge/wiki/proposals` and `GET /v1/knowledge/wiki/proposals/{proposal_id}`:
+  each proposal carries `filed_by`: the person (`user_id`, `user_name`), the
+  API `credential`, `client`, `agent` and `run` that filed it, and a `text`
+  line such as "filed by Dana Reyes via claude-code/2.1". The
+  `POST /v1/knowledge/wiki/command` `proposals` listing prints that line.
+  A pending listing's `cursor` (and the `proposals` command's `offset`) now
+  reaches every pending proposal: behind 500 proposals that could no longer
+  apply, a page used to end the listing early.
+- `POST /v1/knowledge/wiki/command` `proposals`: `status` also takes
+  `accepted`, `superseded` and `resolved`, besides `pending` (the default) and
+  `dismissed`; it is no longer an enum in the schema, and an unknown value
+  answers `invalid_arguments` naming every status. `proposals` pages with
+  `offset` (and `limit`, at most 200): a page that stops short says which
+  `offset` continues it. A superseded proposal is listed with the reason it can no longer
+  apply. A pending proposal to a card's Facts, Connections or Findings no longer
+  stops applying when the table is re-sorted or another row changes; only a
+  change to a row it edits supersedes it, and the first row written to a card
+  section the page does not have yet is placed and accepted as it was shown.
 - `GET`, `PUT` and `PATCH /v1/projects/{project_id}/knowledge-profile`: read
   and set a project's Knowledge profile, the description, goals, focus areas,
   people, organizations, topics, entity types and extraction guidance that

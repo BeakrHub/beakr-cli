@@ -14,6 +14,7 @@ from typing import Any
 
 import typer
 from beakr_sdk.resources.knowledge_readiness import KnowledgeTimeout
+from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console
 from beakr_cli.project_binding import resolve_project
@@ -67,7 +68,7 @@ def failed_file_line(failed: dict[str, Any]) -> str:
 
 def _render_status(project_ref: str) -> Callable[[dict[str, Any]], None]:
     def render(status: dict[str, Any]) -> None:
-        console.print(f"Knowledge: [bold]{state_phrase(status)}[/bold]")
+        console.print(f"Knowledge: [bold]{escape(str(state_phrase(status)))}[/bold]")
         failed = int(status.get("failed") or 0)
         behind = max(0, int(status.get("eligible") or 0) - failed)
         skipped = int(status.get("knowledge_skipped") or 0)
@@ -77,16 +78,20 @@ def _render_status(project_ref: str) -> Callable[[dict[str, Any]], None]:
         parts = [f"{int(status.get('total') or 0)} files", processed]
         if behind:
             parts.append(f"{behind} not sent or out of date")
-        console.print("Files: " + ", ".join(parts), highlight=False)
+        console.print("Files: " + ", ".join(parts), highlight=False, markup=False)
         shown = status.get("failed_files") or []
         if shown:
-            console.print(f"Failed ({failed}):")
+            console.print(f"Failed ({failed}):", markup=False)
             for row in shown:
                 console.print(f"  {failed_file_line(row)}", highlight=False, markup=False)
             if failed > len(shown):
-                console.print(f"  ... and {failed - len(shown)} more (raise --limit to list them)")
+                console.print(
+                    f"  ... and {failed - len(shown)} more (raise --limit to list them)",
+                    markup=False,
+                )
             console.print(
-                f"[dim]Retry them: beakr projects retry -P {project_ref}[/dim]", highlight=False
+                f"[dim]Retry them: beakr projects retry -P {escape(str(project_ref))}[/dim]",
+                highlight=False,
             )
         elif not status.get("ready"):
             console.print("[dim]Answers from this project may be incomplete until then.[/dim]")
@@ -143,7 +148,9 @@ def _render_retry(result: dict[str, Any]) -> None:
     if not result.get("files"):
         console.print("No failed files to retry.")
         return
-    console.print(f"Sent {queued} {'file' if queued == 1 else 'files'} to Knowledge again.")
+    console.print(
+        f"Sent {queued} {'file' if queued == 1 else 'files'} to Knowledge again.", markup=False
+    )
     for row in result.get("files") or []:
         if row.get("outcome") == "queued":
             continue
@@ -198,7 +205,7 @@ def wait_for_knowledge(sdk: Any, project_id: str, *, timeout: float) -> dict[str
     def show(status: dict[str, Any]) -> None:
         line = progress_line(status)
         if not printed or printed[-1] != line:
-            err_console.print(line, highlight=False)
+            err_console.print(line, highlight=False, markup=False)
             printed.append(line)
 
     try:
@@ -208,6 +215,7 @@ def wait_for_knowledge(sdk: Any, project_id: str, *, timeout: float) -> dict[str
             f"Knowledge is still {state_phrase(exc.last)} after {timeout:.0f}s; "
             f"check later with `beakr projects status -P {project_id}`.",
             highlight=False,
+            markup=False,
         )
         return None
 

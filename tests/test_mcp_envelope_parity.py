@@ -13,7 +13,6 @@ and build the hosted envelope for the same tool result with the engine's own
 
 from __future__ import annotations
 
-import importlib.util
 import json
 from typing import Any
 
@@ -23,7 +22,7 @@ from httpx import Response
 from mcp import types
 
 from beakr_cli.mcp_server import mcp
-from tests._engine import engine_checkout
+from tests._engine import hosted_render as load_hosted_render
 
 API = "https://api.example.com"
 
@@ -37,12 +36,7 @@ def api(monkeypatch):
 @pytest.fixture(scope="module")
 def hosted_render():
     """The hosted server's renderer, loaded from the engine checkout."""
-    path = engine_checkout("beakr/api/mcp_remote/render.py")
-    spec = importlib.util.spec_from_file_location("_hosted_mcp_render", path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
+    return load_hosted_render()
 
 
 async def _stdio_call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
