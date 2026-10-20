@@ -61,7 +61,7 @@ def remove_memory(
     emit(
         {"id": memory_id, "deleted": True},
         json_out=json_out,
-        render=lambda _: err_console.print(f"Deleted memory {memory_id}."),
+        render=lambda _: err_console.print(f"Deleted memory {memory_id}.", markup=False),
         json_when_piped=False,
     )
 

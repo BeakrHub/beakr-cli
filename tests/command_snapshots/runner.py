@@ -1,8 +1,9 @@
 """Run one snapshot case against the replayed API and render its snapshot text.
 
-A case runs twice: once with ``--json`` (what a script reads) and once as a
-person at a terminal (``is_piped`` false, a fixed 100-column console without
-colour; text lines are not wrapped, tables are laid out at that width). The
+A case runs three times: with ``--json`` (what a script reads), as a person at
+a terminal (``is_piped`` false, a fixed 100-column console without colour; text
+lines are not wrapped, tables are laid out at that width), and piped without
+``--json`` (the compact output an agent reads through a pipe). The
 snapshot records, for each run, the requests the command sent, its exit code,
 stdout and stderr, so a change to any of them shows up as a diff.
 """
@@ -36,7 +37,7 @@ class SnapshotCase:
 
     name: str
     argv: tuple[str, ...]
-    modes: tuple[str, ...] = ("json", "human")
+    modes: tuple[str, ...] = ("json", "human", "piped")
     exit_code: int = 0
     stdin: str | None = None
     variants: dict[str, str] = field(default_factory=dict)

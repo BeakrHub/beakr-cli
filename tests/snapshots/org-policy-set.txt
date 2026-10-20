@@ -37,3 +37,13 @@ Allowed clients:     any (advisory)
 OAuth apps:          approved only (2 approved)
 --- stderr
 
+
+$ beakr org policy set --max-key-days 90 --org 0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01
+> GET /v1/organizations/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01/auth-policy
+> PUT /v1/organizations/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01/auth-policy
+  {"allow_non_expiring_keys": false, "allow_personal_keys": true, "allowed_clients": null, "max_key_lifetime_days": 90, "require_step_up_mfa": true, "step_up_for_sign_ins": false}
+[exit 0]
+--- stdout
+allow_personal_keys=true	max_key_lifetime_days=180	require_step_up_mfa=true	require_sso=true	approved_oauth_clients=bkc_Hx3nV8cQ2rTy6LmA,bkc_9fK2mQ7xLp4Rt8Wz	sso_connections=conn_01JA7Z3K5WQ4P8NB2HRT6YVXCD	step_up_for_sign_ins=false	allow_non_expiring_keys=false
+--- stderr
+

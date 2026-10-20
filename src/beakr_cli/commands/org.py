@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.commands.keys import KEY_CLIENT
 from beakr_cli.output import console, emit, err_console, print_table, short
@@ -112,7 +113,7 @@ def revoke_credential(
     emit(
         {"kind": kind.value, "id": credential_id, "revoked": True},
         json_out=json_out,
-        render=lambda _: console.print(f"Revoked {kind.value} {credential_id}."),
+        render=lambda _: console.print(f"Revoked {kind.value} {credential_id}.", markup=False),
     )
 
 
@@ -168,7 +169,8 @@ def create_service_account(
         json_out=json_out,
         render=lambda d: console.print(
             f"Created service account {d.get('name')} ({d.get('user_id')}). "
-            "Mint a key with `beakr org service-accounts key <user_id> --scope ...`."
+            "Mint a key with `beakr org service-accounts key <user_id> --scope ...`.",
+            markup=False,
         ),
     )
 
@@ -187,7 +189,9 @@ def disable_service_account(
     emit(
         result,
         json_out=json_out,
-        render=lambda _: console.print(f"Disabled {account_id}; its keys no longer work."),
+        render=lambda _: console.print(
+            f"Disabled {account_id}; its keys no longer work.", markup=False
+        ),
     )
 
 
@@ -251,14 +255,14 @@ def mint_service_account_key(
         written = write_service_account_file(
             credentials_file.expanduser(), created, base_url=base_url, org_id=org
         )
-        err_console.print(f"Saved the key to {written} (owner read/write only).")
+        err_console.print(f"Saved the key to {written} (owner read/write only).", markup=False)
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"Key for {account_id} (shown once, store it now):")
-        console.print(str(data.get("key")), highlight=False, soft_wrap=True)
+        console.print(f"Key for {account_id} (shown once, store it now):", markup=False)
+        console.print(str(data.get("key")), highlight=False, soft_wrap=True, markup=False)
         console.print(
-            f"[dim]Scopes: {', '.join(data.get('scopes') or [])}; "
-            f"expires {str(data.get('expires_at') or 'never')[:10]}[/dim]"
+            f"[dim]Scopes: {escape(', '.join(data.get('scopes') or []))}; "
+            f"expires {escape(str(data.get('expires_at') or 'never')[:10])}[/dim]"
         )
 
     emit(created, json_out=json_out, render=render)
@@ -271,7 +275,10 @@ def show_org(org: str | None = _org_opt, json_out: bool = _json_opt) -> None:
         record = sdk.organizations.get(org) if org else sdk.me.active_org()
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"[bold]{data.get('name')}[/bold] ({data.get('id')})", highlight=False)
+        console.print(
+            f"[bold]{escape(str(data.get('name')))}[/bold] ({escape(str(data.get('id')))})",
+            highlight=False,
+        )
         for label, key in (
             ("Slug", "slug"),
             ("Type", "org_type"),
@@ -279,8 +286,8 @@ def show_org(org: str | None = _org_opt, json_out: bool = _json_opt) -> None:
             ("Created", "created_at"),
         ):
             if data.get(key):
-                console.print(f"{label + ':':<10}{data[key]}", highlight=False)
-        console.print(f"{'PHI mode:':<10}{'on' if data.get('phi_mode') else 'off'}")
+                console.print(f"{label + ':':<10}{data[key]}", highlight=False, markup=False)
+        console.print(f"{'PHI mode:':<10}{'on' if data.get('phi_mode') else 'off'}", markup=False)
 
     emit(record, json_out=json_out, render=render)
 
@@ -292,17 +299,24 @@ def _render_policy(policy: dict[str, Any]) -> None:
     clients = policy.get("allowed_clients")
     lifetime = policy.get("max_key_lifetime_days")
     console.print(
-        f"Personal API keys:   {'allowed' if policy.get('allow_personal_keys') else 'admins only'}"
+        f"Personal API keys:   {'allowed' if policy.get('allow_personal_keys') else 'admins only'}",
+        markup=False,
     )
-    console.print(f"Max key lifetime:    {f'{lifetime} days' if lifetime else 'no limit'}")
+    console.print(
+        f"Max key lifetime:    {f'{lifetime} days' if lifetime else 'no limit'}", markup=False
+    )
     console.print(
         "Non-expiring keys:   "
-        f"{'allowed' if policy.get('allow_non_expiring_keys') else 'not allowed (90-day default)'}"
+        f"{'allowed' if policy.get('allow_non_expiring_keys') else 'not allowed (90-day default)'}",
+        markup=False,
     )
     console.print(
-        f"Step-up MFA:         {'required' if policy.get('require_step_up_mfa') else 'off'}"
+        f"Step-up MFA:         {'required' if policy.get('require_step_up_mfa') else 'off'}",
+        markup=False,
     )
-    console.print(f"Allowed clients:     {', '.join(clients) if clients else 'any'} (advisory)")
+    console.print(
+        f"Allowed clients:     {', '.join(clients) if clients else 'any'} (advisory)", markup=False
+    )
     approved = policy.get("approved_oauth_clients")
     restricted = approved is not None or clients
     console.print(

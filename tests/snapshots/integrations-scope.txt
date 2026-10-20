@@ -23,3 +23,12 @@ $ beakr integrations scope 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
   1Hq8Zr3Kt6Vn9Xm2Lp5Wb7Yc4Dj0Fs  Helios
 --- stderr
 
+
+$ beakr integrations scope 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/integrations/hosted/connectors/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/scope
+[exit 0]
+--- stdout
+1Hq8Zr3Kt6Vn9Xm2Lp5Wb7Yc4Dj0Fs	Helios	type=folder
+mode=restricted
+--- stderr
+

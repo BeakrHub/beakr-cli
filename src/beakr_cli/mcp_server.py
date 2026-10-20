@@ -17,7 +17,7 @@ from beakr_cli import tool_surface
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
 from beakr_cli.mcp_knowledge_status import knowledge_notice
-from beakr_cli.scope import scope_params
+from beakr_cli.mcp_tools_platform import _project_by_name_or_id
 from beakr_cli.updates import (
     detect_install,
     get_update_status,
@@ -96,45 +96,11 @@ def _update_notice() -> str:
     )
 
 
-# W8.2: the eager tools are listed by default and the rest are found through
-# discover_tools (BEAKR_MCP_TOOLS=all lists everything).
+# W8.2: every tool is listed by default; BEAKR_MCP_TOOLS=eager lists the eager
+# set and adds what discover_tools finds.
 mcp = tool_surface.TieredFastMCP(
-    "beakr", instructions=_INSTRUCTIONS + tool_surface.DISCOVERY_NOTE + _update_notice()
+    "beakr", instructions=_INSTRUCTIONS + tool_surface.discovery_note() + _update_notice()
 )
-
-
-def _scoped_project(project: str | None = None, project_id: str | None = None) -> str | None:
-    """The project filter the non-vocabulary routes still take (argument, else the binding).
-
-    There is no ``personal`` argument, deliberately. Personal is not a special
-    scope -- it is a project with ``project_type='personal'`` that
-    ``list_projects`` already reports -- so it is named like any other and needs
-    no resolution step of its own. The flag used to cost a ``/v1/projects`` round
-    trip and a module-level cache to hide it.
-    """
-    return scope_params(project=project_id or project).get("project_id")
-
-
-async def _project_by_name_or_id(
-    project: str | None = None, project_id: str | None = None
-) -> str | None:
-    """``_scoped_project`` for a ``project`` that may be a name, as list_projects suggests.
-
-    The research, stats and graph routes take a project id; an agent passes the
-    name it read from list_projects (or the ``scope`` it gives knowledge_base) and
-    was refused with "project_id must be a valid UUID".
-    """
-    from beakr_cli.mcp_tools_platform import _project_id
-
-    given = (project_id or project or "").strip()
-    if not given:
-        return _scoped_project()
-    resolved = await _project_id(given)
-    if resolved is None:
-        raise ValueError(
-            f"No single project named {given!r}; pass its id or exact name from list_projects."
-        )
-    return resolved
 
 
 def _format_proposal(data: dict) -> str:
@@ -149,6 +115,11 @@ def _format_proposal(data: dict) -> str:
     if data.get("summary"):
         lines.append(f"Summary: {data['summary']}")
     from beakr_cli.proposal_accept import review_lines
+    from beakr_cli.proposal_view import filed_by_line
+
+    filed = filed_by_line(data)
+    if filed:
+        lines.append(filed)
 
     # Printed plainly: accept_proposal takes content_hash back as reviewed_hash.
     lines.extend(review_lines(data))
@@ -348,6 +319,12 @@ def _wiki_result(result: dict) -> dict:
         # A read's coverage and next-step hints, as the engine sent them
         # (beakr/engines/tools/graph/kb_result_coverage.py in beakr-engine).
         **({"coverage": result["coverage"]} if isinstance(result.get("coverage"), dict) else {}),
+        # A staged write's id, content hash and filer, so the caller can accept it.
+        **(
+            {"proposal": dict(result["proposal"])}
+            if isinstance(result.get("proposal"), dict)
+            else {}
+        ),
         # Older compact API responses report truncation only through next.
         "next": list(result.get("next") or []),
     }

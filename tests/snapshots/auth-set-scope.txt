@@ -13,3 +13,10 @@ $ beakr auth set-scope --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 Scope set to project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 --- stderr
 
+
+$ beakr auth set-scope --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+Scope set to project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+--- stderr
+

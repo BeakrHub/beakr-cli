@@ -44,3 +44,12 @@ Decision: Helios Lead Selection  score=0.67
   On 2026-09-30 the portfolio committee selected NW-217 over NW-204 on four-week stability at 40 C.
 --- stderr
 
+
+$ beakr kb search 'thermostable lead' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/search?limit=10&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&q=thermostable lead
+[exit 0]
+--- stdout
+9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41	Project Helios	type=project	Helios selects a thermostable lead from Northwind's NW-200 series. The portfolio committee approved NW-217 as the lead on 2026-09-30.
+5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62	Decision: Helios Lead Selection	type=decision	On 2026-09-30 the portfolio committee selected NW-217 over NW-204 on four-week stability at 40 C.
+--- stderr
+

@@ -22,18 +22,22 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from mcp.server.fastmcp.exceptions import ToolError
+from mcp.server.lowlevel import NotificationOptions
+from mcp.server.models import InitializationOptions
+from mcp.server.stdio import stdio_server
 from mcp.types import CallToolResult, TextContent
 from mcp.types import Tool as MCPTool
 from pydantic import ValidationError
 
-#: ``BEAKR_MCP_TOOLS=all`` lists every tool instead of the eager set (W8.2).
+#: The listing mode. Every tool is listed by default; ``BEAKR_MCP_TOOLS=eager``
+#: lists only the eager set and reveals the rest through ``discover_tools``.
 TOOLS_ENV = "BEAKR_MCP_TOOLS"
 
-#: Added to the server instructions: how the rest of the surface is reached.
+#: Added to the server instructions in the eager mode: how the rest is reached.
 DISCOVERY_NOTE = (
     "\n\nOnly the most-used Beakr tools are listed. Call 'discover_tools' to find the "
     "others (proposals review, project and profile lookups, statistics, conversations, "
-    "imports, the audit log); each comes back with its input schema and is called by name."
+    "imports, the audit log); the tools it finds are added to the listing."
 )
 
 
@@ -114,8 +118,20 @@ def without_project_parameters(tool: MCPTool) -> MCPTool:
 
 
 def lists_every_tool() -> bool:
-    """Whether this server was asked to list every tool (``BEAKR_MCP_TOOLS=all``)."""
-    return os.environ.get(TOOLS_ENV, "").strip().lower() == "all"
+    """Whether every tool is listed: always, unless ``BEAKR_MCP_TOOLS=eager``.
+
+    Claude Code calls only the tools a server lists, so a tool reachable only
+    by name through ``discover_tools`` could not be called from it at all.
+    Listing everything costs about 9,000 characters of tool definitions more
+    than the eager set; the eager mode stays for clients that want the small
+    listing and follow ``tools/list_changed``.
+    """
+    return os.environ.get(TOOLS_ENV, "").strip().lower() != "eager"
+
+
+def discovery_note() -> str:
+    """The instructions' note on ``discover_tools``, in the eager mode only."""
+    return "" if lists_every_tool() else DISCOVERY_NOTE
 
 
 def _uniform(fn: Callable, tool: str) -> Callable:
@@ -149,13 +165,78 @@ def _uniform(fn: Callable, tool: str) -> Callable:
 
 
 class TieredFastMCP(FastMCP):
-    """A FastMCP server that lists the eager set and keeps the rest callable (W8.2).
+    """A FastMCP server whose listing follows the mode and the installation (W8.2).
 
-    MCP has no deferred-tool primitive. Every tool stays registered (so tools/call
-    reaches any of them by name); only the listing is narrowed, and
-    ``discover_tools`` describes the rest. ``BEAKR_MCP_TOOLS=all`` lists everything
-    for clients that cannot run a discovery step.
+    Every tool stays registered, so tools/call reaches any of them by name. The
+    listing leaves out:
+
+    - in the eager mode (``BEAKR_MCP_TOOLS=eager``), the discovery tier until
+      ``discover_tools`` finds a tool, which :meth:`reveal` adds to the listing;
+    - tools this Beakr installation does not provide: those whose documented
+      operations its public OpenAPI document leaves out, and any tool whose
+      call met the bare 404 of a route the server does not have (:meth:`hide`).
+
+    Either change sends ``notifications/tools/list_changed``; the server
+    declares ``tools.listChanged`` so clients re-read the listing.
     """
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        #: Discovery-tier tools ``discover_tools`` found (eager mode).
+        self._revealed: set[str] = set()
+        #: Tools whose route this installation does not have.
+        self._hidden: set[str] = set()
+
+    def initialization_options(self) -> InitializationOptions:
+        """The ``initialize`` answer's options, declaring ``tools.listChanged``."""
+        return self._mcp_server.create_initialization_options(
+            NotificationOptions(tools_changed=True)
+        )
+
+    async def run_stdio_async(self) -> None:
+        async with stdio_server() as (read_stream, write_stream):
+            await self._mcp_server.run(read_stream, write_stream, self.initialization_options())
+
+    async def reveal(self, names: list[str]) -> None:
+        """Add discovery-tier tools to the eager mode's listing."""
+        if lists_every_tool():
+            return
+        new = set(names) - self._revealed - set(eager_tools())
+        if new:
+            self._revealed |= new
+            await self._listing_changed()
+
+    async def hide(self, name: str) -> None:
+        """Stop listing ``name``: this installation does not have its route."""
+        if name not in self._hidden:
+            self._hidden.add(name)
+            await self._listing_changed()
+
+    async def _listing_changed(self) -> None:
+        """Tell the client to read the listing again, when a request is in progress."""
+        try:
+            session = self.get_context().session
+        except ValueError:
+            return
+        try:
+            await session.send_tool_list_changed()
+        except Exception:
+            # The listing is re-read on the next tools/list anyway; a client
+            # that went away must not turn a tool result into an error.
+            return
+
+    async def _unserved(self, names: list[str]) -> set[str]:
+        """Tools whose documented operations this installation's document leaves out."""
+        from beakr_cli.capabilities import unserved_tools
+        from beakr_cli.sdk import get_async_sdk
+
+        try:
+            async with get_async_sdk(timeout=10.0) as sdk:
+                capabilities = await sdk.meta.capabilities()
+        except Exception:
+            # No credential or configuration yet: list everything, as before.
+            return set()
+        return unserved_tools(capabilities, names)
 
     def tool(self, name: str | None = None, **kwargs: Any) -> Callable[[Callable], Callable]:
         """Register a tool whose every answer is ``{content, coverage, next}`` (SPEC-488).
@@ -187,10 +268,12 @@ class TieredFastMCP(FastMCP):
                 without_project_parameters(tool) if tool.name in PINNABLE_TOOLS else tool
                 for tool in tools
             ]
+        hidden = self._hidden | await self._unserved([tool.name for tool in tools])
+        tools = [tool for tool in tools if tool.name not in hidden]
         if lists_every_tool():
             return tools
-        eager = set(eager_tools())
-        return [tool for tool in tools if tool.name in eager]
+        listed = set(eager_tools()) | self._revealed
+        return [tool for tool in tools if tool.name in listed]
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         """Run a tool with forgiving arguments, and return any error compactly.
@@ -200,7 +283,32 @@ class TieredFastMCP(FastMCP):
         fix; an API refusal or an error outcome becomes ``{status, error_code,
         message, fix}`` marked ``isError``.
         """
+        from beakr_cli.sdk import MCP_CLIENT_AGENT
+
+        # Writes are attributed to the agent that made them: the MCP client's
+        # clientInfo, unless BEAKR_AGENT names one (sdk._agent).
+        token = MCP_CLIENT_AGENT.set(self._client_agent())
+        try:
+            return await self._call_tool(name, arguments)
+        finally:
+            MCP_CLIENT_AGENT.reset(token)
+
+    def _client_agent(self) -> str | None:
+        """``name/version`` of the client that sent ``initialize``, when a request is running."""
+        from beakr_cli.sdk import client_agent
+
+        try:
+            params = self.get_context().session.client_params
+        except ValueError:
+            return None
+        info = getattr(params, "clientInfo", None)
+        if info is None:
+            return None
+        return client_agent(info.name, info.version)
+
+    async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         from beakr_cli import mcp_call_shaping
+        from beakr_cli.capabilities import NOT_PROVIDED_CODE
         from beakr_cli.mcp_errors import ApiCallError
 
         tool = self._tool_manager.get_tool(name)
@@ -221,6 +329,8 @@ class TieredFastMCP(FastMCP):
                     mcp_call_shaping.validation_message(name, cause, schema, given)
                 ) from cause
             if isinstance(cause, ApiCallError):
+                if cause.fields.get("error_code") == NOT_PROVIDED_CODE:
+                    await self.hide(name)
                 return _error_result(
                     mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
                 )

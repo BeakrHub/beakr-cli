@@ -395,3 +395,68 @@ def test_query_refuses_a_json_spec_that_is_not_json_before_sending() -> None:
 
     assert result.exit_code == 1
     assert "not valid JSON" in result.output
+
+
+_PLATFORM = "11111111-2222-3333-4444-555555555555"
+
+# Each command's argv, without --scope, and the door it posts to.
+_SCOPED_COMMANDS = [
+    (["kb", "rows"], "command"),
+    (["kb", "query", "SELECT value FROM facts"], "command"),
+    (
+        ["kb", "add-fact", "Stripe", "--attribute", "a", "--value", "v"]
+        + ["--evidence", "{{doc:1}}", "--rationale", "r"],
+        "write",
+    ),
+    (
+        ["kb", "add-connection", "Stripe", "--relation", "bills", "--to", "Acme"]
+        + ["--evidence", "{{doc:1}}", "--rationale", "r"],
+        "write",
+    ),
+    (
+        ["kb", "add-finding", "Stripe", "--date", "2026-10-01", "--kind", "result"]
+        + ["--text", "t", "--evidence", "{{doc:1}}", "--rationale", "r"],
+        "write",
+    ),
+    (
+        ["kb", "edit-rows", "Stripe", "--table", "facts", "--old-row", "renewal: 2026"]
+        + ["--reason", "duplicate", "--rationale", "r"],
+        "write",
+    ),
+]
+
+
+# Root cause: kb_cards._scope passed --scope through unchanged while every other
+# project option resolves a slug or name to the project id, so a slug the door
+# could not match failed these commands. They now resolve like the rest.
+@pytest.mark.real_project_refs
+@pytest.mark.parametrize(
+    ("argv", "door"), _SCOPED_COMMANDS, ids=[argv[1] for argv, _ in _SCOPED_COMMANDS]
+)
+@respx.mock
+def test_card_commands_resolve_a_project_slug_to_its_id(
+    argv: list[str], door: str, monkeypatch
+) -> None:
+    # Resolutions are cached per process; another test's "platform-docs" must not answer.
+    monkeypatch.setattr("beakr_cli.project_ref._resolved", {})
+    respx.get(f"{API}/v1/projects").respond(
+        json=[{"id": _PLATFORM, "name": "Platform Docs", "slug": "platform-docs"}]
+    )
+    route = respx.post(f"{API}/v1/knowledge/wiki/{door}").mock(return_value=_ok())
+
+    result = CliRunner().invoke(app, [*argv, "--scope", "platform-docs"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(route)["scope"] == _PLATFORM
+
+
+# Root cause: a capped rows scan names its continuation as after_card=<card>
+# (the engine's cursor argument for rows), which the CLI had no option for.
+@respx.mock
+def test_rows_continues_a_capped_scan_after_a_card() -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
+
+    result = CliRunner().invoke(app, ["kb", "rows", "--after-card", "Stripe"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(route)["after_card"] == "Stripe"

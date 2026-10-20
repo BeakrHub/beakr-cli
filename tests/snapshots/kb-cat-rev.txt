@@ -60,12 +60,40 @@ $ beakr kb cat 'Project Helios' --rev 6 --project 4dd25154-0d80-44ab-b4c2-167319
   {"command": "cat", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "rev": 6, "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-Project Helios (rev 6)
+# Project Helios (rev 6)
 
 Northwind's program to select a thermostable lead from the NW-200 series.
 
-Stability
+## Stability
 
 NW-217 kept 86 percent of its activity after two weeks at 40 C.
+
+Sources (1 Knowledge page):
+- Helios HX-07 Solubility Card › Facts · source_ref beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts
+
+next: Cite a row with its cite token; open its card with cat {page} for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
+--- stderr
+
+
+$ beakr kb cat 'Project Helios' --rev 6 --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> POST /v1/knowledge/wiki/command
+  {"command": "cat", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "rev": 6, "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+[exit 0]
+--- stdout
+# Project Helios (rev 6)
+
+Northwind's program to select a thermostable lead from the NW-200 series.
+
+## Stability
+
+NW-217 kept 86 percent of its activity after two weeks at 40 C.
+
+Sources (1 Knowledge page):
+- Helios HX-07 Solubility Card › Facts · source_ref beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts
+
+next: Cite a row with its cite token; open its card with cat {page} for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 
