@@ -56,6 +56,7 @@ $ beakr integrations coverage 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 > GET /v1/integrations/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/coverage
 [exit 0]
 --- stdout
-connector_id=e2d7a9c4-1f3b-4a6e-8c5d-9b0f2e4a6c18	provider=gdrive:nango	known=148	indexed=131	not_readable=9	removed=2	compiled=124	not_compiled.failed.extraction_timeout=2	not_compiled.skipped.duplicate_content=4	not_compiled.skipped.too_short=1	sources=[{"attachment_id": "a8c3e5f7-2b4d-4e6a-9c1b-3d5f7a9b1c20", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "name": "Helios Program Shared Drive", "item_type": "folder", "known": 148, "indexed": 131, "not_readable": 9, "removed": 2, "pending": 6}]
+connector_id=e2d7a9c4-1f3b-4a6e-8c5d-9b0f2e4a6c18	provider=gdrive:nango	known=148	indexed=131	not_readable=9	removed=2	compiled=124	not_compiled.failed.extraction_timeout=2	not_compiled.skipped.duplicate_content=4	not_compiled.skipped.too_short=1
+sources	attachment_id=a8c3e5f7-2b4d-4e6a-9c1b-3d5f7a9b1c20	project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4	name=Helios Program Shared Drive	item_type=folder	known=148	indexed=131	not_readable=9	removed=2	pending=6
 --- stderr
 

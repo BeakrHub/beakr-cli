@@ -16,7 +16,6 @@ full objects; ``BEAKR_OUTPUT=human`` forces the terminal rendering.
 
 from __future__ import annotations
 
-import json
 import shlex
 import sys
 from collections.abc import Callable, Iterable
@@ -149,21 +148,28 @@ def _error_text(value: Any) -> str | None:
     return None
 
 
-def _every_field(item: dict[str, Any], prefix: str = "") -> list[str]:
-    """Every non-empty field as ``key=value``; a nested object's fields as ``key.field=value``."""
+def _every_field(
+    item: dict[str, Any], prefix: str = "", rows: list[str] | None = None
+) -> list[str]:
+    """Every non-empty field as ``key=value``; a nested object's fields as ``key.field=value``.
+
+    A list of objects has no one-column form: each of its objects is appended
+    to ``rows`` as a line of its own, led by the field's name.
+    """
     columns: list[str] = []
     for key, value in item.items():
         if value is None or value == "" or value == [] or value == {}:
             continue
         name = f"{prefix}{key}"
         if isinstance(value, dict):
-            columns.extend(_every_field(value, prefix=f"{name}."))
+            columns.extend(_every_field(value, prefix=f"{name}.", rows=rows))
         elif isinstance(value, (list, tuple)) and not all(
             isinstance(v, (str, int, float, bool)) for v in value
         ):
-            # A list of objects has no one-column form; keep it whole rather than
-            # reduce it to a count a reader cannot act on.
-            columns.append(f"{name}={json.dumps(value, default=str, ensure_ascii=False)}")
+            # Kept whole, but as lines: the list as JSON in one column was the
+            # one thing on the line a reader had to parse.
+            if rows is not None:
+                rows.extend(f"{name}\t{line}" for v in value for line in _lines_of(v))
         elif _always_shown(key, value):
             columns.append(f"{name}={' '.join(value.split())}")
         else:
@@ -171,17 +177,37 @@ def _every_field(item: dict[str, Any], prefix: str = "") -> list[str]:
     return columns
 
 
+def _lines_of(value: Any) -> list[str]:
+    """One element of a list of objects: every field, as its parent shows them.
+
+    Its own lists of objects follow it on further lines.
+    """
+    if not isinstance(value, dict):
+        return [cell(value, width=10_000)]
+    rows: list[str] = []
+    columns = _every_field(value, rows=rows)
+    return ["\t".join(columns) or "-", *rows]
+
+
 def summary_line(item: dict[str, Any]) -> str:
     """One object as ``id<TAB>label<TAB>key=value...``.
 
     An object with neither an id nor a name (an accept result, a count) is its
     fields as ``key=value`` columns. It used to be printed as raw JSON, the one
-    shape in compact output a reader had to parse instead of read.
+    shape in compact output a reader had to parse instead of read. A list of
+    objects among those fields follows on lines of its own, one per object,
+    each led by the field's name and showing every field too::
+
+        fresh=false\tcoverage=partial
+        changed\tkind=page\tpage_id=5e7b9d13-...\ttitle=Decision: Helios Lead Selection
     """
     id_key = next((k for k in ID_KEYS if _scalar(item.get(k))), None)
     label_key = next((k for k in LABEL_KEYS if _scalar(item.get(k))), None)
     if id_key is None and label_key is None:
-        return "\t".join(_every_field(item)) or "-"
+        rows: list[str] = []
+        columns = _every_field(item, rows=rows)
+        lines = (["\t".join(columns)] if columns else []) + rows
+        return "\n".join(lines) or "-"
     columns = [cell(item[id_key]) if id_key else "-"]
     if label_key:
         columns.append(cell(item[label_key]))
