@@ -66,3 +66,12 @@ Runs (2)
 └──────────────────────┴──────────────────────┴───────────┴──────────────────┴─────────────────────┘
 --- stderr
 
+
+$ beakr workflows runs 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/workflows/configs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/runs?limit=20
+[exit 0]
+--- stdout
+7e540d8e-5259-4c95-9ec7-ed8905d89f7a	status=completed	job=e6dc1929-d276-4fa2-8133-aa3d2def83bf	thread=29c8fbb0-4da6-4788-b17d-77d0d883832f
+18e3e575-0a7e-4af3-a861-437668833c03	status=completed	job=36699f58-fece-483a-b4fd-f0891380b5e2	thread=a9a672fd-10f9-419d-aac2-aeec5924926d
+--- stderr
+

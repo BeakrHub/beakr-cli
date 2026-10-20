@@ -61,3 +61,14 @@ $ beakr kb sources 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfac
 └──┴──────────────────────────────────────────────────────────────────────┴───────────┴────────────┘
 --- stderr
 
+
+$ beakr kb sources 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
+> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+[exit 0]
+--- stdout
+[1]	helios-charter.pdf · upload · file a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13 (`beakr files download a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13`)	citations=1	stance=support	sections=sec_facts
+[2]	NW-217 Accelerated Stability Report · upload · file 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37 (`beakr files download 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37`)	citations=1	stance=contradicts	sections=sec_facts
+next: beakr kb sources 9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41 --json  (every citation, with its source_ref)
+--- stderr
+

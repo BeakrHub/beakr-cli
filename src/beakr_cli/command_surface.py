@@ -146,6 +146,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         # Conversations, and the agent session hooks built on them
         "context",
         "compound",
+        "conversations compound cancel",
         "conversations ls",
         "conversations show",
         "conversations search",

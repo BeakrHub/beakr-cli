@@ -32,3 +32,14 @@ Summary: edit_rows: 1 facts rows -> 1 (The plate log shows a third plate.)
 Waiting for user approval.
 --- stderr
 
+
+$ beakr kb edit-rows 'Helios HX-07 Solubility Card' --table facts --old-row '{"attribute": "Plates run", "value": "2"}' --row '{"attribute": "Plates run", "value": "3"}' --reason 'The plate log shows a third plate.' --rationale 'Shape parity check for edit_rows.' --scope 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/write
+  {"action": "edit_rows", "old_rows": [{"attribute": "Plates run", "value": "2"}], "page": "Helios HX-07 Solubility Card", "rationale": "Shape parity check for edit_rows.", "reason": "The plate log shows a third plate.", "rows": [{"attribute": "Plates run", "value": "3"}], "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "table": "facts"}
+[exit 0]
+--- stdout
+Proposed section edit to "Helios HX-07 Solubility Card" (section: sec_facts, rev 1).
+Summary: edit_rows: 1 facts rows -> 1 (The plate log shows a third plate.)
+Waiting for user approval.
+--- stderr
+

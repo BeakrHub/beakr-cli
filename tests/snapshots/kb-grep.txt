@@ -72,3 +72,23 @@ next: Cite a row with its cite token; open its card with cat {page} for context.
 next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 
+
+$ beakr kb grep NW-217 --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/command
+  {"command": "grep", "query": "NW-217", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+[exit 0]
+--- stdout
+1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.
+Knowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.
+
+| entity | entity_type | attribute | value | when | sources | cite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |
+
+Sources (1 Knowledge page):
+- Helios HX-07 Solubility Card › Facts · source_ref beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts
+
+next: Cite a row with its cite token; open its card with cat {page} for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
+--- stderr
+

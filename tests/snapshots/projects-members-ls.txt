@@ -42,3 +42,13 @@ Members of Helios
 └───────────────┴────────────────────────┴────────┴──────────────────────────────┴─────────────────┘
 --- stderr
 
+
+$ beakr projects members ls 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects?limit=200
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/members?limit=200
+[exit 0]
+--- stdout
+-	Dana Whitfield	role=owner	email=dana@northwind.example
+-	Maja Lindqvist	role=member	email=maja@northwind.example
+--- stderr
+

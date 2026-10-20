@@ -9,6 +9,7 @@ from typing import Any
 
 import typer
 from beakr_sdk.resources._upload import iter_folder_files
+from rich.markup import escape
 
 from beakr_cli.commands.jobs import all_uploaded, duplicate_of, wait_for_jobs
 from beakr_cli.output import console, emit, err_console, page_rows, print_table, short
@@ -97,13 +98,14 @@ def upload_command(
             err_console.print("--resume takes exactly one file: the one that was interrupted.")
             raise typer.Exit(2)
         with get_sdk(timeout=300.0) as sdk:
-            err_console.print(f"Resuming upload {resume} of {paths[0]}...")
+            err_console.print(f"Resuming upload {resume} of {paths[0]}...", markup=False)
             resumed = sdk.files.resume_upload(resume, paths[0])
         emit(
             [{"path": str(paths[0]), **resumed}],
             json_out=json_out,
             render=lambda rows: console.print(
-                f"Uploaded {rows[0]['path']} -> {(rows[0].get('artifact') or {}).get('id')}"
+                f"Uploaded {rows[0]['path']} -> {(rows[0].get('artifact') or {}).get('id')}",
+                markup=False,
             ),
         )
         return
@@ -113,7 +115,8 @@ def upload_command(
             raise FileNotFoundError(f"No such file or folder: {path}")
         if path.is_dir() and not project_id:
             err_console.print(
-                f"Uploading a folder needs a project: pass --project or run `beakr init`. ({path})"
+                f"Uploading a folder needs a project: pass --project or run `beakr init`. ({path})",
+                markup=False,
             )
             raise typer.Exit(2)
 
@@ -122,7 +125,7 @@ def upload_command(
         for path in paths:
             if path.is_dir():
                 count = len(iter_folder_files(path))
-                err_console.print(f"Uploading {path}/ ({count} files)...")
+                err_console.print(f"Uploading {path}/ ({count} files)...", markup=False)
                 uploaded = sdk.files.upload_folder(
                     path,
                     project_id=str(project_id),
@@ -132,7 +135,7 @@ def upload_command(
                 )
                 results.extend(uploaded)
             else:
-                err_console.print(f"Uploading {path}...")
+                err_console.print(f"Uploading {path}...", markup=False)
                 uploaded_one = sdk.files.upload(
                     path, project_id=project_id, folder_id=folder, ingest=ingest
                 )
@@ -172,12 +175,14 @@ def upload_command(
             if kept:
                 console.print(
                     f"Already uploaded {row['path']} -> {kept['artifact_id']} "
-                    f"(copy of {kept.get('title') or 'an existing file'})"
+                    f"(copy of {kept.get('title') or 'an existing file'})",
+                    markup=False,
                 )
                 continue
             console.print(
                 f"Uploaded {row['path']} -> {artifact.get('id')}"
-                + (f" ({status})" if status else "")
+                + (f" ({status})" if status else ""),
+                markup=False,
             )
         if knowledge_settled:
             note = (
@@ -191,9 +196,9 @@ def upload_command(
             note = "Indexing runs in the background."
         else:
             note = "Not sent to Knowledge (--no-knowledge)."
-        console.print(f"[green]{len(rows)} file(s) uploaded.[/green] {note}")
+        console.print(f"[green]{len(rows)} file(s) uploaded.[/green] {escape(str(note))}")
         if ingest and job_ids and not waited:
-            console.print(f"[dim]Wait for it: beakr jobs wait {' '.join(job_ids)}[/dim]")
+            console.print(f"[dim]Wait for it: beakr jobs wait {escape(' '.join(job_ids))}[/dim]")
 
     if wait_knowledge:
         failed_ids = {str(row.get("artifact_id")) for row in knowledge_failed}
@@ -369,7 +374,7 @@ def show_file(
         artifact = sdk.files.get(artifact_id)
 
     def render(a: dict[str, Any]) -> None:
-        console.print(f"[bold]{a.get('title')}[/bold] ({a.get('id')})")
+        console.print(f"[bold]{escape(str(a.get('title')))}[/bold] ({escape(str(a.get('id')))})")
         for label, key in (
             ("Type", "artifact_type"),
             ("MIME", "mime_type"),
@@ -379,9 +384,9 @@ def show_file(
             ("Updated", "updated_at"),
         ):
             if a.get(key):
-                console.print(f"{label + ':':<9}{a[key]}")
+                console.print(f"{label + ':':<9}{a[key]}", markup=False)
         if a.get("description"):
-            console.print(f"\n{a['description']}")
+            console.print(f"\n{a['description']}", markup=False)
 
     emit(artifact, json_out=json_out, render=render)
 
@@ -402,7 +407,7 @@ def download_file(
     emit(
         {"id": artifact_id, "path": str(saved), "bytes": Path(saved).stat().st_size},
         json_out=json_out,
-        render=lambda d: console.print(f"Saved {d['path']} ({d['bytes']} bytes)."),
+        render=lambda d: console.print(f"Saved {d['path']} ({d['bytes']} bytes).", markup=False),
     )
 
 
@@ -419,7 +424,7 @@ def remove_file(
     emit(
         {"id": artifact_id, "deleted": True},
         json_out=json_out,
-        render=lambda _: console.print(f"Deleted {artifact_id}."),
+        render=lambda _: console.print(f"Deleted {artifact_id}.", markup=False),
     )
 
 

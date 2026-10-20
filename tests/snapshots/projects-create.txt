@@ -46,3 +46,13 @@ $ beakr projects create Helios --description 'Lead selection'
 Created project Helios (4dd25154-0d80-44ab-b4c2-167319bfacb4)
 --- stderr
 
+
+$ beakr projects create Helios --description 'Lead selection'
+> POST /v1/projects
+  {"description": "Lead selection", "name": "Helios"}
+[exit 0]
+--- stdout
+4dd25154-0d80-44ab-b4c2-167319bfacb4	Helios	slug=helios	type=standard	status=active	members=1
+next: beakr upload PATH -P helios
+--- stderr
+
