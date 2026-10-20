@@ -114,6 +114,21 @@ def test_context_prints_content_and_writes_out_file(tmp_path: Path) -> None:
     assert out.read_text() == "## Memories\n- a"
 
 
+# Root cause: --out wrote result["content"] (the rendered markdown) for every
+# format, so `--format json --out ctx.json` produced a markdown file. A JSON
+# file now holds the response JSON, the same thing stdout prints.
+@respx.mock
+def test_context_format_json_out_writes_the_json_response(tmp_path: Path) -> None:
+    response = {"content": "## Memories\n- a", "sections": [{"kind": "memories"}]}
+    respx.post(f"{API}/v1/context").mock(return_value=httpx.Response(200, json=response))
+
+    out = tmp_path / "ctx.json"
+    written = CliRunner().invoke(app, ["context", "--format", "json", "--out", str(out)])
+
+    assert written.exit_code == 0, written.output
+    assert json.loads(out.read_text()) == response
+
+
 def test_context_rejects_unknown_format() -> None:
     result = CliRunner().invoke(app, ["context", "--format", "yaml"])
     assert result.exit_code == 2
@@ -514,3 +529,36 @@ def test_the_client_side_summary_is_deterministic_and_bounded() -> None:
     assert summary.startswith("Session: Pump work.") and '"first ask"' in summary
     assert len(summary) < 700
     assert client_summary(ParsedSession(session_id="s", messages=[])) is None
+
+
+# POST /v1/compound/cancel (engine #1662): `conversations compound cancel` stops
+# a compound and says how to resume; a 200 `nothing_to_cancel` is reported as
+# such, not as a cancel.
+@respx.mock
+def test_conversations_compound_cancel_stops_and_names_the_resume(monkeypatch) -> None:
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    route = respx.post(f"{API}/v1/compound/cancel").mock(
+        side_effect=[
+            httpx.Response(
+                200, json={"conversation_id": "cv1", "status": "cancelled", "pending_messages": 2}
+            ),
+            httpx.Response(
+                200,
+                json={
+                    "conversation_id": "cv1",
+                    "status": "nothing_to_cancel",
+                    "pending_messages": 0,
+                },
+            ),
+        ]
+    )
+
+    cancelled = CliRunner().invoke(app, ["conversations", "compound", "cancel", "cv1"])
+    nothing = CliRunner().invoke(app, ["conversations", "compound", "cancel", "cv1"])
+
+    assert cancelled.exit_code == 0, cancelled.output
+    assert json.loads(route.calls[0].request.content) == {"conversation_id": "cv1"}
+    assert "Cancelled compounding of cv1. 2 message(s) are kept." in cancelled.stdout
+    assert "beakr compound cv1" in cancelled.stdout
+    assert nothing.exit_code == 0, nothing.output
+    assert "Nothing to cancel" in nothing.stdout

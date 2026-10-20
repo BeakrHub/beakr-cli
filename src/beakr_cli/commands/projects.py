@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.commands import project_knowledge, project_profile
 from beakr_cli.output import console, emit, err_console, print_table, short
@@ -65,7 +66,9 @@ def create_project(
     emit(
         project,
         json_out=json_out,
-        render=lambda p: console.print(f"Created project [bold]{p.get('name')}[/bold] ({p['id']})"),
+        render=lambda p: console.print(
+            f"Created project [bold]{escape(str(p.get('name')))}[/bold] ({escape(str(p['id']))})"
+        ),
         hint=lambda p: f"beakr upload PATH -P {p.get('slug') or p.get('id')}",
     )
 
@@ -73,7 +76,7 @@ def create_project(
 def _resolve_project_ref(sdk: Any, ref: str) -> dict[str, Any]:
     project = find_project(sdk.projects.list(), ref)
     if project is None:
-        err_console.print(f"Project not found: {ref}")
+        err_console.print(f"Project not found: {ref}", markup=False)
         raise typer.Exit(4)
     return project
 
@@ -89,7 +92,7 @@ def show_project(
         data = sdk.projects.get(str(found["id"]))
 
     def render(d: dict[str, Any]) -> None:
-        console.print(f"[bold]{d.get('name')}[/bold] ({d.get('id')})")
+        console.print(f"[bold]{escape(str(d.get('name')))}[/bold] ({escape(str(d.get('id')))})")
         for label, key in (
             ("Type", "project_type"),
             ("Status", "status"),
@@ -98,9 +101,9 @@ def show_project(
             ("Updated", "updated_at"),
         ):
             if d.get(key) is not None:
-                console.print(f"{label + ':':<9}{d.get(key)}")
+                console.print(f"{label + ':':<9}{d.get(key)}", markup=False)
         if d.get("description"):
-            console.print(f"\n{d['description']}")
+            console.print(f"\n{d['description']}", markup=False)
 
     emit(data, json_out=json_out, render=render)
 
@@ -117,7 +120,9 @@ def archive_project(
     emit(
         archived,
         json_out=json_out,
-        render=lambda p: console.print(f"Archived project {p.get('name')} ({p.get('id')})."),
+        render=lambda p: console.print(
+            f"Archived project {p.get('name')} ({p.get('id')}).", markup=False
+        ),
     )
 
 
@@ -142,7 +147,9 @@ def delete_project(
     emit(
         {"id": str(found.get("id")), "name": found.get("name"), "deleted": True},
         json_out=json_out,
-        render=lambda d: err_console.print(f"Deleted {d['name']} ({d['id']}) permanently."),
+        render=lambda d: err_console.print(
+            f"Deleted {d['name']} ({d['id']}) permanently.", markup=False
+        ),
         json_when_piped=False,
     )
 
@@ -151,7 +158,7 @@ def _pick_interactively(projects: list[dict[str, Any]]) -> dict[str, Any]:
     for index, project in enumerate(projects, 1):
         kind = project.get("project_type") or "standard"
         # stderr, like the question itself: stdout carries only the result.
-        err_console.print(f"  {index}. {project.get('name')} ({kind})")
+        err_console.print(f"  {index}. {project.get('name')} ({kind})", markup=False)
     return projects[
         prompt_choice("Select a project", len(projects), flag_hint="--project or --create")
     ]
@@ -218,7 +225,7 @@ def init_command(
             if project:
                 chosen = find_project(projects, project)
                 if chosen is None:
-                    err_console.print(f"Project not found: {project}")
+                    err_console.print(f"Project not found: {project}", markup=False)
                     raise typer.Exit(4)
             else:
                 if not projects:
@@ -258,11 +265,14 @@ def init_command(
 
     def render(_: dict[str, Any]) -> None:
         if previous and previous.get("project_id") != binding["project_id"]:
-            err_console.print(f"[dim]Replaced binding to {previous.get('name')}.[/dim]")
+            err_console.print(
+                f"[dim]Replaced binding to {escape(str(previous.get('name')))}.[/dim]"
+            )
         console.print(
-            f"Bound {Path.cwd()} to [bold]{binding['name']}[/bold] ({binding['project_id']})."
+            f"Bound {escape(str(Path.cwd()))} to [bold]{escape(str(binding['name']))}[/bold] "
+            f"({escape(str(binding['project_id']))})."
         )
-        console.print(f"[dim]{path}[/dim]")
+        console.print(f"[dim]{escape(str(path))}[/dim]")
         if binding.get(CAPTURE_FIELD) is True:
             console.print("Session capture is on for this project.")
         else:

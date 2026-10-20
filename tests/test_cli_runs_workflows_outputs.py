@@ -79,6 +79,39 @@ def test_ask_streams_the_answer_and_numbers_its_citations():
     assert body["home_project_id"] == "p1"
 
 
+# Root cause: --mode took any string and its help suggested "fast", a mode the
+# server does not have, so `ask --mode fast` reached the server and got a 422.
+# Only the server's modes are accepted now, and an unknown one never sends.
+@respx.mock
+def test_ask_mode_accepts_only_the_servers_modes():
+    start = _mock_run({"type": "stream_complete", "data": {"status": "completed"}})
+
+    refused = runner.invoke(app, ["ask", "q", "--mode", "fast"])
+    accepted = runner.invoke(app, ["ask", "q", "--mode", "auto_free"])
+
+    assert refused.exit_code == 2
+    assert "fast" in refused.output
+    assert accepted.exit_code == 0, accepted.output
+    assert start.call_count == 1
+    assert json.loads(start.calls.last.request.content)["mode"] == "auto_free"
+
+
+# Root cause: runs.start never set scope.knowledge_graph, which the server reads
+# as off, so every `beakr ask` answered "Knowledge is turned off for this
+# message". Knowledge is on by default and --no-knowledge turns it off.
+@respx.mock
+def test_ask_reads_knowledge_unless_told_not_to():
+    start = _mock_run({"type": "stream_complete", "data": {"status": "completed"}})
+
+    default = runner.invoke(app, ["ask", "q"])
+    without = runner.invoke(app, ["ask", "q", "--no-knowledge"])
+
+    assert default.exit_code == 0, default.output
+    assert without.exit_code == 0, without.output
+    scopes = [json.loads(call.request.content)["scope"] for call in start.calls]
+    assert [scope["knowledge_graph"] for scope in scopes] == [True, False]
+
+
 @respx.mock
 def test_ask_uploads_files_and_gives_them_to_the_run_by_id(tmp_path):
     """The run's ``files`` carries the uploads (audit SPEC-321).

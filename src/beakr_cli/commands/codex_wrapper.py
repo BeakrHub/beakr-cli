@@ -26,6 +26,7 @@ import time
 from pathlib import Path
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.hook_runtime import log_hook
 from beakr_cli.output import err_console
@@ -65,7 +66,7 @@ def refresh_codex_context(cwd: Path) -> bool:
     except Exception as exc:  # noqa: BLE001 - a refresh must never block Codex
         log_hook(f"codex wrapper: context refresh failed: {type(exc).__name__}: {exc}")
         err_console.print(
-            f"[yellow]Beakr:[/yellow] could not refresh Codex context ({exc}); "
+            f"[yellow]Beakr:[/yellow] could not refresh Codex context ({escape(str(exc))}); "
             "starting Codex with the last one for this project, if any."
         )
     try:
@@ -93,7 +94,7 @@ def capture_codex_sessions(cwd: Path, started: float) -> int:
     except Exception as exc:  # noqa: BLE001 - capture must never fail the Codex run
         log_hook(f"codex wrapper: session import failed: {type(exc).__name__}: {exc}")
         err_console.print(
-            f"[yellow]Beakr:[/yellow] could not import this Codex session ({exc}); "
+            f"[yellow]Beakr:[/yellow] could not import this Codex session ({escape(str(exc))}); "
             "run `beakr compound --from-codex-sessions` later."
         )
         return 0

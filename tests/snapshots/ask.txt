@@ -1,6 +1,6 @@
 $ beakr ask 'Which lead did the committee pick?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
 > POST /v1/runs
-  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
+  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"knowledge_graph": true, "projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
 > GET /v1/runs/6dcbaafb-7432-47cc-813a-d4f51196e99e/events
 [exit 0]
 --- stdout
@@ -17,7 +17,21 @@ $ beakr ask 'Which lead did the committee pick?' --project 4dd25154-0d80-44ab-b4
 
 $ beakr ask 'Which lead did the committee pick?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > POST /v1/runs
-  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
+  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"knowledge_graph": true, "projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
+> GET /v1/runs/6dcbaafb-7432-47cc-813a-d4f51196e99e/events
+[exit 0]
+--- stdout
+The portfolio committee approved NW-217 as the lead on 2024-09-09 [1], because it kept 86 percent of its activity after two weeks at 40 degrees Celsius [2].
+
+Sources:
+  [1] Project Helios · https://app.beakr.test/knowledge/pages/ec1c3f22-686a-4d48-ad46-a5a954ebb8b4
+  [2] HX-01 Thermal Stability Screen.xlsx
+--- stderr
+Run 6dcbaafb-7432-47cc-813a-d4f51196e99e in thread 0f3b727c-14f8-4c2f-81ad-7b4e66782489
+
+$ beakr ask 'Which lead did the committee pick?' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/runs
+  {"home_project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "idempotency_key": "<random>", "message": "Which lead did the committee pick?", "scope": {"knowledge_graph": true, "projects": [{"id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}]}}
 > GET /v1/runs/6dcbaafb-7432-47cc-813a-d4f51196e99e/events
 [exit 0]
 --- stdout

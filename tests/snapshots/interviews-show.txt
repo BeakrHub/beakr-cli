@@ -49,3 +49,11 @@ Helios stability handoff (in_progress, 1 Knowledge proposal(s))
 A: Maja owned HX-01 through Q3; it moves to the Helios QC lead once NW-217 enters scale-up.
 --- stderr
 
+
+$ beakr interviews show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/interview/sessions/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+4dd25154-0d80-44ab-b4c2-167319bfacb4	Helios stability handoff	status=in_progress
+--- stderr
+

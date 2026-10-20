@@ -138,3 +138,12 @@ Workflows (2)
 └─────────────────────────────────────┴──────────────────────┴───────────┴───────────┴─────┘
 --- stderr
 
+
+$ beakr workflows ls
+> GET /v1/workflows/configs?is_saved=true&limit=200
+[exit 0]
+--- stdout
+2594a964-f0c5-4afa-b171-d6d2b9183590	Helios weekly update
+228efe6e-fc34-4a48-ae73-05218eeb2164	Helios lab deadlines
+--- stderr
+

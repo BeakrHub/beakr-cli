@@ -14,6 +14,7 @@ from typing import Any
 
 import typer
 from beakr_sdk.resources.jobs import JobTimeout
+from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.sdk import get_sdk
@@ -69,14 +70,15 @@ def wait_for_jobs(sdk: Any, job_ids: list[str], *, timeout: float) -> list[dict[
         except JobTimeout as exc:
             state = {**exc.last, "job_id": job_id}
             err_console.print(
-                f"[{index}/{len(job_ids)}] {job_id} still {state.get('status')} "
+                f"[{index}/{len(job_ids)}] {escape(str(job_id))} still "
+                f"{escape(str(state.get('status')))} "
                 f"after {timeout:.0f}s",
                 highlight=False,
             )
         else:
             err_console.print(
-                f"[{index}/{len(job_ids)}] {job_id} {state.get('status')}"
-                + (f": {_error(state)}" if _error(state) else ""),
+                f"[{index}/{len(job_ids)}] {escape(str(job_id))} {escape(str(state.get('status')))}"
+                + (f": {escape(str(_error(state)))}" if _error(state) else ""),
                 highlight=False,
             )
         finished.append(state)

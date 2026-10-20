@@ -147,12 +147,39 @@ def _error_text(value: Any) -> str | None:
     return None
 
 
+def _every_field(item: dict[str, Any], prefix: str = "") -> list[str]:
+    """Every non-empty field as ``key=value``; a nested object's fields as ``key.field=value``."""
+    columns: list[str] = []
+    for key, value in item.items():
+        if value is None or value == "" or value == [] or value == {}:
+            continue
+        name = f"{prefix}{key}"
+        if isinstance(value, dict):
+            columns.extend(_every_field(value, prefix=f"{name}."))
+        elif isinstance(value, (list, tuple)) and not all(
+            isinstance(v, (str, int, float, bool)) for v in value
+        ):
+            # A list of objects has no one-column form; keep it whole rather than
+            # reduce it to a count a reader cannot act on.
+            columns.append(f"{name}={json.dumps(value, default=str, ensure_ascii=False)}")
+        elif _always_shown(key, value):
+            columns.append(f"{name}={' '.join(value.split())}")
+        else:
+            columns.append(f"{name}={cell(value)}")
+    return columns
+
+
 def summary_line(item: dict[str, Any]) -> str:
-    """One object as ``id<TAB>label<TAB>key=value...``; compact JSON when it has neither."""
+    """One object as ``id<TAB>label<TAB>key=value...``.
+
+    An object with neither an id nor a name (an accept result, a count) is its
+    fields as ``key=value`` columns. It used to be printed as raw JSON, the one
+    shape in compact output a reader had to parse instead of read.
+    """
     id_key = next((k for k in ID_KEYS if _scalar(item.get(k))), None)
     label_key = next((k for k in LABEL_KEYS if _scalar(item.get(k))), None)
     if id_key is None and label_key is None:
-        return json.dumps(item, separators=(",", ":"), default=str, ensure_ascii=False)
+        return "\t".join(_every_field(item)) or "-"
     columns = [cell(item[id_key]) if id_key else "-"]
     if label_key:
         columns.append(cell(item[label_key]))

@@ -96,3 +96,11 @@ Runs
 7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11: proposed
 --- stderr
 
+
+$ beakr trace page 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/trace/page/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62	Decision: Helios Lead Selection	kind=page	type=decision
+--- stderr
+
