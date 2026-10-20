@@ -73,7 +73,13 @@ CASES: list[SnapshotCase] = [
     c("members-ls", "members", "ls", "--org", ORG),
     c("members-invite", "members", "invite", "maja@northwind.example", "--role", "member"),
     c("members-role", "members", "role", ID, "admin", "--org", ORG),
-    c("members-rm", "members", "rm", ID, "--org", ORG, "--yes"),
+    c(
+        "members-rm",
+        "members", "rm", "@GET /v1/organizations/{org_id}/members#data.1.user_id",
+        "--org", ORG, "--yes",
+    ),
+    # Not a member: the DELETE still answers 204, and rm says nothing was removed.
+    c("members-rm-not-a-member", "members", "rm", ID, "--org", ORG, "--yes"),
     c("members-invitations", "members", "invitations"),
     c("members-revoke-invite", "members", "revoke-invite", ID),
     c("usage", "usage", "--group-by", "day"),
@@ -92,6 +98,11 @@ CASES: list[SnapshotCase] = [
     ),
     c(
         "projects-members-rm",
+        "projects", "members", "rm", "@GET /v1/projects#data.0.id",
+        "@GET /v1/projects/{project_id}/members#data.0.principal_id", "--yes",
+    ),
+    c(
+        "projects-members-rm-not-a-member",
         "projects", "members", "rm", "@GET /v1/projects#data.0.id", ID, "--yes",
     ),
     c(

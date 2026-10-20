@@ -281,6 +281,7 @@ def test_members_rm_refuses_without_yes_when_not_interactive():
 
 @respx.mock
 def test_members_rm_with_explicit_org_and_yes():
+    respx.get(f"{API}/v1/organizations/org-9/members").respond(200, json=[{"user_id": "u1"}])
     route = respx.delete(f"{API}/v1/organizations/org-9/members/u1").respond(204)
 
     result = CliRunner().invoke(app, ["members", "rm", "u1", "--org", "org-9", "--yes"])

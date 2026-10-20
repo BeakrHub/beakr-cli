@@ -246,6 +246,7 @@ def test_projects_members_add_offers_no_group_type():
 @respx.mock
 def test_projects_members_rm_and_invite():
     _projects()
+    respx.get(f"{API}/v1/projects/p1/members").respond(200, json=[{"principal_id": "u2"}])
     rm = respx.delete(f"{API}/v1/projects/p1/members/user/u2").respond(204)
     invite = respx.post(f"{API}/v1/projects/p1/invite").respond(201, json={"id": "i1"})
     removed = runner.invoke(app, ["projects", "members", "rm", "p1", "u2", "--yes"])

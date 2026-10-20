@@ -6,6 +6,7 @@ the same ``projects`` Typer app. A project is named by id, slug or name.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 import typer
@@ -108,24 +109,64 @@ def remove_project_member(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Remove a member's access to the project."""
+    """Remove a member's access to the project.
+
+    Safe to repeat: someone who is not a member is reported (``removed: false``)
+    and the command still succeeds.
+    """
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
-        confirm_or_require_yes(
-            f"Remove {principal_id} from {found.get('name') or project}?", yes=yes
-        )
+        name = found.get("name") or project
+        confirm_or_require_yes(f"Remove {principal_id} from {name}?", yes=yes)
+        # The server's DELETE answers 204 whether or not the membership existed,
+        # so only the member list can say whether this removes anyone.
+        members = sdk.projects.members(str(found["id"]))
         sdk.projects.remove_member(str(found["id"]), principal_id, principal_type=principal_type)
-    emit(
-        {
-            "project_id": str(found.get("id")),
-            "principal_id": principal_id,
-            "principal_type": principal_type,
-            "removed": True,
-        },
-        json_out=json_out,
-        render=lambda _: err_console.print(f"Removed {principal_id}.", markup=False),
-        json_when_piped=False,
-    )
+    direct, inherited = _membership(members, principal_id, principal_type)
+    result: dict[str, Any] = {
+        "project_id": str(found.get("id")),
+        "principal_id": principal_id,
+        "principal_type": principal_type,
+        "removed": direct,
+    }
+    if inherited:
+        result["inherited_from"] = inherited
+
+    def render(data: dict[str, Any]) -> None:
+        if data["removed"]:
+            err_console.print(f"Removed {principal_id}.", markup=False)
+        elif inherited:
+            err_console.print(
+                f"{principal_id} has access to {name} only through {inherited}, so there is "
+                "no project membership to remove; take them out of that label instead.",
+                markup=False,
+            )
+        else:
+            err_console.print(
+                f"{principal_id} is not a member of {name}; nothing to remove.", markup=False
+            )
+
+    emit(result, json_out=json_out, render=render, json_when_piped=False)
+
+
+def _membership(
+    members: Iterable[Mapping[str, Any]], principal_id: str, principal_type: str
+) -> tuple[bool, str | None]:
+    """Whether the principal holds a membership `rm` removes, and any label it inherits from.
+
+    Access through a label is listed too (``inherited_from``), but it is not a
+    project membership: removing the principal from the project leaves it.
+    """
+    wanted = principal_id.strip().lower()
+    inherited = None
+    for member in members:
+        if str(member.get("principal_id") or "").lower() != wanted:
+            continue
+        if member.get("inherited_from"):
+            inherited = inherited or str(member["inherited_from"])
+        elif (member.get("principal_type") or "user") == principal_type:
+            return True, None
+    return False, inherited
 
 
 @app.command("invite")
