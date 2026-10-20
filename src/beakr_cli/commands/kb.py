@@ -1259,13 +1259,19 @@ def _resolve_page(
     """Resolve a page reference (title or UUID) to a page dict.
 
     Title resolution goes through wiki_page_title_aliases so renamed
-    pages still resolve via their previous titles. A search then finds a
-    page whose title is the reference written as a slug (``kestrel-widget``).
+    pages still resolve via their previous titles. A page whose title is the
+    reference written another way (a slug, ``kestrel-widget``) resolves too.
     Anything else is not found, with the closest titles as suggestions: the
     search's top hit used to be returned silently, so ``kb cat "No Such Page"``
     printed an unrelated page and exited 0.
+
+    The closest titles are the server's own when its 404 names them
+    (``error.details.suggestions``, ranked under the caller's access); a
+    server without that field gets them from a search.
     """
     suggestions: list[str] = []
+    wanted = _title_key(ref)
+    scope_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
         pages = sdk.knowledge.pages
         # Try UUID first
@@ -1279,18 +1285,28 @@ def _resolve_page(
                 pass
 
         # Try exact title (resolves through alias table -- current + previous)
+        server_suggestions = None
         try:
-            return pages.by_title(ref, project_id=_project_id(project=project, mine=mine))
+            return pages.by_title(ref, project_id=scope_id)
+        except NotFoundError as exc:
+            reported = exc.details.get("suggestions")
+            if isinstance(reported, list):
+                server_suggestions = [str(title) for title in reported if title]
         except Exception:
             pass
 
-        # The same title written another way (a slug), else suggestions.
-        try:
-            results = pages.search(ref, project_id=_project_id(project=project, mine=mine), limit=5)
-            hits = page_rows(results)
-        except Exception:
+        if server_suggestions is not None:
+            for title in server_suggestions:
+                if wanted and _title_key(title) == wanted:
+                    return pages.by_title(title, project_id=scope_id)
+            suggestions = server_suggestions
             hits = []
-        wanted = _title_key(ref)
+        else:
+            # An older server names no suggestions: search for them.
+            try:
+                hits = page_rows(pages.search(ref, project_id=scope_id, limit=5))
+            except Exception:
+                hits = []
         for hit in hits:
             title = str(hit.get("title") or "")
             if title and title not in suggestions:
