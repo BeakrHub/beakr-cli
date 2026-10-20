@@ -44,12 +44,14 @@ proposals_app = typer.Typer(help="Review and apply wiki write proposals.")
 app.add_typer(propose_app, name="propose")
 app.add_typer(proposals_app, name="proposals")
 
-# Common scope options reused across commands
+# Common scope options reused across commands. Every kb command spells it the same
+# (-P, --scope, -s), as the card commands in kb_cards.py do.
 _project_opt = typer.Option(
     None,
     "--project",
     "-P",
     "--scope",
+    "-s",
     help="Project id, slug or name to scope the command.",
     callback=project_ref_callback,
 )
@@ -1155,6 +1157,7 @@ def proposals_show(
         "--project",
         "-P",
         "--scope",
+        "-s",
         help="Only if the proposal is in this project (id, slug or name).",
         callback=project_ref_callback,
     ),

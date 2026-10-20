@@ -30,6 +30,8 @@ ID_KEYS = (
     "thread_id",
     "proposal_id",
     "user_id",
+    # A project membership (``projects members ls``) names its member this way.
+    "principal_id",
     "key_id",
     "label_id",
     "project_id",
