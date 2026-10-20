@@ -52,13 +52,18 @@ You are not just a read interface. When the conversation produces something dura
 | Tool | When to use |
 |------|-------------|
 | `knowledge_base` | Every read over the wiki, chosen by `command`: `sections`, `grep`, `ls`, `cat`, `hover`, `links`, `references`, `timeline`, `rows` (every map card's Facts, Connections or Findings as one table), `provenance`, `blame`, `sources`, `log`, `diff`, `show`, `ontology`, `suggest_parent`, `diagnostics`, `completions`, `proposals`. |
-| `knowledge_base_write` | Every change, chosen by `action`: `edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`, `new`, `edit`, `find_replace`, `mv`, `archive`, `merge`, `copy`, `page_type`. Always stages a proposal. On a project-map card use the three `add_*` actions to add one row or one dated finding, and `edit_rows` to change, merge or delete rows (Facts, Connections or Findings). A card's table rows change only through these actions: an `edit_section`, `edit` or `find_replace` that would change one is refused. |
+| `knowledge_base_write` | Every change, chosen by `action`: `edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`, `new`, `edit`, `find_replace`, `mv`, `archive`, `merge`, `copy`, `page_type`. Always stages a proposal. On a project-map card use the three `add_*` actions to add one row or one dated finding, and `edit_rows` to change, merge or delete rows (Facts, Connections or Findings). A card's table rows change only through these actions: an `edit_section` or `edit` that would change one is refused, and `find_replace` changes the text around the rows and reports the row matches it left for `edit_rows`. A write to one section or row prints its proposal's id and `content_hash`. |
+| `documents` | Where available: `grep` and `read` over the original documents themselves, for exact wording a page does not carry. |
 | `read_file` | The original document a citation points at. Pass the citation's readable reference (`memo.pdf › p. 7`), the `path › place` from a Sources line (`deals/acme/memo.pdf › p. 7`), or the file id. It reads files and canvases only: for a connected item (Slack, email, calendar, Jira) use its excerpt and open its url. Long files come back in pieces (`offset`). |
 | `research` | When your client exposes it: one cited answer across the knowledge base, documents and connected services (Slack, Gmail, Calendar, Jira...). |
-| `show_proposal` / `accept_proposal` / `dismiss_proposal` | Review a staged proposal; accept only when the user explicitly asks, passing the `content_hash` `show_proposal` printed as `reviewed_hash`. A proposal that changed since it was shown is refused; one that changes a card's table rows is not accepted without the hash. |
+| `show_proposal` / `accept_proposal` / `dismiss_proposal` | Review a staged proposal, which names who filed it ("filed by Dana Reyes via claude-code/2.1"); accept only when the user explicitly asks, passing the `content_hash` the write or `show_proposal` printed as `reviewed_hash`. A proposal that changed since it was shown is refused; one that changes a card's table rows is not accepted without the hash. |
 | `list_projects` | Discover projects (including the personal one) to use as `scope`. |
 | `get_profile`, `wiki_stats`, `wiki_graph` | Org/project profile, counts, and the most-connected pages. |
+| `context` | The user's Beakr context for a project (its name or ID): profile, recent activity, relevant memories and skills. |
+| `conversations_search` / `import_conversation` | Find past agent sessions and chats that answered something; import a session transcript. |
 | `beakr_version` / `update_beakr` | Check for a newer Beakr release; update only when the user asks. |
+
+Every tool is listed from the start; call it directly. Only a server started with `BEAKR_MCP_TOOLS=eager` lists a smaller set plus `discover_tools`, which adds the tools it finds. A tool missing on a self-hosted installation is one that installation does not provide.
 
 Both `knowledge_base` tools take a `command`/`action`, a flat `arguments` object, and an optional `scope`:
 

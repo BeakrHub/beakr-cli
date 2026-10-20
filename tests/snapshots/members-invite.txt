@@ -26,3 +26,12 @@ $ beakr members invite maja@northwind.example --role member
 Invited maja@northwind.example as member (2df3036d-3f9d-4935-bb6c-78cc44effdc7).
 --- stderr
 
+
+$ beakr members invite maja@northwind.example --role member
+> POST /v1/invitations
+  {"invitee_email": "maja@northwind.example", "role": "member"}
+[exit 0]
+--- stdout
+2df3036d-3f9d-4935-bb6c-78cc44effdc7	expires=2026-10-08T12:00:00Z	token=inv_Qm7tX2pL9cR4vN8kZ1wB6yF3hD5sJ0aG
+--- stderr
+

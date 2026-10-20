@@ -30,3 +30,14 @@ Interview b7d2e940-5c1a-4f83-9e6b-2a8c0d4f7e15: Helios retro
 Send this link (shown once): https://app.thebeakr.com/i/bil_q7Xk2mZp9RvT4wLs8NcYb3HdFj6GaEu1KoPi5VtQrWe
 --- stderr
 Read the answers with `beakr interviews show --link e0a7ca1a-67fe-4413-abf9-9ecc0aa4cf56`.
+
+$ beakr interviews request 'Helios retro' --question 'What slowed us?'
+> POST /v1/interview/sendables
+  {"key_questions": ["What slowed us?"], "title": "Helios retro"}
+> POST /v1/interview/sendables/b7d2e940-5c1a-4f83-9e6b-2a8c0d4f7e15/links
+  {}
+[exit 0]
+--- stdout
+interview.id=b7d2e940-5c1a-4f83-9e6b-2a8c0d4f7e15	link.expires_at=2026-10-15T12:00:00Z	link.link_id=e0a7ca1a-67fe-4413-abf9-9ecc0aa4cf56	link.path=/i/bil_q7Xk2mZp9RvT4wLs8NcYb3HdFj6GaEu1KoPi5VtQrWe	link.token=bil_q7Xk2mZp9RvT4wLs8NcYb3HdFj6GaEu1KoPi5VtQrWe
+--- stderr
+

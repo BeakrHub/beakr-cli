@@ -13,10 +13,12 @@ from typing import Any
 
 import typer
 from beakr_sdk.resources.knowledge import result_text
+from rich.markup import escape
 
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.output import console, emit, err_console
 from beakr_cli.project_binding import resolve_project
+from beakr_cli.proposal_view import staged_proposal_lines
 from beakr_cli.sdk import get_sdk
 
 _FINDING_KINDS = ("result", "lesson", "decision", "question", "correction")
@@ -26,25 +28,40 @@ _EDIT_TABLES = ("facts", "connections", "findings")
 
 _scope_opt = typer.Option(
     None,
+    "--project",
+    "-P",
     "--scope",
     "-s",
-    help="Project name or ID. Defaults to the bound or default project.",
+    help="Project id, slug or name. Defaults to the bound or default project.",
 )
 _rationale_opt = typer.Option(..., "--rationale", help="Why this change is right.")
 _json_opt = typer.Option(False, "--json", "-j", help="Output the raw door result.")
 
 
 def _scope(explicit: str | None) -> str | None:
-    return explicit or resolve_project(None)
+    # A slug or name resolves to the project id here, as every other project
+    # option does; passed through raw, the door could not find a slug.
+    return resolve_project(explicit)
 
 
 def _print_result(result: dict[str, Any], *, json_out: bool) -> None:
-    emit(result, json_out=json_out, render=lambda r: console.print(result_text(r), markup=False))
+    # Piped, an agent reads the door's text too (the rows table, the staged
+    # proposal), not a summary of the reply's fields. A staged write's content
+    # hash follows it: `kb proposals accept --reviewed-hash` takes it back.
+    def text_lines(r: dict[str, Any]) -> list[str]:
+        return [*result_text(r).splitlines(), *staged_proposal_lines(r)]
+
+    emit(
+        result,
+        json_out=json_out,
+        render=lambda r: console.print("\n".join(text_lines(r)), markup=False),
+        lines=text_lines,
+    )
 
 
 def _choice(value: str, allowed: tuple[str, ...], option: str) -> str:
     if value not in allowed:
-        err_console.print(f"{option} must be one of: {', '.join(allowed)}.")
+        err_console.print(f"{option} must be one of: {', '.join(allowed)}.", markup=False)
         raise typer.Exit(2)
     return value
 
@@ -56,7 +73,7 @@ def _parse_json(value: str, option: str) -> Any:
             return json.loads(Path(value[1:]).read_text())
         return json.loads(value)
     except (OSError, ValueError) as exc:
-        err_console.print(f"{option}: not valid JSON ({exc}).")
+        err_console.print(f"{option}: not valid JSON ({exc}).", markup=False)
         raise typer.Exit(2) from exc
 
 
@@ -111,6 +128,9 @@ def rows(
     page_type: str | None = typer.Option(None, "--type", help="Card page type."),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Max rows."),
     offset: int | None = typer.Option(None, "--offset", help="Skip this many rows."),
+    after_card: str | None = typer.Option(
+        None, "--after-card", help="Continue a capped card scan after this card (as a reply names)."
+    ),
     evidence: bool = typer.Option(False, "--evidence", help="Include each row's cited passage."),
     scope: str | None = _scope_opt,
     json_out: bool = _json_opt,
@@ -146,6 +166,7 @@ def rows(
             page_type=page_type,
             limit=limit,
             offset=offset,
+            after_card=after_card,
             include_evidence=evidence or None,
             scope=_scope(scope),
         )
@@ -188,7 +209,9 @@ def query(
         try:
             arguments["spec"] = json.loads(raw)
         except ValueError as exc:
-            err_console.print(f"[red]The JSON spec is not valid JSON:[/red] {exc.msg}.")
+            err_console.print(
+                f"[red]The JSON spec is not valid JSON:[/red] {escape(str(exc.msg))}."
+            )
             raise typer.Exit(1) from exc
     else:
         arguments["sql"] = raw

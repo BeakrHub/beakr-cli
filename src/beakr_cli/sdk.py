@@ -15,7 +15,9 @@ documented (profile, skills, memory, outputs, workflows...), each listed in
 from __future__ import annotations
 
 import os
+import re
 import uuid
+from contextvars import ContextVar
 
 from beakr_cli import __version__
 from beakr_cli._private_api import AsyncPrivateBeakr, PrivateBeakr
@@ -34,8 +36,29 @@ MCP_RUN_LABEL = f"stdio:{uuid.uuid4().hex}"
 _CLI_HEADERS = {"User-Agent": f"beakr-cli/{__version__}"}
 
 
+#: The MCP client the stdio server is answering, as ``name/version`` from its
+#: ``initialize`` clientInfo (``claude-code/2.1.283``). Set around each tool
+#: call by ``tool_surface.TieredFastMCP``; unset at a terminal, where the
+#: person is the actor and no agent is declared.
+MCP_CLIENT_AGENT: ContextVar[str | None] = ContextVar("beakr_mcp_client_agent", default=None)
+
+#: Longest agent label sent; the API keeps the first 200 characters.
+_MAX_AGENT_CHARS = 200
+_UNSAFE_AGENT_CHARS = re.compile(r"[^A-Za-z0-9._:@+/ -]+")
+
+
+def client_agent(name: str | None, version: str | None) -> str | None:
+    """``name/version`` from an MCP clientInfo, as a header-safe agent label."""
+    parts = [_UNSAFE_AGENT_CHARS.sub("-", str(part or "")).strip(" -") for part in (name, version)]
+    if not parts[0]:
+        return None
+    label = f"{parts[0]}/{parts[1]}" if parts[1] else parts[0]
+    return label[:_MAX_AGENT_CHARS]
+
+
 def _agent() -> str | None:
-    return os.environ.get("BEAKR_AGENT") or None
+    """``BEAKR_AGENT`` when set, else the MCP client being answered (none at a terminal)."""
+    return os.environ.get("BEAKR_AGENT") or MCP_CLIENT_AGENT.get()
 
 
 def get_sdk(
@@ -44,7 +67,8 @@ def get_sdk(
     """A client sending ``X-Beakr-Client: beakr-cli/<version>`` (or ``client_name``).
 
     ``BEAKR_AGENT`` is forwarded as ``X-Beakr-Agent`` so a script or hook can
-    attribute its writes to the agent session that ran it, and ``BEAKR_RUN`` as
+    attribute its writes to the agent session that ran it (in the MCP server
+    the client's own clientInfo is the default), and ``BEAKR_RUN`` as
     ``X-Beakr-Run`` so `beakr kb undo-run <run>` can take back one run's writes.
     ``base_url`` overrides the configured API (``BEAKR_BASE_URL``, the config).
     """

@@ -61,3 +61,11 @@ $ beakr jobs wait 7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57
 1 job(s) succeeded.
 --- stderr
 [1/1] 7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57 succeeded
+
+$ beakr jobs wait 7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57
+> GET /v1/jobs/7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57
+[exit 0]
+--- stdout
+7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57	kind=project_import	status=succeeded
+--- stderr
+[1/1] 7d9f1b3c-5e7a-4c9e-8b2d-4f6a8c0e2b57 succeeded

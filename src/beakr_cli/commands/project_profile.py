@@ -19,6 +19,7 @@ import click
 import typer
 import yaml
 from beakr_sdk.errors import NotFoundError
+from rich.markup import escape
 
 from beakr_cli.commands.project_knowledge import _project_opt, _require_project
 from beakr_cli.output import console, emit, err_console
@@ -51,13 +52,6 @@ _TEMPLATE_HELP = """\
 """
 
 
-def _no_profile(project_id: str) -> None:
-    err_console.print(
-        f"Project {project_id} has no Knowledge profile yet. Set one with "
-        "`beakr projects profile set` or `beakr projects profile edit`."
-    )
-
-
 def _is_missing(exc: NotFoundError) -> bool:
     return getattr(exc, "code", None) == "knowledge_profile_not_found"
 
@@ -73,7 +67,7 @@ def _read(sdk: Any, project_id: str) -> dict[str, Any] | None:
 
 def _render(profile: dict[str, Any]) -> None:
     if profile.get("name"):
-        console.print(f"[bold]{profile['name']}[/bold]", highlight=False, markup=True)
+        console.print(f"[bold]{escape(str(profile['name']))}[/bold]", highlight=False)
     for label, key in (("Description", "description"), ("Industry", "industry")):
         if profile.get(key):
             console.print(f"{label}: {profile[key]}", highlight=False, markup=False)
@@ -91,7 +85,7 @@ def _render(profile: dict[str, Any]) -> None:
     ):
         entries = profile.get(key) or []
         if entries:
-            console.print(f"{label}:", highlight=False)
+            console.print(f"{label}:", highlight=False, markup=False)
             for entry in entries:
                 detail = f" ({entry[extra]})" if extra and entry.get(extra) else ""
                 why = f": {entry['relevance']}" if entry.get("relevance") else ""
@@ -167,8 +161,14 @@ def show_command(
     with get_sdk() as sdk:
         profile = _read(sdk, project_id)
     if profile is None:
-        _no_profile(project_id)
-        raise typer.Exit(4)
+        # Raised, not printed: the root group exits 4 and, under --json,
+        # prints the error as JSON.
+        raise NotFoundError(
+            f"Project {project_id} has no Knowledge profile yet. Set one with "
+            "`beakr projects profile set` or `beakr projects profile edit`.",
+            code="knowledge_profile_not_found",
+            status=404,
+        )
     emit(profile, json_out=json_out, render=_render, lines=_lines)
 
 
@@ -258,7 +258,7 @@ def set_command(
                 if not _is_missing(exc):
                     raise
                 result = sdk.projects.set_knowledge_profile(project_id, **fields)
-    err_console.print(_SAVED)
+    err_console.print(_SAVED, markup=False)
     emit(result, json_out=json_out, render=_render, lines=_lines)
 
 
@@ -279,7 +279,7 @@ def edit_command(
             return
         document = _parse_document(edited, "the edited profile")
         result = sdk.projects.set_knowledge_profile(project_id, **document)
-    err_console.print(_SAVED)
+    err_console.print(_SAVED, markup=False)
     emit(result, json_out=json_out, render=_render, lines=_lines)
 
 

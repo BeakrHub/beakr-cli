@@ -83,3 +83,12 @@ reminders
   Send the NW-217 scale-up plan to the portfolio committee.  (inferred, waiting) 1beab438-a27c-40ce-86fb-140293d46098
 --- stderr
 
+
+$ beakr profile show
+> GET /v1/me/profile
+[exit 0]
+--- stdout
+bcb17e0d-98c5-4e50-a843-c5c62436a836	status=active
+1beab438-a27c-40ce-86fb-140293d46098	status=waiting
+--- stderr
+

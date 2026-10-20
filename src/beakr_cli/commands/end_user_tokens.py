@@ -76,6 +76,7 @@ def mint(
             f"Token {data.get('token_id')} expires {data.get('expires_at')}; it is shown only "
             "once. Revoke it with `beakr end-user-tokens revoke`.",
             highlight=False,
+            markup=False,
         )
 
     emit(minted, json_out=json_out, render=render)
@@ -121,7 +122,7 @@ def revoke(
         result = sdk.end_user_tokens.revoke(token_id)
 
     def render(_data: Any) -> None:
-        err_console.print(f"Revoked end-user token {token_id}.")
+        err_console.print(f"Revoked end-user token {token_id}.", markup=False)
 
     emit(result, json_out=json_out, render=render, json_when_piped=False)
 

@@ -90,10 +90,14 @@ def sync(
 ) -> None:
     """Sync your skill library to ~/.claude/skills and ~/.codex/skills, and local edits back."""
     if direction not in _DIRECTIONS:
-        err_console.print(f"Invalid --direction '{direction}'. Choose: {', '.join(_DIRECTIONS)}.")
+        err_console.print(
+            f"Invalid --direction '{direction}'. Choose: {', '.join(_DIRECTIONS)}.", markup=False
+        )
         raise typer.Exit(2)
     if target not in _TARGETS:
-        err_console.print(f"Invalid --target '{target}'. Choose: {', '.join(_TARGETS)}.")
+        err_console.print(
+            f"Invalid --target '{target}'. Choose: {', '.join(_TARGETS)}.", markup=False
+        )
         raise typer.Exit(2)
     with get_sdk() as sdk:
         actions = sync_skills(
@@ -141,12 +145,17 @@ def edit_skill(
         )
         if found is not None and found.get("owner_type") in ("org", "project"):
             err_console.print(
-                f"'{skill}' is a {found['owner_type']} skill; changing shared skills is parked."
+                f"'{skill}' is a {found['owner_type']} skill; changing shared skills is parked.",
+                markup=False,
             )
             raise typer.Exit(2)
         result = sdk.skills.put_file(str(found["id"]) if found else skill, path, content)
     message = f"Updated {path} of {skill}."
-    emit(result, json_out=json_out, render=lambda _: console.print(message, highlight=False))
+    emit(
+        result,
+        json_out=json_out,
+        render=lambda _: console.print(message, highlight=False, markup=False),
+    )
 
 
 @app.command("proposals")
@@ -195,7 +204,8 @@ def approve_proposal(
         result,
         json_out=json_out,
         render=lambda _: console.print(
-            f"Installed skill from proposal {proposal_id}. Run `beakr skills sync` to pull it."
+            f"Installed skill from proposal {proposal_id}. Run `beakr skills sync` to pull it.",
+            markup=False,
         ),
     )
 

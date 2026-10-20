@@ -9,6 +9,7 @@ from typing import Any
 
 import typer
 from beakr_sdk.resources.conversations import CONVERSATION_CLIENTS
+from rich.markup import escape
 
 from beakr_cli.chatgpt_export import ChatGPTExportError, parse_chatgpt_export
 from beakr_cli.compounding import import_and_compound
@@ -19,6 +20,10 @@ from beakr_cli.sdk import get_sdk
 from beakr_cli.transcripts import HEADLESS, client_summary, parse_transcript
 
 app = typer.Typer(help="List, read, import and delete imported agent conversations.")
+compound_app = typer.Typer(
+    help="Control a conversation's compounding (`beakr compound` starts it)."
+)
+app.add_typer(compound_app, name="compound")
 
 #: What each ``compound_status`` means for the person reading it. ``none`` is
 #: the engine's state for a conversation never sent to the compounder (its
@@ -35,6 +40,7 @@ _COMPOUND_STATES = {
     "partial": "partial (the rest is kept and retried on the next compound)",
     "skipped": "skipped (too little to learn from yet; kept for later)",
     "failed": "failed (kept; run `beakr compound` to retry)",
+    "cancelled": "cancelled (kept; run `beakr compound` to resume)",
 }
 
 
@@ -128,21 +134,37 @@ def show_conversation(
         item = sdk.conversations.get(conversation_id)
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"[bold]{data.get('title') or data.get('id')}[/bold]")
+        console.print(f"[bold]{escape(str(data.get('title') or data.get('id')))}[/bold]")
         console.print(
             f"Client: {data.get('client')}  Session: {data.get('session_id')}  "
-            f"Messages: {data.get('message_count')}"
+            f"Messages: {data.get('message_count')}",
+            markup=False,
         )
         console.print(
             f"Compounded: {data.get('compounded_through', 0)}/{data.get('message_count')} "
-            f"messages, {compound_state(data)}"
+            f"messages, {compound_state(data)}",
+            markup=False,
         )
         if data.get("summary"):
-            console.print(f"\n{data['summary']}")
+            console.print(f"\n{data['summary']}", markup=False)
         for message in data.get("messages") or []:
-            console.print(f"\n[bold]{message.get('role')}[/bold]: {message.get('content')}")
+            console.print(
+                f"\n[bold]{escape(str(message.get('role')))}[/bold]: "
+                f"{escape(str(message.get('content')))}"
+            )
 
-    emit(item, json_out=json_out, render=render)
+    def lines(data: dict[str, Any]) -> list[str]:
+        # Piped, the summary line alone dropped the summary and the messages.
+        from beakr_cli.compact import summary_line
+
+        out = [summary_line(data)]
+        if data.get("summary"):
+            out += ["", str(data["summary"])]
+        for message in data.get("messages") or []:
+            out += ["", f"{message.get('role')}: {message.get('content')}"]
+        return out
+
+    emit(item, json_out=json_out, render=render, lines=lines)
 
 
 @app.command("search")
@@ -181,14 +203,19 @@ def search_conversations(
         for hit in rows:
             kind = "imported session" if hit.get("kind") == "imported" else "Beakr chat"
             day = str(hit.get("updated_at") or "")[:10]
-            console.print(f"[bold]{hit.get('title') or '(untitled)'}[/bold]  {kind}, {day}")
-            console.print(f"  id: {hit.get('id')}")
+            console.print(
+                f"[bold]{escape(str(hit.get('title') or '(untitled)'))}[/bold]  "
+                f"{escape(str(kind))}, {escape(str(day))}"
+            )
+            console.print(f"  id: {hit.get('id')}", markup=False)
             if hit.get("summary"):
-                console.print(f"  {short(str(hit['summary']), 300)}")
+                console.print(f"  {short(str(hit['summary']), 300)}", markup=False)
             findings = hit.get("findings") or []
             if findings:
                 titles = [f.get("page_title") for f in findings if f.get("page_title")]
-                console.print(f"  findings: {len(findings)}  " + ", ".join(titles[:5]))
+                console.print(
+                    f"  findings: {len(findings)}  " + ", ".join(titles[:5]), markup=False
+                )
 
     emit(hits, json_out=json_out, render=render)
 
@@ -210,13 +237,16 @@ def conversation_freshness(
         checked = data.get("pages_checked", 0)
         fresh = data.get("fresh")
         if fresh is True:
-            console.print(f"Fresh: all {checked} pages it read are unchanged (full coverage).")
+            console.print(
+                f"Fresh: all {checked} pages it read are unchanged (full coverage).", markup=False
+            )
         elif fresh is False:
             console.print("[yellow]Changed since this session read them:[/yellow]")
             for page in data.get("changed") or []:
                 console.print(
                     f"  - {page.get('title')} ({page.get('state')}, read revision "
-                    f"{page.get('read_revision')}, now {page.get('current_revision')})"
+                    f"{page.get('read_revision')}, now {page.get('current_revision')})",
+                    markup=False,
                 )
         elif coverage == "none":
             console.print(
@@ -226,19 +256,20 @@ def conversation_freshness(
         else:
             console.print(
                 f"Unknown: {checked} checked pages are unchanged, but some reads "
-                "could not be checked (partial coverage)."
+                "could not be checked (partial coverage).",
+                markup=False,
             )
         pages = data.get("unchecked_pages") or []
         if pages:
             titles = ", ".join(str(p.get("title") or p.get("page_id")) for p in pages[:10])
-            console.print(f"Not checked (revision unknown): {titles}")
+            console.print(f"Not checked (revision unknown): {titles}", markup=False)
         sources = data.get("unchecked_sources") or []
         if sources:
             refs = ", ".join(str(s.get("source_ref")) for s in sources[:10])
-            console.print(f"Not checked (by source reference): {refs}")
+            console.print(f"Not checked (by source reference): {refs}", markup=False)
         files = data.get("unchecked_files") or []
         if files:
-            console.print(f"Not checked (outside Beakr): {', '.join(files[:10])}")
+            console.print(f"Not checked (outside Beakr): {', '.join(files[:10])}", markup=False)
 
     emit(result, json_out=json_out, render=render)
 
@@ -303,7 +334,7 @@ def import_conversation(
     """
     if client not in CONVERSATION_CLIENTS:
         choices = ", ".join(CONVERSATION_CLIENTS)
-        err_console.print(f"Invalid --client '{client}'. Choose: {choices}.")
+        err_console.print(f"Invalid --client '{client}'. Choose: {choices}.", markup=False)
         raise typer.Exit(2)
     if bool(from_transcript) == bool(file):
         err_console.print("Provide exactly one of --from-transcript or --file.")
@@ -323,7 +354,7 @@ def import_conversation(
         try:
             session = parse_transcript(from_transcript, client)
         except ValueError as exc:
-            err_console.print(str(exc))
+            err_console.print(str(exc), markup=False)
             raise typer.Exit(2) from exc
         if interactive and session.classification == HEADLESS:
             err_console.print(
@@ -355,7 +386,8 @@ def import_conversation(
             json_out=json_out,
             render=lambda r: console.print(
                 f"Sent {r['new_messages']} new message(s) to conversation "
-                f"{r['conversation_id'] or '(none yet)'}."
+                f"{r['conversation_id'] or '(none yet)'}.",
+                markup=False,
             ),
         )
         return
@@ -395,7 +427,8 @@ def import_conversation(
         json_out=json_out,
         render=lambda r: console.print(
             f"{'Imported' if r.get('created') else 'Updated'} conversation "
-            f"{r.get('conversation_id')} (stored: {r.get('stored')})."
+            f"{r.get('conversation_id')} (stored: {r.get('stored')}).",
+            markup=False,
         ),
     )
 
@@ -417,10 +450,10 @@ def _import_chatgpt_export(
     try:
         sessions = parse_chatgpt_export(path)
     except ChatGPTExportError as exc:
-        err_console.print(str(exc))
+        err_console.print(str(exc), markup=False)
         raise typer.Exit(2) from exc
     if not sessions:
-        err_console.print(f"No conversations with messages in {path}.")
+        err_console.print(f"No conversations with messages in {path}.", markup=False)
         raise typer.Exit(1)
     results: list[dict[str, Any]] = []
     with get_sdk() as sdk:
@@ -441,7 +474,8 @@ def _import_chatgpt_export(
     def render(rows: list[dict[str, Any]]) -> None:
         sent = sum(int(r.get("new_messages") or 0) for r in rows)
         console.print(
-            f"Imported {len(rows)} ChatGPT conversation(s), {sent} new message(s) in all."
+            f"Imported {len(rows)} ChatGPT conversation(s), {sent} new message(s) in all.",
+            markup=False,
         )
 
     emit(results, json_out=json_out, render=render)
@@ -473,7 +507,8 @@ def full_text_setting(
     unknown = [c for c in clients or [] if c not in CONVERSATION_CLIENTS]
     if unknown:
         err_console.print(
-            f"Unknown client(s): {', '.join(unknown)}. Choose: {', '.join(CONVERSATION_CLIENTS)}."
+            f"Unknown client(s): {', '.join(unknown)}. Choose: {', '.join(CONVERSATION_CLIENTS)}.",
+            markup=False,
         )
         raise typer.Exit(2)
     with get_sdk() as sdk:
@@ -485,7 +520,7 @@ def full_text_setting(
     def render(data: dict[str, Any]) -> None:
         chosen = data.get("full_text_clients") or []
         if chosen:
-            console.print(f"Full text is kept for imports from: {', '.join(chosen)}.")
+            console.print(f"Full text is kept for imports from: {', '.join(chosen)}.", markup=False)
         else:
             console.print("Full text is kept for no client: imports keep a summary and references.")
 
@@ -507,5 +542,38 @@ def remove_conversation(
     emit(
         {"id": conversation_id, "deleted": True},
         json_out=json_out,
-        render=lambda _: console.print(f"Deleted conversation {conversation_id}."),
+        render=lambda _: console.print(f"Deleted conversation {conversation_id}.", markup=False),
     )
+
+
+@compound_app.command("cancel")
+def cancel_compound(
+    conversation_id: str = typer.Argument(..., help="An imported conversation being compounded."),
+    json_out: bool = _json_opt,
+) -> None:
+    """Stop a queued or running compound; `beakr compound ID` resumes it.
+
+    The batch being read finishes and its proposals stay; no further batch
+    starts. With nothing queued or running the status is `nothing_to_cancel`.
+    """
+    with get_sdk() as sdk:
+        result = sdk.engine.cancel_compound(conversation_id)
+
+    def render(data: dict[str, Any]) -> None:
+        if data.get("status") == "nothing_to_cancel":
+            console.print(
+                f"Nothing to cancel: {conversation_id} is not being compounded.", markup=False
+            )
+            return
+        pending = data.get("pending_messages")
+        kept = f" {pending} message(s) are kept." if pending else ""
+        console.print(
+            f"Cancelled compounding of {conversation_id}.{kept} "
+            f"Resume with `beakr compound {conversation_id}`.",
+            highlight=False,
+            # The resume command must stay copyable: never break it across lines.
+            soft_wrap=True,
+            markup=False,
+        )
+
+    emit(result, json_out=json_out, render=render)
