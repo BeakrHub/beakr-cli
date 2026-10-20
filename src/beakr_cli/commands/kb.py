@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from itertools import islice
 from pathlib import Path
@@ -1244,6 +1245,11 @@ def proposals_dismiss(
 # ---------------------------------------------------------------------------
 
 
+def _title_key(text: str) -> str:
+    """A title compared loosely: case, spacing and punctuation ignored (a slug matches)."""
+    return "-".join(re.findall(r"[^\W_]+", text.casefold()))
+
+
 def _resolve_page(
     ref: str,
     *,
@@ -1253,9 +1259,13 @@ def _resolve_page(
     """Resolve a page reference (title or UUID) to a page dict.
 
     Title resolution goes through wiki_page_title_aliases so renamed
-    pages still resolve via their previous titles. A fuzzy search
-    fallback handles partial input.
+    pages still resolve via their previous titles. A search then finds a
+    page whose title is the reference written as a slug (``kestrel-widget``).
+    Anything else is not found, with the closest titles as suggestions: the
+    search's top hit used to be returned silently, so ``kb cat "No Such Page"``
+    printed an unrelated page and exited 0.
     """
+    suggestions: list[str] = []
     with get_sdk() as sdk:
         pages = sdk.knowledge.pages
         # Try UUID first
@@ -1274,22 +1284,29 @@ def _resolve_page(
         except Exception:
             pass
 
-        # Try fuzzy search (handles partial input and slug-shaped legacy refs)
+        # The same title written another way (a slug), else suggestions.
         try:
-            results = pages.search(ref, project_id=_project_id(project=project, mine=mine), limit=1)
+            results = pages.search(ref, project_id=_project_id(project=project, mine=mine), limit=5)
             hits = page_rows(results)
-            if hits:
-                page_id = hits[0].get("id")
-                if page_id:
-                    data = pages.get(page_id)
-                    if not _page_matches_scope(data, project=project, mine=mine):
-                        raise ValueError("Page is outside the requested scope.")
-                    return data
         except Exception:
-            pass
+            hits = []
+        wanted = _title_key(ref)
+        for hit in hits:
+            title = str(hit.get("title") or "")
+            if title and title not in suggestions:
+                suggestions.append(title)
+            if wanted and _title_key(title) == wanted and hit.get("id"):
+                data = pages.get(hit["id"])
+                if _page_matches_scope(data, project=project, mine=mine):
+                    return data
 
     # Not found (exit 4), the code every other missing object gets.
-    raise NotFoundError(f"Page not found: {ref}")
+    if suggestions:
+        raise NotFoundError(
+            f"Page not found: {ref}",
+            fix="Close matches: " + ", ".join(f'"{title}"' for title in suggestions[:5]),
+        )
+    raise NotFoundError(f"Page not found: {ref}", fix="List pages with `beakr kb ls`.")
 
 
 def _page_matches_scope(
