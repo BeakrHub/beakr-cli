@@ -8,6 +8,7 @@ import webbrowser
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli import config
 from beakr_cli.auth_status import auth_status_report
@@ -56,7 +57,7 @@ def _pick_project() -> dict[str, Any]:
         with get_sdk() as sdk:
             projects = sdk.projects.list()
     except Exception as exc:
-        err_console.print(f"Failed to fetch projects: {exc}")
+        err_console.print(f"Failed to fetch projects: {exc}", markup=False)
         raise typer.Exit(1)
 
     if not projects:
@@ -69,7 +70,7 @@ def _pick_project() -> dict[str, Any]:
         name = p.get("name", "Untitled")
         desc = p.get("description", "") or ""
         suffix = f" -- {desc}" if desc else ""
-        console.print(f"  {i}. {name}{suffix}")
+        console.print(f"  {i}. {name}{suffix}", markup=False)
 
     console.print()
     selected = projects[prompt_choice("Select a project", len(projects), flag_hint="--project")]
@@ -77,7 +78,9 @@ def _pick_project() -> dict[str, Any]:
     project_name = selected.get("name", "")
 
     config.set_key("project_id", project_id)
-    console.print(f"Default project: [bold]{project_name}[/bold] ({project_id})")
+    console.print(
+        f"Default project: [bold]{escape(str(project_name))}[/bold] ({escape(str(project_id))})"
+    )
     return {"project_id": project_id, "name": project_name}
 
 
@@ -113,7 +116,7 @@ def _resolve_login_url(env: str | None, api_url: str | None) -> str | None:
         return None
     resolved = _ENV_URLS.get(env)
     if not resolved:
-        err_console.print(f"Unknown environment: {env}. Use 'prod' or 'sandbox'.")
+        err_console.print(f"Unknown environment: {env}. Use 'prod' or 'sandbox'.", markup=False)
         raise typer.Exit(2)
     return resolved
 
@@ -139,11 +142,14 @@ def _login_with_api_key(api_key: str, base_url: str) -> dict[str, Any]:
     try:
         data = _me()
     except Exception as exc:
-        err_console.print(f"Authentication failed: {exc}")
+        err_console.print(f"Authentication failed: {exc}", markup=False)
         TokenStore().clear(base_url)
         raise typer.Exit(3) from exc
     identity, org_name = _identity_line(data)
-    console.print(f"Authenticated as [bold]{identity}[/bold] in [bold]{org_name}[/bold]")
+    console.print(
+        f"Authenticated as [bold]{escape(str(identity))}[/bold] in "
+        f"[bold]{escape(str(org_name))}[/bold]"
+    )
     return {"identity": identity, "org": org_name}
 
 
@@ -165,7 +171,7 @@ def _login_with_oauth(base_url: str, *, open_browser: bool, device: bool) -> dic
             err_console.print("Opening your browser to sign in. If it does not open, visit:")
         else:
             err_console.print("Open this link in a browser on this machine to sign in:")
-        err_console.print(url, highlight=False, soft_wrap=True)
+        err_console.print(url, highlight=False, soft_wrap=True, markup=False)
         if open_browser:
             try:
                 webbrowser.open(url)
@@ -182,8 +188,8 @@ def _login_with_oauth(base_url: str, *, open_browser: bool, device: bool) -> dic
                 grant = sdk.auth.start_device_login(auth_config, metadata)
                 url = grant.get("verification_uri_complete") or grant.get("verification_uri")
                 err_console.print(
-                    f"Your one-time code: [bold]{grant['user_code']}[/bold]\n"
-                    f"Confirm it in a browser: {url}"
+                    f"Your one-time code: [bold]{escape(str(grant['user_code']))}[/bold]\n"
+                    f"Confirm it in a browser: {escape(str(url))}"
                 )
                 if open_browser and url:
                     try:
@@ -195,7 +201,7 @@ def _login_with_oauth(base_url: str, *, open_browser: bool, device: bool) -> dic
             else:
                 token_response = sdk.auth.browser_login(auth_config, metadata, open_url=show_url)
     except OAuthLoginError as exc:
-        err_console.print(str(exc))
+        err_console.print(str(exc), markup=False)
         raise typer.Exit(3) from exc
 
     tokens = StoredTokens.from_token_response(
@@ -227,7 +233,8 @@ def _login_with_oauth(base_url: str, *, open_browser: bool, device: bool) -> dic
         except Exception:
             identity = "unknown"
     console.print(
-        f"Signed in as [bold]{identity}[/bold]. Credentials saved to the {store.backend}."
+        f"Signed in as [bold]{escape(str(identity))}[/bold]. Credentials saved to the "
+        f"{escape(str(store.backend))}."
     )
     return {"identity": identity, "credential_store": store.backend}
 
@@ -315,22 +322,27 @@ def status(
     report = auth_status_report()
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"Base URL:  {data['base_url']}")
+        console.print(f"Base URL:  {data['base_url']}", markup=False)
         if not data["authenticated"]:
             console.print("Signed in: [red]no[/red] (run beakr auth login)")
             return
-        console.print(f"Signed in: yes, via {_SOURCE_LABELS.get(data['source'], data['source'])}")
+        console.print(
+            f"Signed in: yes, via {_SOURCE_LABELS.get(data['source'], data['source'])}",
+            markup=False,
+        )
         if data.get("issuer") and data.get("source") == "cli_tokens":
-            console.print(f"Issuer:    {data['issuer']}", highlight=False)
+            console.print(f"Issuer:    {data['issuer']}", highlight=False, markup=False)
         if data.get("access_expires_at"):
             state = " (expired; refreshes on next use)" if data.get("access_expired") else ""
-            console.print(f"Access:    expires {data['access_expires_at']}{state}")
-            console.print(f"Refresh:   expires {data.get('refresh_expires_at') or 'unknown'}")
-            console.print(f"Stored in: {data['token_backend']}")
+            console.print(f"Access:    expires {data['access_expires_at']}{state}", markup=False)
+            console.print(
+                f"Refresh:   expires {data.get('refresh_expires_at') or 'unknown'}", markup=False
+            )
+            console.print(f"Stored in: {data['token_backend']}", markup=False)
         if data.get("key_prefix"):
-            console.print(f"Key:       {data['key_prefix']}...")
+            console.print(f"Key:       {data['key_prefix']}...", markup=False)
         if data.get("org_override"):
-            console.print(f"Org:       {data['org_override']}")
+            console.print(f"Org:       {data['org_override']}", markup=False)
 
     emit(report, json_out=json_out, render=render)
     if not report["authenticated"]:
@@ -377,7 +389,9 @@ def _revoke_login(tokens) -> bool:
                 endpoint, tokens.refresh_token, client_id=tokens.oauth_client_id or ""
             )
     except BeakrError as exc:
-        err_console.print(f"[yellow]Could not revoke the sign-in at its issuer: {exc}[/yellow]")
+        err_console.print(
+            f"[yellow]Could not revoke the sign-in at its issuer: {escape(str(exc))}[/yellow]"
+        )
         return False
     return True
 
@@ -407,7 +421,7 @@ def logout(
     except CredentialClearError as exc:
         # Nothing was removed or recorded: saying "Logged out" would be false,
         # and the next command would still authenticate (audit C080).
-        err_console.print(f"Not logged out: {exc}")
+        err_console.print(f"Not logged out: {exc}", markup=False)
         raise typer.Exit(1) from exc
     for key in (*_CREDENTIAL_CONFIG_KEYS, "org_id", "project_id"):
         config.delete_key(key)
@@ -437,7 +451,7 @@ def _whoami(json_out: bool) -> None:
     try:
         data = _me()
     except Exception as exc:
-        err_console.print(f"Failed: {exc}")
+        err_console.print(f"Failed: {exc}", markup=False)
         raise typer.Exit(1)
     active_org = os.environ.get("BEAKR_ORG_ID") or config.get("org_id")
     scope_project = os.environ.get("BEAKR_PROJECT_ID") or config.get("project_id")
@@ -445,12 +459,12 @@ def _whoami(json_out: bool) -> None:
         print_json({**data, "org_override": active_org, "project_scope": scope_project})
         return
     identity, org_name = _identity_line(data)
-    console.print(f"User:  {identity}")
-    console.print(f"Org:   {org_name}")
+    console.print(f"User:  {identity}", markup=False)
+    console.print(f"Org:   {org_name}", markup=False)
     if active_org:
-        console.print(f"Org override: {active_org}")
+        console.print(f"Org override: {active_org}", markup=False)
     if scope_project:
-        console.print(f"Scope: project {scope_project}")
+        console.print(f"Scope: project {scope_project}", markup=False)
     else:
         console.print("Scope: [dim]none -- org-wide (run beakr auth set-scope)[/dim]")
 
@@ -490,7 +504,7 @@ def dev(
     config.delete_key("api_key")
     result: dict[str, Any] = {"dev_identity_id": identity, "email": email, "api_url": api_url}
     with human_output_to_stderr(json_out):
-        console.print(f"Dev mode: {identity} ({email}) -> {api_url}")
+        console.print(f"Dev mode: {identity} ({email}) -> {api_url}", markup=False)
         # A --json caller is a script: the optional project question is skipped.
         if not json_out and confirm_if_interactive("Select a default project?", default=True):
             result["default_project"] = _pick_project()
@@ -522,7 +536,7 @@ def set_scope(
     with human_output_to_stderr(json_out):
         if project_id:
             config.set_key("project_id", project_id)
-            console.print(f"Scope set to project {project_id}")
+            console.print(f"Scope set to project {project_id}", markup=False)
         else:
             # Refuses (exit 2, naming --project) when not running interactively.
             project_id = _pick_project()["project_id"]
@@ -540,7 +554,7 @@ def set_org(
     emit(
         {"org_id": org_id},
         json_out=json_out,
-        render=lambda _: console.print(f"Org set to {org_id}"),
+        render=lambda _: console.print(f"Org set to {org_id}", markup=False),
     )
 
 

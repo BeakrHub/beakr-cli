@@ -39,3 +39,12 @@ Drafted template: Weekly Helios digest
   suggestion: Schedule it for Monday 9:00 so it lands before the program sync.
 --- stderr
 Pass --out FILE to keep the definition, or --json for all of it.
+
+$ beakr workflows draft 'Summarize Helios every Monday'
+> POST /v1/workflows/ai/generate
+  {"description": "Summarize Helios every Monday"}
+[exit 0]
+--- stdout
+confidence=0.84	suggestions=Add the Helios project as the Knowledge scope so the digest cites its pages.,...	template.name=Weekly Helios digest	template.description=Summarize the week's Helios changes every Monday.	template.steps=[{"id": "collect", "type": "agent", "prompt": "List the Helios pages and files that changed in the last 7 days."}, {"id": "summarize", "type": "agent", "prompt": "Write a one-page digest of those changes with citations."}]
+--- stderr
+

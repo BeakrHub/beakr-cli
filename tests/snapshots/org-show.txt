@@ -29,3 +29,11 @@ Created:  2025-03-14T16:20:00Z
 PHI mode: off
 --- stderr
 
+
+$ beakr org show --org 0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01
+> GET /v1/organizations/0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01
+[exit 0]
+--- stdout
+0b6f6a52-3a1e-4c55-9d1f-6e1b8f0a2c01	Northwind Biosciences	slug=northwind-biosciences
+--- stderr
+

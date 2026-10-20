@@ -43,8 +43,18 @@ def test_published_research_guidance_preserves_question_scope():
     assert "complete population coverage" in research.description
 
 
-def test_by_default_this_server_lists_exactly_the_eager_set():
-    """W8.2: the small set is the default listing (C042); the rest is discovered."""
+def test_by_default_this_server_lists_every_tool():
+    """Claude Code calls only listed tools, so every tool is listed by default.
+
+    Root cause guarded: the default listing was the eager set, and the tools
+    discover_tools described (documents, wiki_stats, the proposal tools...)
+    could not be called from Claude Code at all.
+    """
+    assert sorted(tool.name for tool in _listed()) == sorted(tool_surface.stdio_tools())
+
+
+def test_eager_mode_lists_exactly_the_eager_set(monkeypatch):
+    monkeypatch.setenv(tool_surface.TOOLS_ENV, "eager")
     assert [tool.name for tool in _listed()] == tool_surface.eager_tools()
 
 

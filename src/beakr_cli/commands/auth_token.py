@@ -24,6 +24,7 @@ import sys
 from typing import Any, NoReturn
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.errors import EXIT_AUTH, EXIT_ERROR, EXIT_USAGE, exit_code_for
 from beakr_cli.output import err_console, print_json
@@ -33,7 +34,7 @@ def _fail(code: str, message: str, exit_code: int, *, json_out: bool) -> NoRetur
     if json_out:
         print_json({"error": {"code": code, "message": message}})
     else:
-        err_console.print(f"[red]Error:[/red] {message}", highlight=False)
+        err_console.print(f"[red]Error:[/red] {escape(str(message))}", highlight=False)
     raise typer.Exit(exit_code)
 
 

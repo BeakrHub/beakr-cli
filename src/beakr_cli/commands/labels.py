@@ -15,6 +15,8 @@ from __future__ import annotations
 from typing import Any
 
 import typer
+from beakr_sdk.errors import NotFoundError
+from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_ref import resolve_project_ref
@@ -44,7 +46,9 @@ def _label_id(sdk: Any, ref: str) -> str:
     if matches:
         raise typer.BadParameter(f"Several labels are named {ref!r}; pass its id.")
     names = ", ".join(str(label.get("name")) for label in labels[:10]) or "none yet"
-    raise typer.BadParameter(f"No label with id or name {ref!r}. Labels: {names}.")
+    # Not found (exit 4), as a missing project, page or API object is: a label
+    # that does not exist is not a mistyped command line.
+    raise NotFoundError(f"No label with id or name {ref!r}. Labels: {names}.")
 
 
 def _render_labels(rows: list[dict[str, Any]]) -> None:
@@ -67,11 +71,11 @@ def _render_labels(rows: list[dict[str, Any]]) -> None:
 
 
 def _render_label(label: dict[str, Any]) -> None:
-    console.print(f"[bold]{label.get('name')}[/bold] ({label.get('id')})")
+    console.print(f"[bold]{escape(str(label.get('name')))}[/bold] ({escape(str(label.get('id')))})")
     if label.get("description"):
-        console.print(str(label["description"]))
+        console.print(str(label["description"]), markup=False)
     if label.get("member_count") is not None:
-        console.print(f"Members: {label['member_count']}")
+        console.print(f"Members: {label['member_count']}", markup=False)
 
 
 @app.command("ls")
@@ -143,7 +147,7 @@ def delete_label(
     emit(
         {"id": label_id, "deleted": True},
         json_out=json_out,
-        render=lambda d: err_console.print(f"Deleted label {d['id']}."),
+        render=lambda d: err_console.print(f"Deleted label {d['id']}.", markup=False),
         json_when_piped=False,
     )
 
@@ -187,7 +191,7 @@ def add_label_member(
     emit(
         member,
         json_out=json_out,
-        render=lambda m: console.print(f"Added {m.get('user_id')} to the label."),
+        render=lambda m: console.print(f"Added {m.get('user_id')} to the label.", markup=False),
     )
 
 
@@ -204,7 +208,7 @@ def remove_label_member(
     emit(
         {"label_id": label_id, "user_id": user_id, "removed": True},
         json_out=json_out,
-        render=lambda d: err_console.print(f"Removed {d['user_id']} from the label."),
+        render=lambda d: err_console.print(f"Removed {d['user_id']} from the label.", markup=False),
         json_when_piped=False,
     )
 
@@ -261,7 +265,9 @@ def attach_label_project(
         attached,
         json_out=json_out,
         lines=lambda p: _project_lines([p]),
-        render=lambda p: console.print(f"Attached project {p.get('project_id')} to the label."),
+        render=lambda p: console.print(
+            f"Attached project {p.get('project_id')} to the label.", markup=False
+        ),
     )
 
 
@@ -279,7 +285,7 @@ def detach_label_project(
     emit(
         {"label_id": label_id, "project_id": project_id, "detached": True},
         json_out=json_out,
-        render=lambda d: err_console.print(f"Detached project {d['project_id']}."),
+        render=lambda d: err_console.print(f"Detached project {d['project_id']}.", markup=False),
         json_when_piped=False,
     )
 

@@ -37,3 +37,12 @@ $ beakr workflows run 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 Run 2b36ecc8-d5ae-4beb-9919-f873cb9fa225: pending
 --- stderr
 
+
+$ beakr workflows run 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> POST /v1/workflows/configs/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/run
+  {"input_overrides": {}}
+[exit 0]
+--- stdout
+2b36ecc8-d5ae-4beb-9919-f873cb9fa225	status=pending	job=5e1d84cf-db58-47b2-9f39-12adef5c2d29	thread=6de10183-73b6-48a8-9479-b0bfd7d7abae
+--- stderr
+

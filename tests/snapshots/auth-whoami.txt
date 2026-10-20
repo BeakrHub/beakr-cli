@@ -53,3 +53,13 @@ Org:   Northwind Biosciences
 Scope: none -- org-wide (run beakr auth set-scope)
 --- stderr
 
+
+$ beakr auth whoami
+> GET /v1/me
+[exit 0]
+--- stdout
+User:  Dana Whitfield
+Org:   Northwind Biosciences
+Scope: none -- org-wide (run beakr auth set-scope)
+--- stderr
+

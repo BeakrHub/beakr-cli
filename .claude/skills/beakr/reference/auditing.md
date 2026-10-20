@@ -24,7 +24,7 @@ Use `links {page}` or `references {page}` to inspect a specific page's neighborh
 ### 4. Spot structural issues
 
 From `ls` results, look for:
-- Duplicate or near-duplicate page titles (fix with `merge`, not `archive`)
+- Duplicate or near-duplicate page titles (fix with `merge` and its `merge_sections`, not `archive`)
 - Deeply nested hierarchies (more than 3 levels is usually too deep)
 - Pages without a parent (use `suggest_parent {page}` to find a home)
 - Pages that look like stubs
@@ -51,4 +51,4 @@ Organize by severity:
 - **Minor** -- style inconsistencies, missing Related Pages sections
 - **Recommendations** -- specific pages to create, merge, or reorganize
 
-Offer to stage fixes with `knowledge_base_write` (`edit_section`, `merge`, `mv`, `new`) if the user approves.
+Offer to stage fixes with `knowledge_base_write` (`edit_section`, `merge`, `mv`, `new`) if the user approves. See [writing-pages.md](writing-pages.md#renaming-merging-and-replacing-text) for what `merge` carries and what `mv` leaves.
