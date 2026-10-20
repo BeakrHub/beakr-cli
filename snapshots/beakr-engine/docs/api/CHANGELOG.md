@@ -11,10 +11,14 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c97b46a769a85964a76462dce99b8de5cb828d2f752cb4097d682d9caa8c9181 changelog sha256=facf2acf8e612d8eadc2bb8c36d932dcb929f4d6ca56f699c2d1cde82ceea5e5 -->
+<!-- contract-stamp: public-openapi sha256=8224d1bfebe4c86064e563618b9f770b51c9a7093c7a054e005f1244a5fbb26c changelog sha256=4ad00227ba52693022d51c2e906289c60d662156a5959877a46bf0f4d6d5b227 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `GET /v1/interview/sendables`: each link carries who it was sent to and how:
+  `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
+  and `delivery_error`. All are null for a link that was not sent.
 
 - Proposal `filed_by.run`: the description says what the label is for: writes
   that share it can be undone together.
