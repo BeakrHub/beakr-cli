@@ -90,8 +90,6 @@ Each release lists the public API changes it supports, taken from the API change
   `--entity-type`, `--person`, `--organization`, `--topic`, `--guidance`)
   change only those fields and create the profile when the project has none;
   `edit` opens it as YAML in `$EDITOR`.
-- Proposal `filed_by.run`: the description names the operation that takes a
-  run back, `POST /v1/knowledge/runs/{run}/undo`.
 - `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
   declare is written as the closest declared type when one answers to that
   name (its key, an alias or its label; `project` is `initiative`), and the
