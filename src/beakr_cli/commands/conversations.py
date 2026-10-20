@@ -529,11 +529,17 @@ def full_text_setting(
 
 @app.command("rm")
 def remove_conversation(
-    conversation_id: str = typer.Argument(..., help="Conversation id."),
+    conversation_id: str = typer.Argument(
+        ..., help="Conversation id: an imported conversation or a Beakr chat (`conversations ls`)."
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Delete an imported conversation."""
+    """Delete one of your imported conversations or Beakr chats.
+
+    A chat goes with its messages. Knowledge already compounded from a
+    conversation stays.
+    """
     from beakr_cli.prompts import confirm_or_require_yes
 
     confirm_or_require_yes(f"Delete conversation {conversation_id}?", yes)
