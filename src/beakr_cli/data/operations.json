@@ -154,7 +154,7 @@
     "fields": [
      {
       "default": 24000,
-      "description": "Most characters of context to return (2,000 to 100,000).",
+      "description": "Most characters the rendered context may use, from 2000 to 100000 (default 24000). A value below 2000 is refused with 422.",
       "name": "budget_chars",
       "required": false,
       "type": "integer"
@@ -199,6 +199,34 @@
    "response": "json",
    "scope": "agent:run",
    "summary": "Get context for an agent session"
+  },
+  {
+   "action": "cancel-compound",
+   "anonymous": false,
+   "area": "conversations",
+   "body": {
+    "fields": [
+     {
+      "description": "Id of the conversation.",
+      "name": "conversation_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/compound/cancel",
+   "paginated": false,
+   "path": "/v1/compound/cancel",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "conversations:write",
+   "summary": "Cancel compounding a conversation"
   },
   {
    "action": "compound",
@@ -2746,7 +2774,7 @@
       "type": "string"
      },
      {
-      "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
+      "description": "rows, proposals: rows to skip (continue a NOT ALL ROWS reply).",
       "name": "offset",
       "required": false,
       "type": "integer"
@@ -2871,11 +2899,7 @@
       "type": "string"
      },
      {
-      "description": "For proposals: 'pending' (default, awaiting approval) or 'dismissed' (the user rejected them).",
-      "enum": [
-       "pending",
-       "dismissed"
-      ],
+      "description": "For proposals: pending (default), accepted, dismissed, superseded (says why) or resolved.",
       "name": "status",
       "required": false,
       "type": "string"

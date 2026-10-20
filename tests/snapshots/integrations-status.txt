@@ -72,3 +72,11 @@ Project sources
 └───────────────────────────────────┴─────────────────────────────┴───────────┴────────────┴───────┘
 --- stderr
 
+
+$ beakr integrations status 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/integrations/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/status
+[exit 0]
+--- stdout
+e2d7a9c4-1f3b-4a6e-8c5d-9b0f2e4a6c18	status=active
+--- stderr
+

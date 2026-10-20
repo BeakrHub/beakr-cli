@@ -48,3 +48,13 @@ $ beakr projects archive 4dd25154-0d80-44ab-b4c2-167319bfacb4
 Archived project Helios (4dd25154-0d80-44ab-b4c2-167319bfacb4).
 --- stderr
 
+
+$ beakr projects archive 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects?limit=200
+> PATCH /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4
+  {"status": "archived"}
+[exit 0]
+--- stdout
+4dd25154-0d80-44ab-b4c2-167319bfacb4	Helios	slug=helios	type=standard	status=active	members=3
+--- stderr
+

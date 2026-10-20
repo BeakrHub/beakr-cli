@@ -337,7 +337,7 @@ def _write_file(content: bytes, out: Path | None) -> None:
 
     if out is not None:
         out.write_bytes(content)
-        err_console.print(f"Wrote {out} ({len(content):,} bytes)", highlight=False)
+        err_console.print(f"Wrote {out} ({len(content):,} bytes)", highlight=False, markup=False)
         return
     if not is_piped():
         raise click.UsageError("This command returns a file: pass --out PATH or pipe the output.")

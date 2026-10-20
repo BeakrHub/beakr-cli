@@ -69,3 +69,11 @@ Updated: 2026-09-14T15:24:51Z
 Charter for Project Helios: scope, milestones and the lead-selection criteria.
 --- stderr
 
+
+$ beakr files show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/artifacts/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+[exit 0]
+--- stdout
+0c7d0f1a-876b-4349-acbe-1979fc33d706	Helios charter v3.pdf	type=doc	source_url=https://drive.google.com/file/d/1Hx7Qm2Lk9vR4tN8pZ3wY6bC0dE5fGhIj/view
+--- stderr
+

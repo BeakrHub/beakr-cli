@@ -49,13 +49,16 @@ def entities(
 
     def render(rows: list[dict[str, Any]]) -> None:
         if not rows:
-            err_console.print("No pages" + (f" of type {page_type}." if page_type else "."))
+            err_console.print(
+                "No pages" + (f" of type {page_type}." if page_type else "."), markup=False
+            )
             return
         if not page_type:
             counts = Counter(str(p.get("page_type") or "untyped") for p in rows)
             console.print(
                 "  ".join(f"{kind} {count}" for kind, count in counts.most_common()),
                 highlight=False,
+                markup=False,
             )
         ordered = sorted(
             rows, key=lambda p: (str(p.get("page_type") or ""), str(p.get("title") or ""))
@@ -130,11 +133,13 @@ def undo_run(
             f"{verb} run {r.get('run')}: {len(r.get('dismissed') or [])} pending proposal(s) "
             f"dismissed, {len(r.get('reverted') or [])} change(s) reverted.",
             highlight=False,
+            markup=False,
         )
         for conflict in r.get("conflicts") or []:
             err_console.print(
                 f"  Not reverted (changed since): proposal {conflict.get('proposal_id')}",
                 highlight=False,
+                markup=False,
             )
         if r.get("truncated"):
             err_console.print("More remain: run the command again to continue.")

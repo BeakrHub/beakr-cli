@@ -12,6 +12,7 @@ from enum import Enum
 from pathlib import Path
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.output import console, err_console
 from beakr_cli.prompts import confirm_if_interactive
@@ -89,7 +90,9 @@ def _codex_skill_path(scope: Scope) -> Path:
 
 def _copy_tree(src: Path, dst: Path, force: bool) -> bool:
     if dst.exists() and not force:
-        err_console.print(f"  [yellow]exists, skipped[/yellow] {dst} (use --force to overwrite)")
+        err_console.print(
+            f"  [yellow]exists, skipped[/yellow] {escape(str(dst))} (use --force to overwrite)"
+        )
         return False
     if dst.exists():
         shutil.rmtree(dst)
@@ -104,7 +107,7 @@ def _copy_glob(src: Path, dst: Path, pattern: str, force: bool) -> list[Path]:
     for f in sorted(src.glob(pattern)):
         target = dst / f.name
         if target.exists() and not force:
-            err_console.print(f"  [yellow]exists, skipped[/yellow] {target}")
+            err_console.print(f"  [yellow]exists, skipped[/yellow] {escape(str(target))}")
             continue
         shutil.copy2(f, target)
         written.append(target)
@@ -114,34 +117,34 @@ def _copy_glob(src: Path, dst: Path, pattern: str, force: bool) -> list[Path]:
 def _install_claude(scope: Scope, force: bool) -> None:
     skill_dst, cmds_dst = _claude_paths(scope)
     if _copy_tree(_skill_src(), skill_dst, force):
-        console.print(f"[green]Claude:[/green] skill   → {skill_dst}")
+        console.print(f"[green]Claude:[/green] skill   → {escape(str(skill_dst))}")
     written = _copy_glob(_commands_src(), cmds_dst, "kb-*.md", force)
     for w in written:
-        console.print(f"[green]Claude:[/green] command → {w}")
+        console.print(f"[green]Claude:[/green] command → {escape(str(w))}")
 
 
 def _install_codex(scope: Scope, force: bool) -> None:
     skill_dst = _codex_skill_path(scope)
     if _copy_tree(_skill_src(), skill_dst, force):
-        console.print(f"[green]Codex:[/green]  skill   → {skill_dst}")
+        console.print(f"[green]Codex:[/green]  skill   → {escape(str(skill_dst))}")
 
 
 def _uninstall_claude(scope: Scope) -> None:
     skill_dst, cmds_dst = _claude_paths(scope)
     if skill_dst.exists():
         shutil.rmtree(skill_dst)
-        console.print(f"[red]Claude:[/red] removed {skill_dst}")
+        console.print(f"[red]Claude:[/red] removed {escape(str(skill_dst))}")
     if cmds_dst.exists():
         for f in sorted(cmds_dst.glob("kb-*.md")):
             f.unlink()
-            console.print(f"[red]Claude:[/red] removed {f}")
+            console.print(f"[red]Claude:[/red] removed {escape(str(f))}")
 
 
 def _uninstall_codex(scope: Scope) -> None:
     skill_dst = _codex_skill_path(scope)
     if skill_dst.exists():
         shutil.rmtree(skill_dst)
-        console.print(f"[red]Codex:[/red]  removed {skill_dst}")
+        console.print(f"[red]Codex:[/red]  removed {escape(str(skill_dst))}")
 
 
 # ---------------------------------------------------------------------------
@@ -181,7 +184,9 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
         )
         if result.returncode == 0:
             target = ".mcp.json" if scope is Scope.project else "~/.claude.json"
-            console.print(f"[green]Claude:[/green] MCP registered (claude CLI → {target})")
+            console.print(
+                f"[green]Claude:[/green] MCP registered (claude CLI → {escape(str(target))})"
+            )
             return
         stderr = (result.stderr or "").lower()
         if "already" in stderr or "exists" in stderr:
@@ -189,7 +194,9 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
                 "[yellow]Claude:[/yellow] MCP already registered (use --force to overwrite)"
             )
             return
-        err_console.print(f"[red]Claude:[/red] claude mcp add failed: {result.stderr.strip()}")
+        err_console.print(
+            f"[red]Claude:[/red] claude mcp add failed: {escape(str(result.stderr.strip()))}"
+        )
         return
 
     # No claude CLI on PATH. Fallback paths depend on scope.
@@ -202,7 +209,7 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
     if os.environ.get("CLAUDE_CONFIG_DIR"):
         err_console.print(
             "[yellow]Claude:[/yellow] no `claude` CLI on PATH and $CLAUDE_CONFIG_DIR is set; "
-            f"register manually:\n  claude mcp add beakr -- {beakr} mcp"
+            f"register manually:\n  claude mcp add beakr -- {escape(str(beakr))} mcp"
         )
         return
 
@@ -214,20 +221,21 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
             data = json.loads(config_path.read_text())
         except json.JSONDecodeError:
             err_console.print(
-                f"[red]Claude:[/red] could not parse {config_path}; register manually:\n"
-                f"  claude mcp add beakr -- {beakr} mcp"
+                f"[red]Claude:[/red] could not parse {escape(str(config_path))}; register "
+                "manually:\n"
+                f"  claude mcp add beakr -- {escape(str(beakr))} mcp"
             )
             return
     servers = data.setdefault("mcpServers", {})
     if "beakr" in servers and not force:
         err_console.print(
-            f"[yellow]Claude:[/yellow] MCP already registered in {config_path} "
+            f"[yellow]Claude:[/yellow] MCP already registered in {escape(str(config_path))} "
             "(use --force to overwrite)"
         )
         return
     servers["beakr"] = {"command": beakr, "args": ["mcp"]}
     config_path.write_text(json.dumps(data, indent=2) + "\n")
-    console.print(f"[green]Claude:[/green] MCP registered ({config_path})")
+    console.print(f"[green]Claude:[/green] MCP registered ({escape(str(config_path))})")
 
 
 def _write_project_mcp_json(beakr: str, force: bool) -> None:
@@ -239,19 +247,20 @@ def _write_project_mcp_json(beakr: str, force: bool) -> None:
             data = json.loads(path.read_text())
         except json.JSONDecodeError:
             err_console.print(
-                f"[red]Claude:[/red] could not parse {path}; register manually:\n"
-                f"  claude mcp add beakr --scope project -- {beakr} mcp"
+                f"[red]Claude:[/red] could not parse {escape(str(path))}; register manually:\n"
+                f"  claude mcp add beakr --scope project -- {escape(str(beakr))} mcp"
             )
             return
     servers = data.setdefault("mcpServers", {})
     if "beakr" in servers and not force:
         err_console.print(
-            f"[yellow]Claude:[/yellow] MCP already registered in {path} (use --force to overwrite)"
+            f"[yellow]Claude:[/yellow] MCP already registered in {escape(str(path))} (use --force "
+            "to overwrite)"
         )
         return
     servers["beakr"] = {"command": beakr, "args": ["mcp"]}
     path.write_text(json.dumps(data, indent=2) + "\n")
-    console.print(f"[green]Claude:[/green] MCP registered ({path})")
+    console.print(f"[green]Claude:[/green] MCP registered ({escape(str(path))})")
 
 
 def _unregister_claude_mcp(scope: Scope) -> None:
@@ -280,7 +289,7 @@ def _unregister_claude_mcp(scope: Scope) -> None:
             if "beakr" in servers:
                 del servers["beakr"]
                 fallback.write_text(json.dumps(data, indent=2) + "\n")
-                console.print(f"[red]Claude:[/red] MCP removed from {fallback}")
+                console.print(f"[red]Claude:[/red] MCP removed from {escape(str(fallback))}")
                 removed = True
     if not removed:
         err_console.print("[yellow]Claude:[/yellow] no MCP registration found")
@@ -341,7 +350,8 @@ def _register_codex_mcp(force: bool, scope: Scope) -> None:
             )
             return
         err_console.print(
-            f"[yellow]Codex:[/yellow]  codex mcp add failed ({result.stderr.strip()}); "
+            "[yellow]Codex:[/yellow]  codex mcp add failed "
+            f"({escape(str(result.stderr.strip()))}); "
             "falling back to config.toml edit"
         )
 
@@ -351,7 +361,7 @@ def _register_codex_mcp(force: bool, scope: Scope) -> None:
     block = _codex_block()
     if not config_path.exists():
         config_path.write_text(block.lstrip())
-        console.print(f"[green]Codex:[/green]  MCP registered ({config_path})")
+        console.print(f"[green]Codex:[/green]  MCP registered ({escape(str(config_path))})")
         return
 
     existing = config_path.read_text()
@@ -366,7 +376,7 @@ def _register_codex_mcp(force: bool, scope: Scope) -> None:
     if existing and not existing.endswith("\n"):
         existing += "\n"
     config_path.write_text(existing + block)
-    console.print(f"[green]Codex:[/green]  MCP registered ({config_path})")
+    console.print(f"[green]Codex:[/green]  MCP registered ({escape(str(config_path))})")
 
 
 def _unregister_codex_mcp() -> None:
@@ -397,7 +407,7 @@ def _unregister_codex_mcp() -> None:
         config_path.write_text(new + "\n")
     else:
         config_path.unlink()
-    console.print(f"[red]Codex:[/red]  MCP removed from {config_path}")
+    console.print(f"[red]Codex:[/red]  MCP removed from {escape(str(config_path))}")
 
 
 # ---------------------------------------------------------------------------
@@ -458,7 +468,7 @@ def _maybe_auth() -> None:
         if identity is None:
             err_console.print("[red]$BEAKR_API_KEY didn't verify.[/red]")
             raise typer.Exit(3)
-        console.print(f"Using [bold]$BEAKR_API_KEY[/bold] ([dim]{identity}[/dim])")
+        console.print(f"Using [bold]$BEAKR_API_KEY[/bold] ([dim]{escape(str(identity))}[/dim])")
         return
 
     # 2. A browser login or saved key -- verify, then ask whether to keep it.
@@ -467,7 +477,8 @@ def _maybe_auth() -> None:
         identity = _verified_identity()
         if identity is None:
             err_console.print(
-                f"[yellow]Existing {label} didn't verify; let's sign in again.[/yellow]"
+                f"[yellow]Existing {escape(str(label))} didn't verify; let's sign in "
+                "again.[/yellow]"
             )
             TokenStore().clear()
             _sign_in_new()
@@ -475,10 +486,14 @@ def _maybe_auth() -> None:
 
         # Non-interactive (piped/CI): keep the existing verified credential silently.
         if not sys.stdin.isatty():
-            console.print(f"Using existing {label} ([dim]{identity}[/dim])")
+            console.print(
+                f"Using existing {escape(str(label))} ([dim]{escape(str(identity))}[/dim])"
+            )
             return
 
-        console.print(f"\nExisting {label} found for [bold]{identity}[/bold].")
+        console.print(
+            f"\nExisting {escape(str(label))} found for [bold]{escape(str(identity))}[/bold]."
+        )
         if confirm_if_interactive("Keep using it?", default=True):
             return
         TokenStore().clear()

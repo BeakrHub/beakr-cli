@@ -97,7 +97,7 @@ def changes(
 
     def render(rows: list[dict[str, Any]]) -> None:
         if not rows:
-            err_console.print("No changes" + (f" since {since}." if since else "."))
+            err_console.print("No changes" + (f" since {since}." if since else "."), markup=False)
             return
         print_table(
             ["When", "Who", "What", "Summary"],

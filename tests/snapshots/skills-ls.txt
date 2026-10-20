@@ -78,3 +78,12 @@ $ beakr skills ls
 └───────────────────────┴───────────────────────┴────────┴────────┴────────┴───────────────────────┘
 --- stderr
 
+
+$ beakr skills ls
+> GET /v1/me/skills/library?limit=200
+[exit 0]
+--- stdout
+15b8fc2b-67d9-485b-97e3-5d92ec9746b5	Stability study summary	slug=stability-study-summary
+98459f24-948a-4fa8-910b-fd80b8b399e5	Decision record	slug=decision-record
+--- stderr
+

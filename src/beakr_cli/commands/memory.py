@@ -6,6 +6,7 @@ session: errors go to ``~/.beakr/hooks.log`` and the exit code is 0.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -86,7 +87,9 @@ def context(
 ) -> None:
     """Print onboarding context (profiles, memories, changes, skills) for an agent session."""
     if fmt not in CONTEXT_FORMATS:
-        err_console.print(f"Invalid --format '{fmt}'. Choose: {', '.join(CONTEXT_FORMATS)}.")
+        err_console.print(
+            f"Invalid --format '{fmt}'. Choose: {', '.join(CONTEXT_FORMATS)}.", markup=False
+        )
         raise typer.Exit(2)
     if hook:
         _context_hook(project, question, since, fmt, budget_chars)
@@ -101,9 +104,13 @@ def context(
         )
     content = str(result.get("content") or "")
     if out is not None:
+        if fmt == "json":
+            # The file holds what stdout would print for this format: the whole
+            # response as JSON, not its rendered markdown.
+            content = json.dumps(result, indent=2, default=str, ensure_ascii=False) + "\n"
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(content)
-        err_console.print(f"Wrote {len(content)} characters to {out}")
+        err_console.print(f"Wrote {len(content)} characters to {out}", markup=False)
         if json_out:
             print_json(result)
         return
@@ -210,7 +217,7 @@ def compound(
     """
     if client not in CONVERSATION_CLIENTS:
         choices = ", ".join(CONVERSATION_CLIENTS)
-        err_console.print(f"Invalid --client '{client}'. Choose: {choices}.")
+        err_console.print(f"Invalid --client '{client}'. Choose: {choices}.", markup=False)
         raise typer.Exit(2)
     # The detached child carries the marker its parent hook set; any other hook
     # process that finds it set is nested inside a hook and must stop.
@@ -330,20 +337,24 @@ def _print_result(result: Any, json_out: bool) -> None:
             if row.get("status") == "nothing_to_compound":
                 console.print(
                     f"Nothing to compound in {row.get('conversation_id')}: no unread "
-                    "message text is held for it."
+                    "message text is held for it.",
+                    markup=False,
                 )
             else:
                 pending = row.get("pending_messages")
                 suffix = f" ({pending} message(s) pending)" if pending else ""
                 console.print(
                     f"Compounding {row.get('status', 'queued')} for "
-                    f"{row.get('conversation_id')}{suffix}."
+                    f"{row.get('conversation_id')}{suffix}.",
+                    markup=False,
                 )
             continue
         state = "compounding queued" if row["compounded"] else f"not compounded ({row['reason']})"
         if row.get("new_messages") is not None:
             state = f"{row['new_messages']} new message(s), {state}"
-        console.print(f"{row['session_id']}: conversation {row['conversation_id']}, {state}")
+        console.print(
+            f"{row['session_id']}: conversation {row['conversation_id']}, {state}", markup=False
+        )
 
 
 def _child_args(

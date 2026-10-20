@@ -21,3 +21,11 @@ Bound <TMP>/work to Helios (4dd25154-0d80-44ab-b4c2-167319bfacb4).
 Session capture is off here; turn it on with `beakr hooks capture on`.
 --- stderr
 
+
+$ beakr init --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects?limit=200
+[exit 0]
+--- stdout
+4dd25154-0d80-44ab-b4c2-167319bfacb4	Helios	base_url=https://api.test
+--- stderr
+

@@ -2554,7 +2554,7 @@
         "properties": {
           "budget_chars": {
             "default": 24000,
-            "description": "Most characters of context to return (2,000 to 100,000).",
+            "description": "Most characters the rendered context may use, from 2000 to 100000 (default 24000). A value below 2000 is refused with 422.",
             "maximum": 100000.0,
             "minimum": 2000.0,
             "title": "Budget Chars",
@@ -10600,6 +10600,100 @@
         "title": "ProjectUpdate",
         "type": "object"
       },
+      "ProposalFiledBy": {
+        "description": "Who filed a proposal: the person, and the API credential, client and agent used.",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The agent the client declared, e.g. `claude-code/2.1`.",
+            "title": "Agent"
+          },
+          "client": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The client that sent it, e.g. `beakr-mcp`.",
+            "title": "Client"
+          },
+          "credential": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The id of the API credential it came through, when it did.",
+            "title": "Credential"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The run label the agent declared; writes that share it can be undone together.",
+            "title": "Run"
+          },
+          "text": {
+            "description": "One line for a reviewer, e.g. \"filed by Dana Reyes via claude-code/2.1\".",
+            "title": "Text",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The person the proposal was filed for.",
+            "title": "User Id"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "That person's display name or email.",
+            "title": "User Name"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "ProposalFiledBy",
+        "type": "object"
+      },
       "ResearchCompleteness": {
         "properties": {
           "enumeration": {
@@ -12052,6 +12146,30 @@
             "title": "Created At",
             "type": "string"
           },
+          "delivery_channel": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the link was delivered: gmail or outlook (from the sender's own account), or links (minted for the sender to share).",
+            "title": "Delivery Channel"
+          },
+          "delivery_error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why sending the link failed; the link still works.",
+            "title": "Delivery Error"
+          },
           "expires_at": {
             "description": "When it expires (ISO 8601, UTC).",
             "examples": [
@@ -12092,6 +12210,31 @@
             "format": "uuid",
             "title": "Link Id",
             "type": "string"
+          },
+          "recipient_email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Email address the link was sent to, if it was sent.",
+            "title": "Recipient Email"
+          },
+          "sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the link was last sent (ISO 8601, UTC).",
+            "title": "Sent At"
           },
           "status": {
             "description": "Current status of the sendable link.",
@@ -12810,6 +12953,46 @@
           }
         },
         "title": "SourceRecord",
+        "type": "object"
+      },
+      "StagedProposalRef": {
+        "properties": {
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The proposal's content hash, sent back as `reviewed_hash` on accept.",
+            "title": "Content Hash"
+          },
+          "filed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalFiledBy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Who filed the proposal and through which API client or agent."
+          },
+          "id": {
+            "description": "The staged proposal's id, for the proposals routes.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "StagedProposalRef",
         "type": "object"
       },
       "StartRunRequest": {
@@ -15758,6 +15941,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "filed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProposalFiledBy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Who filed this proposal and through which API client or agent."
+          },
           "id": {
             "description": "Unique id of this wiki proposal.",
             "format": "uuid",
@@ -16508,6 +16703,18 @@
           "outcome": {
             "$ref": "#/components/schemas/WikiToolOutcome",
             "description": "How it turned out."
+          },
+          "proposal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StagedProposalRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows)."
           },
           "sources": {
             "anyOf": [
@@ -18068,6 +18275,77 @@
           }
         ],
         "summary": "Compound a conversation into Knowledge",
+        "tags": [
+          "public",
+          "conversations"
+        ],
+        "x-beakr-scope": "conversations:write"
+      }
+    },
+    "/v1/compound/cancel": {
+      "post": {
+        "description": "Stop the queued or running compound of an imported conversation. A batch already being read finishes and its proposals stay; no further batch starts. Answers `nothing_to_cancel` when no compound is queued or running. `POST /v1/compound` resumes from where it stopped.",
+        "operationId": "cancel_compound_route_v1_compound_cancel_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompoundIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Cancel Compound Route V1 Compound Cancel Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel compounding a conversation",
         "tags": [
           "public",
           "conversations"
@@ -20783,7 +21061,7 @@
                     "type": "string"
                   },
                   "offset": {
-                    "description": "rows: rows to skip (continue a NOT ALL ROWS reply).",
+                    "description": "rows, proposals: rows to skip (continue a NOT ALL ROWS reply).",
                     "type": "integer"
                   },
                   "order_by": {
@@ -20870,11 +21148,7 @@
                     "type": "string"
                   },
                   "status": {
-                    "description": "For proposals: 'pending' (default, awaiting approval) or 'dismissed' (the user rejected them).",
-                    "enum": [
-                      "pending",
-                      "dismissed"
-                    ],
+                    "description": "For proposals: pending (default), accepted, dismissed, superseded (says why) or resolved.",
                     "type": "string"
                   },
                   "table": {

@@ -37,3 +37,11 @@ $ beakr skills approve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 Installed skill from proposal 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f. Run `beakr skills sync` to pull it.
 --- stderr
 
+
+$ beakr skills approve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> POST /v1/me/skills/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/accept
+[exit 0]
+--- stdout
+0e180cc4-e279-4fc6-8bb7-f0e56324ef68	Helios stability readout	slug=helios-stability-readout
+--- stderr
+
