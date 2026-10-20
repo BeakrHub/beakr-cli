@@ -42,3 +42,13 @@ Status: pending
 Page:   Helios Budget
 --- stderr
 
+
+$ beakr kb propose replace --find NW-205 --replace NW-217 --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/proposals
+  {"action": "find_replace", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "replacements": [{"find": "NW-205", "regex": false, "replace": "NW-217"}], "summary": ""}
+[exit 0]
+--- stdout
+c41e8b27-93d5-4a6f-b0e2-6d8f1a3c5e97	status=pending
+next: beakr kb proposals accept c41e8b27-93d5-4a6f-b0e2-6d8f1a3c5e97
+--- stderr
+

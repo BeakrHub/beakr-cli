@@ -32,3 +32,14 @@ Summary: add_fact: | Operator | Kim | 2026-05-02 | {{artifact:6e9422f6-04ea-41a2
 Waiting for user approval.
 --- stderr
 
+
+$ beakr kb add-fact 'Helios HX-07 Solubility Card' --attribute Operator --value Kim --when 2026-05-02 --evidence {{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}} --rationale 'Shape parity check for add_fact.' --scope 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/write
+  {"action": "add_fact", "attribute": "Operator", "evidence": "{{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}}", "page": "Helios HX-07 Solubility Card", "rationale": "Shape parity check for add_fact.", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "value": "Kim", "when": "2026-05-02"}
+[exit 0]
+--- stdout
+Proposed section edit to "Helios HX-07 Solubility Card" (section: sec_facts, rev 1).
+Summary: add_fact: | Operator | Kim | 2026-05-02 | {{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}} |
+Waiting for user approval.
+--- stderr
+

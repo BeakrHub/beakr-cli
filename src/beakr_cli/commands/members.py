@@ -62,7 +62,9 @@ def invite(
     emit(
         invitation,
         json_out=json_out,
-        render=lambda i: console.print(f"Invited {email} as {role.value} ({i.get('id')})."),
+        render=lambda i: console.print(
+            f"Invited {email} as {role.value} ({i.get('id')}).", markup=False
+        ),
     )
 
 
@@ -79,7 +81,7 @@ def set_role(
     emit(
         updated,
         json_out=json_out,
-        render=lambda _: console.print(f"{user_id} is now {role.value}."),
+        render=lambda _: console.print(f"{user_id} is now {role.value}.", markup=False),
     )
 
 
@@ -97,7 +99,7 @@ def remove_member(
     emit(
         {"user_id": user_id, "removed": True},
         json_out=json_out,
-        render=lambda _: console.print(f"Removed {user_id}."),
+        render=lambda _: console.print(f"Removed {user_id}.", markup=False),
     )
 
 
@@ -136,7 +138,7 @@ def revoke_invitation(
     emit(
         {"id": invitation_id, "revoked": True},
         json_out=json_out,
-        render=lambda _: console.print(f"Revoked invitation {invitation_id}."),
+        render=lambda _: console.print(f"Revoked invitation {invitation_id}.", markup=False),
     )
 
 

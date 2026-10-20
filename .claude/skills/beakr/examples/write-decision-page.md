@@ -74,7 +74,7 @@ knowledge_base_write(
 ```
 show_proposal(proposal_id="...")
 ```
-Call `accept_proposal` only after the user explicitly says to apply it, passing the `content_hash` `show_proposal` printed as `reviewed_hash`.
+Call `accept_proposal` only after the user explicitly says to apply it, passing the `content_hash` the write and `show_proposal` printed as `reviewed_hash`.
 
 ## Key points
 - Use the `decision` page type; include the date (`event_start` + `date_precision`), decision maker, and alternatives

@@ -59,3 +59,17 @@ Each passage opens with its document and place (memo.pdf › p. 7); cite it with
      Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series.
 --- stderr
 
+
+$ beakr documents search 'heat-stable lead' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/documents
+  {"arguments": {"query": "heat-stable lead"}, "command": "search", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
+[exit 0]
+--- stdout
+documents search 'heat-stable lead': 1 matching document ranked by meaning and wording among 12 documents in scope; showing 1-1, best first.
+Each passage opens with its document and place (memo.pdf › p. 7); cite it with that reference.
+
+1. Helios/helios-charter.pdf  (id 7b0e2f1c-4a9d-4c38-9f61-2d5e8a3b9c10)  (strong match)
+   (helios-charter.pdf › p. 1) p.1 · line 3
+     Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series.
+--- stderr
+

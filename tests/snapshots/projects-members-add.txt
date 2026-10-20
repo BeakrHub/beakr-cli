@@ -26,3 +26,13 @@ $ beakr projects members add 4dd25154-0d80-44ab-b4c2-167319bfacb4 5f0c2d1e-8a7b-
 Added 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f to Helios as editor.
 --- stderr
 
+
+$ beakr projects members add 4dd25154-0d80-44ab-b4c2-167319bfacb4 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --role editor
+> GET /v1/projects?limit=200
+> POST /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/members
+  {"principal_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f", "principal_type": "user", "role": "editor"}
+[exit 0]
+--- stdout
+-	Maja Lindqvist	role=member	email=maja@northwind.example
+--- stderr
+

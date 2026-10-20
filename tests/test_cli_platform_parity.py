@@ -230,6 +230,19 @@ def test_projects_members_ls_and_add(rendered):
     }
 
 
+# Root cause: `members add` offered --type group, which the server refuses
+# ("Group project memberships are no longer supported"), so the option only
+# led to a failed request. add takes users only; the option is gone.
+@respx.mock
+def test_projects_members_add_offers_no_group_type():
+    _projects()
+    add = respx.post(f"{API}/v1/projects/p1/members").respond(201, json={"principal_id": "g1"})
+    result = runner.invoke(app, ["projects", "members", "add", "assays", "g1", "--type", "group"])
+    assert result.exit_code == 2
+    assert "--type" in result.output
+    assert not add.called
+
+
 @respx.mock
 def test_projects_members_rm_and_invite():
     _projects()

@@ -12,6 +12,8 @@ copy that the first did not already hold.
 So a result is sent once, as text a model reads directly:
 
 - the tool's ``content``, exactly as the engine rendered it;
+- for a write that staged a proposal, its ``content_hash``, which
+  ``accept_proposal`` takes back as ``reviewed_hash``;
 - for the Knowledge tools, a compact ``Sources`` list: one line per cited
   document (where it lives -- its path, or a connector item's place in its
   service --, every place cited in it -- ``p. 7``, ``slide 3``, ``sheet 2,
@@ -58,6 +60,11 @@ def render(tool: str, body: dict[str, Any]) -> str:
     """The one text block a tool's result is sent as."""
     text = str(body.get("content") or "").rstrip()
     parts = [text] if text else []
+    proposal = body.get("proposal")
+    if isinstance(proposal, dict) and proposal.get("content_hash"):
+        # A staged write's hash, the one accept_proposal takes back as
+        # reviewed_hash: this text is all an MCP client receives.
+        parts.append(f"content_hash: {proposal['content_hash']}")
     # Text is the only payload the model receives. Dropping coverage here made
     # incomplete scans look exhaustive, even when the backend reported otherwise.
     coverage = body.get("coverage") or {}

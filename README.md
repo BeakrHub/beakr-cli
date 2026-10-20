@@ -470,12 +470,29 @@ The MCP server adds `context`, `skills`, `conversations_search` and
 `rows` and `knowledge_base_write` actions `add_fact`, `add_connection`,
 `add_finding` and `edit_rows`.
 
-By default the MCP server lists only the small eager set (`context`,
-`research`, `knowledge_base`, `knowledge_base_write`, `read_file`, `skills`,
-`workboard`) plus `discover_tools`, which returns every other tool's name,
-description and input schema; those tools stay callable by name. To list every
-tool, set `BEAKR_MCP_TOOLS=all` in the server's environment (for example
-`"env": {"BEAKR_MCP_TOOLS": "all"}` in the MCP entry).
+The MCP server lists every tool: Claude Code calls only the tools a server
+lists. For a smaller listing, set `BEAKR_MCP_TOOLS=eager` in the server's
+environment (for example `"env": {"BEAKR_MCP_TOOLS": "eager"}` in the MCP
+entry): it lists the eager set (`context`, `list_projects`, `research`,
+`knowledge_base`, `knowledge_base_write`, `read_file`, `skills`, `workboard`)
+plus `discover_tools`, which returns every other tool's name, description and
+input schema and adds the tools it finds to the listing (the server sends
+`notifications/tools/list_changed`, so the client reads the listing again).
+
+Every Knowledge write the MCP server makes records its agent (`X-Beakr-Agent`):
+the MCP client's own name and version from its `initialize` handshake
+(`claude-code/2.1.283`, `codex-mcp-client/0.40.0`). When several agents run
+under one key, give each its own label with `BEAKR_AGENT` in its MCP entry
+(`"env": {"BEAKR_AGENT": "reviewer"}`); it overrides the client's name.
+
+On a self-hosted Beakr installation, which leaves out hosted features
+(organization administration, external users, end-user tokens, service
+accounts, integrations, skills), the server does not list the tools for what
+the installation lacks: it reads the installation's own
+`/v1/public/openapi.json`, and a tool whose call meets a route the server does
+not have answers "This Beakr installation does not provide ..." and leaves the
+listing. CLI commands for those areas print the same sentence, and
+`beakr doctor` lists them.
 
 Beakr's hosted MCP server (`https://<api>/mcp`) exposes the same tools, including
 `beakr_version` and `update_beakr`. Those two answer for the server that runs
@@ -657,7 +674,7 @@ This writes:
 |----------|-------------|
 | `BEAKR_API_KEY` | API key (overrides stored config) |
 | `BEAKR_BASE_URL` / `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
-| `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute CLI writes to an agent session |
+| `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute writes to an agent. The MCP server defaults to its client's name and version (`claude-code/2.1.283`); set this to tell apart several agents that share one key. The CLI at a terminal sends none. |
 | `BEAKR_APP_URL` | Web app URL for pages the CLI opens (default: saved at `beakr auth login`, else `https://app.thebeakr.com`) |
 | `BEAKR_HOME` | Directory for config, credentials and hook state (default: `~/.beakr`) |
 | `BEAKR_NO_KEYRING` | Set to `1` to store sign-in tokens in `~/.beakr/credentials` instead of the keychain |

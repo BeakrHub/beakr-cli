@@ -48,3 +48,12 @@ Versions of 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 └────────┴──────────────────────────────────────┴──────────────────┴───────────┴────────────────┘
 --- stderr
 
+
+$ beakr files versions 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/artifacts/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/versions
+[exit 0]
+--- stdout
+da7d3920-230d-4678-9f76-3be63eefbb2b
+8db7aa92-5828-4c75-be1a-b57bca364ded
+--- stderr
+

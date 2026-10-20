@@ -58,7 +58,14 @@ def search(
             type=kind or None,
             project_id=project,
         )
-    emit(data, json_out=json_out, render=_render)
+    # Piped, an agent reads the same ranked text (not a key=value summary of the
+    # reply, which cut the passages to one column).
+    emit(data, json_out=json_out, render=_render, lines=_lines)
+
+
+def _lines(data: dict) -> list[str]:
+    text = str(data.get("content") or "").rstrip("\n")
+    return [*text.splitlines(), *(str(hint) for hint in data.get("next") or [])]
 
 
 def _render(data: dict) -> None:

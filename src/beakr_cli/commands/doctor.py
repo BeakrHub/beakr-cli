@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 import httpx
 import typer
+from rich.markup import escape
 
 from beakr_cli.output import console, emit
 
@@ -45,6 +46,23 @@ def check_reachable(base_url: str) -> dict[str, Any]:
         return _check("api", "fail", f"{base_url} unreachable: {exc}", base_url=base_url)
     # Any HTTP answer means the host is up; the route may not exist on older servers.
     return _check("api", "ok", f"{base_url} (HTTP {response.status_code})", base_url=base_url)
+
+
+def check_surface(sdk: Any) -> dict[str, Any]:
+    """What this installation leaves out, from its own public OpenAPI document.
+
+    A self-hosted installation serves part of the API on purpose; the
+    commands for the rest answer "does not provide" rather than a 404.
+    """
+    from beakr_cli.capabilities import describe_capabilities
+
+    summary = describe_capabilities(sdk.meta.capabilities())
+    if not summary["documented"]:
+        return _check("surface", "ok", "the server does not list its operations", **summary)
+    if summary["unavailable"]:
+        detail = "this installation does not provide " + ", ".join(summary["unavailable"])
+        return _check("surface", "ok", detail, **summary)
+    return _check("surface", "ok", "every documented area is provided", **summary)
 
 
 def _check_clerk_token_scopes(sdk: Any) -> dict[str, Any]:
@@ -198,16 +216,18 @@ def run_checks() -> list[dict[str, Any]]:
     with get_sdk(timeout=10.0) as sdk:
         checks.append(check_reachable(sdk.base_url))
         checks.extend(check_auth_and_scopes(sdk))
+        checks.append(_safe(lambda: check_surface(sdk), name="surface"))
     for check in (check_binding, check_mcp, check_hooks, check_hook_queue):
         checks.append(_safe(check))
     return checks
 
 
-def _safe(check: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+def _safe(check: Callable[[], dict[str, Any]], *, name: str | None = None) -> dict[str, Any]:
     try:
         return check()
     except Exception as exc:
-        return _check(check.__name__.removeprefix("check_"), "warn", f"check failed: {exc}")
+        label = name or check.__name__.removeprefix("check_")
+        return _check(label, "warn", f"check failed: {exc}")
 
 
 _STYLE = {"ok": "green", "warn": "yellow", "fail": "red"}
@@ -223,9 +243,20 @@ def doctor_command(
     def render(rows: list[dict[str, Any]]) -> None:
         for c in rows:
             style = _STYLE[c["status"]]
-            console.print(f"[{style}]{c['status']:<4}[/{style}]  {c['name']:<8} {c['detail']}")
+            console.print(
+                f"[{style}]{c['status']:<4}[/{style}]  {c['name']:<8} {escape(str(c['detail']))}"
+            )
 
-    emit({"ok": ok, "checks": checks}, json_out=json_out, render=lambda d: render(d["checks"]))
+    def lines(data: dict[str, Any]) -> list[str]:
+        # One check a line, as at a terminal: piped, the checks were one JSON column.
+        return [f"{c['status']}\t{c['name']}\t{c['detail']}" for c in data["checks"]]
+
+    emit(
+        {"ok": ok, "checks": checks},
+        json_out=json_out,
+        render=lambda d: render(d["checks"]),
+        lines=lines,
+    )
     if not ok:
         raise typer.Exit(1)
 

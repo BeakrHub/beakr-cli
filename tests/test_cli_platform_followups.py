@@ -128,6 +128,27 @@ def test_conversations_show_explains_a_skipped_compound(keyed, rendered):
     assert "0/4" in text and "skipped" in text and "insufficient_content" in text
 
 
+# POST /v1/compound/cancel (engine #1662) leaves compound_status `cancelled`;
+# show says the messages are kept and how to resume, not just the raw status.
+@respx.mock
+def test_conversations_show_explains_a_cancelled_compound(keyed, rendered):
+    respx.get(f"{API}/v1/conversations/c1").respond(
+        json={
+            "id": "c1",
+            "title": "Importer work",
+            "client": "codex",
+            "session_id": "s1",
+            "message_count": 4,
+            "compounded_through": 2,
+            "compound_status": "cancelled",
+        }
+    )
+    result = CliRunner().invoke(app, ["conversations", "show", "c1"])
+    assert result.exit_code == 0, result.output
+    text = " ".join(result.output.split())
+    assert "cancelled (kept; run `beakr compound` to resume)" in text
+
+
 @respx.mock
 def test_conversations_ls_shows_partial_progress(keyed, rendered, monkeypatch):
     monkeypatch.setenv("COLUMNS", "200")

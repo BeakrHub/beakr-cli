@@ -20,3 +20,13 @@ $ beakr skills edit 'Stability study summary' --file SKILL.md
 Updated SKILL.md of Stability study summary.
 --- stderr
 
+
+$ beakr skills edit 'Stability study summary' --file SKILL.md
+> GET /v1/me/skills/library?limit=200
+> PUT /v1/me/skills/Stability%20study%20summary/files/SKILL.md
+  {"content": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}
+[exit 0]
+--- stdout
+-	SKILL.md
+--- stderr
+

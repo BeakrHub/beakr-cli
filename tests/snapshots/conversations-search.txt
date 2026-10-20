@@ -54,3 +54,11 @@ Helios lead selection follow-up  imported session, 2026-10-01
   findings: 1  Project Helios
 --- stderr
 
+
+$ beakr conversations search 'lead selection' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/conversations/search?include_threads=true&limit=10&match=all&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&q=lead selection
+[exit 0]
+--- stdout
+e2a9c4d7-1f38-4b6e-9a05-7c3d8f1b2e64	Helios lead selection follow-up	kind=imported
+--- stderr
+

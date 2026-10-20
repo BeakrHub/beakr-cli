@@ -19,6 +19,7 @@ import re
 from typing import Any
 
 import typer
+from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.prompts import confirm_or_require_yes
@@ -66,7 +67,8 @@ def _metadata(raw: str | None) -> dict[str, Any] | None:
 
 def _render_one(user: dict[str, Any]) -> None:
     console.print(
-        f"[bold]{user.get('name') or user.get('external_id')}[/bold] ({user.get('user_id')})"
+        f"[bold]{escape(str(user.get('name') or user.get('external_id')))}[/bold] "
+        f"({escape(str(user.get('user_id')))})"
     )
     for label, key in (
         ("External id", "external_id"),
@@ -74,9 +76,11 @@ def _render_one(user: dict[str, Any]) -> None:
         ("Created", "created_at"),
     ):
         if user.get(key) is not None:
-            console.print(f"{label + ':':<13}{user[key]}", highlight=False)
+            console.print(f"{label + ':':<13}{user[key]}", highlight=False, markup=False)
     if user.get("metadata"):
-        console.print(f"{'Metadata:':<13}{json.dumps(user['metadata'])}", highlight=False)
+        console.print(
+            f"{'Metadata:':<13}{json.dumps(user['metadata'])}", highlight=False, markup=False
+        )
 
 
 @app.command("ls")
@@ -131,7 +135,9 @@ def create_external_user(
 
     def render(u: dict[str, Any]) -> None:
         verb = "Created" if u.get("created") else "Already existed:"
-        console.print(f"{verb} external user {u.get('external_id')} ({u.get('user_id')})")
+        console.print(
+            f"{verb} external user {u.get('external_id')} ({u.get('user_id')})", markup=False
+        )
 
     emit(
         user,
@@ -191,7 +197,7 @@ def delete_external_user(
     emit(
         {"user_id": user_id, "deleted": True},
         json_out=json_out,
-        render=lambda d: err_console.print(f"Deleted external user {d['user_id']}."),
+        render=lambda d: err_console.print(f"Deleted external user {d['user_id']}.", markup=False),
         json_when_piped=False,
     )
 
