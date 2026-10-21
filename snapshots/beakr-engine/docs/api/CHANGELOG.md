@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=b3100e0da5668281b4d22074acbd714fadb480411e3e6754e04048061a93ceb3 changelog sha256=317e6c2aa2641583c2afe0c0f6ba618a2bb33d46c0521c8beaa3485110e366b9 -->
+<!-- contract-stamp: public-openapi sha256=b3100e0da5668281b4d22074acbd714fadb480411e3e6754e04048061a93ceb3 changelog sha256=483bf7405123aaa8816d4bfcb6299cb3f9b55f242edc91f8d9f259dab3c2927e -->
 ## 2.0.0 (unreleased)
 
 Knowledge Profiles are project-only. On deployment of this release, organization
@@ -19,12 +19,13 @@ and retired space profiles and their revision history are removed. Export any
 needed organization guidance before upgrading and create a separate profile for
 each applicable project; no automatic reassignment is performed.
 
-- `POST /v1/knowledge/profiles` accepts only `profile_type: "project"` with a
-  valid `project_id`; organization or space requests return `422`.
-- `GET /v1/knowledge/profiles/org` and the retired space-profile route are removed.
-- Project profile reads, edits, history, restore, and owner authorization keep
-  their existing paths. The API contract major version changes to 2.0.0; route
-  paths keep their existing `/v1` prefix.
+- Knowledge profile creation accepts only project scope with a valid project
+  identifier. Organization and space profile creation and reads are retired.
+- Agent session context includes project and personal profiles; it no longer
+  includes an organization-wide profile block.
+- Project profile reads, edits, history, restore, and owner authorization retain
+  their behavior. The API contract major version changes to 2.0.0; documented
+  route paths keep their existing `/v1` prefix.
 
 ## 1.0.0 (unreleased)
 
