@@ -11,11 +11,35 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=e22a17ec606346e5beb11b1201700891d05856581707bc73a90a26c3f6e90114 changelog sha256=0f24629a75c1a47d309660c7cd142edc1433b432a9bbd5074767971d55d77692 -->
+<!-- contract-stamp: public-openapi sha256=806848d8dac46cb084ac633fec05e4b1ab7a7cecb2797106a3b8cfa42100907b changelog sha256=c1a036a7d5259995ac0f677b40781c5583a8676a43f2dd3953797b750118adc5 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- Map card rows: a Facts or Connections row's `row_id` names the row with its
+  When, so a value a card states at two dates is two rows with two ids. On
+  `GET /v1/knowledge/wiki/pages/{page_id}`, `disputed_rows` lists each disputed
+  row under its id and under the id it had before. `edit_rows` on
+  `POST /v1/knowledge/wiki/write` names one of a value's dated rows with `when`
+  in `old_rows`; naming such a value without it is refused, listing its rows. A
+  finding `edit_rows` rewrites keeps its `about`, `finding_scope` and
+  `supersedes` unless the new row sets them.
+- `POST /v1/projects/{project_id}/members`: re-adding an existing member
+  without `role` keeps their role (`member` is the default for a new member
+  only), and giving the project's last owner another role answers
+  `409 last_owner` instead of applying it. The sole owner adding themselves at
+  the default role was demoted and could no longer manage members.
+- `POST /v1/knowledge/wiki/proposals`: an `edit` patch accepts
+  `op: "move_section"` with `section` and an optional `after` (the section to
+  place it after; omitted, it moves to the top of the page), as
+  `knowledge_base_write` does. It was refused with `422`.
+- `GET /v1/bulk/{batch_id}/status`: `summary.duplicates` counts files refused
+  because the same file was already uploaded. They are no longer counted in
+  `summary.failed`, so a batch whose only refusals are duplicates is
+  `completed`, and its `upload_batch` job (`GET /v1/jobs/{job_id}`) succeeds.
+  Each such file still reads `status: "index_failed"` with
+  `error_code: "duplicate"` and `duplicate_of`. The job's `progress.done` no
+  longer counts a skipped file twice.
 - Source records (`sources` on `POST /v1/knowledge/wiki/command` reads and
   `POST /v1/knowledge/wiki/write` results): an inline `conversation`,
   `agent_note` or `user_note` citation written with an API credential carries
