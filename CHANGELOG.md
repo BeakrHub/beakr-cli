@@ -1446,9 +1446,10 @@ Each release lists the public API changes it supports, taken from the API change
   `pending`.
 - **`beakr-sdk` with `NotProvidedError`.** The CLI is pinned to a `beakr-sdk`
   that raises `NotProvidedError` (a `NotFoundError`) for a route the
-  installation lacks, redacts credentials from its errors and sends no role
-  from `projects.add_member` unless one is given; the CLI names the area from
-  `NotProvidedError` as before.
+  installation lacks, redacts credentials from its errors, sends no role from
+  `projects.add_member` unless one is given, keeps `filed_by` on source records
+  and counts an upload batch's duplicates apart from its failures; the CLI
+  names the area from `NotProvidedError` as before.
 - **Cite a conversation in a card row.** `kb add-fact`, `kb add-connection` and
   `kb add-finding` take `--cite-conversation LABEL --excerpt TEXT` (and
   `--source-title`): the row cites `{{conversation:LABEL}}`, declared as an
