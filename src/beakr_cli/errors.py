@@ -151,12 +151,29 @@ class BeakrGroup(TyperGroup):
                 f"[red]Error:[/red] {escape(str(describe_error(exc)))}", highlight=False
             )
             raise typer.Exit(code) from exc
+        except ValueError as exc:
+            if not _is_path_value_refusal(exc):
+                raise
+            # An empty, "." or ".." id (`beakr kb proposals show ""`) is refused by the
+            # SDK before anything is sent; it is the caller's argument, so a usage error.
+            usage = click.UsageError(f"An id or name argument is empty or invalid ({exc}).", ctx)
+            if json_requested:
+                _print_json_error(usage, usage.exit_code)
+            raise usage from exc
         except click.ClickException as exc:
             # A usage error (exit 2) under --json is a JSON error too; Click
             # still prints its usage text to stderr.
             if json_requested:
                 _print_json_error(exc, exc.exit_code)
             raise
+
+
+def _is_path_value_refusal(exc: ValueError) -> bool:
+    """Whether the SDK's path guard (``beakr_sdk._paths.segment``) raised ``exc``."""
+    tb = exc.__traceback__
+    while tb is not None and tb.tb_next is not None:
+        tb = tb.tb_next
+    return tb is not None and tb.tb_frame.f_globals.get("__name__") == "beakr_sdk._paths"
 
 
 def _json_requested(ctx: click.Context) -> bool:
