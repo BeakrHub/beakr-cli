@@ -29,6 +29,6 @@ $ beakr projects members rm 4dd25154-0d80-44ab-b4c2-167319bfacb4 5f0c2d1e-8a7b-4
 > DELETE /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/members/user/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 [exit 0]
 --- stdout
-
+5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f	removed=false
 --- stderr
-5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f is not a member of Helios; nothing to remove.
+

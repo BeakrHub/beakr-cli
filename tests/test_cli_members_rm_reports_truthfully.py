@@ -123,8 +123,8 @@ def test_labels_members_rm_of_a_non_member_reports_nothing_removed(monkeypatch):
     delete = respx.delete(f"{API}/v1/labels/l1/members/u9").respond(204)
     respx.delete(f"{API}/v1/labels/l1/members/u1").respond(204)
 
-    missing = runner.invoke(app, ["labels", "members", "rm", "Chemists", "u9", "--json"])
-    present = runner.invoke(app, ["labels", "members", "rm", "Chemists", "u1", "--json"])
+    missing = runner.invoke(app, ["labels", "members", "rm", "Chemists", "u9", "--yes", "--json"])
+    present = runner.invoke(app, ["labels", "members", "rm", "Chemists", "u1", "--yes", "--json"])
 
     assert missing.exit_code == 0, missing.output
     assert json.loads(missing.stdout)["removed"] is False
@@ -132,7 +132,7 @@ def test_labels_members_rm_of_a_non_member_reports_nothing_removed(monkeypatch):
     assert json.loads(present.stdout)["removed"] is True
 
     monkeypatch.setenv("BEAKR_OUTPUT", "human")
-    shown = runner.invoke(app, ["labels", "members", "rm", "Chemists", "u9"])
+    shown = runner.invoke(app, ["labels", "members", "rm", "Chemists", "u9", "--yes"])
     assert "u9 is not on the label; nothing to remove." in shown.stderr
 
 
@@ -153,3 +153,56 @@ def test_org_members_rm_of_a_non_member_reports_nothing_removed():
     assert delete.called
     assert piped.stdout.split() == ["u9", "removed=false"]
     assert present.stdout.split() == ["u1", "removed=true"]
+
+
+@respx.mock
+def test_piped_rm_prints_the_outcome_line_on_stdout():
+    # Root cause: projects/labels `members rm` passed json_when_piped=False, so
+    # piped they printed only the stderr sentence and left stdout empty, while
+    # `members rm` printed "ID<TAB>removed=false".
+    _project()
+    respx.delete(url__startswith=f"{API}/v1/projects/p1/members/").respond(204)
+    respx.get(f"{API}/v1/labels").respond(200, json=[{"id": "l1", "name": "Chemists"}])
+    respx.get(f"{API}/v1/labels/l1/members").respond(200, json=[{"user_id": "u1"}])
+    respx.delete(url__startswith=f"{API}/v1/labels/l1/members/").respond(204)
+
+    def piped(*argv: str) -> list[str]:
+        result = runner.invoke(app, [*argv, "--yes"])
+        assert result.exit_code == 0, result.output
+        return result.stdout.splitlines()
+
+    assert piped("projects", "members", "rm", "assays", "u9") == ["u9\tremoved=false"]
+    assert piped("projects", "members", "rm", "assays", "U1") == ["U1\tremoved=true"]
+    assert piped("projects", "members", "rm", "assays", "u1", "--type", "group") == [
+        "u1\tremoved=false"
+    ]
+    assert piped("projects", "members", "rm", "assays", "u3") == [
+        "u3\tremoved=false\tinherited_from=label:Medicinal Chemistry"
+    ]
+    assert piped("labels", "members", "rm", "Chemists", "u9") == ["u9\tremoved=false"]
+    assert piped("labels", "members", "rm", "Chemists", "u1") == ["u1\tremoved=true"]
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["labels", "members", "rm", "Chemists", "u1"],
+        ["labels", "projects", "rm", "Chemists", "11111111-1111-1111-1111-111111111111"],
+    ],
+)
+@respx.mock
+def test_label_removals_take_yes_like_other_removals(argv):
+    # Root cause: `labels members rm` and `labels projects rm` had no --yes
+    # ("No such option") while `projects members rm` and `labels rm` take it.
+    respx.get(f"{API}/v1/labels").respond(200, json=[{"id": "l1", "name": "Chemists"}])
+    respx.get(f"{API}/v1/labels/l1/members").respond(200, json=[{"user_id": "u1"}])
+    removal = respx.delete(url__startswith=f"{API}/v1/labels/l1/").respond(204)
+
+    refused = runner.invoke(app, argv)
+    assert refused.exit_code == 2, refused.output
+    assert "--yes" in refused.output
+    assert not removal.called
+
+    done = runner.invoke(app, [*argv, "--yes"])
+    assert done.exit_code == 0, done.output
+    assert removal.called
