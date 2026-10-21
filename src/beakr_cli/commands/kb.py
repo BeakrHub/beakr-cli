@@ -896,7 +896,13 @@ def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool)
     if accept:
         # The proposal this command just created: what the caller itself submitted.
         result = _accept_bound(proposal["id"], proposal.get("content_hash"))
-        machine_output({**proposal, "accepted": True, "accept_result": result}, json_out=json_out)
+        # The proposal as it stands now: the create's own "pending" beside
+        # accepted=true read as though the accept had not taken.
+        status = (result or {}).get("status") or "accepted"
+        machine_output(
+            {**proposal, "status": status, "accepted": True, "accept_result": result},
+            json_out=json_out,
+        )
         return
     machine_output(proposal, json_out=json_out, hint=accept_hint)
 
