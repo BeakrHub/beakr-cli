@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1d6cd5d19c7f8b9ad38b15f6f86c329d7f88493ef8050f9580add5b0bc630c88 changelog sha256=ca018aad751e259d1a75cb55efaa9b7a58bad07bda4c2f2cd117d045513ae19d -->
+<!-- contract-stamp: public-openapi sha256=da99aff80a140bb0004d307dbd8bae5ffb32aa63b4f79d24c8641e3fa6ed0cfa changelog sha256=ddb74545df8dfb510be31f661bfa33b9199713692f7250fec77c45d464bfbe72 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -23,19 +23,26 @@ The first public version.
   `org`, `system`, `anyone`), `origin` (`created`, `mined`, `imported`,
   `system`) and `installed`, and the list filters on each (repeat a parameter
   for more than one value), on `search` and `domain`; `include_content=true`
-  adds each skill's `files`. `GET /v1/skills/{skill_id}` reads one skill by id
-  or slug, with `latest_revision`; a slug resolves to your own skill first, then
-  a built-in, then one you installed, then your organization's, and never to a
-  skill from another organization you have not installed. `POST /v1/skills`
-  creates a skill from a SKILL.md folder (`files`, path to text) and honours
-  `Idempotency-Key`; `GET` and `PUT /v1/skills/{skill_id}/bundle` read and
-  replace its files, `GET /v1/skills/{skill_id}/bundle.zip` downloads them as a
-  zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST` and
-  `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill, and
+  adds each skill's `files` and caps a page at 25 skills. Retired skills are
+  not listed. `GET /v1/skills/{skill_id}` reads one skill by id or slug, with
+  `latest_revision`; a slug resolves to your own skill first, then a built-in,
+  then one you installed, then your organization's, and never to a skill from
+  another organization you have not installed. Only this read takes a slug.
+  `POST /v1/skills` creates a skill from a SKILL.md folder (`files`, path to
+  text), answers it as the read does, honours `Idempotency-Key` and answers
+  409 when a create running at the same time took the same slug.
+  `visibility=public` publishes a skill, every file included, to every Beakr
+  organization. `GET` and `PUT /v1/skills/{skill_id}/bundle` read and replace
+  its files (`files_sha256` is always present; send it back as
+  `expected_sha256`), `GET /v1/skills/{skill_id}/bundle.zip` downloads them as
+  a zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST`
+  and `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill
+  (an uninstalled skill can be installed again), and
   `GET /v1/me/skills/proposals` with `POST .../accept` and `POST .../dismiss`
   review the skills Beakr drafted from your work. A skill you wrote in another
-  organization cannot be installed here and answers 404 here, by id or slug,
-  unless it was already installed here.
+  organization answers 404 here, by id or slug, while it is not installed
+  here, and can be installed here only if it was installed here before.
+  `marketplace` is not given to a new skill as its slug.
 
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`

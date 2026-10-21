@@ -5328,6 +5328,54 @@
    "summary": "Accept a proposed skill"
   },
   {
+   "action": "create-skill",
+   "anonymous": false,
+   "area": "skills",
+   "body": {
+    "fields": [
+     {
+      "description": "The skill's SKILL.md folder: each path in it, such as `SKILL.md` or a script under `scripts/`, mapped to its text.",
+      "name": "files",
+      "required": true,
+      "type": "object"
+     },
+     {
+      "description": "The handle to give the skill when its SKILL.md does not name one.",
+      "name": "slug_hint",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "imported",
+      "description": "Where the folder came from, such as `claude-code` or `codex`; kept with the skill.",
+      "name": "source",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "private",
+      "description": "Who may see the skill: `private` (you), `org` (your organization) or `public`. `public` publishes it to every Beakr organization, not only yours: anyone can list it, read it and download every file in it. Setting it back to `private` or `org` (in the Beakr app) stops further reads and takes it from other organizations' agents, but copies already downloaded stay with whoever downloaded them.",
+      "name": "visibility",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/skills",
+   "paginated": false,
+   "path": "/v1/skills",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "skills:write",
+   "summary": "Create a skill"
+  },
+  {
    "action": "delete-skill",
    "anonymous": false,
    "area": "skills",
@@ -5446,54 +5494,6 @@
    "summary": "Download a skill's files"
   },
   {
-   "action": "import-skill-bundle",
-   "anonymous": false,
-   "area": "skills",
-   "body": {
-    "fields": [
-     {
-      "description": "The skill's SKILL.md folder: each path in it, such as `SKILL.md` or a script under `scripts/`, mapped to its text.",
-      "name": "files",
-      "required": true,
-      "type": "object"
-     },
-     {
-      "description": "The handle to give the skill when its SKILL.md does not name one.",
-      "name": "slug_hint",
-      "required": false,
-      "type": "string"
-     },
-     {
-      "default": "imported",
-      "description": "Where the folder came from, such as `claude-code` or `codex`; kept with the skill.",
-      "name": "source",
-      "required": false,
-      "type": "string"
-     },
-     {
-      "default": "private",
-      "description": "Who may see the skill: `private` (you), `org` (your organization) or `public`.",
-      "name": "visibility",
-      "required": false,
-      "type": "string"
-     }
-    ],
-    "media": "json",
-    "object": true,
-    "required": true
-   },
-   "destructive": false,
-   "method": "POST",
-   "op": "POST /v1/skills",
-   "paginated": false,
-   "path": "/v1/skills",
-   "path_params": [],
-   "query": [],
-   "response": "json",
-   "scope": "skills:write",
-   "summary": "Create a skill"
-  },
-  {
    "action": "install-skill",
    "anonymous": false,
    "area": "skills",
@@ -5542,6 +5542,12 @@
     },
     {
      "default": "pending",
+     "description": "Which proposals: `pending` (waiting for you), `accepted` or `dismissed`.",
+     "enum": [
+      "pending",
+      "accepted",
+      "dismissed"
+     ],
      "name": "status",
      "required": false,
      "type": "string"
@@ -5577,7 +5583,7 @@
     },
     {
      "default": false,
-     "description": "Add each skill's SKILL.md folder as `files`.",
+     "description": "Add each skill's SKILL.md folder as `files`. A page then holds at most 25 skills, whatever `limit` asks; follow `next_cursor`.",
      "name": "include_content",
      "required": false,
      "type": "boolean"

@@ -5084,7 +5084,7 @@
           },
           "visibility": {
             "default": "private",
-            "description": "Who may see the skill: `private` (you), `org` (your organization) or `public`.",
+            "description": "Who may see the skill: `private` (you), `org` (your organization) or `public`. `public` publishes it to every Beakr organization, not only yours: anyone can list it, read it and download every file in it. Setting it back to `private` or `org` (in the Beakr app) stops further reads and takes it from other organizations' agents, but copies already downloaded stay with whoever downloaded them.",
             "pattern": "^(private|org|public)$",
             "title": "Visibility",
             "type": "string"
@@ -7777,6 +7777,11 @@
           },
           "owner_type": {
             "description": "What owns the skill: `user` (a person), `org` (an organization) or `system`.",
+            "enum": [
+              "system",
+              "org",
+              "user"
+            ],
             "title": "Owner Type",
             "type": "string"
           },
@@ -7811,7 +7816,7 @@
             "title": "Scripts"
           },
           "slug": {
-            "description": "URL-safe short name, unique where it lives.",
+            "description": "The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.",
             "title": "Slug",
             "type": "string"
           },
@@ -7842,7 +7847,12 @@
             "type": "string"
           },
           "visibility": {
-            "description": "Who can see it.",
+            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization).",
+            "enum": [
+              "private",
+              "org",
+              "public"
+            ],
             "title": "Visibility",
             "type": "string"
           }
@@ -8925,6 +8935,7 @@
           "source_page_ids": {
             "description": "Ids of the source pages.",
             "items": {
+              "format": "uuid",
               "type": "string"
             },
             "title": "Source Page Ids",
@@ -8933,6 +8944,7 @@
           "source_thread_ids": {
             "description": "Ids of the source threads.",
             "items": {
+              "format": "uuid",
               "type": "string"
             },
             "title": "Source Thread Ids",
@@ -12832,16 +12844,9 @@
             "type": "object"
           },
           "files_sha256": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Digest of the whole bundle as stored. Send it back as `expected_sha256` on the next replace so an edit made in between is not overwritten.",
-            "title": "Files Sha256"
+            "description": "Digest of the files as stored, always present. Send it back as `expected_sha256` when replacing them, so a change made in between is refused rather than overwritten.",
+            "title": "Files Sha256",
+            "type": "string"
           },
           "skill_id": {
             "description": "Id of the skill.",
@@ -12850,7 +12855,7 @@
             "type": "string"
           },
           "slug": {
-            "description": "URL-safe short name, unique where it lives.",
+            "description": "The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.",
             "title": "Slug",
             "type": "string"
           }
@@ -12859,7 +12864,8 @@
           "skill_id",
           "slug",
           "files",
-          "file_count"
+          "file_count",
+          "files_sha256"
         ],
         "title": "SkillBundleOut",
         "type": "object"
@@ -13021,7 +13027,7 @@
             "type": "string"
           },
           "visibility": {
-            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (anyone).",
+            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).",
             "enum": [
               "private",
               "org",
@@ -13170,7 +13176,7 @@
             "type": "string"
           },
           "visibility": {
-            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (anyone).",
+            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).",
             "enum": [
               "private",
               "org",
@@ -13194,11 +13200,10 @@
         "title": "SkillOut",
         "type": "object"
       },
-      "SkillPageOut": {
-        "description": "One page of skills, by name.",
+      "SkillOutPage": {
         "properties": {
           "data": {
-            "description": "The skills on this page.",
+            "description": "The items on this page.",
             "items": {
               "$ref": "#/components/schemas/SkillOut"
             },
@@ -13206,6 +13211,7 @@
             "type": "array"
           },
           "has_more": {
+            "default": false,
             "description": "Whether another page follows.",
             "examples": [
               false
@@ -13222,7 +13228,7 @@
                 "type": "null"
               }
             ],
-            "description": "Pass as `cursor` for the next page; null on the last.",
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
             "examples": [
               null
             ],
@@ -13230,10 +13236,9 @@
           }
         },
         "required": [
-          "data",
-          "has_more"
+          "data"
         ],
-        "title": "SkillPageOut",
+        "title": "SkillOutPage",
         "type": "object"
       },
       "SkillProposalDismissed": {
@@ -25577,7 +25582,7 @@
         "x-beakr-scope": "skills:write"
       },
       "post": {
-        "description": "Add a skill you can see to your library, so your agent is told about it. Installing an installed skill changes nothing.",
+        "description": "Add a skill you can see to your library, so your agent is told about it. Installing an installed skill changes nothing, and a skill you uninstalled can be installed again. 404 for a skill you cannot see, and for one you wrote in another organization and never installed in this one.",
         "operationId": "install_skill_v1_me_skills_library__skill_id__post",
         "parameters": [
           {
@@ -25652,12 +25657,18 @@
         "operationId": "list_mined_skill_proposals_v1_me_skills_proposals_get",
         "parameters": [
           {
+            "description": "Which proposals: `pending` (waiting for you), `accepted` or `dismissed`.",
             "in": "query",
             "name": "status",
             "required": false,
             "schema": {
               "default": "pending",
-              "pattern": "^(pending|accepted|dismissed)$",
+              "description": "Which proposals: `pending` (waiting for you), `accepted` or `dismissed`.",
+              "enum": [
+                "pending",
+                "accepted",
+                "dismissed"
+              ],
               "title": "Status",
               "type": "string"
             }
@@ -29428,7 +29439,7 @@
     },
     "/v1/skills": {
       "get": {
-        "description": "The skills you can use or install, by name, one page at a time: your own, your organization's, the ones built into Beakr and public skills from anywhere. Each is labelled with its `visibility`, its `owner` (`me`, `org`, `system` or `anyone`), its `origin` (`created`, `mined`, `imported` or `system`) and whether it is `installed` in your library, and each label is also a filter: `owner=me` lists your own skills, `owner=system` the built-in ones, `visibility=public` the public ones and `installed=false` the ones you could add. Repeat a filter for more than one value. `include_content=true` adds each skill's files.",
+        "description": "The skills you can use or install, by name, one page at a time: your own, your organization's, the ones built into Beakr and public skills from anywhere. Each is labelled with its `visibility`, its `owner` (`me`, `org`, `system` or `anyone`), its `origin` (`created`, `mined`, `imported` or `system`) and whether it is `installed` in your library, and each label is also a filter: `owner=me` lists your own skills, `owner=system` the built-in ones, `visibility=public` the public ones and `installed=false` the ones you could add. Repeat a filter for more than one value. `include_content=true` adds each skill's files, and then a page holds at most 25 skills. Retired skills are not listed.",
         "operationId": "list_skills_route_v1_skills_get",
         "parameters": [
           {
@@ -29568,13 +29579,13 @@
             }
           },
           {
-            "description": "Add each skill's SKILL.md folder as `files`.",
+            "description": "Add each skill's SKILL.md folder as `files`. A page then holds at most 25 skills, whatever `limit` asks; follow `next_cursor`.",
             "in": "query",
             "name": "include_content",
             "required": false,
             "schema": {
               "default": false,
-              "description": "Add each skill's SKILL.md folder as `files`.",
+              "description": "Add each skill's SKILL.md folder as `files`. A page then holds at most 25 skills, whatever `limit` asks; follow `next_cursor`.",
               "title": "Include Content",
               "type": "boolean"
             }
@@ -29617,7 +29628,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SkillPageOut"
+                  "$ref": "#/components/schemas/SkillOutPage"
                 }
               }
             },
@@ -29667,8 +29678,8 @@
         "x-beakr-scope": "skills:read"
       },
       "post": {
-        "description": "Create a skill from a SKILL.md folder: `files` maps each path to its text, and must include `SKILL.md`, which names the skill in its frontmatter (`name`, `description`). Other files go under `scripts/`, `references/`, `templates/` or `assets/`. The skill is yours, installed in your library, and private unless `visibility` says otherwise. Honours `Idempotency-Key`. 422 when the folder is not a valid skill.",
-        "operationId": "import_skill_bundle_v1_skills_post",
+        "description": "Create a skill from a SKILL.md folder: `files` maps each path to its text, and must include `SKILL.md`, which names the skill in its frontmatter (`name`, `description`). Other files go under `scripts/`, `references/`, `templates/` or `assets/`. The skill is yours, installed in your library, and private unless `visibility` says otherwise; `visibility=public` publishes it, every file included, to every Beakr organization. Answers the skill as `GET /v1/skills/{skill_id}` does. Honours `Idempotency-Key`. 422 when the folder is not a valid skill; 409 when a create running at the same time took the same slug (retry it).",
+        "operationId": "create_skill_route_v1_skills_post",
         "requestBody": {
           "content": {
             "application/json": {
@@ -29684,7 +29695,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/LibrarySkillOut"
+                  "$ref": "#/components/schemas/SkillDetailOut"
                 }
               }
             },
@@ -29731,7 +29742,6 @@
           "public",
           "skills"
         ],
-        "x-beakr-replaces": "/v1/me/skills/import/bundle",
         "x-beakr-scope": "skills:write"
       }
     },
@@ -29801,7 +29811,7 @@
         "x-beakr-scope": "skills:write"
       },
       "get": {
-        "description": "One skill, by id or slug, with its labels and the revision its files are at. A slug is not unique (your own skill and a built-in can share one), so it resolves the way your agent loads skills: your own first, then a built-in, then one you installed, then your organization's. A slug never reaches a skill from another organization that you have not installed; use its id. 404 when no skill you can see matches.",
+        "description": "One skill, by id or slug, with its labels and the revision its files are at. A slug is not unique (your own skill and a built-in can share one), so it resolves the way your agent loads skills: your own first, then a built-in, then one you installed, then your organization's. A slug never reaches a skill from another organization that you have not installed; use its id. A skill you uninstalled still resolves by slug, after any skill the agent would load first. Only this read takes a slug: the other skill operations take the id. 404 when no skill you can see matches, and for a retired skill.",
         "operationId": "get_skill_route_v1_skills__skill_id__get",
         "parameters": [
           {
@@ -29883,7 +29893,7 @@
     },
     "/v1/skills/{skill_id}/bundle": {
       "get": {
-        "description": "The SKILL.md folder of a skill you can see, as `{path: text}`, with `files_sha256`, the digest to send back when replacing the files. 404 when the skill is not visible to you.",
+        "description": "The SKILL.md folder of a skill you can see, as `{path: text}`, with `files_sha256`, the digest to send back as `expected_sha256` when replacing the files; it is always present. Takes the skill's id. 404 when the skill is not visible to you.",
         "operationId": "get_skill_bundle_v1_skills__skill_id__bundle_get",
         "parameters": [
           {
