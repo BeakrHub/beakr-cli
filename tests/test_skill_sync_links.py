@@ -35,10 +35,8 @@ def _skill(root, name="review-skill"):
 
 
 def _push(mock):
-    mock.get(f"{API}/v1/me/skills/library").respond(200, json=[])
-    uploaded = mock.post(f"{API}/v1/me/skills/import/bundle").respond(
-        201, json={"id": "s1", "slug": "review-skill"}
-    )
+    mock.get(f"{API}/v1/skills").respond(200, json=[])
+    uploaded = mock.post(f"{API}/v1/skills").respond(201, json={"id": "s1", "slug": "review-skill"})
     actions = sync_skills(
         Beakr(api_key="bk_live_x", base_url=API), direction="push", target="claude"
     )

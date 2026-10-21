@@ -6,6 +6,7 @@ import asyncio
 import json
 import re
 import time
+from collections.abc import Collection
 from pathlib import PurePosixPath
 from typing import Any
 
@@ -25,7 +26,7 @@ from beakr_cli.updates import (
     run_upgrade,
 )
 
-_INSTRUCTIONS = (
+_INSTRUCTIONS_TEMPLATE = (
     "Beakr is the team's organizational memory: decisions, processes, ownership and "
     "dated events, so 'why did we do X' is one search away.\n\n"
     "Answer questions about the user's org with citations. Knowledge reads four ways that "
@@ -53,15 +54,15 @@ _INSTRUCTIONS = (
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
     "available it gives one cited answer across the wiki, documents and connected "
-    "services. 'context' once at the start of a task for the user's profiles, memories "
-    "and skills; 'skills' to read a SKILL.md before following it.\n\n"
+    "services.{start}\n\n"
     "Scope: pass 'scope' (a project name or id) to work in one project, or omit it to read "
     "everything you can see; list_projects names them, the user's personal project "
     "included (project_type='personal').\n\n"
     "Writes: when the conversation produces something durable (a decision with its "
     "rationale, a process, an owner, a dated event), check with knowledge_base "
     "command='sections' that it is not already captured, then offer to propose it. "
-    "knowledge_base_write only stages a PROPOSAL: call accept_proposal only when the user "
+    "knowledge_base_write stages a PROPOSAL (page_type and sort_table apply at once): call "
+    "accept_proposal only when the user "
     "asks to accept that proposal. If the result says auto-approve is on, Beakr applies it "
     "itself: do not ask for approval or call accept_proposal. Cite this chat as a "
     "'conversation' source keyed conversation:<label> with meta.excerpt, and put "
@@ -76,6 +77,30 @@ _INSTRUCTIONS = (
     "Version: beakr_version says whether this server is out of date; call update_beakr "
     "only when the user asks, then they restart the client."
 )
+
+
+def instructions(hidden: Collection[str] = ()) -> str:
+    """The server instructions, naming only tools this installation lists.
+
+    ``hidden`` are the tools left out of the listing (a self-hosted installation
+    serves no skills): a sentence that sends the agent to one would send it to
+    a tool it cannot see.
+    """
+    if "skills" in hidden:
+        start = " 'context' once at the start of a task for the user's profiles and memories."
+        if "context" in hidden:
+            start = ""
+    elif "context" in hidden:
+        start = " 'skills' to read a SKILL.md before following it."
+    else:
+        start = (
+            " 'context' once at the start of a task for the user's profiles, memories "
+            "and skills; 'skills' to read a SKILL.md before following it."
+        )
+    return _INSTRUCTIONS_TEMPLATE.replace("{start}", start)
+
+
+_INSTRUCTIONS = instructions()
 
 
 def _update_notice() -> str:
@@ -98,8 +123,12 @@ def _update_notice() -> str:
 
 # W8.2: every tool is listed by default; BEAKR_MCP_TOOLS=eager lists the eager
 # set and adds what discover_tools finds.
+_NOTES = tool_surface.discovery_note() + _update_notice()
 mcp = tool_surface.TieredFastMCP(
-    "beakr", instructions=_INSTRUCTIONS + tool_surface.discovery_note() + _update_notice()
+    "beakr",
+    instructions=_INSTRUCTIONS + _NOTES,
+    # Rebuilt once the installation's tools are known, before `initialize` is answered.
+    instructions_for=lambda hidden: instructions(hidden) + _NOTES,
 )
 
 

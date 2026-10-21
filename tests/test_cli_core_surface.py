@@ -62,7 +62,6 @@ def test_unlisted_command_modules_stay_in_the_full_tree_only():
     for command in [
         "profile show",
         "memory ls",
-        "skills sync",
         "workflows run",
         "outputs ls",
         "usage",
@@ -81,8 +80,8 @@ def test_help_lists_only_core_groups():
     result = runner.invoke(app, ["--help"])
     assert result.exit_code == 0, result.output
     listed = set(re.findall(r"^\W+([a-z][a-z-]*) {2,}", result.output, flags=re.MULTILINE))
-    assert {"kb", "projects", "integrations", "end-user-tokens"} <= listed
-    for group in ("profile", "skills", "workflows", "outputs", "usage"):
+    assert {"kb", "projects", "integrations", "end-user-tokens", "skills"} <= listed
+    for group in ("profile", "workflows", "outputs", "usage"):
         assert group not in listed, group
 
 

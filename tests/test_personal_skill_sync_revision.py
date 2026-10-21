@@ -13,9 +13,9 @@ from pathlib import Path
 
 import httpx
 import respx
+from beakr_sdk.resources.skills import bundle_sha256
 from typer.testing import CliRunner
 
-from beakr_cli._private_api.resources.skills import bundle_sha256
 from beakr_cli.main import internal_app as app
 from tests.test_skills_sync import REMOTE_FILES, REMOTE_SKILL_MD, _mock_remote, _skill_dir
 

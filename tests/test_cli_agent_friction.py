@@ -93,7 +93,8 @@ def test_a_one_time_secret_is_never_dropped_from_a_summary():
 # Root cause: summary_line printed an object with neither an id nor a name (an
 # accept result, a context reply, a count) as raw JSON, the one compact shape a
 # reader had to parse. Its fields are now key=value columns, nested objects as
-# key.field=value; a list of objects stays whole so nothing is dropped.
+# key.field=value; a list of objects stays whole, as lines of its own
+# (tests/test_compact_lists_of_objects.py).
 def test_an_object_without_id_or_name_is_key_value_columns_not_json():
     from beakr_cli.compact import summary_line
 
@@ -108,13 +109,9 @@ def test_an_object_without_id_or_name_is_key_value_columns_not_json():
         }
     )
 
-    assert line.split("\t") == [
-        "accepted=true",
-        "count=3",
-        "outcome.status=success",
-        "tags=a,b",
-        'rows=[{"v": 1}]',
-    ]
+    first, *rest = line.split("\n")
+    assert first.split("\t") == ["accepted=true", "count=3", "outcome.status=success", "tags=a,b"]
+    assert rest == ["rows\tv=1"]
 
 
 def test_an_envelope_with_more_rows_names_the_next_page(monkeypatch):
