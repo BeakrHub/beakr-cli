@@ -22,6 +22,7 @@ import anyio
 import httpx
 import pytest
 import respx
+from beakr_sdk.capabilities import forget_capabilities
 from mcp import ClientSession, types
 from mcp.server.fastmcp import FastMCP
 from mcp.shared.memory import create_client_server_memory_streams
@@ -166,7 +167,32 @@ async def test_tools_the_installation_does_not_serve_are_not_listed() -> None:
         respx.get(f"{API}/v1/public/openapi.json").respond(json=document)
         listed = {tool.name for tool in await mcp_server.mcp.list_tools()}
     assert "conversations_search" not in listed and "import_conversation" not in listed
-    assert {"research", "knowledge_base", "documents", "skills"} <= listed
+    # Skills are documented (GET /v1/skills), and a box's document leaves them out.
+    assert "skills" not in listed
+    assert {"research", "knowledge_base", "documents"} <= listed
+
+
+@pytest.mark.real_capabilities
+async def test_the_instructions_name_only_tools_the_installation_lists(monkeypatch) -> None:
+    # Root cause: the instructions always sent agents to a 'skills' tool, which
+    # a box does not list. They are rebuilt before `initialize` is answered.
+    monkeypatch.setattr(mcp_server.mcp._mcp_server, "instructions", mcp_server.mcp.instructions)
+    box = {"paths": {"/v1/projects": {"get": {}}, "/v1/context": {"post": {}}}}
+    with respx.mock:
+        respx.get(f"{API}/v1/public/openapi.json").respond(json=box)
+        await mcp_server.mcp.fit_instructions()
+    on_a_box = mcp_server.mcp.instructions or ""
+    assert "'skills'" not in on_a_box and "SKILL.md" not in on_a_box
+    assert "'context' once at the start of a task for the user's profiles and memories." in (
+        on_a_box
+    )
+
+    forget_capabilities()  # the SDK caches the document per base URL
+    hosted = {"paths": {**box["paths"], "/v1/skills": {"get": {}}}}
+    with respx.mock:
+        respx.get(f"{API}/v1/public/openapi.json").respond(json=hosted)
+        await mcp_server.mcp.fit_instructions()
+    assert "'skills' to read a SKILL.md before following it." in (mcp_server.mcp.instructions or "")
 
 
 @pytest.mark.real_capabilities

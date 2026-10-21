@@ -89,6 +89,11 @@ _CODE_HINTS = {
         "then retry from the browser (or approve the CLI sign-in again)."
     ),
     "forbidden": "This needs a role you do not have here (often organization admin).",
+    "last_owner": (
+        "It must keep an owner. Make another member an owner first "
+        "(for a project: beakr projects members add PROJECT USER_ID --role owner), "
+        "then change or remove this one."
+    ),
     "concurrency_limited": (
         "Too many runs are in flight for this key or organization. "
         "Wait for one to finish, then retry."

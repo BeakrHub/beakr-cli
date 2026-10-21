@@ -10336,7 +10336,7 @@
           },
           "role": {
             "default": "member",
-            "description": "The role it grants or holds.",
+            "description": "Role to give: `owner`, `admin`, `member` or `viewer`. A new member gets `member` when it is omitted; an existing member keeps their role. Moving the project's last owner to another role is refused with 409 `last_owner`.",
             "title": "Role",
             "type": "string"
           }
@@ -16547,6 +16547,18 @@
       "WikiPatchIn": {
         "description": "Incremental wiki content patch.",
         "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For `move_section`: id of the section to place it after. Omit to move it to the top of the page.",
+            "title": "After"
+          },
           "content": {
             "anyOf": [
               {
@@ -16572,8 +16584,8 @@
             "title": "Find"
           },
           "op": {
-            "description": "Edit to make: `replace_text`, `replace_section`, `append_section`, `delete_section` or `insert_after`.",
-            "pattern": "^(replace_text|replace_section|append_section|delete_section|insert_after)$",
+            "description": "Edit to make: `replace_text`, `replace_section`, `append_section`, `delete_section`, `insert_after` or `move_section`.",
+            "pattern": "^(replace_text|replace_section|append_section|delete_section|insert_after|move_section)$",
             "title": "Op",
             "type": "string"
           },
@@ -23799,7 +23811,7 @@
                     "type": "string"
                   },
                   "old_rows": {
-                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so.",
+                    "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. Add when to name one of a value's rows at several dates. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so.",
                     "items": {
                       "type": [
                         "object",

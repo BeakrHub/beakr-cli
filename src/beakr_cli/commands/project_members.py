@@ -79,13 +79,22 @@ def list_project_members(
 def add_project_member(
     project: str = _project_arg,
     principal_id: str = typer.Argument(..., help="User id (from `beakr members ls`)."),
-    role: str = typer.Option("member", "--role", help="member, editor, viewer or owner."),
+    role: str | None = typer.Option(
+        None,
+        "--role",
+        help=(
+            "member, editor, viewer or owner. Default: member for someone new; "
+            "an existing member keeps their role."
+        ),
+    ),
     json_out: bool = _json_opt,
 ) -> None:
     """Give an organization member a role in the project.
 
     Members are people (or service accounts); the server refuses group
-    memberships, so there is no --type to ask for one.
+    memberships, so there is no --type to ask for one. Without --role no role
+    is sent: the server makes someone new a member and leaves an existing
+    member's role as it is (re-adding the last owner used to demote them).
     """
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
@@ -93,8 +102,9 @@ def add_project_member(
     emit(
         result,
         json_out=json_out,
-        render=lambda _: console.print(
-            f"Added {principal_id} to {found.get('name') or project} as {role}.",
+        render=lambda r: console.print(
+            f"Added {principal_id} to {found.get('name') or project} as "
+            f"{role or (r or {}).get('role') or 'member'}.",
             highlight=False,
             markup=False,
         ),

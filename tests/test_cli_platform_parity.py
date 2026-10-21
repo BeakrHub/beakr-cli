@@ -230,6 +230,48 @@ def test_projects_members_ls_and_add(rendered):
     }
 
 
+# Root cause: `members add` sent role="member" when --role was not given, so
+# re-adding someone demoted them (the last owner too). Without --role no role
+# is sent: the server keeps an existing member's role (engine #1689).
+@respx.mock
+def test_projects_members_add_sends_no_role_unless_asked(monkeypatch):
+    _projects()
+    add = respx.post(f"{API}/v1/projects/p1/members").respond(
+        201, json={"principal_id": "u1", "role": "owner"}
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+
+    added = runner.invoke(app, ["projects", "members", "add", "assays", "u1"])
+
+    assert added.exit_code == 0, added.output
+    assert json.loads(add.calls.last.request.content) == {
+        "principal_id": "u1",
+        "principal_type": "user",
+    }
+    assert "Added u1 to Assays as owner." in added.output
+
+
+@respx.mock
+def test_demoting_the_last_owner_reads_as_a_conflict_with_the_fix():
+    _projects()
+    message = "Cannot change the role of the last owner of the project"
+    respx.post(f"{API}/v1/projects/p1/members").respond(
+        409,
+        json={
+            "detail": {"code": "last_owner", "message": message},
+            "error": {"code": "last_owner", "message": message},
+        },
+    )
+
+    result = runner.invoke(app, ["projects", "members", "add", "assays", "u1", "--role", "member"])
+
+    text = " ".join(result.output.split())
+    assert result.exit_code == 5, result.output
+    assert message in text
+    assert "Make another member an owner first" in text
+    assert "--role owner" in text
+
+
 # Root cause: `members add` offered --type group, which the server refuses
 # ("Group project memberships are no longer supported"), so the option only
 # led to a failed request. add takes users only; the option is gone.

@@ -3166,7 +3166,7 @@
       "type": "string"
      },
      {
-      "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so.",
+      "description": "edit_rows: the rows to change, as the card shows them now: {attribute, value}, {relation, to} or {date, text} (a finding), or the row copied from cat. Add when to name one of a value's rows at several dates. A long value may be given by its start (up to a word end, or ending in ...) when only one row of that field starts so.",
       "name": "old_rows",
       "required": false,
       "type": "object"
@@ -4137,7 +4137,7 @@
      },
      {
       "default": "member",
-      "description": "The role it grants or holds.",
+      "description": "Role to give: `owner`, `admin`, `member` or `viewer`. A new member gets `member` when it is omitted; an existing member keeps their role. Moving the project's last owner to another role is refused with 409 `last_owner`.",
       "name": "role",
       "required": false,
       "type": "string"
