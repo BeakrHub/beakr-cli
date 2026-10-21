@@ -63,6 +63,26 @@ def test_a_usage_error_under_json_is_a_json_object_on_stdout():
     assert json.loads(result.stdout)["error"]["code"] == "usage"
 
 
+# Root cause (0.1.7 EC2 qualification): `beakr kb proposals show ""` printed a
+# traceback. The SDK refuses an empty, "." or ".." path value with ValueError
+# before sending anything (it would reach another route), and the CLI did not
+# report it. It is the caller's argument, so it is a usage error (exit 2).
+@respx.mock
+@pytest.mark.parametrize("json_flag", [[], ["--json"]])
+def test_an_empty_id_is_a_usage_error_not_a_traceback(json_flag):
+    route = respx.route().respond(200, json={})
+
+    result = runner.invoke(app, ["kb", "proposals", "show", "", *json_flag])
+
+    assert result.exit_code == 2, result.output
+    assert not route.called
+    assert "Traceback" not in result.output
+    assert "not a valid path value" in result.output
+    if json_flag:
+        error = json.loads(result.stdout)["error"]
+        assert error["code"] == "usage" and error["exit_code"] == 2
+
+
 # Root cause: `projects profile show` with no profile printed plain text and
 # exited 4 through typer.Exit, past the error handler, even with --json.
 @respx.mock
