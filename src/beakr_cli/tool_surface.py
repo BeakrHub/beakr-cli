@@ -178,10 +178,20 @@ class TieredFastMCP(FastMCP):
 
     Either change sends ``notifications/tools/list_changed``; the server
     declares ``tools.listChanged`` so clients re-read the listing.
+
+    ``instructions_for(hidden)`` rebuilds the instructions from the tools the
+    installation leaves out, before ``initialize`` is answered, so they never
+    send an agent to a tool it cannot see.
     """
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        *args: Any,
+        instructions_for: Callable[[set[str]], str] | None = None,
+        **kwargs: Any,
+    ) -> None:
         super().__init__(*args, **kwargs)
+        self._instructions_for = instructions_for
         #: Discovery-tier tools ``discover_tools`` found (eager mode).
         self._revealed: set[str] = set()
         #: Tools whose route this installation does not have.
@@ -194,8 +204,17 @@ class TieredFastMCP(FastMCP):
         )
 
     async def run_stdio_async(self) -> None:
+        await self.fit_instructions()
         async with stdio_server() as (read_stream, write_stream):
             await self._mcp_server.run(read_stream, write_stream, self.initialization_options())
+
+    async def fit_instructions(self) -> None:
+        """Rebuild the instructions without the tools this installation does not list."""
+        if self._instructions_for is None:
+            return
+        names = [tool.name for tool in await super().list_tools()]
+        hidden = self._hidden | await self._unserved(names)
+        self._mcp_server.instructions = self._instructions_for(hidden)
 
     async def reveal(self, names: list[str]) -> None:
         """Add discovery-tier tools to the eager mode's listing."""

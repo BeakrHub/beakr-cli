@@ -16,6 +16,7 @@ import typer
 from rich.markup import escape
 
 from beakr_cli.app_url import resolve_app_url
+from beakr_cli.compact import cell
 from beakr_cli.output import console, emit, err_console, print_markdown, print_table, short
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.sdk import get_sdk
@@ -286,7 +287,29 @@ def list_interviews(
         if not (sent or held or waiting):
             err_console.print("No interviews. Ask someone with `beakr interviews request TITLE`.")
 
-    emit(result, json_out=json_out, render=render)
+    def lines(data: dict[str, Any]) -> list[str]:
+        # One line per row, led by its list, with the columns the tables show:
+        # the generic rendering put each list's full objects on one line.
+        sent = [
+            ("sent", s.get("id"), s.get("title"), f"links={len(s.get('links') or [])}")
+            for s in rows_of(data["sent"], "data", "sendables")
+        ]
+        held = [
+            (
+                "session",
+                s.get("session_id") or s.get("id"),
+                s.get("title"),
+                f"status={s.get('status')}",
+            )
+            for s in rows_of(data["sessions"], "sessions", "data")
+        ]
+        waiting = [
+            ("request", r.get("id"), r.get("title"), f"status={r.get('status')}")
+            for r in rows_of(data["requests"], "requests", "data")
+        ]
+        return ["\t".join(cell(value) for value in row) for row in (*sent, *held, *waiting)]
+
+    emit(result, json_out=json_out, render=render, lines=lines)
 
 
 @app.command("show")

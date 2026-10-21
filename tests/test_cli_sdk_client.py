@@ -102,3 +102,43 @@ async def test_research_outwaits_the_engines_route_timeout(monkeypatch) -> None:
         with get_sdk() as sdk:
             sdk.knowledge.research("What changed?")
         assert route.calls.last.request.extensions["timeout"]["read"] == 170.0
+
+
+# X-Beakr-Session names the agent session behind a write, so its provenance can
+# say "session <id>" beside the agent and run (engine: api_origin.session).
+def test_a_declared_session_is_forwarded(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_KEY", "key")
+    monkeypatch.setenv("BEAKR_SESSION", "nightly-7")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "cc-session")
+
+    assert _headers_of_one_request()["x-beakr-session"] == "nightly-7"
+
+
+@pytest.mark.parametrize(
+    "variable", ["CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID", "CURSOR_CONVERSATION_ID"]
+)
+def test_the_host_agents_own_session_is_forwarded(monkeypatch, variable) -> None:
+    monkeypatch.setenv("BEAKR_API_KEY", "key")
+    monkeypatch.setenv(variable, "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b")
+
+    headers = _headers_of_one_request()
+
+    assert headers["x-beakr-session"] == "0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b"
+
+
+def test_no_session_header_without_a_session(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_KEY", "key")
+
+    assert "x-beakr-session" not in _headers_of_one_request()
+
+
+@pytest.mark.asyncio
+async def test_the_mcp_server_forwards_claude_codes_session(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_KEY", "key")
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "cc-session-1")
+    with respx.mock:
+        route = respx.get(f"{API}/v1/me").respond(json={"user": {}})
+        async with get_async_sdk() as sdk:
+            await sdk.me.get()
+        headers = route.calls.last.request.headers
+    assert headers["x-beakr-session"] == "cc-session-1"
