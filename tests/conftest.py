@@ -30,6 +30,12 @@ _CREDENTIAL_ENV = (
     "BEAKR_DEV_IDENTITY_NAME",
     "BEAKR_DEV_DISPLAY_NAME",
     "BEAKR_SERVICE_ACCOUNT_FILE",
+    # The session the X-Beakr-Session header names (beakr_cli.sdk.SESSION_ENV);
+    # the agent running the tests sets its own.
+    "BEAKR_SESSION",
+    "CLAUDE_CODE_SESSION_ID",
+    "CODEX_THREAD_ID",
+    "CURSOR_CONVERSATION_ID",
 )
 
 

@@ -26,7 +26,6 @@ from beakr_cli._private_api._generated.operations import OPERATIONS
 
 BASE = "https://api.test"
 ORG = "org1"
-SKILL_FILES = {"SKILL.md": "---\nname: x\n---\nbody"}
 
 # (allowlisted operation, private-client call). Path params use fixed sample ids.
 MAPPING: list[tuple[str, Callable[[PrivateBeakr], Any]]] = [
@@ -98,12 +97,6 @@ MAPPING: list[tuple[str, Callable[[PrivateBeakr], Any]]] = [
         lambda c: c.profile.edit("pc1", content="Leads assays"),
     ),
     ("DELETE /v1/me/memories/{}", lambda c: c.memories.delete("m1")),
-    ("POST /v1/me/skills/import/bundle", lambda c: c.skills.import_bundle(SKILL_FILES)),
-    ("GET /v1/me/skills/library", lambda c: c.skills.list()),
-    ("GET /v1/me/skills/proposals", lambda c: c.skills.proposals.list()),
-    ("POST /v1/me/skills/proposals/{}/accept", lambda c: c.skills.proposals.accept("sp1")),
-    ("GET /v1/me/skills/{}/bundle", lambda c: c.skills.bundle("sk1")),
-    ("PUT /v1/me/skills/{}/bundle", lambda c: c.skills.replace_bundle("sk1", SKILL_FILES)),
     ("GET /v1/organizations/{}/auth-policy", lambda c: c.org.policy.get(org_id=ORG)),
     ("PUT /v1/organizations/{}/auth-policy", lambda c: c.org.policy.set(org_id=ORG)),
     ("GET /v1/organizations/{}/credentials", lambda c: c.org.credentials.list(org_id=ORG)),
@@ -122,7 +115,6 @@ MAPPING: list[tuple[str, Callable[[PrivateBeakr], Any]]] = [
     ("GET /v1/workflows/runs/{}", lambda c: c.workflows.get_run("wr1")),
     ("POST /v1/workflows/schedule/preview", lambda c: c.workflows.preview_schedule("0 9 * * 1")),
     ("GET /v1/workflows/templates", lambda c: c.workflows.templates()),
-    ("PUT /v1/me/skills/{}/files/{}", lambda c: c.skills.put_file("sk1", "notes.md", "x")),
     (
         "POST /v1/workflows/ai/generate",
         lambda c: c.workflows.generate_template("Summarize each assay run."),

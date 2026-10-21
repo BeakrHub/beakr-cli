@@ -25,9 +25,9 @@ from pathlib import Path
 from typing import Any
 
 from beakr_sdk.errors import ConflictError
+from beakr_sdk.resources.skills import bundle_sha256
 
 from beakr_cli._private_api import PrivateBeakr as Beakr
-from beakr_cli._private_api.resources.skills import bundle_sha256
 from beakr_cli.commands.install import _claude_home, _codex_home
 from beakr_cli.hook_runtime import read_state, write_state
 
@@ -247,7 +247,7 @@ class SkillsSync:
         if self._library is None or refresh:
             self._library = {
                 str(skill["slug"]): skill
-                for skill in self._sdk.skills.list()
+                for skill in self._sdk.skills.list(installed=True)
                 if skill.get("slug") and skill["slug"] not in RESERVED_SLUGS
             }
         return self._library
@@ -418,7 +418,7 @@ class SkillsSync:
                 self._replace(slug, str(remote["id"]), files, target, local_hash, pushed_hashes)
                 return
             if not self.plan.dry_run:
-                created = self._sdk.skills.import_bundle(files, slug_hint=slug)
+                created = self._sdk.skills.create(files, slug_hint=slug)
                 new_entry = self._entry(slug)
                 new_entry["skill_id"] = str(created["id"])
                 new_entry["remote_updated_at"] = str(created.get("updated_at") or "")
@@ -466,7 +466,7 @@ class SkillsSync:
                 self._sdk.skills.bundle(skill_id).get("files") or {}
             )
             try:
-                written = self._sdk.skills.replace_bundle(
+                written = self._sdk.skills.upload_bundle(
                     skill_id, files, expected_sha256=expected, force=self.plan.force
                 )
             except ConflictError:
