@@ -11,15 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=38602ac011dfb6dbb0c0adabdc2f26ae443c785576c174fae89c24ecf80ef6ba changelog sha256=45cc3eda862a401eb8b4d16895fc7dfb9064296c662c6cc1bacfedfa2769b18a -->
+<!-- contract-stamp: public-openapi sha256=38602ac011dfb6dbb0c0adabdc2f26ae443c785576c174fae89c24ecf80ef6ba changelog sha256=92ee89b4659a59897e0b6fa13ece3b2959f02624192755bf048a78e18f635298 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
 - `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
   `GET /v1/threads/{thread_id}` return `origin`: null for a
-  conversation started in the web app or through the API, or `slack`, `email`
-  or `text` for one a person started by messaging Beakr there.
+  conversation started in the web app or through the API, or `slack`, `email`,
+  `text` or `whatsapp` for one a person started by messaging Beakr there.
 - Map card rows: a Facts or Connections row's `row_id` names the row with its
   When, so a value a card states at two dates is two rows with two ids. On
   `GET /v1/knowledge/wiki/pages/{page_id}`, `disputed_rows` lists each disputed
