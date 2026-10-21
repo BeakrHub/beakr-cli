@@ -168,9 +168,20 @@ def not_provided(exc: BeakrError, command: tuple[str, ...] = ()) -> str | None:
     """The "does not provide" sentence when ``exc`` is a bare 404, else None.
 
     Only a route the server does not have answers this bare, so no document
-    needs to be read to tell: the reply itself says so. ``command`` is as for
-    :func:`area_for`.
+    needs to be read to tell: the reply itself says so. The SDK raises
+    ``NotProvidedError`` for it, with the path; an older SDK raised a plain
+    ``NotFoundError``, read here from its response. ``command`` is as for
+    :func:`area_for`; this module names more areas than the SDK does.
     """
+    from beakr_sdk.errors import NotProvidedError
+
+    if isinstance(exc, NotProvidedError):
+        if not exc.path:
+            return exc.message
+        area = area_for(exc.path, command)
+        # A route no area covers, with no command to name: the SDK's own
+        # sentence names the operation (method and path).
+        return exc.message if area == api_path(exc.path) else not_provided_message(area)
     response = getattr(exc, "response", None)
     if not is_bare_not_found(response):
         return None
