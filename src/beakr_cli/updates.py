@@ -274,9 +274,13 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
 # ---------------------------------------------------------------------------
 
 #: How the CLI a box bundles is upgraded: with the box, never from PyPI.
+#: The box's release ships the CLI and SDK wheels in its ``clients/`` directory
+#: (docker/self-hosted/clients/README.md in beakr-engine), installed into a plain
+#: uv venv, and its installer upgrades the box.
 BOX_INSTRUCTIONS = (
     "This is the beakr-cli bundled with this Beakr box. It is upgraded with the box: "
-    "install the next Beakr box release, which brings its own beakr-cli."
+    "upgrade the box with its installer (`install-beakr.py --version NEW upgrade ...`), "
+    "then install the CLI and SDK wheels from that release's `clients/` directory."
 )
 
 

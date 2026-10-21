@@ -1446,7 +1446,8 @@ Each release lists the public API changes it supports, taken from the API change
   does not have.
 - **The CLI a Beakr box bundles.** `beakr version`, `beakr update` and the
   MCP tools `beakr_version` and `update_beakr` say a box's own copy is upgraded
-  with the box (install the next Beakr box release) instead of "Latest release:
+  with the box (the box installer's `upgrade`, then the release's `clients/`
+  wheels) instead of "Latest release:
   unknown (PyPI could not be checked)". A copy is the box's when it was not
   installed with uv or pipx and `BEAKR_NO_UPDATE_CHECK` is set or the API's
   document leaves out organization administration; `beakr version --json`
