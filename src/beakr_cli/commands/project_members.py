@@ -7,7 +7,7 @@ the same ``projects`` Typer app. A project is named by id, slug or name.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import typer
 
@@ -17,6 +17,9 @@ from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
+
+if TYPE_CHECKING:
+    from beakr_sdk._generated.models import ProjectMemberAdd
 
 app = typer.Typer(help="Members of a project: list, add, remove, invite by email.")
 
@@ -79,22 +82,36 @@ def list_project_members(
 def add_project_member(
     project: str = _project_arg,
     principal_id: str = typer.Argument(..., help="User id (from `beakr members ls`)."),
-    role: str = typer.Option("member", "--role", help="member, editor, viewer or owner."),
+    role: str | None = typer.Option(
+        None,
+        "--role",
+        help=(
+            "member, editor, viewer or owner. Default: member for someone new; "
+            "an existing member keeps their role."
+        ),
+    ),
     json_out: bool = _json_opt,
 ) -> None:
     """Give an organization member a role in the project.
 
     Members are people (or service accounts); the server refuses group
-    memberships, so there is no --type to ask for one.
+    memberships, so there is no --type to ask for one. Without --role no role
+    is sent: the server makes someone new a member and leaves an existing
+    member's role as it is (re-adding the last owner used to demote them).
     """
+    body: ProjectMemberAdd = {"principal_id": principal_id, "principal_type": "user"}
+    if role is not None:
+        body["role"] = role
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
-        result = sdk.projects.add_member(str(found["id"]), principal_id, role=role)
+        # The SDK's add_member always sends a role (member by default).
+        result = sdk.api.projects.add_member(str(found["id"]), body=body)
     emit(
         result,
         json_out=json_out,
-        render=lambda _: console.print(
-            f"Added {principal_id} to {found.get('name') or project} as {role}.",
+        render=lambda r: console.print(
+            f"Added {principal_id} to {found.get('name') or project} as "
+            f"{role or (r or {}).get('role') or 'member'}.",
             highlight=False,
             markup=False,
         ),
