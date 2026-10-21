@@ -105,6 +105,7 @@ TOOL_OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "dismiss_proposal": (("POST", "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss"),),
     "conversations_search": (("GET", "/v1/conversations"), ("GET", "/v1/conversations/search")),
     "import_conversation": (("POST", "/v1/conversations/import"),),
+    "skills": (("GET", "/v1/skills"),),
 }
 
 

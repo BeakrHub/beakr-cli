@@ -242,17 +242,19 @@ async def conversations_search(
     Args:
         query: What the conversation was about (a question works).
         client: Only imported sessions from claude-code, codex, chatgpt or generic.
-        project: Project ID to restrict to.
+        project: Project name or ID to restrict to.
         limit: Conversations per page (1-25 with a query, 1-50 without).
         cursor: The next_cursor from the previous page's coverage (same query and filters).
     """
+    # The routes take a project id; agents pass the name list_projects printed.
+    project_id = await _project_by_name_or_id(project) if project.strip() else None
     if query and not client:
-        return await _search_index(query, project=project, limit=limit, cursor=cursor)
+        return await _search_index(query, project_id=project_id, limit=limit, cursor=cursor)
     page_size = _page_size(limit, default=10)
     page = await call_api(
         lambda sdk: sdk.api.conversations.list_conversations(
             client=client or None,
-            project_id=project or None,
+            project_id=project_id,
             q=query or None,
             limit=page_size,
             cursor=_cursor(cursor),
@@ -280,11 +282,13 @@ def _compound_note(status: Any) -> list[str]:
     return []
 
 
-async def _search_index(query: str, *, project: str, limit: int, cursor: str) -> dict[str, Any]:
+async def _search_index(
+    query: str, *, project_id: str | None, limit: int, cursor: str
+) -> dict[str, Any]:
     page = await call_api(
         lambda sdk: sdk.api.conversations.search(
             q=query,
-            project_id=project or None,
+            project_id=project_id,
             match="any",
             limit=max(1, min(limit, _SEARCH_LIMIT)),
             cursor=_cursor(cursor),
@@ -324,6 +328,34 @@ async def _search_index(query: str, *, project: str, limit: int, cursor: str) ->
     )
 
 
+#: The summary_required refusal in this tool's terms, as the hosted tool words it:
+#: the route's own fix names ``store_full_text``, ``compound`` and ``hold_text``,
+#: which this tool does not take, so an agent following it could not comply.
+_IMPORT_SUMMARY_REQUIRED = (
+    "These messages came with no summary, and this tool keeps a session's summary, never "
+    "its full text, so nothing from them would be kept."
+)
+_IMPORT_SUMMARY_FIX = (
+    "Call import_conversation again with `summary`: what was done, decided and learned in "
+    "the session, in a few sentences."
+)
+
+
+def _summary_required(exc: ApiCallError) -> ApiCallError:
+    """``exc`` with its message and fix in import_conversation's own parameters."""
+    reworded = ApiCallError(
+        f"{_IMPORT_SUMMARY_REQUIRED} (summary_required) To fix: {_IMPORT_SUMMARY_FIX}",
+        request=exc.request,
+        response=exc.response,
+    )
+    reworded.fields = {
+        **exc.fields,
+        "message": _IMPORT_SUMMARY_REQUIRED,
+        "fix": _IMPORT_SUMMARY_FIX,
+    }
+    return reworded
+
+
 async def import_conversation(
     client: str,
     session_id: str,
@@ -351,7 +383,7 @@ async def import_conversation(
         messages: [{role: user|assistant, content}] in order.
         title: Short title.
         summary: What was done, decided and learned.
-        project: Project ID it belongs to.
+        project: Project name or ID it belongs to.
         files_touched: Paths edited in the session.
         base_index: Messages of this session already imported; the position the
             sent messages start at. Omit when sending the whole session.
@@ -380,8 +412,9 @@ async def import_conversation(
         body["title"] = title
     if summary:
         body["summary"] = summary
-    if project:
-        body["project_id"] = project
+    if project.strip():
+        # The route takes a project id; agents pass the name list_projects printed.
+        body["project_id"] = await _project_by_name_or_id(project)
     if files_touched:
         body["files_touched"] = files_touched[:500]
     if base_index is not None:
@@ -392,6 +425,8 @@ async def import_conversation(
         # The body's keys are ``import_``'s parameters; absent ones are omitted.
         result = await call_api(lambda sdk: sdk.conversations.import_(**body))
     except ApiCallError as exc:
+        if exc.fields.get("error_code") == "summary_required":
+            raise _summary_required(exc) from None
         expected = _expected_base_index(exc)
         if expected is None:
             raise
