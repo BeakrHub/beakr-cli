@@ -82,9 +82,13 @@ def entities(
         )
 
     def lines(rows: list[dict[str, Any]]) -> list[str]:
-        # Piped (an agent), the counts lead too: they were only on a terminal.
-        counts = [_type_counts(rows, truncated=truncated)] if rows and not page_type else []
-        return [*counts, *compact_lines(rows)]
+        # Piped, the counts go to stderr: stdout stays one TSV line per page,
+        # for `cut -f1` and `read id title`.
+        if rows and not page_type:
+            err_console.print(
+                _type_counts(rows, truncated=truncated), highlight=False, markup=False
+            )
+        return compact_lines(rows)
 
     emit(pages, json_out=json_out, render=render, lines=lines)
 

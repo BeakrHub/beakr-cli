@@ -265,6 +265,12 @@ def rows(
         # and group_by, and the door takes every rows argument by its tool name.
         result = sdk.knowledge.command("rows", match="exact" if exact_first else match, **arguments)
         if exact_first and _no_rows(result):
+            err_console.print(
+                f"No field is named exactly {attribute!r}; these rows are the default "
+                "match (names holding its words, or the closest by meaning). "
+                "Pass --match exact to keep only that name.",
+                markup=False,
+            )
             result = sdk.knowledge.command("rows", **arguments)
     _print_result(result, json_out=json_out)
 

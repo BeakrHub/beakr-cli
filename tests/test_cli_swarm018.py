@@ -34,6 +34,7 @@ from beakr_cli.main import internal_app as app
 API = "https://api.test"
 PROJECT = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
 PROPOSAL = "1171c0a4-c839-486e-ba81-28b1a2445b80"
+HASH = "a" * 64
 
 
 @pytest.fixture(autouse=True)
@@ -112,6 +113,49 @@ def test_project_alias_reaches_the_project_id_of_other_operations() -> None:
     assert {"--project-id", "-P", "--project"} <= names
 
 
+@pytest.mark.real_project_refs
+@respx.mock
+def test_api_project_option_resolves_a_project_name_to_its_id() -> None:
+    respx.get(f"{API}/v1/projects").respond(
+        json={
+            "data": [{"id": PROJECT, "name": "Halcyon Swarm 018", "slug": "halcyon-swarm-018"}],
+            "has_more": False,
+            "next_cursor": None,
+        }
+    )
+    pages = respx.get(f"{API}/v1/knowledge/wiki/pages").respond(
+        json={"data": [], "has_more": False, "next_cursor": None}
+    )
+
+    result = CliRunner().invoke(
+        app, ["api", "knowledge", "list-wiki-pages", "-P", "Halcyon Swarm 018"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert pages.calls.last.request.url.params["project_id"] == PROJECT
+
+
+@pytest.mark.real_project_refs
+@respx.mock
+def test_api_project_option_names_close_projects_for_an_unknown_one() -> None:
+    respx.get(f"{API}/v1/projects").respond(
+        json={
+            "data": [{"id": PROJECT, "name": "Halcyon Swarm 018", "slug": "halcyon-swarm-018"}],
+            "has_more": False,
+            "next_cursor": None,
+        }
+    )
+    pages = respx.get(f"{API}/v1/knowledge/wiki/pages")
+
+    result = CliRunner().invoke(
+        app, ["api", "knowledge", "list-wiki-pages", "--project", "Halcyon Swarm"]
+    )
+
+    assert result.exit_code == 2, result.output
+    assert "Halcyon Swarm 018" in result.output
+    assert not pages.called
+
+
 # --- kb propose create (S18-5, S18-6, S18-23) ---------------------------------
 
 
@@ -121,14 +165,14 @@ def _staged_proposal() -> dict:
         "proposal_type": "create",
         "status": "pending",
         "page_title": "VB-77",
-        "content_hash": "hash-1",
+        "content_hash": HASH,
     }
 
 
 @respx.mock
 def test_propose_create_sends_the_page_as_sections_without_markers_or_ids() -> None:
     write = respx.post(f"{API}/v1/knowledge/wiki/write").mock(
-        return_value=_door("Proposal id: x", proposal={"id": PROPOSAL, "content_hash": "hash-1"})
+        return_value=_door("Proposal id: x", proposal={"id": PROPOSAL, "content_hash": HASH})
     )
     show = respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").mock(
         return_value=httpx.Response(200, json=_staged_proposal())
@@ -182,7 +226,7 @@ def test_propose_create_sends_the_page_as_sections_without_markers_or_ids() -> N
 @respx.mock
 def test_propose_create_content_is_the_body_of_its_one_section() -> None:
     write = respx.post(f"{API}/v1/knowledge/wiki/write").mock(
-        return_value=_door("Proposal id: x", proposal={"id": PROPOSAL, "content_hash": "hash-1"})
+        return_value=_door("Proposal id: x", proposal={"id": PROPOSAL, "content_hash": HASH})
     )
     respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").mock(
         return_value=httpx.Response(200, json=_staged_proposal())
@@ -216,6 +260,141 @@ def test_propose_create_content_is_the_body_of_its_one_section() -> None:
     assert "missing from sections" not in result.output
     sent = _bodies(write)[0]["sections"]
     assert sent == [{"title": "Description", "citations": [citation], "body": content}]
+
+
+_AUTO_REPLY = (
+    "Proposed new page 'VB-77'.\nProposal id: " + PROPOSAL + "\n"
+    "Auto-approve is on for this user in this project, so this proposal is being "
+    "applied automatically (usually within seconds). Do not ask the user to approve it "
+    "and do not call accept_proposal.\n"
+    "Citation debt: section Description has 1 claim with no citation.\n"
+    "A page titled 'VB 77' already exists in this project.\n"
+    "Page type 'drug' is not declared here; written as 'compound'."
+)
+
+
+def _invoke_create(*extra: str):
+    return CliRunner().invoke(
+        app,
+        [
+            "kb",
+            "propose",
+            "create",
+            "--title",
+            "VB-77",
+            "--sections",
+            json.dumps([{"title": "Description", "body": "VB-77 is an NLRP3 inhibitor."}]),
+            "--project",
+            PROJECT,
+            *extra,
+        ],
+    )
+
+
+@respx.mock
+def test_propose_create_prints_the_door_reply_and_no_accept_hint_under_auto_approve() -> None:
+    respx.post(f"{API}/v1/knowledge/wiki/write").mock(
+        return_value=_door(_AUTO_REPLY, proposal={"id": PROPOSAL, "content_hash": HASH})
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").mock(
+        return_value=httpx.Response(200, json=_staged_proposal())
+    )
+    accept = respx.post(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/accept")
+
+    result = _invoke_create()
+
+    assert result.exit_code == 0, result.output
+    # Piped, the reply is on stderr and stdout stays the proposal.
+    for line in _AUTO_REPLY.splitlines()[2:]:
+        assert " ".join(line.split()) in " ".join(result.stderr.split())
+    assert "Auto-approve" not in result.stdout
+    assert PROPOSAL in result.stdout
+    assert f"beakr kb proposals accept {PROPOSAL}" not in result.output
+    assert f"beakr kb proposals show {PROPOSAL}" in result.stdout
+    assert not accept.called
+
+
+@respx.mock
+def test_propose_create_accept_when_auto_approve_applied_it_first_succeeds() -> None:
+    respx.post(f"{API}/v1/knowledge/wiki/write").mock(
+        return_value=_door(_AUTO_REPLY, proposal={"id": PROPOSAL, "content_hash": HASH})
+    )
+    # Pending when read back, accepted by the worker before our accept lands.
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").mock(
+        side_effect=[
+            httpx.Response(200, json=_staged_proposal()),
+            httpx.Response(200, json={**_staged_proposal(), "status": "accepted"}),
+        ]
+    )
+    accept = respx.post(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/accept").respond(
+        400, json={"detail": "Proposal is accepted, not pending"}
+    )
+
+    result = _invoke_create("--accept", "--yes", "--json")
+
+    assert result.exit_code == 0, result.output
+    assert accept.called
+    shown = json.loads(result.stdout)
+    assert shown["status"] == "accepted"
+    assert shown["accepted"] is True
+
+
+@respx.mock
+def test_propose_create_accept_still_fails_when_the_proposal_was_not_applied() -> None:
+    respx.post(f"{API}/v1/knowledge/wiki/write").mock(
+        return_value=_door("Proposal id: x", proposal={"id": PROPOSAL, "content_hash": HASH})
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").mock(
+        return_value=httpx.Response(200, json=_staged_proposal())
+    )
+    respx.post(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/accept").respond(
+        400, json={"detail": "Proposal is dismissed, not pending"}
+    )
+
+    result = _invoke_create("--accept", "--yes", "--json")
+
+    assert result.exit_code == 1, result.output
+
+
+@respx.mock
+def test_propose_create_refuses_a_parent_that_names_no_page() -> None:
+    respx.get(f"{API}/v1/knowledge/wiki/pages/by-title").respond(
+        404,
+        json={
+            "error": {
+                "code": "not_found",
+                "message": "Wiki page not found",
+                "details": {"suggestions": ["Gout Flares Competitive Landscape"]},
+            }
+        },
+    )
+    write = respx.post(f"{API}/v1/knowledge/wiki/write")
+
+    result = _invoke_create("--parent", "Gout Flare Competitive Landscape")
+
+    assert result.exit_code == 4, result.output
+    assert "Page not found: Gout Flare Competitive Landscape" in result.stderr
+    assert '"Gout Flares Competitive Landscape"' in result.stderr
+    assert not write.called
+
+
+@respx.mock
+def test_propose_create_sends_the_resolved_parent_id() -> None:
+    parent_id = "5fd0e794-2b95-44bc-9185-36a53ab42868"
+    respx.get(f"{API}/v1/knowledge/wiki/pages/by-title").respond(
+        json={"id": parent_id, "title": "Gout Flares Competitive Landscape", "project_id": PROJECT}
+    )
+    write = respx.post(f"{API}/v1/knowledge/wiki/write").mock(
+        return_value=_door("Proposal id: x", proposal={"id": PROPOSAL, "content_hash": HASH})
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").mock(
+        return_value=httpx.Response(200, json=_staged_proposal())
+    )
+
+    result = _invoke_create("--parent", "Gout Flares Competitive Landscape")
+
+    assert result.exit_code == 0, result.output
+    assert _bodies(write)[0]["parent"] == parent_id
 
 
 @respx.mock
@@ -304,6 +483,7 @@ def test_rows_attribute_asks_for_the_exact_name_first() -> None:
     assert result.exit_code == 0, result.output
     assert [body.get("match") for body in _bodies(route)] == ["exact"]
     assert "115 of 150" in result.output
+    assert "No field is named exactly" not in result.stderr
 
 
 @respx.mock
@@ -319,8 +499,10 @@ def test_rows_attribute_falls_back_to_the_default_match_when_no_field_has_that_n
 
     assert result.exit_code == 0, result.output
     assert [body.get("match") for body in _bodies(route)] == ["exact", None]
-    assert "115 of 150" in result.output
+    assert "115 of 150" in result.stdout
     assert "0 rows" not in result.output
+    # The wider match is said, on stderr, so the reader knows the name was not exact.
+    assert "No field is named exactly 'Enrolment'" in result.stderr
 
 
 @respx.mock
@@ -356,7 +538,7 @@ def test_rows_view_is_checked() -> None:
 
 
 @respx.mock
-def test_entities_piped_leads_with_the_count_per_type() -> None:
+def test_entities_piped_counts_go_to_stderr_and_stdout_stays_tsv() -> None:
     pages = [
         {"id": "p1", "title": "Ana Ruiz", "page_type": "person"},
         {"id": "p2", "title": "Ashford Synthesis", "page_type": "organization"},
@@ -369,5 +551,7 @@ def test_entities_piped_leads_with_the_count_per_type() -> None:
     result = CliRunner().invoke(app, ["kb", "entities", "-P", PROJECT])
 
     assert result.exit_code == 0, result.output
-    assert result.stdout.splitlines()[0] == "Types: organization 2  person 1"
-    assert "Ashford Synthesis" in result.stdout
+    # The counts go to stderr; stdout stays one TSV line per page for cut and read.
+    assert "Types: organization 2  person 1" in result.stderr
+    assert "Types:" not in result.stdout
+    assert [line.split("\t")[0] for line in result.stdout.splitlines()] == ["p1", "p2", "p3"]

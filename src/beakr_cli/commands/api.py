@@ -130,10 +130,22 @@ def _option(
     return click.Option(
         [flag, *aliases, dest],
         type=kind,
+        # ``-P`` on a ``project_id`` takes a project name or slug, as it does on
+        # every other command; the Knowledge door's ``scope`` reads names itself.
+        callback=_project_id_callback if aliases and field["name"] == "project_id" else None,
         multiple=bool(field.get("multiple")),
         required=required and not body,
         help=help_text,
     )
+
+
+def _project_id_callback(ctx: click.Context, param: click.Parameter, value: Any) -> Any:
+    """A project id, slug or name as the project's id (``project_ref``)."""
+    if not value:
+        return value
+    from beakr_cli.project_ref import resolve_project_ref
+
+    return resolve_project_ref(str(value), param_hint="-P/--project")
 
 
 def _read_data(value: str | None) -> Any:

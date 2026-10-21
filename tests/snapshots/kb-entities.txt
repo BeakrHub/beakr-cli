@@ -68,8 +68,7 @@ $ beakr kb entities --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/knowledge/wiki/pages?limit=200&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&sort_by=title
 [exit 0]
 --- stdout
-Types: project 1  decision 1
 9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41	Project Helios	type=project	rev=7
 5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62	Decision: Helios Lead Selection	type=decision	rev=2
 --- stderr
-
+Types: project 1  decision 1
