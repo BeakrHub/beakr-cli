@@ -361,13 +361,17 @@ graph (links, hover, timeline), a database (`kb rows`) or by meaning (`kb
 sections`). `kb rows` is every card's rows as one table; each row shows its
 entity (card title), entity_type (page type), the field, the value (or to),
 When and sources, and the header names the table. `--match exact|similar|meaning`
-sets how `--attribute` finds a field (meaning, the default, also takes the
-closest name by meaning where the rows index is on). Writes stage a proposal
+sets how `--attribute` finds a field. Without `--match`, a field with exactly
+that name wins; when none has it, the default match also takes names holding
+its words and the closest name by meaning (where the rows index is on).
+`--view conflicts` lists one card stating different values for a field at the
+same When; `--view fields` lists the field names. Writes stage a proposal
 (or apply at once when your auto-approve is on):
 
 ```bash
 beakr kb rows --table facts --entity "Stripe" --current-only
 beakr kb rows --table facts --type matter --attribute "start date" --match similar
+beakr kb rows --table facts --view conflicts
 # where enabled: one SELECT over every card's rows, parsed (never run as SQL)
 beakr kb query "SELECT value, COUNT(DISTINCT entity) AS cards FROM facts AS OF CURRENT_DATE WHERE entity_type = 'matter' AND field = 'Current status' GROUP BY value ORDER BY cards DESC"
 beakr kb add-fact "Stripe" --attribute "contract renewal" --value "2027-01-31" \
@@ -626,7 +630,7 @@ beakr kb log
 beakr research "what's our deploy process?"
 
 # Propose wiki writes for review
-beakr kb propose create --project <project-id> --title "API Design" --file api-design.md
+beakr kb propose create --project <project-id> --title "API Design" --sections @sections.json
 beakr kb propose create --mine --title "Scratch Note" --content "Personal note"
 beakr kb propose edit --project <project-id> "API Design" --patches @patches.json
 beakr kb propose edit --project <project-id> "Launch Plan" --file launch.md --sections @sections.json
@@ -641,17 +645,24 @@ beakr kb proposals accept <proposal-id> --reviewed-hash <content-hash>
 beakr kb ls --json
 ```
 
-`--sections` accepts a JSON array with section IDs, optional event dates, and
-citations. Each section ID should match a `<!-- sec:ID -->` marker in the page
-content. Event dates should be full ISO dates like `2026-04-01`; use
+For `kb propose create`, `--sections` is the page: a JSON array of
+`{title, body, citations?, event_start?, event_end?, date_precision?}` objects.
+Beakr writes the `<!-- sec:ID -->` markers and section ids, so do not author
+them. `--content` alone stages one markdown text as given; with `--sections`
+entries that have no body, `--content` is the body of the one section.
+Event dates should be full ISO dates like `2026-04-01`; use
 `date_precision` (`day`, `month`, `quarter`, `year`, or `approx`) to express
 the intended precision. Put inline citation tokens like `{{source_type:source_id}}`
-or `{{!source_type:source_id}}` directly in the markdown after every factual
+or `{{!source_type:source_id}}` directly in a body after every factual
 claim, table row/value, date, title, and relationship, then use the same keys in
-`sections[].citations` with `stance` (`support`, `qualifies`, or `contradicts`)
-so section provenance can roll up the inline citations. The CLI and MCP tools
-preflight-check that section IDs match `<!-- sec:ID -->` markers, event dates are
-valid, inline tokens are well formed, and citation keys match the inline tokens.
+that section's `citations` with `stance` (`support`, `qualifies`, or
+`contradicts`; `supports`, `qualify` and `contradict` are read as those).
+Beakr checks the citations and reports a refusal once.
+
+For `kb propose edit` with `--content`, `--sections` annotates the content's
+existing sections: each entry's `id` matches a `<!-- sec:ID -->` marker in it,
+and the CLI preflight-checks that ids match markers, event dates are valid,
+inline tokens are well formed, and citation keys match the inline tokens.
 Citations can reference existing Beakr sources from `beakr kb sources`,
 external identifiers, or inline agent/user-supplied
 context. To cite the current session or another source that is not in the wiki

@@ -9,11 +9,16 @@ from itertools import islice
 from pathlib import Path
 
 import typer
-from beakr_sdk.errors import NotFoundError
+from beakr_sdk.errors import BeakrError, NotFoundError
 from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
-from beakr_cli.citations import CitationValidationError, validate_proposal_sections
+from beakr_cli.citations import (
+    SECTION_MARKER_RE,
+    CitationValidationError,
+    normalize_stances,
+    validate_proposal_sections,
+)
 from beakr_cli.cited_answer import print_research_result, research_lines
 from beakr_cli.compact import cell
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
@@ -63,6 +68,17 @@ _sections_opt = typer.Option(
     help=(
         "Section metadata JSON array, or @path. Include event_start/event_end/date_precision "
         "and citations matching inline tokens like {{source_type:source_id}} in content."
+    ),
+)
+_page_sections_opt = typer.Option(
+    None,
+    "--sections",
+    help=(
+        "The page: a JSON array (or @path) of {title, body, citations?, event_start?, "
+        "event_end?, date_precision?}. Beakr writes the section markers and ids. Cite a "
+        "claim in a body with a {{key}} token its section's citations declare ({key, "
+        "source_type, source_title, stance: support|qualifies|contradicts, meta: {excerpt}}), "
+        "or with the reference a read prints (memo.pdf › p. 7)."
     ),
 )
 
@@ -846,16 +862,41 @@ def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
         console.print(f"Content hash: {proposal['content_hash']}", markup=False)
 
 
-def _accept_created_proposal(proposal: dict, *, accept: bool, yes: bool) -> None:
+def _accept_created_proposal(
+    proposal: dict, *, accept: bool, yes: bool, auto_approve: bool = False
+) -> None:
     _print_proposal(proposal)
     if not accept:
         return
     # The proposal exists either way: a "no" leaves it pending, not failed.
-    if not confirmed("Accept and apply this proposal?", yes):
+    # Auto-approve is the person's own standing yes, so it is not asked again.
+    if not auto_approve and not confirmed("Accept and apply this proposal?", yes):
         return
     # Bound to the proposal this command created and just showed.
-    result = _accept_bound(proposal["id"], proposal.get("content_hash"))
+    result = _accept_created(proposal)
     console.print(f"Accepted proposal {result.get('proposal_id', proposal['id'])}.", markup=False)
+
+
+def _accept_created(proposal: dict) -> dict:
+    """Accept the proposal this command staged; one auto-approve already applied is done.
+
+    A write through the Knowledge door is applied by the owner's auto-approve
+    worker within seconds, so ``--accept`` races it: the worker winning left the
+    accept refused ("Proposal is accepted, not pending") and the command exiting
+    1 though the page existed. An accepted proposal is the outcome asked for.
+    """
+    proposal_id = str(proposal["id"])
+    applied = {"status": "accepted", "proposal_id": proposal_id, "applied_by": "auto-approve"}
+    if proposal.get("status") == "accepted":
+        return applied
+    try:
+        return _accept_bound(proposal_id, proposal.get("content_hash"))
+    except BeakrError:
+        with get_sdk() as sdk:
+            current = sdk.knowledge.proposals.show(proposal_id)
+        if isinstance(current, dict) and current.get("status") == "accepted":
+            return applied
+        raise
 
 
 def _accept_bound(proposal_id: str, reviewed_hash: str | None) -> dict:
@@ -872,20 +913,27 @@ def _accept_bound(proposal_id: str, reviewed_hash: str | None) -> dict:
         raise typer.Exit(EXIT_USAGE) from refused
 
 
-def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool) -> None:
+def _finish_proposal(
+    proposal: dict, *, accept: bool, yes: bool, json_out: bool, auto_approve: bool = False
+) -> None:
     """Show (or print as JSON) a created proposal and accept it when asked.
 
     ``--accept --yes`` accepts in every output mode. JSON and piped output used
     to skip the accept step entirely, so a CI job asking for ``--accept --yes``
     left the proposal pending and still exited 0. Without ``--yes`` there is no
     one to confirm in those modes, so ``--accept`` alone is refused rather than
-    ignored.
+    ignored. ``auto_approve`` (the write's reply said the owner's auto-approve
+    applies it) needs no confirmation and no accept hint.
     """
     if output_mode(json_out) == "human":
-        _accept_created_proposal(proposal, accept=accept, yes=yes)
+        _accept_created_proposal(proposal, accept=accept, yes=yes, auto_approve=auto_approve)
         return
-    accept_hint = f"beakr kb proposals accept {proposal['id']}"
-    if accept and not yes:
+    accept_hint = (
+        f"auto-approve applies it; confirm with beakr kb proposals show {proposal['id']}"
+        if auto_approve
+        else f"beakr kb proposals accept {proposal['id']}"
+    )
+    if accept and not yes and not auto_approve:
         machine_output(proposal, json_out=json_out, hint=accept_hint)
         err_console.print(
             "Not accepted: --accept needs --yes when output is JSON or piped. "
@@ -895,7 +943,7 @@ def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool)
         raise typer.Exit(1)
     if accept:
         # The proposal this command just created: what the caller itself submitted.
-        result = _accept_bound(proposal["id"], proposal.get("content_hash"))
+        result = _accept_created(proposal)
         # The proposal as it stands now: the create's own "pending" beside
         # accepted=true read as though the accept had not taken.
         status = (result or {}).get("status") or "accepted"
@@ -915,11 +963,21 @@ def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool)
 @propose_app.command("create")
 def propose_create(
     title: str = typer.Option(..., "--title", "-t", help="New page title."),
-    content: str | None = typer.Option(None, "--content", "-c", help="New page markdown."),
-    file: Path | None = typer.Option(None, "--file", "-f", help="Read page markdown from file."),
-    page_type: str = typer.Option("topic", "--type", help="Page type."),
-    summary: str = typer.Option("", "--summary", help="Proposal summary."),
-    sections: str | None = _sections_opt,
+    sections: str | None = _page_sections_opt,
+    content: str | None = typer.Option(
+        None,
+        "--content",
+        "-c",
+        help="The page as one markdown text, instead of --sections.",
+    ),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Read --content from a file."),
+    page_type: str | None = typer.Option(
+        None, "--type", help="Page type (default: Beakr's choice; topic for --content)."
+    ),
+    summary: str = typer.Option("", "--summary", help="What the page is about, in one line."),
+    rationale: str | None = typer.Option(
+        None, "--rationale", help="Why this page should exist (default: the summary)."
+    ),
     parent: str | None = typer.Option(None, "--parent", help="Parent page title or UUID."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
@@ -927,22 +985,154 @@ def propose_create(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation with --accept."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """Propose creating a wiki page."""
-    page_content = _read_content_arg(content, file)
-    section_data = _load_sections_arg(sections)
+    """Propose creating a wiki page.
+
+    Give the page as --sections, a list of {title, body} objects, and Beakr
+    writes the section markers and ids (the knowledge_base_write `new` action).
+    --content alone stages one markdown text as it is; with --sections that
+    carry no body, --content is the body of their one section.
+    """
+    section_data = normalize_stances(_load_sections_arg(sections))
+    scope = _proposal_scope(project, mine=mine)
+    page_content = _read_content_arg(content, file) if (content or file) else None
+    if page_content is not None and section_data and not _marked_sections(section_data):
+        section_data = _content_as_section(page_content, section_data)
+        page_content = None
+    if page_content is None:
+        if not section_data:
+            err_console.print(
+                "Give the page as --sections [{title, body, citations?}], or --content/--file.",
+                markup=False,
+            )
+            raise typer.Exit(EXIT_USAGE)
+        proposal, reply = _stage_new_page(
+            title=title,
+            sections=section_data,
+            page_type=page_type,
+            summary=summary,
+            rationale=rationale or summary or f"Create the page {title}.",
+            # Resolved first: the door puts a page whose parent it cannot find
+            # at the root, where the older route answered 404 for a typo.
+            parent=str(_resolve_page(parent, project=scope["project_id"])["id"])
+            if parent
+            else None,
+            scope=scope["project_id"],
+            json_out=json_out,
+        )
+        if proposal is not None:
+            _finish_proposal(
+                proposal,
+                accept=accept,
+                yes=yes,
+                json_out=json_out,
+                auto_approve=_AUTO_APPROVE_REPLY in reply,
+            )
+        return
+    # The older shape: markdown whose <!-- sec:ID --> markers --sections annotates.
     _validate_sections_arg(page_content, section_data, require_content=True)
     body = {
         "action": "create",
         "title": title,
         "content": page_content,
-        "page_type": page_type,
+        "page_type": page_type or "topic",
         "summary": summary,
         "sections": section_data,
         "parent": parent,
-        **_proposal_scope(project, mine=mine),
+        "rationale": rationale,
+        **scope,
     }
     proposal = _create_proposal(body)
     _finish_proposal(proposal, accept=accept, yes=yes, json_out=json_out)
+
+
+def _marked_sections(sections: list[dict]) -> bool:
+    """Whether ``sections`` annotate marked content (each names its marker's id)."""
+    return any(isinstance(section, dict) and section.get("id") for section in sections)
+
+
+def _content_as_section(content: str, sections: list[dict]) -> list[dict]:
+    """``--content`` as the body of the one ``--sections`` entry that has none.
+
+    So ``--content "... {{conversation:x}}" --sections '[{"title": ..., "citations":
+    [...]}]'`` stages a one-section page without the caller writing a marker.
+    Content that already has markers, or several sections, is refused here
+    with one message rather than staged as a guess.
+    """
+    if SECTION_MARKER_RE.search(content):
+        _usage_error(
+            "--content has <!-- sec:ID --> markers, so each --sections entry needs its id. "
+            "Or give the page as --sections [{title, body}] alone and Beakr writes the markers."
+        )
+    if len(sections) != 1 or not isinstance(sections[0], dict) or sections[0].get("body"):
+        _usage_error(
+            "With --content, give one --sections entry without a body (its title and "
+            "citations), or give the whole page as --sections [{title, body}] alone."
+        )
+    return [{**sections[0], "body": content}]
+
+
+def _usage_error(message: str) -> None:
+    err_console.print(message, markup=False)
+    raise typer.Exit(EXIT_USAGE)
+
+
+#: The phrase the door's reply opens its auto-approve note with: the owner's
+#: setting applies the proposal, so no one should be told to accept it.
+_AUTO_APPROVE_REPLY = "Auto-approve is on"
+
+
+def _stage_new_page(
+    *,
+    title: str,
+    sections: list[dict],
+    page_type: str | None,
+    summary: str,
+    rationale: str,
+    parent: str | None,
+    scope: str,
+    json_out: bool,
+) -> tuple[dict | None, str]:
+    """Stage a new page from its sections: the proposal as ``show`` reads it, and the reply.
+
+    Through the Knowledge write door (``new``), where Beakr writes the section
+    markers and ids, lays a new card out as a card and checks the citations:
+    a refusal is the engine's, reported once by the root error handler.
+
+    The door's reply text is printed (on stderr when output is piped or JSON,
+    so stdout stays the proposal): it says when the owner's auto-approve
+    applies the proposal, and names what a reviewer should know -- citations
+    still owed, a page with a matching title, the page type used in place of
+    the one asked for. An auto-approved write still answers its proposal's id,
+    which is read back so ``--accept`` and the content hash work as for any
+    proposal. A reply with no proposal at all is printed as the door answered.
+    """
+    with get_sdk() as sdk:
+        result = sdk.knowledge.write(
+            "new",
+            title=title,
+            sections=sections,
+            page_type=page_type,
+            summary=summary or None,
+            parent=parent,
+            rationale=rationale,
+            scope=scope,
+        )
+        reply = result_text(result) if isinstance(result, dict) else str(result or "")
+        staged = result.get("proposal") if isinstance(result, dict) else None
+        proposal = (
+            sdk.knowledge.proposals.show(str(staged["id"]))
+            if isinstance(staged, dict) and staged.get("id")
+            else None
+        )
+    if proposal is None:
+        if not machine_output(result, json_out=json_out, lines=lambda r: reply.splitlines()):
+            console.print(reply, markup=False)
+        return None, reply
+    if reply:
+        (console if output_mode(json_out) == "human" else err_console).print(
+            reply, markup=False, highlight=False
+        )
+    return proposal, reply
 
 
 @propose_app.command("edit")
@@ -973,7 +1163,7 @@ def propose_edit(
     if patches and (content or file):
         err_console.print("Use either --patches or --content/--file, not both.")
         raise typer.Exit(1)
-    section_data = _load_sections_arg(sections)
+    section_data = normalize_stances(_load_sections_arg(sections))
     body = {
         "action": "edit",
         "page": page,
