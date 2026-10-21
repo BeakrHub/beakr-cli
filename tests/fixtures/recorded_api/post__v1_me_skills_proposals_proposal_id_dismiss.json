@@ -1,0 +1,10 @@
+{
+  "operation": "POST /v1/me/skills/proposals/{proposal_id}/dismiss",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "status": "dismissed",
+    "proposal_id": "6f8a0c2e-4b6d-4f8a-9c1e-3b5d7f9a1c3e"
+  }
+}

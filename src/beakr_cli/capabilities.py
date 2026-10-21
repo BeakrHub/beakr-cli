@@ -66,7 +66,7 @@ AREAS: tuple[tuple[str, re.Pattern[str], tuple[str, str] | None], ...] = (
         ("GET", "/v1/auth/end-user-tokens"),
     ),
     ("integrations", re.compile(r"^/v1/integrations(/|$)"), ("GET", "/v1/integrations")),
-    ("skills", re.compile(r"^/v1/me/skills(/|$)"), None),
+    ("skills", re.compile(r"^/v1/(me/)?skills(/|$)"), ("GET", "/v1/skills")),
     ("Knowledge statistics", re.compile(r"^/v1/knowledge/stats(/|$)"), None),
     ("the Knowledge graph", re.compile(r"^/v1/knowledge/wiki/graph(/|$)"), None),
     ("Knowledge profiles", re.compile(r"^/v1/knowledge/profiles(/|$)"), None),

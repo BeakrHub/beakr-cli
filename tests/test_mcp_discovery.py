@@ -186,7 +186,7 @@ async def test_a_route_the_installation_lacks_says_so_and_leaves_the_listing() -
             changes.append(message.root.method)
 
     with respx.mock:
-        respx.get(f"{API}/v1/me/skills/library").respond(404, json={"detail": "Not Found"})
+        respx.get(f"{API}/v1/skills").respond(404, json={"detail": "Not Found"})
         session, _, close = await _session(handler)
         try:
             result = await session.call_tool("skills", {})

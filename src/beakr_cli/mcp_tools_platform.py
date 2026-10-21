@@ -165,8 +165,8 @@ async def skills(skill: str = "", cursor: str = "", limit: int = MAX_LIST_ITEMS)
     """
     if not skill:
         page = await call_api(
-            lambda sdk: sdk.private_api.skills.list_library_skills(
-                cursor=_cursor(cursor), limit=_page_size(limit)
+            lambda sdk: sdk.api.skills.list_skills(
+                installed=True, cursor=_cursor(cursor), limit=_page_size(limit)
             )
         )
         rows, has_more, next_cursor = _page_of(page, "data", "skills")
@@ -182,8 +182,8 @@ async def skills(skill: str = "", cursor: str = "", limit: int = MAX_LIST_ITEMS)
     page_cursor: str | None = None
     for _ in range(_SKILL_LOOKUP_PAGES):
         page = await call_api(
-            lambda sdk, c=page_cursor: sdk.private_api.skills.list_library_skills(
-                cursor=c, limit=MAX_LIST_ITEMS
+            lambda sdk, c=page_cursor: sdk.api.skills.list_skills(
+                installed=True, cursor=c, limit=MAX_LIST_ITEMS
             )
         )
         rows, has_more, page_cursor = _page_of(page, "data", "skills")
