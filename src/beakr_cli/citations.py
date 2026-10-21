@@ -7,6 +7,19 @@ from datetime import date
 
 INLINE_SOURCE_TYPES = {"conversation", "agent_note", "user_note"}
 VALID_STANCES = {"support", "contradicts", "qualifies"}
+#: Other spellings of a stance, as people write them ("supports" in prose), and
+#: the stance each one means. The engine stores only the three above.
+STANCE_ALIASES = {
+    "supports": "support",
+    "supported": "support",
+    "supporting": "support",
+    "contradict": "contradicts",
+    "contradicted": "contradicts",
+    "contradicting": "contradicts",
+    "qualify": "qualifies",
+    "qualified": "qualifies",
+    "qualifying": "qualifies",
+}
 VALID_DATE_PRECISIONS = {"day", "month", "quarter", "year", "approx"}
 
 CITATION_KEY_RE = re.compile(r"^[a-z_]+:[a-zA-Z0-9_.:/-]+$")
@@ -62,6 +75,48 @@ def _citation_key(citation: dict) -> str:
     return ""
 
 
+def canonical_stance(stance: object) -> object:
+    """``stance`` as the engine spells it: ``supports`` is ``support``, and so on.
+
+    A value that is no known spelling is returned unchanged, for the validator
+    (or the engine) to refuse by name.
+    """
+    if not isinstance(stance, str):
+        return stance
+    folded = stance.strip().lower()
+    if folded in VALID_STANCES:
+        return folded
+    return STANCE_ALIASES.get(folded, stance)
+
+
+def normalize_stances(sections: list) -> list:
+    """``sections`` with every citation's stance in its canonical spelling.
+
+    Returns new section and citation dicts; anything that is not one is kept as
+    it is, for the validator to report.
+    """
+    if not isinstance(sections, list):
+        return sections
+    normalized: list = []
+    for section in sections:
+        citations = section.get("citations") if isinstance(section, dict) else None
+        if not isinstance(citations, list):
+            normalized.append(section)
+            continue
+        normalized.append(
+            {
+                **section,
+                "citations": [
+                    {**citation, "stance": canonical_stance(citation["stance"])}
+                    if isinstance(citation, dict) and "stance" in citation
+                    else citation
+                    for citation in citations
+                ],
+            }
+        )
+    return normalized
+
+
 def _parse_iso_date(value: object, field: str, section_id: str, errors: list[str]) -> date | None:
     if not value:
         return None
@@ -112,6 +167,10 @@ def validate_proposal_sections(
 
     seen_section_ids: set[str] = set()
     citation_keys_by_section: dict[str, set[str]] = {}
+    # A section without an id cannot be matched to its marker, so the inline
+    # cross-check below would report its citations as "missing from sections"
+    # although they are declared: one error (the id) is the true one.
+    sections_without_id = False
 
     for sec_index, section in enumerate(sections):
         if not isinstance(section, dict):
@@ -122,6 +181,7 @@ def validate_proposal_sections(
         label = f"sections[{sec_index}]"
         if not section_id:
             errors.append(f"{label}: id is required.")
+            sections_without_id = True
             continue
         label = f"section {section_id}"
         if section_id in seen_section_ids:
@@ -173,7 +233,7 @@ def validate_proposal_sections(
             else:
                 errors.append(f"{cit_label}: provide key or source_type plus source_id.")
 
-            stance = str(citation.get("stance") or "support")
+            stance = canonical_stance(citation.get("stance") or "support")
             if stance not in VALID_STANCES:
                 allowed = ", ".join(sorted(VALID_STANCES))
                 errors.append(f"{cit_label}: stance must be one of {allowed}.")
@@ -196,7 +256,7 @@ def validate_proposal_sections(
 
         citation_keys_by_section[section_id] = citation_keys
 
-    if require_content:
+    if require_content and not sections_without_id:
         for section_id, inline_keys in inline_keys_by_section.items():
             declared_keys = citation_keys_by_section.get(section_id, set())
             missing = inline_keys - declared_keys

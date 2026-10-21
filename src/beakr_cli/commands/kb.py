@@ -13,7 +13,12 @@ from beakr_sdk.errors import NotFoundError
 from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
-from beakr_cli.citations import CitationValidationError, validate_proposal_sections
+from beakr_cli.citations import (
+    SECTION_MARKER_RE,
+    CitationValidationError,
+    normalize_stances,
+    validate_proposal_sections,
+)
 from beakr_cli.cited_answer import print_research_result, research_lines
 from beakr_cli.compact import cell
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
@@ -63,6 +68,17 @@ _sections_opt = typer.Option(
     help=(
         "Section metadata JSON array, or @path. Include event_start/event_end/date_precision "
         "and citations matching inline tokens like {{source_type:source_id}} in content."
+    ),
+)
+_page_sections_opt = typer.Option(
+    None,
+    "--sections",
+    help=(
+        "The page: a JSON array (or @path) of {title, body, citations?, event_start?, "
+        "event_end?, date_precision?}. Beakr writes the section markers and ids. Cite a "
+        "claim in a body with a {{key}} token its section's citations declare ({key, "
+        "source_type, source_title, stance: support|qualifies|contradicts, meta: {excerpt}}), "
+        "or with the reference a read prints (memo.pdf › p. 7)."
     ),
 )
 
@@ -915,11 +931,21 @@ def _finish_proposal(proposal: dict, *, accept: bool, yes: bool, json_out: bool)
 @propose_app.command("create")
 def propose_create(
     title: str = typer.Option(..., "--title", "-t", help="New page title."),
-    content: str | None = typer.Option(None, "--content", "-c", help="New page markdown."),
-    file: Path | None = typer.Option(None, "--file", "-f", help="Read page markdown from file."),
-    page_type: str = typer.Option("topic", "--type", help="Page type."),
-    summary: str = typer.Option("", "--summary", help="Proposal summary."),
-    sections: str | None = _sections_opt,
+    sections: str | None = _page_sections_opt,
+    content: str | None = typer.Option(
+        None,
+        "--content",
+        "-c",
+        help="The page as one markdown text, instead of --sections.",
+    ),
+    file: Path | None = typer.Option(None, "--file", "-f", help="Read --content from a file."),
+    page_type: str | None = typer.Option(
+        None, "--type", help="Page type (default: Beakr's choice; topic for --content)."
+    ),
+    summary: str = typer.Option("", "--summary", help="What the page is about, in one line."),
+    rationale: str | None = typer.Option(
+        None, "--rationale", help="Why this page should exist (default: the summary)."
+    ),
     parent: str | None = typer.Option(None, "--parent", help="Parent page title or UUID."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
@@ -927,22 +953,123 @@ def propose_create(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation with --accept."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """Propose creating a wiki page."""
-    page_content = _read_content_arg(content, file)
-    section_data = _load_sections_arg(sections)
+    """Propose creating a wiki page.
+
+    Give the page as --sections, a list of {title, body} objects, and Beakr
+    writes the section markers and ids (the knowledge_base_write `new` action).
+    --content alone stages one markdown text as it is; with --sections that
+    carry no body, --content is the body of their one section.
+    """
+    section_data = normalize_stances(_load_sections_arg(sections))
+    scope = _proposal_scope(project, mine=mine)
+    page_content = _read_content_arg(content, file) if (content or file) else None
+    if page_content is not None and section_data and not _marked_sections(section_data):
+        section_data = _content_as_section(page_content, section_data)
+        page_content = None
+    if page_content is None:
+        if not section_data:
+            err_console.print(
+                "Give the page as --sections [{title, body, citations?}], or --content/--file.",
+                markup=False,
+            )
+            raise typer.Exit(EXIT_USAGE)
+        proposal = _stage_new_page(
+            title=title,
+            sections=section_data,
+            page_type=page_type,
+            summary=summary,
+            rationale=rationale or summary or f"Create the page {title}.",
+            parent=parent,
+            scope=scope["project_id"],
+            json_out=json_out,
+        )
+        if proposal is not None:
+            _finish_proposal(proposal, accept=accept, yes=yes, json_out=json_out)
+        return
+    # The older shape: markdown whose <!-- sec:ID --> markers --sections annotates.
     _validate_sections_arg(page_content, section_data, require_content=True)
     body = {
         "action": "create",
         "title": title,
         "content": page_content,
-        "page_type": page_type,
+        "page_type": page_type or "topic",
         "summary": summary,
         "sections": section_data,
         "parent": parent,
-        **_proposal_scope(project, mine=mine),
+        "rationale": rationale,
+        **scope,
     }
     proposal = _create_proposal(body)
     _finish_proposal(proposal, accept=accept, yes=yes, json_out=json_out)
+
+
+def _marked_sections(sections: list[dict]) -> bool:
+    """Whether ``sections`` annotate marked content (each names its marker's id)."""
+    return any(isinstance(section, dict) and section.get("id") for section in sections)
+
+
+def _content_as_section(content: str, sections: list[dict]) -> list[dict]:
+    """``--content`` as the body of the one ``--sections`` entry that has none.
+
+    So ``--content "... {{conversation:x}}" --sections '[{"title": ..., "citations":
+    [...]}]'`` stages a one-section page without the caller writing a marker.
+    Content that already has markers, or several sections, is refused here
+    with one message rather than staged as a guess.
+    """
+    if SECTION_MARKER_RE.search(content):
+        _usage_error(
+            "--content has <!-- sec:ID --> markers, so each --sections entry needs its id. "
+            "Or give the page as --sections [{title, body}] alone and Beakr writes the markers."
+        )
+    if len(sections) != 1 or not isinstance(sections[0], dict) or sections[0].get("body"):
+        _usage_error(
+            "With --content, give one --sections entry without a body (its title and "
+            "citations), or give the whole page as --sections [{title, body}] alone."
+        )
+    return [{**sections[0], "body": content}]
+
+
+def _usage_error(message: str) -> None:
+    err_console.print(message, markup=False)
+    raise typer.Exit(EXIT_USAGE)
+
+
+def _stage_new_page(
+    *,
+    title: str,
+    sections: list[dict],
+    page_type: str | None,
+    summary: str,
+    rationale: str,
+    parent: str | None,
+    scope: str,
+    json_out: bool,
+) -> dict | None:
+    """Stage a new page from its sections and return the proposal as ``show`` reads it.
+
+    Through the Knowledge write door (``new``), where Beakr writes the section
+    markers and ids, lays a new card out as a card and checks the citations:
+    a refusal is the engine's, reported once by the root error handler. A
+    write that staged no proposal (auto-approve applied it) is printed as the
+    door answered and None returned.
+    """
+    with get_sdk() as sdk:
+        result = sdk.knowledge.write(
+            "new",
+            title=title,
+            sections=sections,
+            page_type=page_type,
+            summary=summary or None,
+            parent=parent,
+            rationale=rationale,
+            scope=scope,
+        )
+        staged = result.get("proposal") if isinstance(result, dict) else None
+        if isinstance(staged, dict) and staged.get("id"):
+            return sdk.knowledge.proposals.show(str(staged["id"]))
+    if not machine_output(result, json_out=json_out, lines=lambda r: result_text(r).splitlines()):
+        console.print(result_text(result), markup=False)
+    return None
 
 
 @propose_app.command("edit")
@@ -973,7 +1100,7 @@ def propose_edit(
     if patches and (content or file):
         err_console.print("Use either --patches or --content/--file, not both.")
         raise typer.Exit(1)
-    section_data = _load_sections_arg(sections)
+    section_data = normalize_stances(_load_sections_arg(sections))
     body = {
         "action": "edit",
         "page": page,

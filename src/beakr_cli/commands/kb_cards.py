@@ -25,6 +25,7 @@ from beakr_cli.sdk import get_sdk
 _FINDING_KINDS = ("result", "lesson", "decision", "question", "correction")
 _ROW_TABLES = ("facts", "connections", "findings")
 _MATCH_MODES = ("exact", "similar", "meaning")
+_ROW_VIEWS = ("values", "fields", "groups", "conflicts")
 _EDIT_TABLES = ("facts", "connections", "findings")
 
 _scope_opt = typer.Option(
@@ -175,8 +176,17 @@ def rows(
         "--match",
         help=(
             "How --attribute finds a field: exact (the name or an alias), similar (also "
-            "names holding its words) or meaning (default: also the closest by meaning, "
-            "where the rows index is on). Replies say which field was used."
+            "names holding its words) or meaning (also the closest by meaning, where the "
+            "rows index is on). Default: exact when a field has that name, else meaning. "
+            "Replies say which field was used."
+        ),
+    ),
+    view: str | None = typer.Option(
+        None,
+        "--view",
+        help=(
+            "values (default: the rows), fields (the field names and their counts), groups, "
+            "or conflicts (one card stating different values for a field at the same When)."
         ),
     ),
     query: str | None = typer.Option(None, "--query", "-q", help="Text filter."),
@@ -220,33 +230,52 @@ def rows(
     _choice(table, _ROW_TABLES, "--table")
     if match is not None:
         _choice(match, _MATCH_MODES, "--match")
+    if view is not None:
+        _choice(view, _ROW_VIEWS, "--view")
+    # The door's default match also takes names holding the attribute's words,
+    # so --attribute Enrollment answered "Enrollment target rationale" rows
+    # beside Enrollment's own (swarm 018). A field with exactly that name wins:
+    # the exact name is asked first, and the default match only when that
+    # answers no rows. --match similar or meaning keeps the wider reading.
+    exact_first = bool(attribute) and match is None and view in (None, "values", "conflicts")
+    arguments = {
+        "table": table,
+        "entity": entity,
+        "attribute": attribute,
+        "view": view,
+        "query": query,
+        "start_date": start,
+        "end_date": end,
+        "current_only": current_only or None,
+        "as_of": as_of,
+        "to": to,
+        "connected_to": connected_to,
+        "group_by": group_by,
+        "order_by": order_by,
+        "descending": descending or None,
+        "page_type": page_type,
+        "limit": limit,
+        "offset": offset,
+        "after_card": after_card,
+        "include_evidence": evidence or None,
+        "scope": _scope(scope),
+    }
     with get_sdk() as sdk:
         # The generic door call: the SDK's rows() predates to, connected_to, as_of
         # and group_by, and the door takes every rows argument by its tool name.
-        result = sdk.knowledge.command(
-            "rows",
-            table=table,
-            entity=entity,
-            attribute=attribute,
-            match=match,
-            query=query,
-            start_date=start,
-            end_date=end,
-            current_only=current_only or None,
-            as_of=as_of,
-            to=to,
-            connected_to=connected_to,
-            group_by=group_by,
-            order_by=order_by,
-            descending=descending or None,
-            page_type=page_type,
-            limit=limit,
-            offset=offset,
-            after_card=after_card,
-            include_evidence=evidence or None,
-            scope=_scope(scope),
-        )
+        result = sdk.knowledge.command("rows", match="exact" if exact_first else match, **arguments)
+        if exact_first and _no_rows(result):
+            result = sdk.knowledge.command("rows", **arguments)
     _print_result(result, json_out=json_out)
+
+
+def _no_rows(result: Any) -> bool:
+    """Whether a rows reply found nothing (the door's ``empty`` outcome)."""
+    if not isinstance(result, dict):
+        return False
+    outcome = result.get("outcome") if isinstance(result.get("outcome"), dict) else {}
+    coverage = result.get("coverage") if isinstance(result.get("coverage"), dict) else {}
+    return outcome.get("status") == "empty" or coverage.get("total") == 0
 
 
 def query(

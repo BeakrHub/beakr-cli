@@ -1460,6 +1460,26 @@ Each release lists the public API changes it supports, taken from the API change
   wrote `system:` (and an agent's prompt to a subagent `agent:`), not `user:`.
   `conversations import --file` sends `--summary` and `--compound`, and a
   refused import that would keep nothing names those flags and `--full-text`.
+- **`kb propose create` takes the page as sections.** `--sections` is the page,
+  `[{title, body, citations?}]`, staged through `POST /v1/knowledge/wiki/write`
+  `new`: Beakr writes the section markers and ids, and a refusal is the
+  engine's, printed once. With `--content` and one `--sections` entry that has
+  no body, the content is that section's body. `--content` alone is staged as
+  before. A `--sections` entry without an id is reported once, not again as
+  "inline citations missing from sections", and a citation's `stance` may be
+  written `supports`, `qualify` or `contradict`.
+- **`api knowledge run-wiki-write`.** The project is `-P`/`--project` as well
+  as `--scope` (and `-P`/`--project` set an operation's `project_id` across
+  `beakr api`). `--help` lists each action's fields (`flag`: page, concern,
+  reason, details?), and a write that staged a proposal names it on stderr
+  (`Proposal: <id>`) after the JSON.
+- **`kb rows`.** `--attribute` without `--match` answers the field with exactly
+  that name when one has it, and the wider default match only when none does
+  (`--attribute Enrollment` no longer adds "Enrollment target rationale").
+  `--view conflicts` lists one card stating different values for a field at
+  the same When; `--view fields` and `groups` are the door's other views.
+- **`kb entities` piped.** The count per type leads the output
+  (`Types: organization 6  person 4`), as it did on a terminal.
 
 ## Unreleased
 
