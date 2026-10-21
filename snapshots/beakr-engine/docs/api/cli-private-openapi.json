@@ -7376,6 +7376,16 @@
       },
       "description": "The request was refused; `error.code` says why."
      },
+     "503": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Browser sign-in is not configured on this server: `error.code` is `cli_sign_in_unavailable`, and `error.details.app_url` is this installation's web app base URL. Sign in with an API key instead."
+     },
      "5XX": {
       "content": {
        "application/json": {

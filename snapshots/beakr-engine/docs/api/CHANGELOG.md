@@ -11,11 +11,38 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=da99aff80a140bb0004d307dbd8bae5ffb32aa63b4f79d24c8641e3fa6ed0cfa changelog sha256=ddb74545df8dfb510be31f661bfa33b9199713692f7250fec77c45d464bfbe72 -->
+<!-- contract-stamp: public-openapi sha256=e22a17ec606346e5beb11b1201700891d05856581707bc73a90a26c3f6e90114 changelog sha256=0f24629a75c1a47d309660c7cd142edc1433b432a9bbd5074767971d55d77692 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- Source records (`sources` on `POST /v1/knowledge/wiki/command` reads and
+  `POST /v1/knowledge/wiki/write` results): an inline `conversation`,
+  `agent_note` or `user_note` citation written with an API credential carries
+  `filed_by`: the person's `user_name` (their display name when the record is
+  read, absent when they have none), the `agent`, `client` and `run` the
+  request declared, the `session` it sent in the new optional
+  `X-Beakr-Session` header (the client's own session id, attribution only),
+  and a `text` line. It never carries the person's id or email. The
+  citation's `meta.filed_by`, which `GET /v1/knowledge/wiki/pages/{page_id}/sources`
+  returns, holds the same fields and the person's `user_id`. Browser requests
+  may send `X-Beakr-Session`.
+- Proposals: a review flag (`POST /v1/knowledge/wiki/write` `flag`) names the
+  person and agent who filed it in `filed_by`, and stays visible to every
+  project member.
+- `GET /v1/knowledge/wiki/pages/by-title`: a title that names no page still
+  answers `404 not_found`, and `error.details.suggestions` now lists the closest
+  live page titles you can read (empty when none is close).
+
+- `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}` and
+  `DELETE /v1/labels/{label_id}/members/{user_id}`: removing the last owner
+  answers `409 last_owner` instead of `403`. The caller may manage the members;
+  another owner is needed first.
+
+- `DELETE /v1/conversations/{conversation_id}`: also deletes one of the caller's
+  own Beakr chats (a conversation of kind `ask_thread`) with its messages. It
+  answered `not_found` for them before. Another person's chat still answers
+  `not_found`.
 - Skills (`skills:read`, `skills:write`) join the documented API.
   `GET /v1/skills` lists every skill you can use or install: your own, your
   organization's, the built-in ones and public skills from anywhere, by name.

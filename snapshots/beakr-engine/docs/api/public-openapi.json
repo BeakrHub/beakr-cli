@@ -11024,7 +11024,7 @@
               }
             ],
             "default": null,
-            "description": "That person's display name or email.",
+            "description": "That person's display name; absent when they have none.",
             "title": "User Name"
           }
         },
@@ -13435,6 +13435,92 @@
         "title": "SourceExcerpt",
         "type": "object"
       },
+      "SourceFiledBy": {
+        "additionalProperties": true,
+        "description": "Who wrote an inline `conversation`, `agent_note` or `user_note` citation.",
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The agent the client declared (`X-Beakr-Agent`), e.g. `claude-code/2.1`.",
+            "title": "Agent"
+          },
+          "client": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The client that sent it (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.",
+            "title": "Client"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The run label the agent declared (`X-Beakr-Run`).",
+            "title": "Run"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The client's own session id, when it sent one (`X-Beakr-Session`).",
+            "title": "Session"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One line for a reader, e.g. \"Dana Reyes via claude-code/2.1 (beakr-mcp/0.4.0), run stdio:8d2a\".",
+            "title": "Text"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The display name, now, of the person the credential acted as; absent when they have none.",
+            "title": "User Name"
+          }
+        },
+        "title": "SourceFiledBy",
+        "type": "object"
+      },
       "SourceLocation": {
         "additionalProperties": true,
         "description": "Where a cited source lives, and where in it the cited passage sits.",
@@ -13706,6 +13792,18 @@
             "default": null,
             "description": "On a compact read: brief excerpts of this document's cited passages, each with its token and place.",
             "title": "Excerpts"
+          },
+          "filed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceFiledBy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On an inline citation of a caller's own conversation: the person, agent, client, run and session that wrote it."
           },
           "filename": {
             "anyOf": [
@@ -19672,7 +19770,7 @@
     },
     "/v1/conversations/{conversation_id}": {
       "delete": {
-        "description": "Delete one of the caller's imported conversations. Knowledge already compounded from it stays.",
+        "description": "Delete one of the caller's imported conversations, or one of their Beakr chats (kind `ask_thread`) with its messages. Knowledge already compounded from it stays.",
         "operationId": "delete_conversation_v1_conversations__conversation_id__delete",
         "parameters": [
           {
@@ -19726,7 +19824,7 @@
             "bearer": []
           }
         ],
-        "summary": "Delete an imported conversation",
+        "summary": "Delete a conversation",
         "tags": [
           "public",
           "conversations"
@@ -22032,7 +22130,7 @@
                     "type": "string"
                   },
                   "to": {
-                    "description": "rows, table connections: rows involving this page.",
+                    "description": "rows, table connections: rows pointing at this page.",
                     "type": "string"
                   },
                   "topic": {
@@ -23662,7 +23760,7 @@
                     "type": "string"
                   },
                   "merge_sections": {
-                    "description": "For merge: the ORDERED section list the surviving page should lead with, drawn from both pages -- e.g. [\"canonical:sec_overview\", \"duplicate:sec_findings\"]. Duplicate-sourced sections are moved across whole (prose, citations, dates and embeddings intact) before the duplicate is archived; canonical-sourced ones are only reordered. Sections you do not name are safe: an unnamed canonical section keeps its place after the listed ones, and an unnamed duplicate section is archived with its page. Moving a section preserves its verified citations; rewriting the same text onto the canonical does not.",
+                    "description": "For merge: the ORDERED section list the surviving page should lead with, drawn from both pages -- e.g. [\"canonical:sec_overview\", \"duplicate:sec_findings\"]. Duplicate-sourced sections are moved across whole (prose, citations, dates and embeddings intact) before the duplicate is archived; canonical-sourced ones are only reordered. Sections you do not name are safe: an unnamed canonical section keeps its place after the listed ones, and an unnamed duplicate section is archived with its page. Moving a section preserves its verified citations; rewriting the same text onto the canonical does not. Two map cards' rows are always combined.",
                     "items": {
                       "type": "string"
                     },
