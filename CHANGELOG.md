@@ -1406,6 +1406,24 @@ Each release lists the public API changes it supports, taken from the API change
 - **Removals.** Piped, `projects members rm` and `labels members rm` print
   `ID<TAB>removed=true|false` on stdout as `members rm` does. `labels members
   rm` and `labels projects rm` take `--yes` and, without a terminal, need it.
+- **Box parity in the stdio MCP server.** A result whose coverage names
+  `next_offset` or `next_cursor` reports `has_more: true` (as the hosted server
+  does). The server instructions name the `skills` tool only where the
+  installation lists it. `conversations_search` and `import_conversation` take a
+  project name as well as an id, and `import_conversation`'s refusal for an
+  import that keeps nothing asks for its own `summary`, not API fields it
+  lacks.
+- **Membership roles.** `beakr projects members add` sends no role unless
+  `--role` is given, so re-adding a member keeps their role (the server makes
+  someone new a member). Refusing to demote or remove the last owner
+  (`409 last_owner`, exit 5) says to make another member an owner first.
+- **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
+  prints the status after the accept (`status=accepted`), not the create's
+  `pending`.
+- **`beakr-sdk` with `NotProvidedError`.** The CLI is pinned to a `beakr-sdk`
+  that raises `NotProvidedError` (a `NotFoundError`) for a route the
+  installation lacks and redacts credentials from its errors; the CLI names the
+  area from it as before.
 - **Cite a conversation in a card row.** `kb add-fact`, `kb add-connection` and
   `kb add-finding` take `--cite-conversation LABEL --excerpt TEXT` (and
   `--source-title`): the row cites `{{conversation:LABEL}}`, declared as an
