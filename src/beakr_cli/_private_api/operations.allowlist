@@ -64,15 +64,6 @@ PATCH /v1/me/profile
 PATCH /v1/me/profile/claims/{claim_id}
 DELETE /v1/me/profile/claims/{claim_id}
 
-# Skills: the library, SKILL.md bundles (skill sync) and mined proposals.
-GET /v1/me/skills/library
-POST /v1/me/skills/import/bundle
-GET /v1/me/skills/{skill_id}/bundle
-PUT /v1/me/skills/{skill_id}/bundle
-PUT /v1/me/skills/{skill_id}/files/{file_path}
-GET /v1/me/skills/proposals
-POST /v1/me/skills/proposals/{proposal_id}/accept
-
 # Organization administration: credentials, audit trail, sign-in policy.
 GET /v1/organizations/{org_id}/audit
 GET /v1/organizations/{org_id}/auth-policy

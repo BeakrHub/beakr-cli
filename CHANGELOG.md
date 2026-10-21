@@ -4,7 +4,7 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-10-17)
+## beakr-cli 0.4.0 (2026-10-21)
 
 ### Changes
 
@@ -12,88 +12,87 @@ Each release lists the public API changes it supports, taken from the API change
   `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack` for one a
   person started by messaging Beakr in Slack.
+- Map card rows: a Facts or Connections row's `row_id` names the row with its
+  When, so a value a card states at two dates is two rows with two ids. On
+  `GET /v1/knowledge/wiki/pages/{page_id}`, `disputed_rows` lists each disputed
+  row under its id and under the id it had before. `edit_rows` on
+  `POST /v1/knowledge/wiki/write` names one of a value's dated rows with `when`
+  in `old_rows`; naming such a value without it is refused, listing its rows. A
+  finding `edit_rows` rewrites keeps its `about`, `finding_scope` and
+  `supersedes` unless the new row sets them.
+- `POST /v1/projects/{project_id}/members`: re-adding an existing member
+  without `role` keeps their role (`member` is the default for a new member
+  only), and giving the project's last owner another role answers
+  `409 last_owner` instead of applying it. The sole owner adding themselves at
+  the default role was demoted and could no longer manage members.
+- `POST /v1/knowledge/wiki/proposals`: an `edit` patch accepts
+  `op: "move_section"` with `section` and an optional `after` (the section to
+  place it after; omitted, it moves to the top of the page), as
+  `knowledge_base_write` does. It was refused with `422`.
+- `GET /v1/bulk/{batch_id}/status`: `summary.duplicates` counts files refused
+  because the same file was already uploaded. They are no longer counted in
+  `summary.failed`, so a batch whose only refusals are duplicates is
+  `completed`, and its `upload_batch` job (`GET /v1/jobs/{job_id}`) succeeds.
+  Each such file still reads `status: "index_failed"` with
+  `error_code: "duplicate"` and `duplicate_of`. The job's `progress.done` no
+  longer counts a skipped file twice.
+- Source records (`sources` on `POST /v1/knowledge/wiki/command` reads and
+  `POST /v1/knowledge/wiki/write` results): an inline `conversation`,
+  `agent_note` or `user_note` citation written with an API credential carries
+  `filed_by`: the person's `user_name` (their display name when the record is
+  read, absent when they have none), the `agent`, `client` and `run` the
+  request declared, the `session` it sent in the new optional
+  `X-Beakr-Session` header (the client's own session id, attribution only),
+  and a `text` line. It never carries the person's id or email. The
+  citation's `meta.filed_by`, which `GET /v1/knowledge/wiki/pages/{page_id}/sources`
+  returns, holds the same fields and the person's `user_id`. Browser requests
+  may send `X-Beakr-Session`.
+- Proposals: a review flag (`POST /v1/knowledge/wiki/write` `flag`) names the
+  person and agent who filed it in `filed_by`, and stays visible to every
+  project member.
+- `GET /v1/knowledge/wiki/pages/by-title`: a title that names no page still
+  answers `404 not_found`, and `error.details.suggestions` now lists the closest
+  live page titles you can read (empty when none is close).
+- `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}` and
+  `DELETE /v1/labels/{label_id}/members/{user_id}`: removing the last owner
+  answers `409 last_owner` instead of `403`. The caller may manage the members;
+  another owner is needed first.
+- `DELETE /v1/conversations/{conversation_id}`: also deletes one of the caller's
+  own Beakr chats (a conversation of kind `ask_thread`) with its messages. It
+  answered `not_found` for them before. Another person's chat still answers
+  `not_found`.
+- Skills (`skills:read`, `skills:write`) join the documented API.
+  `GET /v1/skills` lists every skill you can use or install: your own, your
+  organization's, the built-in ones and public skills from anywhere, by name.
+  Each skill carries `visibility` (`private`, `org`, `public`), `owner` (`me`,
+  `org`, `system`, `anyone`), `origin` (`created`, `mined`, `imported`,
+  `system`) and `installed`, and the list filters on each (repeat a parameter
+  for more than one value), on `search` and `domain`; `include_content=true`
+  adds each skill's `files` and caps a page at 25 skills. Retired skills are
+  not listed. `GET /v1/skills/{skill_id}` reads one skill by id or slug, with
+  `latest_revision`; a slug resolves to your own skill first, then a built-in,
+  then one you installed, then your organization's, and never to a skill from
+  another organization you have not installed. Only this read takes a slug.
+  `POST /v1/skills` creates a skill from a SKILL.md folder (`files`, path to
+  text), answers it as the read does, honours `Idempotency-Key` and answers
+  409 when a create running at the same time took the same slug.
+  `visibility=public` publishes a skill, every file included, to every Beakr
+  organization. `GET` and `PUT /v1/skills/{skill_id}/bundle` read and replace
+  its files (`files_sha256` is always present; send it back as
+  `expected_sha256`), `GET /v1/skills/{skill_id}/bundle.zip` downloads them as
+  a zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST`
+  and `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill
+  (an uninstalled skill can be installed again), and
+  `GET /v1/me/skills/proposals` with `POST .../accept` and `POST .../dismiss`
+  review the skills Beakr drafted from your work. A skill you wrote in another
+  organization answers 404 here, by id or slug, while it is not installed
+  here, and can be installed here only if it was installed here before.
+  `marketplace` is not given to a new skill as its slug.
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`
   and `delivery_error`. All are null for a link that was not sent.
 - Proposal `filed_by.run`: the description says what the label is for: writes
   that share it can be undone together.
-- MCP writes record the agent that made them: the stdio server sends the MCP
-  client's `initialize` name and version (`claude-code/2.1.283`) as
-  `X-Beakr-Agent`, so they no longer read as `beakr-mcp` with no agent.
-  `BEAKR_AGENT` still overrides it, to tell several agents under one key
-  apart; the CLI at a terminal declares no agent.
-- The MCP server lists every tool by default, so Claude Code (which calls
-  only listed tools) can call `documents`, `wiki_stats`, `wiki_graph`,
-  `get_profile`, the proposal tools, `conversations_search`,
-  `import_conversation`, `beakr_version` and `org_audit_log`.
-  `BEAKR_MCP_TOOLS=eager` keeps the small listing; there `discover_tools` adds
-  the tools it finds and the server sends `notifications/tools/list_changed`
-  (it now declares `tools.listChanged`).
-- The MCP `context` tool takes a project name as well as an id; a name was
-  refused with a bare "HTTP 422". A validation refusal now names each field
-  and the API's text for it.
-- On a self-hosted installation, tools for areas it leaves out are not listed
-  (read from its `/v1/public/openapi.json`, or from a call that meets a route
-  the server does not have), and commands for organization members, external
-  users, end-user tokens, service accounts, integrations and skills print
-  "This Beakr installation does not provide <area>." instead of a bare 404.
-  `beakr doctor` lists the areas the installation does not provide.
-- `beakr ask` lets the agent read Knowledge by default (`--no-knowledge` turns it
-  off); it answered "Knowledge is turned off for this message". `--mode` takes
-  only the server's modes (free, quick, deep, extreme, custom, auto, auto_free),
-  so a mode the server lacks, such as `fast`, is a usage error, not a 422.
-- `beakr kb rows`, `query`, `add-fact`, `add-connection`, `add-finding` and
-  `edit-rows` resolve a `--scope` slug or name to the project id like every
-  other project option.
-- `beakr kb cat` prints the page as the Knowledge door's `cat` renders it, with
-  each citation as a readable reference instead of a raw `{{artifact:...}}`
-  token; `--json` still prints the stored page and its sources. `--section-id`,
-  `--full` and `--source-offset` follow the continuation a cut read names.
-- `beakr kb proposals show` (and the review in `accept`) shows the payload as a
-  diff and labelled fields instead of JSON, with the content hash last.
-  `accept --reviewed-hash` needs no `--yes`: the reviewed hash is the
-  confirmation.
-- A label or Knowledge page that does not exist exits 4 (not found), like every
-  other missing object; `labels show` exited 2 and `kb cat` 1.
-- `beakr kb grep --after-title/--after-page-id`, `kb cat --lines` and `kb rows
-  --after-card` follow the continuations those reads name.
-- With `--json` (or `BEAKR_OUTPUT=json`), a failed command prints
-  `{"error": {"code", "message", "exit_code", ...}}` on stdout instead of plain
-  text only; `projects profile show` with no profile is such an error (exit 4).
-- `-P/--project` works on `kb rows`, `query`, `add-fact`, `add-connection`,
-  `add-finding`, `edit-rows` (`--scope`/`-s` still work), `kb proposals show`
-  and `projects members ls`.
-- `kb proposals ls` takes `--cursor` and names the next page; piped it lists
-  type, page and summary.
-- `kb proposals ls` and `show`, and the MCP `show_proposal`, say who filed each
-  proposal ("Filed by Dana Reyes via claude-code/2.1"); `ls --status` names
-  every status. `kb add-fact`, `add-connection`, `add-finding` and `edit-rows`
-  print the staged proposal's content hash under its id (`--json` carries the
-  whole `proposal`), and the MCP `knowledge_base_write` result prints it as the
-  hosted server does, for `accept_proposal`'s `reviewed_hash`.
-- Readable output: `runs show` prints the answer and its sources; piped
-  `conversations show` includes the messages; `kb log` without a page, `doctor`,
-  `hooks status`, `documents search`, `kb log PAGE` and `keys scopes` print
-  lines instead of field dumps; `kb search` snippets drop section markers and
-  citation tokens; `interviews link revoke --json` prints what it revoked.
-- `keys create` uses the web app URL the API reports (`app_url` on
-  `/v1/auth/config`) before a saved one, and
-  says when the address is only a guess (`BEAKR_APP_URL` overrides it).
-- `beakr projects members add` no longer offers `--type group`, which the server
-  refuses.
-- `beakr context --format json --out FILE` writes the JSON response; it wrote
-  the markdown.
-- Piped output prints an object with neither an id nor a name as `key=value`
-  columns instead of raw JSON.
-- `beakr conversations compound cancel ID` stops a queued or running compound
-  of an imported conversation; `beakr compound ID` resumes it. `conversations
-  show` reads a stopped one's status as `cancelled`.
-- `beakr projects profile show|set|edit`: read and set a project's Knowledge
-  profile. `set --file` replaces the whole profile from JSON or YAML and
-  refuses unknown fields; field flags (`--description`, `--goal`, `--focus`,
-  `--entity-type`, `--person`, `--organization`, `--topic`, `--guidance`)
-  change only those fields and create the profile when the project has none;
-  `edit` opens it as YAML in `$EDITOR`.
 - `POST /v1/knowledge/wiki/write` `new`: a `page_type` the project does not
   declare is written as the closest declared type when one answers to that
   name (its key, an alias or its label; `project` is `initiative`), and the
@@ -143,15 +142,6 @@ Each release lists the public API changes it supports, taken from the API change
   `PATCH` (the fields sent) need `kb:write` and the project's owners. A project
   with no profile answers 404 `knowledge_profile_not_found`. A
   project-restricted credential reaches its own projects' profiles.
-- `beakr interviews link ls` lists each interview's links with their link id,
-  who each is for and its status (the table, and one line per link for agents
-  and scripts); it listed interview ids only, which `show`, `send` and `revoke`
-  answered 404 for.
-- `beakr interviews link show`, `send` and `revoke` also take an interview id
-  when the interview has exactly one link, and name the links when it has more.
-- `beakr interviews link show` prints the write-up, the transcript and the
-  projects it was filed into; it printed only the status because the API
-  returns the write-up as an object.
 - `POST /v1/knowledge/wiki/command` `query`: `GROUP BY value` on `facts`
   counts each value of a cell listing several (`A; B`) in each value's group,
   as `rows` `group_by=value` does; a value repeated in one cell counts once.
@@ -1431,6 +1421,49 @@ Each release lists the public API changes it supports, taken from the API change
   list is keyed by document with every place cited in it, never by `{{key}}`
   tokens. `beakr research` prints a plain list of cited documents when the
   answer cites by reference, and a numbered one when an engine still numbers it.
+- **What a self-hosted installation leaves out, under `--json` too.** A
+  command for an area the installation does not provide prints
+  `{"error": {"code": "not_provided", "message": "This Beakr installation does
+  not provide skills.", ...}}` (exit 4) with `--json`, not the bare 404, and the
+  sentence names the area (`organization members` for `beakr members ls`),
+  never a route.
+- **Knowledge refusals read as refusals.** A refusal the Knowledge door
+  answers in its body prints its message and code without "HTTP 200", and one
+  of the arguments (`invalid_arguments`, for example a `--supersedes` that names
+  no finding) exits 2, as a usage error.
+- **Removals.** Piped, `projects members rm` and `labels members rm` print
+  `ID<TAB>removed=true|false` on stdout as `members rm` does. `labels members
+  rm` and `labels projects rm` take `--yes` and, without a terminal, need it.
+- **Box parity in the stdio MCP server.** A result whose coverage names
+  `next_offset` or `next_cursor` reports `has_more: true` (as the hosted server
+  does). The server instructions name the `skills` tool only where the
+  installation lists it. `conversations_search` and `import_conversation` take a
+  project name as well as an id, and `import_conversation`'s refusal for an
+  import that keeps nothing asks for its own `summary`, not API fields it
+  lacks.
+- **Membership roles.** `beakr projects members add` sends no role unless
+  `--role` is given, so re-adding a member keeps their role (the server makes
+  someone new a member). Refusing to demote or remove the last owner
+  (`409 last_owner`, exit 5) says to make another member an owner first.
+- **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
+  prints the status after the accept (`status=accepted`), not the create's
+  `pending`.
+- **`beakr-sdk` with `NotProvidedError`.** The CLI is pinned to a `beakr-sdk`
+  that raises `NotProvidedError` (a `NotFoundError`) for a route the
+  installation lacks, redacts credentials from its errors, sends no role from
+  `projects.add_member` unless one is given, keeps `filed_by` on source records
+  and counts an upload batch's duplicates apart from its failures; the CLI
+  names the area from `NotProvidedError` as before.
+- **Cite a conversation in a card row.** `kb add-fact`, `kb add-connection` and
+  `kb add-finding` take `--cite-conversation LABEL --excerpt TEXT` (and
+  `--source-title`): the row cites `{{conversation:LABEL}}`, declared as an
+  inline conversation citation with the words cited, as the MCP tools do.
+  `--evidence` is optional with it. `kb rows --to` is described as what it
+  returns: the rows pointing at the page.
+- **Conversations.** `beakr conversations show` labels a turn the agent host
+  wrote `system:` (and an agent's prompt to a subagent `agent:`), not `user:`.
+  `conversations import --file` sends `--summary` and `--compound`, and a
+  refused import that would keep nothing names those flags and `--full-text`.
 
 ## Unreleased
 

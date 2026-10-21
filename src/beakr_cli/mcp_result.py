@@ -115,8 +115,13 @@ def finish(result: Any, *, tool: str, cut_hint: str | None = None) -> dict[str, 
     text = _text_of(body.get("content"))
     coverage = dict(body.get("coverage") or {})
     coverage.setdefault("returned", None)
-    coverage.setdefault("has_more", False)
     coverage.setdefault("next_cursor", None)
+    # A window that says where the next one starts has more after it: a Knowledge
+    # read reports ``next_offset`` and no ``has_more``, which read as "no more".
+    coverage.setdefault(
+        "has_more",
+        coverage["next_cursor"] is not None or coverage.get("next_offset") is not None,
+    )
     coverage.setdefault("complete", not coverage["has_more"])
     hints = [str(hint) for hint in body.get("next") or []]
     limit = TEXT_LIMITS.get(tool, MAX_TEXT_CHARS)
