@@ -71,7 +71,6 @@ MAPPING: list[tuple[str, Callable[[PrivateBeakr], Any]]] = [
         "POST /v1/knowledge/profiles",
         lambda c: c.profile.create_profile(project_id="p1", goals=["Map it"]),
     ),
-    ("GET /v1/knowledge/profiles/org", lambda c: c.profile.org()),
     ("GET /v1/knowledge/profiles/project/{}", lambda c: c.profile.project("p1")),
     ("GET /v1/knowledge/stats", lambda c: c.knowledge.pages.stats()),
     ("GET /v1/knowledge/wiki/graph", lambda c: c.knowledge.pages.graph()),

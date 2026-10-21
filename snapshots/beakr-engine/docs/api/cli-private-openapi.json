@@ -1091,6 +1091,7 @@
     "type": "object"
    },
    "CoreOrganizationEntry": {
+    "additionalProperties": false,
     "description": "A key organization to track.",
     "properties": {
      "entity_id": {
@@ -1131,6 +1132,7 @@
     "type": "object"
    },
    "CorePersonEntry": {
+    "additionalProperties": false,
     "description": "A key person to track.",
     "properties": {
      "entity_id": {
@@ -1171,6 +1173,7 @@
     "type": "object"
    },
    "CoreTopicEntry": {
+    "additionalProperties": false,
     "description": "A key topic/concept to track.",
     "properties": {
      "entity_id": {
@@ -2750,7 +2753,8 @@
     "type": "object"
    },
    "KGProfileCreate": {
-    "description": "Create an org or project profile.",
+    "additionalProperties": false,
+    "description": "Create a project Knowledge Profile.",
     "properties": {
      "core_organizations": {
       "description": "Key organizations Knowledge should track.",
@@ -2812,22 +2816,9 @@
       "title": "Goals",
       "type": "array"
      },
-     "group_id": {
-      "anyOf": [
-       {
-        "format": "uuid",
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
-      "description": "Id of the group.",
-      "title": "Group Id"
-     },
      "industry": {
       "default": "",
-      "description": "Industry the organization or project works in.",
+      "description": "Industry the project works in.",
       "title": "Industry",
       "type": "string"
      },
@@ -2839,23 +2830,16 @@
       "type": "string"
      },
      "profile_type": {
-      "description": "Whose profile it is: a project's or the organization's.",
-      "pattern": "^(org|project)$",
+      "const": "project",
+      "description": "Project profile scope.",
       "title": "Profile Type",
       "type": "string"
      },
      "project_id": {
-      "anyOf": [
-       {
-        "format": "uuid",
-        "type": "string"
-       },
-       {
-        "type": "null"
-       }
-      ],
       "description": "Id of the project it belongs to, or the project to act in.",
-      "title": "Project Id"
+      "format": "uuid",
+      "title": "Project Id",
+      "type": "string"
      },
      "settings": {
       "additionalProperties": true,
@@ -2874,13 +2858,14 @@
      }
     },
     "required": [
-     "profile_type"
+     "profile_type",
+     "project_id"
     ],
     "title": "KGProfileCreate",
     "type": "object"
    },
    "KGProfileOut": {
-    "description": "Profile response.",
+    "description": "Profile response.\n\nEntity output uses the same named DTOs as writes and the public profile API.",
     "properties": {
      "core_organizations": {
       "description": "Key organizations Knowledge should track.",
@@ -2966,7 +2951,7 @@
       "type": "string"
      },
      "industry": {
-      "description": "Industry the organization or project works in.",
+      "description": "Industry the project works in.",
       "title": "Industry",
       "type": "string"
      },
@@ -2982,7 +2967,8 @@
       "type": "string"
      },
      "profile_type": {
-      "description": "Whose profile it is: a project's or the organization's.",
+      "const": "project",
+      "description": "Project profile scope.",
       "title": "Profile Type",
       "type": "string"
      },
@@ -7234,7 +7220,7 @@
  "info": {
   "description": "The public Beakr API. Authenticate with `Authorization: Bearer <token>` using an API key (`bk_live_`), the OAuth access token `beakr auth login` or an agent's sign-in obtains, or an end-user token (`bk_at_`) your backend minted. Errors carry `error.code`, `error.message`, `error.fix` (how to correct the call), `error.details` (structured context, such as every failing field of a validation error) and `error.request_id` (schema `ErrorEnvelope`).",
   "title": "Beakr API",
-  "version": "1.0.0"
+  "version": "2.0.0"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -8894,7 +8880,7 @@
   },
   "/v1/knowledge/profiles": {
    "post": {
-    "description": "Create an org or project profile (its owners). Idempotent under ``Idempotency-Key``.",
+    "description": "Create a project profile (its owners). Idempotent under ``Idempotency-Key``.",
     "operationId": "create_profile_v1_knowledge_profiles_post",
     "requestBody": {
      "content": {
@@ -8953,79 +8939,12 @@
       "bearer": []
      }
     ],
-    "summary": "Create an org or project profile (its owners)",
+    "summary": "Create a project profile (its owners)",
     "tags": [
      "knowledge",
      "public"
     ],
     "x-beakr-scope": "profiles:write"
-   }
-  },
-  "/v1/knowledge/profiles/org": {
-   "get": {
-    "description": "Get the org-level profile for the current org.",
-    "operationId": "get_org_profile_v1_knowledge_profiles_org_get",
-    "responses": {
-     "200": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "anyOf": [
-          {
-           "$ref": "#/components/schemas/KGProfileOut"
-          },
-          {
-           "type": "null"
-          }
-         ],
-         "title": "Response Get Org Profile V1 Knowledge Profiles Org Get"
-        }
-       }
-      },
-      "description": "Successful Response"
-     },
-     "422": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ErrorEnvelope"
-        }
-       }
-      },
-      "description": "Validation error: `error.details.errors` lists every failing field."
-     },
-     "4XX": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ErrorEnvelope"
-        }
-       }
-      },
-      "description": "The request was refused; `error.code` says why."
-     },
-     "5XX": {
-      "content": {
-       "application/json": {
-        "schema": {
-         "$ref": "#/components/schemas/ErrorEnvelope"
-        }
-       }
-      },
-      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
-     }
-    },
-    "security": [
-     {
-      "bearer": []
-     }
-    ],
-    "summary": "Get the org-level profile for the current org",
-    "tags": [
-     "knowledge",
-     "public"
-    ],
-    "x-beakr-scope": "profiles:read"
    }
   },
   "/v1/knowledge/profiles/project/{project_id}": {

@@ -37,7 +37,7 @@
   "tier_meta_key": "com.thebeakr/tier",
   "tools": [
     {
-      "description": "Load onboarding context for this session: who the user is, the org and project profiles, memories, recent changes, skills. Use ONCE at the start of a task.",
+      "description": "Load onboarding context for this session: who the user is, the project profiles, memories, recent changes, skills. Use ONCE at the start of a task.",
       "name": "context",
       "surfaces": [
         "remote",
@@ -127,7 +127,7 @@
       "tier": "discovery"
     },
     {
-      "description": "Get the knowledge profile for the org or a project: goals, focus areas, core people, organizations and topics, and extraction guidance.",
+      "description": "Get the knowledge profile for a project: goals, focus areas, core people, organizations and topics, and extraction guidance.",
       "name": "get_profile",
       "surfaces": [
         "remote",

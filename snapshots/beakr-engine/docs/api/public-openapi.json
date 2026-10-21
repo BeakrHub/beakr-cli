@@ -17724,7 +17724,7 @@
   "info": {
     "description": "The public Beakr API. Authenticate with `Authorization: Bearer <token>` using an API key (`bk_live_`), the OAuth access token `beakr auth login` or an agent's sign-in obtains, or an end-user token (`bk_at_`) your backend minted. Errors carry `error.code`, `error.message`, `error.fix` (how to correct the call), `error.details` (structured context, such as every failing field of a validation error) and `error.request_id` (schema `ErrorEnvelope`).",
     "title": "Beakr API",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -19328,7 +19328,7 @@
     },
     "/v1/context": {
       "post": {
-        "description": "What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size, earlier blocks winning. `client` names the agent (`claude-code`, `codex`).",
+        "description": "What an agent should start a session with, in one call: the project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size, earlier blocks winning. `client` names the agent (`claude-code`, `codex`).",
         "operationId": "agent_context_v1_context_post",
         "requestBody": {
           "content": {

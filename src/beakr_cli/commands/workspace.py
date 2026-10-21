@@ -57,19 +57,10 @@ def projects(
 def profiles(
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """List knowledge profiles (org and project)."""
+    """List project knowledge profiles."""
     profile_list: list[dict] = []
 
     with get_sdk() as sdk:
-        # Fetch org profile
-        try:
-            org_profile = sdk.profile.org()
-            if org_profile:
-                org_profile["_profile_type"] = "org"
-                profile_list.append(org_profile)
-        except Exception:
-            pass
-
         # Fetch projects, then each project profile
         try:
             for p in sdk.projects.list():
