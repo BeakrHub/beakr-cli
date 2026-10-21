@@ -29,6 +29,6 @@ $ beakr projects members rm 4dd25154-0d80-44ab-b4c2-167319bfacb4 7c1e2f9a-5b3d-4
 > DELETE /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/members/user/7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11
 [exit 0]
 --- stdout
-
+7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11	removed=true
 --- stderr
-Removed 7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11.
+

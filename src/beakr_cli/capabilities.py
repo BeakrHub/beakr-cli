@@ -30,6 +30,11 @@ if TYPE_CHECKING:
 #: ``error_code`` of a refusal for a route this installation does not have.
 NOT_PROVIDED_CODE = "not_provided"
 
+#: Routes a command reads only to find what it acts on: the active organization,
+#: read before any ``/v1/organizations/{org_id}/...`` call when no org is given.
+#: When one is missing, the area is the command's own, not the lookup's.
+LOOKUP_ROUTES = re.compile(r"^/v1/me/organization(/|$)")
+
 #: Areas a Beakr installation may leave out, most specific prefix first: a
 #: name for the sentence, the paths it covers, and one documented operation
 #: that stands for it (``beakr doctor`` asks the capabilities about that one;
@@ -60,16 +65,27 @@ AREAS: tuple[tuple[str, re.Pattern[str], tuple[str, str] | None], ...] = (
         re.compile(r"^/v1/organizations(/|$)"),
         ("GET", "/v1/organizations"),
     ),
+    # A lookup: the command's own area names it better (``COMMAND_AREAS``).
+    ("organization administration", LOOKUP_ROUTES, None),
     (
         "end-user tokens",
         re.compile(r"^/v1/auth/end-user-tokens(/|$)"),
         ("GET", "/v1/auth/end-user-tokens"),
     ),
+    ("organization invitations", re.compile(r"^/v1/invitations(/|$)"), None),
     ("integrations", re.compile(r"^/v1/integrations(/|$)"), ("GET", "/v1/integrations")),
     ("skills", re.compile(r"^/v1/(me/)?skills(/|$)"), ("GET", "/v1/skills")),
     ("Knowledge statistics", re.compile(r"^/v1/knowledge/stats(/|$)"), None),
     ("the Knowledge graph", re.compile(r"^/v1/knowledge/wiki/graph(/|$)"), None),
     ("Knowledge profiles", re.compile(r"^/v1/knowledge/profiles(/|$)"), None),
+)
+
+#: The area of each org-scoped CLI command, by its leading words (longest first).
+COMMAND_AREAS: tuple[tuple[tuple[str, ...], str], ...] = (
+    (("org", "service-accounts"), "service accounts"),
+    (("org",), "organization administration"),
+    (("members",), "organization members"),
+    (("external-users",), "external users"),
 )
 
 #: The documented operations each MCP tool needs: a tool whose operation the
@@ -107,12 +123,24 @@ def request_of(response: Any) -> tuple[str, str]:
     return request.method, api_path(request.url.path)
 
 
-def area_for(path: str) -> str:
-    """The name of the area ``path`` belongs to, else the path itself."""
+def area_for(path: str, command: tuple[str, ...] = ()) -> str:
+    """The name of the area ``path`` belongs to.
+
+    ``command`` is the CLI command's words (``("members", "ls")``): for a
+    lookup route it names the area the command was after, and for a route no
+    area covers it names the command. Without one, such a route is named as
+    it is.
+    """
     path = api_path(path)
+    if command and LOOKUP_ROUTES.match(path):
+        for words, name in COMMAND_AREAS:
+            if command[: len(words)] == words:
+                return name
     for name, pattern, _ in AREAS:
         if pattern.match(path):
             return name
+    if command:
+        return f"what `beakr {' '.join(command)}` needs"
     return path or "this feature"
 
 
@@ -135,16 +163,17 @@ def is_bare_not_found(response: Any) -> bool:
     return isinstance(body, dict) and body.get("detail") == "Not Found" and "error" not in body
 
 
-def not_provided(exc: BeakrError) -> str | None:
+def not_provided(exc: BeakrError, command: tuple[str, ...] = ()) -> str | None:
     """The "does not provide" sentence when ``exc`` is a bare 404, else None.
 
     Only a route the server does not have answers this bare, so no document
-    needs to be read to tell: the reply itself says so.
+    needs to be read to tell: the reply itself says so. ``command`` is as for
+    :func:`area_for`.
     """
     response = getattr(exc, "response", None)
     if not is_bare_not_found(response):
         return None
-    return not_provided_message(area_for(request_of(response)[1]))
+    return not_provided_message(area_for(request_of(response)[1], command))
 
 
 def unprovided_areas(capabilities: Capabilities) -> list[str]:

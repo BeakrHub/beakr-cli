@@ -146,7 +146,15 @@ def remove_project_member(
                 f"{principal_id} is not a member of {name}; nothing to remove.", markup=False
             )
 
-    emit(result, json_out=json_out, render=render, json_when_piped=False)
+    def lines(data: dict[str, Any]) -> list[str]:
+        # Piped, the outcome is a line on stdout (as `members rm` prints), not
+        # only the sentence on stderr.
+        line = f"{data['principal_id']}\tremoved={'true' if data['removed'] else 'false'}"
+        if data.get("inherited_from"):
+            line += f"\tinherited_from={data['inherited_from']}"
+        return [line]
+
+    emit(result, json_out=json_out, render=render, lines=lines)
 
 
 def _membership(

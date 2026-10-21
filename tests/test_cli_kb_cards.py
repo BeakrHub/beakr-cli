@@ -355,6 +355,63 @@ def test_a_door_refusal_exits_1_with_its_guidance() -> None:
     assert "not a card" in result.output
 
 
+_SUPERSEDES_REFUSAL = (
+    '"Nothing like this" does not name a finding on FXC Battery Trial. Its findings are: '
+    "2026-10-10 \u00b7 result. Nothing was written."
+)
+
+
+def _add_finding(*extra: str):
+    return CliRunner().invoke(
+        app,
+        [
+            "kb",
+            "add-finding",
+            "FXC Battery Trial",
+            "--date",
+            "2026-10-12",
+            "--kind",
+            "result",
+            "--text",
+            "t",
+            "--evidence",
+            "e",
+            "--supersedes",
+            "Nothing like this",
+            "--rationale",
+            "r",
+            *extra,
+        ],
+    )
+
+
+@respx.mock
+def test_an_argument_refusal_is_a_usage_error_without_an_http_status() -> None:
+    # Root cause: the door answers a refusal in a 200 body; the SDK's error
+    # text labelled it "(HTTP 200, invalid_arguments)" and the CLI exited 1.
+    respx.post(f"{API}/v1/knowledge/wiki/write").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "content": [{"type": "text", "text": _SUPERSEDES_REFUSAL}],
+                "outcome": {"status": "error", "error_code": "invalid_arguments"},
+            },
+        )
+    )
+
+    result = _add_finding()
+    as_json = _add_finding("--json")
+
+    assert result.exit_code == 2, result.output
+    assert "Nothing was written. (invalid_arguments)" in " ".join(result.output.split())
+    assert "HTTP" not in result.output
+    assert as_json.exit_code == 2
+    error = json.loads(as_json.stdout)["error"]
+    assert error["code"] == "invalid_arguments"
+    assert error["exit_code"] == 2
+    assert "status" not in error
+
+
 @respx.mock
 def test_query_sends_the_json_spec_through_the_command_door(tmp_path) -> None:
     route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
@@ -460,3 +517,103 @@ def test_rows_continues_a_capped_scan_after_a_card() -> None:
 
     assert result.exit_code == 0, result.output
     assert _body(route)["after_card"] == "Stripe"
+
+
+_ROW_WRITES = {
+    "add-fact": ["--attribute", "Owner", "--value", "Rowan Vale"],
+    "add-connection": ["--relation", "Depends on", "--to", "Tern Platform"],
+    "add-finding": ["--date", "2026-10-21", "--kind", "decision", "--text", "Ship it."],
+}
+
+
+@pytest.mark.parametrize("command", sorted(_ROW_WRITES))
+@respx.mock
+def test_a_row_write_can_cite_this_conversation(command: str) -> None:
+    # Root cause: a row write could only name a stored source, so
+    # --evidence "{{conversation:x}}" was refused "Not citeable" with nothing
+    # to declare it by. It now sends the MCP shape: the token in the evidence
+    # and an inline conversation citation with source_title and meta.excerpt.
+    route = respx.post(f"{API}/v1/knowledge/wiki/write").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "kb",
+            command,
+            "Plover Gadget",
+            *_ROW_WRITES[command],
+            "--cite-conversation",
+            "call-with-ana",
+            "--excerpt",
+            "Ana said Rowan Vale owns it.",
+            "--source-title",
+            "Call with Ana",
+            "--rationale",
+            "r",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    body = _body(route)
+    assert body["action"] == command.replace("-", "_")
+    assert body["evidence"] == "{{conversation:call-with-ana}}"
+    assert body["citations"] == [
+        {
+            "key": "conversation:call-with-ana",
+            "source_type": "conversation",
+            "source_title": "Call with Ana",
+            "meta": {"excerpt": "Ana said Rowan Vale owns it."},
+        }
+    ]
+
+
+@respx.mock
+def test_a_cited_conversation_joins_other_evidence_and_defaults_its_title() -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/write").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "kb", "add-fact", "Plover Gadget", *_ROW_WRITES["add-fact"],
+            "--evidence", "plover-memo.md › para 2",
+            "--cite-conversation", "{{conversation:standup}}", "--excerpt", "Rowan owns it.",
+            "--rationale", "r",
+        ],
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    body = _body(route)
+    assert body["evidence"] == "plover-memo.md › para 2 {{conversation:standup}}"
+    assert body["citations"][0]["source_title"] == "standup"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        [],  # no source at all
+        ["--cite-conversation", "standup"],  # no excerpt
+        ["--cite-conversation", "two words", "--excerpt", "x"],  # not a label
+        ["--evidence", "{{rag:1}}", "--excerpt", "x"],  # excerpt without a conversation
+    ],
+)
+@respx.mock
+def test_a_row_write_without_a_usable_source_is_a_usage_error(extra: list[str]) -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/write").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        ["kb", "add-fact", "Plover Gadget", *_ROW_WRITES["add-fact"], *extra, "--rationale", "r"],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert not route.called
+
+
+def test_rows_to_help_says_it_lists_incoming_connections() -> None:
+    # Root cause: to= returns the rows pointing at the page, but the help said
+    # "every row involving this page".
+    result = CliRunner().invoke(app, ["kb", "rows", "--help"], env={"COLUMNS": "200"})
+
+    text = " ".join(result.output.split())
+    assert "the rows pointing at this page (its incoming links)" in text
+    assert "involving" not in text

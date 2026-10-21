@@ -15,6 +15,7 @@ from beakr_sdk.errors import (
     AuthenticationError,
     BeakrError,
     ConflictError,
+    KnowledgeCommandError,
     NotFoundError,
     PermissionDeniedError,
 )
@@ -28,8 +29,16 @@ EXIT_AUTH = 3
 EXIT_NOT_FOUND = 4
 EXIT_CONFLICT = 5
 
+#: Knowledge refusals of the caller's arguments (a malformed or unknown argument,
+#: a citation that names nothing citeable): usage errors, like Click's own.
+_ARGUMENT_REFUSALS = frozenset(
+    {"invalid_arguments", "unknown_argument", "invalid_citations", "citation_not_citeable"}
+)
+
 
 def exit_code_for(exc: BaseException) -> int:
+    if isinstance(exc, KnowledgeCommandError) and exc.code in _ARGUMENT_REFUSALS:
+        return EXIT_USAGE
     if isinstance(exc, (AuthenticationError, PermissionDeniedError)):
         return EXIT_AUTH
     if isinstance(exc, NotFoundError):
@@ -91,16 +100,33 @@ _CODE_HINTS = {
 }
 
 
-def describe_error(exc: BaseException) -> str:
-    """One readable line, with the fix when there is an obvious one."""
-    if isinstance(exc, NotFoundError):
-        from beakr_cli.capabilities import not_provided
+def not_provided_message(exc: BaseException, command: tuple[str, ...] = ()) -> str | None:
+    """The "does not provide" sentence when ``exc`` is for a route this server lacks."""
+    if not isinstance(exc, NotFoundError):
+        return None
+    from beakr_cli.capabilities import not_provided
 
-        # A route this installation does not have (a self-hosted one leaves
-        # out organization administration, integrations, embedded mode...).
-        message = not_provided(exc)
-        if message:
-            return message
+    # A route this installation does not have (a self-hosted one leaves out
+    # organization administration, integrations, embedded mode...).
+    return not_provided(exc, command)
+
+
+def _refusal_text(exc: KnowledgeCommandError) -> str:
+    """A Knowledge refusal with its code: the door answers it in a 200 body, not as HTTP."""
+    text = f"{exc.message} ({exc.code})" if exc.code else exc.message
+    return f"{text} To fix: {exc.fix}" if exc.fix else text
+
+
+def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
+    """One readable line, with the fix when there is an obvious one.
+
+    ``command`` is the CLI command's words, to name what a missing route was for.
+    """
+    message = not_provided_message(exc, command)
+    if message:
+        return message
+    if isinstance(exc, KnowledgeCommandError):
+        return _refusal_text(exc)
     if isinstance(exc, BeakrError) and exc.code in _CODE_HINTS:
         return f"{exc}\n{_CODE_HINTS[exc.code]}"
     if isinstance(exc, PermissionDeniedError) and exc.required_scope:
@@ -139,16 +165,19 @@ class BeakrGroup(TyperGroup):
 
     def invoke(self, ctx: click.Context) -> Any:
         json_requested = _json_requested(ctx)
+        # Click empties these as it dispatches; they name the command if it fails.
+        args = [*(getattr(ctx, "_protected_args", None) or []), *ctx.args]
         try:
             return super().invoke(ctx)
         except HANDLED_EXCEPTIONS as exc:
             from beakr_cli.output import err_console
 
             code = exit_code_for(exc)
+            command = self._command_words(ctx, args)
             if json_requested:
-                _print_json_error(exc, code)
+                _print_json_error(exc, code, command)
             err_console.print(
-                f"[red]Error:[/red] {escape(str(describe_error(exc)))}", highlight=False
+                f"[red]Error:[/red] {escape(str(describe_error(exc, command)))}", highlight=False
             )
             raise typer.Exit(code) from exc
         except ValueError as exc:
@@ -166,6 +195,22 @@ class BeakrGroup(TyperGroup):
             if json_requested:
                 _print_json_error(exc, exc.exit_code)
             raise
+
+    def _command_words(self, ctx: click.Context, args: list[str]) -> tuple[str, ...]:
+        """The words of ``args`` naming the invoked command (``("members", "ls")``)."""
+        words: list[str] = []
+        command: click.Command | None = self
+        for arg in args:
+            if not isinstance(command, click.Group):
+                break
+            try:
+                command = command.get_command(ctx, arg)
+            except Exception:  # naming the command must never hide the error
+                break
+            if command is None:
+                break
+            words.append(arg)
+        return tuple(words)
 
 
 def _is_path_value_refusal(exc: ValueError) -> bool:
@@ -192,20 +237,36 @@ def _json_requested(ctx: click.Context) -> bool:
 _CODE_FOR_EXIT = {EXIT_AUTH: "unauthorized", EXIT_NOT_FOUND: "not_found", EXIT_CONFLICT: "conflict"}
 
 
-def error_object(exc: BaseException, exit_code: int) -> dict[str, Any]:
+def error_object(
+    exc: BaseException, exit_code: int, command: tuple[str, ...] = ()
+) -> dict[str, Any]:
     """The JSON a failed ``--json`` command prints on stdout instead of nothing.
 
     A script reading stdout gets one JSON document either way; with the error
     it can branch on ``code`` (the API's machine-readable code, when it sent
-    one) as well as on the exit code.
+    one) as well as on the exit code. A route this installation does not
+    have is ``not_provided`` with the sentence the plain output prints.
     """
+    absent = not_provided_message(exc, command)
+    if absent:
+        from beakr_cli.capabilities import NOT_PROVIDED_CODE
+
+        lacking: dict[str, Any] = {
+            "message": absent,
+            "exit_code": exit_code,
+            "code": NOT_PROVIDED_CODE,
+        }
+        if isinstance(exc, BeakrError) and exc.request_id:
+            lacking["request_id"] = exc.request_id
+        return {"error": lacking}
     message = getattr(exc, "message", None) or (
         exc.format_message() if isinstance(exc, click.ClickException) else str(exc)
     )
     error: dict[str, Any] = {"message": str(message), "exit_code": exit_code}
     if isinstance(exc, BeakrError):
         error["code"] = exc.code or _CODE_FOR_EXIT.get(exit_code, "error")
-        if exc.status is not None:
+        # A Knowledge refusal arrives in a 200 body: no HTTP status refused it.
+        if exc.status is not None and not isinstance(exc, KnowledgeCommandError):
             error["status"] = exc.status
         if exc.fix or exc.code in _CODE_HINTS:
             error["fix"] = exc.fix or _CODE_HINTS[str(exc.code)]
@@ -218,7 +279,7 @@ def error_object(exc: BaseException, exit_code: int) -> dict[str, Any]:
     return {"error": error}
 
 
-def _print_json_error(exc: BaseException, exit_code: int) -> None:
+def _print_json_error(exc: BaseException, exit_code: int, command: tuple[str, ...] = ()) -> None:
     from beakr_cli.output import print_json
 
-    print_json(error_object(exc, exit_code))
+    print_json(error_object(exc, exit_code, command))

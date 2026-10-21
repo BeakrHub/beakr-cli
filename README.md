@@ -376,6 +376,10 @@ beakr kb add-connection "Stripe" --relation "billing provider for" --to "Platfor
     --evidence "{{doc:abc123}}" --rationale "..."
 beakr kb add-finding "Stripe" --date 2026-10-01 --kind decision \
     --text "Stay on Stripe through 2027" --evidence "{{doc:abc123}}" --rationale "..."
+# cite what was said in this conversation: {{conversation:LABEL}} with the words cited
+beakr kb add-fact "Stripe" --attribute "account owner" --value "Ana Ruiz" \
+    --cite-conversation call-with-ana --excerpt "Ana runs the Stripe account." \
+    --source-title "Call with Ana" --rationale "Said on the call"
 beakr kb edit-rows "Stripe" --table facts \
     --old-row '{"attribute": "tier", "value": "Basic"}' --row '{"attribute": "tier", "value": "Pro"}' \
     --rationale "Upgraded"

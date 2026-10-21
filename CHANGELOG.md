@@ -1393,6 +1393,29 @@ Each release lists the public API changes it supports, taken from the API change
   list is keyed by document with every place cited in it, never by `{{key}}`
   tokens. `beakr research` prints a plain list of cited documents when the
   answer cites by reference, and a numbered one when an engine still numbers it.
+- **What a self-hosted installation leaves out, under `--json` too.** A
+  command for an area the installation does not provide prints
+  `{"error": {"code": "not_provided", "message": "This Beakr installation does
+  not provide skills.", ...}}` (exit 4) with `--json`, not the bare 404, and the
+  sentence names the area (`organization members` for `beakr members ls`),
+  never a route.
+- **Knowledge refusals read as refusals.** A refusal the Knowledge door
+  answers in its body prints its message and code without "HTTP 200", and one
+  of the arguments (`invalid_arguments`, for example a `--supersedes` that names
+  no finding) exits 2, as a usage error.
+- **Removals.** Piped, `projects members rm` and `labels members rm` print
+  `ID<TAB>removed=true|false` on stdout as `members rm` does. `labels members
+  rm` and `labels projects rm` take `--yes` and, without a terminal, need it.
+- **Cite a conversation in a card row.** `kb add-fact`, `kb add-connection` and
+  `kb add-finding` take `--cite-conversation LABEL --excerpt TEXT` (and
+  `--source-title`): the row cites `{{conversation:LABEL}}`, declared as an
+  inline conversation citation with the words cited, as the MCP tools do.
+  `--evidence` is optional with it. `kb rows --to` is described as what it
+  returns: the rows pointing at the page.
+- **Conversations.** `beakr conversations show` labels a turn the agent host
+  wrote `system:` (and an agent's prompt to a subagent `agent:`), not `user:`.
+  `conversations import --file` sends `--summary` and `--compound`, and a
+  refused import that would keep nothing names those flags and `--full-text`.
 
 ## Unreleased
 
