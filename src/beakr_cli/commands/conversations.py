@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
+from contextlib import contextmanager
 from itertools import islice
 from pathlib import Path
 from typing import Any
 
 import typer
+from beakr_sdk.errors import BeakrError
 from beakr_sdk.resources.conversations import CONVERSATION_CLIENTS
 from rich.markup import escape
 
@@ -149,8 +152,7 @@ def show_conversation(
             console.print(f"\n{data['summary']}", markup=False)
         for message in data.get("messages") or []:
             console.print(
-                f"\n[bold]{escape(str(message.get('role')))}[/bold]: "
-                f"{escape(str(message.get('content')))}"
+                f"\n[bold]{escape(_speaker(message))}[/bold]: {escape(str(message.get('content')))}"
             )
 
     def lines(data: dict[str, Any]) -> list[str]:
@@ -161,10 +163,25 @@ def show_conversation(
         if data.get("summary"):
             out += ["", str(data["summary"])]
         for message in data.get("messages") or []:
-            out += ["", f"{message.get('role')}: {message.get('content')}"]
+            out += ["", f"{_speaker(message)}: {message.get('content')}"]
         return out
 
     emit(item, json_out=json_out, render=render, lines=lines)
+
+
+def _speaker(message: dict[str, Any]) -> str:
+    """Who a turn is from: its ``author`` when that is not the role's own.
+
+    A turn the agent host wrote itself (a background task's report, a system
+    reminder) is stored with role ``user`` and author ``system``, and an
+    agent's prompt to a subagent with role ``user`` and author ``agent``;
+    printed under "user:" they read as the person's words.
+    """
+    role = str(message.get("role"))
+    author = message.get("author")
+    if author == "system" or (author == "agent" and role == "user"):
+        return str(author)
+    return role
 
 
 @app.command("search")
@@ -412,14 +429,15 @@ def import_conversation(
             "sources_read": data.get("sources_read"),
             "tools_used": data.get("tools_used"),
             "title": data.get("title"),
-            "summary": data.get("summary"),
+            "summary": summary or data.get("summary"),
             "project_id": resolve_project(project),
         }
-    with get_sdk() as sdk:
+    with get_sdk() as sdk, _fix_in_cli_flags():
         result = sdk.conversations.import_(
             client=client,
             interactive=interactive,
             store_full_text=store_full_text,
+            compound=compound,
             **body,
         )
     emit(
@@ -431,6 +449,25 @@ def import_conversation(
             markup=False,
         ),
     )
+
+
+#: The import refusal's fix in this command's flags: the API's own names the
+#: request fields (`store_full_text: true`, `compound: true`).
+_SUMMARY_REQUIRED_FIX = (
+    "Pass --summary with what the session was about, --full-text to keep the "
+    "transcript, or --compound so Beakr reads it into Knowledge before releasing it."
+)
+
+
+@contextmanager
+def _fix_in_cli_flags() -> Iterator[None]:
+    """Reword a ``summary_required`` refusal's fix in terms of the CLI's flags."""
+    try:
+        yield
+    except BeakrError as exc:
+        if exc.code == "summary_required":
+            exc.fix = _SUMMARY_REQUIRED_FIX
+        raise
 
 
 def _import_chatgpt_export(
