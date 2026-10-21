@@ -265,12 +265,30 @@ CASES: list[SnapshotCase] = [
     c("interviews-show", "interviews", "show", ID),
     # --- skills, integrations, webhooks ---------------------------------------
     c("skills-ls", "skills", "ls"),
-    c("skills-show", "skills", "show", "@GET /v1/me/skills/library#data.0.name"),
+    c(
+        "skills-ls-groups",
+        "skills", "ls", "--mine", "--builtin", "--installed", "--origin", "created",
+    ),
+    c("skills-show", "skills", "show", "@GET /v1/skills#data.0.slug"),
+    c("skills-download", "skills", "download", "@GET /v1/skills#data.0.slug"),
+    c(
+        "skills-add",
+        "skills", "add", "helios-digest",
+        files={
+            "helios-digest/SKILL.md": (
+                "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"
+            ),
+        },
+    ),
+    c("skills-install", "skills", "install", "@GET /v1/skills#data.0.slug"),
+    c("skills-uninstall", "skills", "uninstall", "@GET /v1/skills#data.0.slug"),
+    c("skills-rm", "skills", "rm", "@GET /v1/skills#data.0.slug", "--yes"),
     c("skills-proposals", "skills", "proposals"),
     c("skills-approve", "skills", "approve", ID),
+    c("skills-dismiss", "skills", "dismiss", ID),
     c(
         "skills-edit",
-        "skills", "edit", "@GET /v1/me/skills/library#data.0.name", "--file", "SKILL.md",
+        "skills", "edit", "@GET /v1/skills#data.0.slug", "--file", "SKILL.md",
         files={"SKILL.md": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"},
     ),
     c("integrations-ls", "integrations", "ls"),

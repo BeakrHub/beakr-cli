@@ -44,8 +44,8 @@ def test_a_folder_pulled_from_a_shared_skill_is_not_pushed_into_the_library(
     local.mkdir(parents=True)
     (local / "SKILL.md").write_text(MD + "Edit.\n")
     write_state("skills_sync.json", {"skills": {folder: state}})
-    respx.get(f"{API}/v1/me/skills/library").mock(return_value=httpx.Response(200, json=[]))
-    uploaded = respx.post(url__regex=rf"{API}/v1/me/skills.*").mock(
+    respx.get(f"{API}/v1/skills").mock(return_value=httpx.Response(200, json=[]))
+    uploaded = respx.post(url__regex=rf"{API}/v1/(me/)?skills.*").mock(
         return_value=httpx.Response(201, json={"id": "u1"})
     )
 

@@ -354,15 +354,37 @@ def test_memory_rm_refuses_without_yes_when_not_interactive():
 
 @respx.mock
 def test_skills_edit_replaces_skill_md(tmp_path):
-    respx.get(f"{API}/v1/me/skills/library").respond(
-        200, json=[{"id": "sk1", "slug": "assay-qc", "owner_type": "user"}]
+    respx.get(f"{API}/v1/skills/assay-qc").respond(
+        200, json={"id": "sk1", "slug": "assay-qc", "owner": "me"}
     )
-    put = respx.put(f"{API}/v1/me/skills/sk1/files/SKILL.md").respond(200, json={"ok": True})
+    respx.get(f"{API}/v1/skills/sk1/bundle").respond(
+        200, json={"skill_id": "sk1", "slug": "assay-qc", "files": {}, "files_sha256": "abc"}
+    )
+    put = respx.put(f"{API}/v1/skills/sk1/bundle").respond(200, json={"skill_id": "sk1"})
     skill_md = tmp_path / "SKILL.md"
     skill_md.write_text("# Assay QC\n")
     result = runner.invoke(app, ["skills", "edit", "assay-qc", "--file", str(skill_md)])
     assert result.exit_code == 0, result.output
-    assert json.loads(put.calls.last.request.content) == {"content": "# Assay QC\n"}
+    # One file overlaid on the rest, conditional on the bundle just read.
+    assert json.loads(put.calls.last.request.content) == {
+        "files": {"SKILL.md": "# Assay QC\n"},
+        "replace": False,
+        "expected_sha256": "abc",
+    }
+
+
+@respx.mock
+def test_skills_edit_refuses_a_skill_you_did_not_write(tmp_path):
+    respx.get(f"{API}/v1/skills/decision-record").respond(
+        200, json={"id": "sk2", "slug": "decision-record", "owner": "system"}
+    )
+    put = respx.put(f"{API}/v1/skills/sk2/bundle").respond(200, json={})
+    skill_md = tmp_path / "SKILL.md"
+    skill_md.write_text("x\n")
+    result = runner.invoke(app, ["skills", "edit", "decision-record", "--file", str(skill_md)])
+    assert result.exit_code == 2
+    assert "not yours" in result.output
+    assert not put.called
 
 
 @respx.mock

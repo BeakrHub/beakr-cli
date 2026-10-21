@@ -11,10 +11,38 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=8224d1bfebe4c86064e563618b9f770b51c9a7093c7a054e005f1244a5fbb26c changelog sha256=4ad00227ba52693022d51c2e906289c60d662156a5959877a46bf0f4d6d5b227 -->
+<!-- contract-stamp: public-openapi sha256=da99aff80a140bb0004d307dbd8bae5ffb32aa63b4f79d24c8641e3fa6ed0cfa changelog sha256=ddb74545df8dfb510be31f661bfa33b9199713692f7250fec77c45d464bfbe72 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- Skills (`skills:read`, `skills:write`) join the documented API.
+  `GET /v1/skills` lists every skill you can use or install: your own, your
+  organization's, the built-in ones and public skills from anywhere, by name.
+  Each skill carries `visibility` (`private`, `org`, `public`), `owner` (`me`,
+  `org`, `system`, `anyone`), `origin` (`created`, `mined`, `imported`,
+  `system`) and `installed`, and the list filters on each (repeat a parameter
+  for more than one value), on `search` and `domain`; `include_content=true`
+  adds each skill's `files` and caps a page at 25 skills. Retired skills are
+  not listed. `GET /v1/skills/{skill_id}` reads one skill by id or slug, with
+  `latest_revision`; a slug resolves to your own skill first, then a built-in,
+  then one you installed, then your organization's, and never to a skill from
+  another organization you have not installed. Only this read takes a slug.
+  `POST /v1/skills` creates a skill from a SKILL.md folder (`files`, path to
+  text), answers it as the read does, honours `Idempotency-Key` and answers
+  409 when a create running at the same time took the same slug.
+  `visibility=public` publishes a skill, every file included, to every Beakr
+  organization. `GET` and `PUT /v1/skills/{skill_id}/bundle` read and replace
+  its files (`files_sha256` is always present; send it back as
+  `expected_sha256`), `GET /v1/skills/{skill_id}/bundle.zip` downloads them as
+  a zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST`
+  and `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill
+  (an uninstalled skill can be installed again), and
+  `GET /v1/me/skills/proposals` with `POST .../accept` and `POST .../dismiss`
+  review the skills Beakr drafted from your work. A skill you wrote in another
+  organization answers 404 here, by id or slug, while it is not installed
+  here, and can be installed here only if it was installed here before.
+  `marketplace` is not given to a new skill as its slug.
 
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`

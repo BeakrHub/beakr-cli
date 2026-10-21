@@ -25,8 +25,8 @@ def test_skill_push_keeps_external_file_bytes_out_of_uploads(isolated_home, tmp_
         (references / "reference.txt").write_text("Ordinary bundled reference")
 
     with respx.mock as mock:
-        mock.get("https://api.test/v1/me/skills/library").respond(200, json=[])
-        uploaded = mock.post("https://api.test/v1/me/skills/import/bundle").respond(
+        mock.get("https://api.test/v1/skills").respond(200, json=[])
+        uploaded = mock.post("https://api.test/v1/skills").respond(
             201, json={"id": "review-id", "slug": "review-skill"}
         )
         sync_skills(

@@ -1,7 +1,7 @@
 """The CLI's resources over unlisted routes, attached by :func:`attach_private_resources`.
 
 Each module either holds a whole resource the public SDK does not have
-(``profile``, ``skills``, ``memories``...) or subclasses the public resource of
+(``profile``, ``memories``, ``workflows``...) or subclasses the public resource of
 the same name with the unlisted methods the CLI calls (``files.Files`` adds
 ``versions`` and the extraction reads). Only methods with a call site in the
 CLI or its stdio MCP server live here.
@@ -22,7 +22,6 @@ from beakr_cli._private_api.resources.memories import Memories
 from beakr_cli._private_api.resources.org_admin import OrgAdmin
 from beakr_cli._private_api.resources.outputs import Outputs
 from beakr_cli._private_api.resources.profile import Profile
-from beakr_cli._private_api.resources.skills import Skills
 from beakr_cli._private_api.resources.usage import Trace, Usage
 from beakr_cli._private_api.resources.workflows import Workflows
 
@@ -48,7 +47,6 @@ def attach_private_resources(client: Any) -> None:
     client.memories = Memories(client)
     client.outputs = Outputs(client)
     client.profile = Profile(client)
-    client.skills = Skills(client)
     client.usage = Usage(client)
     client.trace = Trace(client)
     client.workflows = Workflows(client)
