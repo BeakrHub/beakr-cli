@@ -376,6 +376,10 @@ beakr kb add-connection "Stripe" --relation "billing provider for" --to "Platfor
     --evidence "{{doc:abc123}}" --rationale "..."
 beakr kb add-finding "Stripe" --date 2026-10-01 --kind decision \
     --text "Stay on Stripe through 2027" --evidence "{{doc:abc123}}" --rationale "..."
+# cite what was said in this conversation: {{conversation:LABEL}} with the words cited
+beakr kb add-fact "Stripe" --attribute "account owner" --value "Ana Ruiz" \
+    --cite-conversation call-with-ana --excerpt "Ana runs the Stripe account." \
+    --source-title "Call with Ana" --rationale "Said on the call"
 beakr kb edit-rows "Stripe" --table facts \
     --old-row '{"attribute": "tier", "value": "Basic"}' --row '{"attribute": "tier", "value": "Pro"}' \
     --rationale "Upgraded"
@@ -509,6 +513,31 @@ Unrecognized response formats keep the generic truncation warning and narrower
 request guidance. This formatting does not change the SDK or terminal CLI's
 API response, perform additional searches, or summarize source evidence.
 
+### Skills
+
+A skill is a SKILL.md folder your agent loads on demand. `beakr skills ls`
+lists every skill you can use or install, with its visibility, owner (`me`,
+`org`, `system` for built-ins, `anyone` for public skills from outside your
+organization), origin (`created`, `mined`, `imported`, `system`) and whether it
+is installed in your library.
+
+```bash
+beakr skills ls --mine                 # yours; --org, --public, --builtin combine
+beakr skills ls --available --public   # public skills you could install
+beakr skills ls --origin mined         # the ones Beakr drafted and you kept
+beakr skills show plate-reader         # its SKILL.md (--json: labels, revision, files)
+beakr skills download plate-reader ./  # ./plate-reader/ (--zip for a zip)
+beakr skills add ./plate-reader        # a SKILL.md folder or a .zip of one
+beakr skills install lab-notebook-entry
+beakr skills uninstall lab-notebook-entry
+beakr skills rm plate-reader --yes     # delete a skill you wrote
+beakr skills proposals                 # drafted from your work: approve or dismiss
+beakr skills sync                      # your library <-> ~/.claude/skills, ~/.codex/skills
+```
+
+A skill is named by its id or its slug; a slug means your own skill first, then
+a built-in, then one you installed, then your organization's.
+
 ## Python SDK
 
 The CLI is built on Beakr's Python SDK, `beakr-sdk` (`import beakr_sdk`), which
@@ -527,7 +556,7 @@ The TypeScript SDK, `@beakr/sdk`, is
 [BeakrHub/beakr-typescript](https://github.com/BeakrHub/beakr-typescript).
 
 The SDK covers only the documented contract. The CLI and its MCP server also
-call a few routes the API serves without documenting them (profile, skills,
+call a few routes the API serves without documenting them (profile,
 memories, outputs, workflows, org administration...), through the CLI's own
 private client, `beakr_cli._private_api`. Each of those operations is listed in
 `src/beakr_cli/_private_api/operations.allowlist`, and only those are generated
@@ -675,6 +704,8 @@ This writes:
 | `BEAKR_API_KEY` | API key (overrides stored config) |
 | `BEAKR_BASE_URL` / `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
 | `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute writes to an agent. The MCP server defaults to its client's name and version (`claude-code/2.1.283`); set this to tell apart several agents that share one key. The CLI at a terminal sends none. |
+| `BEAKR_RUN` | Sent as `X-Beakr-Run`: groups a script's Knowledge writes into one run that `beakr kb undo-run <run>` takes back together. The MCP server defaults to one run per server process (`stdio:<id>`). |
+| `BEAKR_SESSION` | Sent as `X-Beakr-Session`: the agent session behind the writes, shown on their provenance ("session <id>"). Unset, the CLI and MCP server use the host agent's own session id when it gives one: `CLAUDE_CODE_SESSION_ID` (Claude Code, in its MCP servers and commands), `CODEX_THREAD_ID` (Codex) and `CURSOR_CONVERSATION_ID` (Cursor), the last two only in the shell commands their agents run. Nothing is sent when none is set. |
 | `BEAKR_APP_URL` | Web app URL for pages the CLI opens (default: saved at `beakr auth login`, else `https://app.thebeakr.com`) |
 | `BEAKR_HOME` | Directory for config, credentials and hook state (default: `~/.beakr`) |
 | `BEAKR_NO_KEYRING` | Set to `1` to store sign-in tokens in `~/.beakr/credentials` instead of the keychain |

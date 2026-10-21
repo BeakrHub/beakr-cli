@@ -55,7 +55,7 @@ Skill proposals (2)
 │49065a5c-fe85-451e-9777-d214525ef181 │ Committee decision memo  │ 2x   │ pending│
 └─────────────────────────────────────┴──────────────────────────┴──────┴────────┘
 --- stderr
-Keep one with `beakr skills approve PROPOSAL_ID`.
+Keep one with `beakr skills approve PROPOSAL_ID`, or `beakr skills dismiss`.
 
 $ beakr skills proposals
 > GET /v1/me/skills/proposals?limit=200

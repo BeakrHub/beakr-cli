@@ -117,7 +117,7 @@ async def test_context_rejects_unknown_format_without_a_request() -> None:
 async def test_skills_lists_a_bounded_library() -> None:
     # One page at a time (SPEC-488): the page shows its rows and says how to go on.
     first = [{"id": f"s{i}", "slug": f"skill-{i}", "name": f"S{i}"} for i in range(MAX_LIST_ITEMS)]
-    route = respx.get(f"{API}/v1/me/skills/library").mock(
+    route = respx.get(f"{API}/v1/skills").mock(
         return_value=httpx.Response(
             200, json={"data": first, "has_more": True, "next_cursor": "page-2"}
         )
@@ -137,10 +137,10 @@ async def test_skills_lists_a_bounded_library() -> None:
 
 @respx.mock
 async def test_skills_reads_one_skill_md_by_slug() -> None:
-    respx.get(f"{API}/v1/me/skills/library").mock(
+    respx.get(f"{API}/v1/skills").mock(
         return_value=httpx.Response(200, json=[{"id": "s1", "slug": "deploy", "name": "Deploy"}])
     )
-    bundle = respx.get(f"{API}/v1/me/skills/s1/bundle").mock(
+    bundle = respx.get(f"{API}/v1/skills/s1/bundle").mock(
         return_value=httpx.Response(
             200,
             json={"files": {"SKILL.md": "---\nname: deploy\n---\nSteps", "run.sh": "echo"}},
@@ -154,7 +154,7 @@ async def test_skills_reads_one_skill_md_by_slug() -> None:
 
 @respx.mock
 async def test_skills_unknown_slug_says_how_to_list() -> None:
-    respx.get(f"{API}/v1/me/skills/library").mock(return_value=httpx.Response(200, json=[]))
+    respx.get(f"{API}/v1/skills").mock(return_value=httpx.Response(200, json=[]))
     assert "no argument" in (await skills("missing"))["content"]
 
 
@@ -178,16 +178,24 @@ async def test_conversations_search_sends_filters_and_caps_limit() -> None:
             },
         )
     )
-    result = await conversations_search(query="importer", client="codex", project="p1", limit=999)
+    result = await conversations_search(
+        query="importer", client="codex", project=PROJECT_ID, limit=999
+    )
     text = result["content"]
     params = route.calls.last.request.url.params
-    assert (params["q"], params["client"], params["project_id"]) == ("importer", "codex", "p1")
+    assert (params["q"], params["client"], params["project_id"]) == (
+        "importer",
+        "codex",
+        PROJECT_ID,
+    )
     assert params["limit"] == str(MAX_LIST_ITEMS)
     assert "Importer" in text and "cv1" in text
     # The next page is reachable, with the same filters (SPEC-488).
     assert result["coverage"]["next_cursor"] == "cv-page-2"
     assert 'cursor="cv-page-2" and the same filters' in text
-    await conversations_search(query="importer", client="codex", project="p1", cursor="cv-page-2")
+    await conversations_search(
+        query="importer", client="codex", project=PROJECT_ID, cursor="cv-page-2"
+    )
     assert route.calls.last.request.url.params["cursor"] == "cv-page-2"
 
 
@@ -219,9 +227,15 @@ async def test_conversations_search_with_a_query_uses_the_index() -> None:
             },
         )
     )
-    text = (await conversations_search(query="which pump curve", project="p1", limit=99))["content"]
+    text = (await conversations_search(query="which pump curve", project=PROJECT_ID, limit=99))[
+        "content"
+    ]
     params = route.calls.last.request.url.params
-    assert (params["q"], params["match"], params["project_id"]) == ("which pump curve", "any", "p1")
+    assert (params["q"], params["match"], params["project_id"]) == (
+        "which pump curve",
+        "any",
+        PROJECT_ID,
+    )
     assert params["limit"] == "25"
     assert "imported session" in text and "Beakr chat" in text
     assert "findings: 1 (Pump calibration)" in text and "outputs: Curve memo" in text
@@ -239,7 +253,7 @@ async def test_import_conversation_body() -> None:
         session_id="sess-1",
         messages=[{"role": "user", "content": "hi"}, {"role": "assistant", "content": "yo"}],
         summary="Greeted",
-        project="p1",
+        project=PROJECT_ID,
     )
     assert "Imported conversation cv1" in text
     assert json.loads(route.calls.last.request.content) == {
@@ -250,8 +264,72 @@ async def test_import_conversation_body() -> None:
         # No store_full_text: the person's per-client setting decides.
         "messages": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "yo"}],
         "summary": "Greeted",
-        "project_id": "p1",
+        "project_id": PROJECT_ID,
     }
+
+
+@pytest.mark.parametrize("query", ["", "which pump curve"])
+@respx.mock
+async def test_conversations_search_resolves_a_project_name(query: str) -> None:
+    # Root cause: the name went to the routes as project_id, a UUID there, and
+    # was refused "Input should be a valid UUID".
+    respx.get(f"{API}/v1/projects").respond(
+        json={"data": [{"id": PROJECT_ID, "name": "Fix Verify C 017"}], "has_more": False}
+    )
+    route = respx.get(url__regex=rf"{API}/v1/conversations(/search)?\?").respond(
+        json={"data": [], "has_more": False}
+    )
+
+    await conversations_search(query=query, project="Fix Verify C 017")
+
+    assert route.calls.last.request.url.params["project_id"] == PROJECT_ID
+
+
+@respx.mock
+async def test_import_conversation_resolves_a_project_name() -> None:
+    respx.get(f"{API}/v1/projects").respond(
+        json={"data": [{"id": PROJECT_ID, "name": "Fix Verify C 017"}], "has_more": False}
+    )
+    route = respx.post(f"{API}/v1/conversations/import").respond(
+        json={"conversation_id": "cv1", "created": True, "stored": "summary"}
+    )
+
+    await import_conversation(
+        client="claude-code", session_id="s", summary="Greeted", project="Fix Verify C 017"
+    )
+
+    assert json.loads(route.calls.last.request.content)["project_id"] == PROJECT_ID
+
+
+@respx.mock
+async def test_import_conversation_asks_for_its_own_summary_when_one_is_required() -> None:
+    # Root cause: the route's fix names store_full_text, compound and hold_text,
+    # which this tool does not take, so an agent following it could not comply.
+    from beakr_cli.mcp_errors import ApiCallError
+
+    fix = (
+        "Send a `summary` with the messages, set `store_full_text: true` to keep the "
+        "transcript, or set `compound: true` (or `hold_text: true` ...)."
+    )
+    message = "This import sends messages but no summary, so nothing from it would be kept."
+    respx.post(f"{API}/v1/conversations/import").respond(
+        422,
+        json={
+            "detail": {"code": "summary_required", "message": message, "fix": fix},
+            "error": {"code": "summary_required", "message": message, "fix": fix},
+        },
+    )
+
+    with pytest.raises(ApiCallError) as raised:
+        await import_conversation(
+            client="claude-code", session_id="s", messages=[{"role": "user", "content": "hi"}]
+        )
+
+    fields = raised.value.fields
+    assert fields["error_code"] == "summary_required"
+    assert "`summary`" in str(fields["fix"])
+    for absent in ("store_full_text", "compound", "hold_text"):
+        assert absent not in str(fields["fix"]) and absent not in str(raised.value)
 
 
 async def test_import_conversation_validates_client() -> None:

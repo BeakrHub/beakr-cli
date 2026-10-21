@@ -1,0 +1,106 @@
+$ beakr skills ls --mine --builtin --installed --origin created --json
+> GET /v1/skills?installed=true&limit=200&origin=created&owner=me&owner=system
+[exit 0]
+--- stdout
+[
+  {
+    "id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+    "slug": "helios-stability-readout",
+    "name": "Helios stability readout",
+    "description": "Turn an HX-01 stability export into the Helios charter's results table.",
+    "domain": "biology",
+    "visibility": "private",
+    "owner": "me",
+    "origin": "created",
+    "installed": true,
+    "created_at": "2026-07-15T00:00:00Z",
+    "updated_at": "2026-09-01T00:00:00Z",
+    "files": null,
+    "local": {
+      "claude": "absent",
+      "codex": "absent"
+    }
+  },
+  {
+    "id": "98459f24-948a-4fa8-910b-fd80b8b399e5",
+    "slug": "decision-record",
+    "name": "Decision record",
+    "description": "Write a decision record: the options, the criteria, what was chosen and why.",
+    "domain": "writing",
+    "visibility": "public",
+    "owner": "system",
+    "origin": "system",
+    "installed": true,
+    "created_at": "2026-07-15T00:00:00Z",
+    "updated_at": "2026-09-01T00:00:00Z",
+    "files": null,
+    "local": {
+      "claude": "absent",
+      "codex": "absent"
+    }
+  },
+  {
+    "id": "2c4e6a8b-1d3f-4a5c-9e7b-0f2d4c6e8a1b",
+    "slug": "assay-qc-checklist",
+    "name": "Assay QC checklist",
+    "description": "Check an assay plate's controls before results are reported.",
+    "domain": "biology",
+    "visibility": "org",
+    "owner": "org",
+    "origin": "imported",
+    "installed": false,
+    "created_at": "2026-07-15T00:00:00Z",
+    "updated_at": "2026-09-01T00:00:00Z",
+    "files": null,
+    "local": {
+      "claude": "absent",
+      "codex": "absent"
+    }
+  },
+  {
+    "id": "7a9c1e3f-5b7d-4f9a-8c2e-4b6d8f0a2c4e",
+    "slug": "lab-notebook-entry",
+    "name": "Lab notebook entry",
+    "description": "Write a dated, signed notebook entry from a run's raw notes.",
+    "domain": null,
+    "visibility": "public",
+    "owner": "anyone",
+    "origin": "imported",
+    "installed": false,
+    "created_at": "2026-07-15T00:00:00Z",
+    "updated_at": "2026-09-01T00:00:00Z",
+    "files": null,
+    "local": {
+      "claude": "absent",
+      "codex": "absent"
+    }
+  }
+]
+--- stderr
+
+
+$ beakr skills ls --mine --builtin --installed --origin created
+> GET /v1/skills?installed=true&limit=200&origin=created&owner=me&owner=system
+[exit 0]
+--- stdout
+┏━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
+┃Slug                     ┃ Visibility ┃ Owner  ┃ Origin   ┃ Installed ┃ Local (Claude/Codex)┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
+│helios-stability-readout │ private    │ me     │ created  │ yes       │ absent/absent       │
+│decision-record          │ public     │ system │ system   │ yes       │ absent/absent       │
+│assay-qc-checklist       │ org        │ org    │ imported │ no        │ absent/absent       │
+│lab-notebook-entry       │ public     │ anyone │ imported │ no        │ absent/absent       │
+└─────────────────────────┴────────────┴────────┴──────────┴───────────┴─────────────────────┘
+--- stderr
+
+
+$ beakr skills ls --mine --builtin --installed --origin created
+> GET /v1/skills?installed=true&limit=200&origin=created&owner=me&owner=system
+[exit 0]
+--- stdout
+5e6e6be8-d5cf-4216-aae7-b4aa6eed776a	Helios stability readout	slug=helios-stability-readout
+98459f24-948a-4fa8-910b-fd80b8b399e5	Decision record	slug=decision-record
+2c4e6a8b-1d3f-4a5c-9e7b-0f2d4c6e8a1b	Assay QC checklist	slug=assay-qc-checklist
+7a9c1e3f-5b7d-4f9a-8c2e-4b6d8f0a2c4e	Lab notebook entry	slug=lab-notebook-entry
+--- stderr
+

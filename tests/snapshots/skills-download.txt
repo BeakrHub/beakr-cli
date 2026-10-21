@@ -1,0 +1,29 @@
+$ beakr skills download helios-stability-readout --json
+> GET /v1/skills/helios-stability-readout
+> GET /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+[exit 0]
+--- stdout
+{
+  "skill_id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+  "path": "helios-stability-readout"
+}
+--- stderr
+
+
+$ beakr skills download helios-stability-readout
+> GET /v1/skills/helios-stability-readout
+> GET /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+[exit 0]
+--- stdout
+Saved helios-stability-readout
+--- stderr
+
+
+$ beakr skills download helios-stability-readout
+> GET /v1/skills/helios-stability-readout
+> GET /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+[exit 0]
+--- stdout
+-	helios-stability-readout
+--- stderr
+

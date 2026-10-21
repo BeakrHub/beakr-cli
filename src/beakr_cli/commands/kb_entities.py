@@ -27,7 +27,13 @@ def entities(
         None, "--type", "-t", help="Only this type, e.g. person or organization."
     ),
     project: str | None = typer.Option(
-        None, "--project", "-P", "--scope", help="Only this project.", callback=project_ref_callback
+        None,
+        "--project",
+        "-P",
+        "--scope",
+        "-s",
+        help="Only this project.",
+        callback=project_ref_callback,
     ),
     limit: int = typer.Option(200, "--limit", "-n", min=1, max=1000, help="Most pages to list."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
@@ -82,7 +88,13 @@ def entities(
 
 def conflicts(
     project: str | None = typer.Option(
-        None, "--project", "-P", "--scope", help="Only this project.", callback=project_ref_callback
+        None,
+        "--project",
+        "-P",
+        "--scope",
+        "-s",
+        help="Only this project.",
+        callback=project_ref_callback,
     ),
     limit: int = typer.Option(50, "--limit", "-n", min=1, max=200, help="Most conflicts to list."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
