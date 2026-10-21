@@ -407,3 +407,92 @@ def test_version_says_a_build_ahead_of_pypi_is_newer() -> None:
     assert "newer than the latest release (0.0.2)" in result.output
     assert "could not be checked" not in result.output
     assert not (config.config_dir() / "update_check.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# The CLI a self-hosted Beakr box bundles
+# ---------------------------------------------------------------------------
+
+# Root cause: on a box, `beakr version` and beakr_version said "Installed:
+# beakr-cli 0.4.0 (other) | Latest release: unknown (PyPI could not be
+# checked)". The box's CLI is upgraded with the box, not from PyPI (which a box
+# usually cannot reach, and whose check the box turns off), so both now say it
+# is the box's CLI and how it is upgraded, without a PyPI line.
+
+
+def _installed_by_other_means(monkeypatch) -> None:
+    other = updates.InstallInfo(updates.InstallMethod.other, None, "pip install --upgrade")
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: other)
+
+
+def _pypi_must_not_be_asked(monkeypatch) -> None:
+    def no_pypi(timeout):
+        raise AssertionError("PyPI was asked about a box's CLI")
+
+    monkeypatch.setattr(updates, "fetch_latest_version", no_pypi)
+
+
+def test_version_on_a_box_names_the_box_and_how_it_is_upgraded(monkeypatch) -> None:
+    _installed_by_other_means(monkeypatch)
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    result = CliRunner().invoke(app, ["version"])
+    as_json = CliRunner().invoke(app, ["version", "--json"])
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0].startswith("beakr-cli ")  # `beakr update` parses this line
+    assert "bundled with this Beakr box" in result.output
+    assert "upgraded with the box" in result.output
+    assert "PyPI" not in result.output and "Latest release" not in result.output
+    report = json.loads(as_json.output)
+    assert report["bundled_with_box"] is True
+    assert "latest" not in report
+
+
+async def test_beakr_version_tool_on_a_box_says_the_box_upgrades_it(monkeypatch) -> None:
+    from beakr_cli import mcp_server
+
+    other = updates.InstallInfo(updates.InstallMethod.other, None, "pip install --upgrade")
+    monkeypatch.setattr(mcp_server, "detect_install", lambda: other)
+    monkeypatch.setattr(updates, "_server_is_self_hosted", lambda: True)
+
+    def no_status(**_):
+        raise AssertionError("PyPI was asked about a box's CLI")
+
+    monkeypatch.setattr(mcp_server, "get_update_status", no_status)
+    monkeypatch.setattr(mcp_server, "run_upgrade", no_status)
+
+    text = await mcp_server.beakr_version()
+    refused = await mcp_server.update_beakr()
+
+    assert text.startswith(f"Installed: beakr-cli {mcp_server.__version__}.")
+    assert "bundled with this Beakr box" in text and "upgraded with the box" in text
+    assert "PyPI" not in text and "(other)" not in text and "Latest release" not in text
+    assert refused.startswith("Update did not run:") and "upgraded with the box" in refused
+
+
+def test_a_uv_tool_copy_pointed_at_a_box_still_checks_pypi(monkeypatch) -> None:
+    uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setattr(updates, "_server_is_self_hosted", lambda: True)
+    assert not updates.bundled_with_box(uv)
+
+
+@pytest.mark.real_capabilities
+@respx.mock
+def test_a_server_without_organization_administration_is_a_box(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_URL", "https://box.test")
+    monkeypatch.setenv("BEAKR_API_KEY", "bk_test_key")
+    other = updates.InstallInfo(updates.InstallMethod.other, None, "pip install --upgrade")
+    document = respx.get("https://box.test/v1/public/openapi.json")
+
+    document.respond(json={"paths": {"/v1/projects": {"get": {}}}})
+    assert updates.bundled_with_box(other)
+
+    from beakr_sdk.capabilities import forget_capabilities
+
+    forget_capabilities()
+    hosted = {"/v1/projects": {"get": {}}, "/v1/organizations": {"get": {}}}
+    document.respond(json={"paths": hosted})
+    assert not updates.bundled_with_box(other)

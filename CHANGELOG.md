@@ -1441,6 +1441,16 @@ Each release lists the public API changes it supports, taken from the API change
   `--role` is given, so re-adding a member keeps their role (the server makes
   someone new a member). Refusing to demote or remove the last owner
   (`409 last_owner`, exit 5) says to make another member an owner first.
+  `--role` takes the API's roles (`owner`, `admin`, `member`, `viewer`) and
+  refuses any other before sending; its help named `editor`, which the API
+  does not have.
+- **The CLI a Beakr box bundles.** `beakr version`, `beakr update` and the
+  MCP tools `beakr_version` and `update_beakr` say a box's own copy is upgraded
+  with the box (install the next Beakr box release) instead of "Latest release:
+  unknown (PyPI could not be checked)". A copy is the box's when it was not
+  installed with uv or pipx and `BEAKR_NO_UPDATE_CHECK` is set or the API's
+  document leaves out organization administration; `beakr version --json`
+  reports `bundled_with_box: true`.
 - **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
   prints the status after the accept (`status=accepted`), not the create's
   `pending`.

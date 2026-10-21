@@ -270,6 +270,43 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
 
 
 # ---------------------------------------------------------------------------
+# A self-hosted Beakr box
+# ---------------------------------------------------------------------------
+
+#: How the CLI a box bundles is upgraded: with the box, never from PyPI.
+BOX_INSTRUCTIONS = (
+    "This is the beakr-cli bundled with this Beakr box. It is upgraded with the box: "
+    "install the next Beakr box release, which brings its own beakr-cli."
+)
+
+
+def bundled_with_box(info: InstallInfo) -> bool:
+    """True when this copy is the CLI a self-hosted Beakr box bundles.
+
+    The box installs it outside uv and pipx (``other``) and either turns the
+    PyPI check off (``BEAKR_NO_UPDATE_CHECK``) or serves an API that leaves out
+    organization administration, as a self-hosted installation does. A copy the
+    user installed with uv or pipx is upgraded from PyPI whatever it talks to.
+    """
+    if info.method is not InstallMethod.other:
+        return False
+    return check_disabled() or _server_is_self_hosted()
+
+
+def _server_is_self_hosted() -> bool:
+    """The configured API's own OpenAPI document leaves out organization administration."""
+    from beakr_cli.sdk import get_sdk
+
+    try:
+        with get_sdk(timeout=5.0) as sdk:
+            capabilities = sdk.meta.capabilities()
+    except Exception:
+        # No configuration, or the server is unreachable: nothing says it is a box.
+        return False
+    return bool(capabilities.documented) and not capabilities.serves("GET", "/v1/organizations")
+
+
+# ---------------------------------------------------------------------------
 # Upgrade
 # ---------------------------------------------------------------------------
 
