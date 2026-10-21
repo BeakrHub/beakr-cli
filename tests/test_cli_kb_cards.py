@@ -355,6 +355,63 @@ def test_a_door_refusal_exits_1_with_its_guidance() -> None:
     assert "not a card" in result.output
 
 
+_SUPERSEDES_REFUSAL = (
+    '"Nothing like this" does not name a finding on FXC Battery Trial. Its findings are: '
+    "2026-10-10 \u00b7 result. Nothing was written."
+)
+
+
+def _add_finding(*extra: str):
+    return CliRunner().invoke(
+        app,
+        [
+            "kb",
+            "add-finding",
+            "FXC Battery Trial",
+            "--date",
+            "2026-10-12",
+            "--kind",
+            "result",
+            "--text",
+            "t",
+            "--evidence",
+            "e",
+            "--supersedes",
+            "Nothing like this",
+            "--rationale",
+            "r",
+            *extra,
+        ],
+    )
+
+
+@respx.mock
+def test_an_argument_refusal_is_a_usage_error_without_an_http_status() -> None:
+    # Root cause: the door answers a refusal in a 200 body; the SDK's error
+    # text labelled it "(HTTP 200, invalid_arguments)" and the CLI exited 1.
+    respx.post(f"{API}/v1/knowledge/wiki/write").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "content": [{"type": "text", "text": _SUPERSEDES_REFUSAL}],
+                "outcome": {"status": "error", "error_code": "invalid_arguments"},
+            },
+        )
+    )
+
+    result = _add_finding()
+    as_json = _add_finding("--json")
+
+    assert result.exit_code == 2, result.output
+    assert "Nothing was written. (invalid_arguments)" in " ".join(result.output.split())
+    assert "HTTP" not in result.output
+    assert as_json.exit_code == 2
+    error = json.loads(as_json.stdout)["error"]
+    assert error["code"] == "invalid_arguments"
+    assert error["exit_code"] == 2
+    assert "status" not in error
+
+
 @respx.mock
 def test_query_sends_the_json_spec_through_the_command_door(tmp_path) -> None:
     route = respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=_ok())
