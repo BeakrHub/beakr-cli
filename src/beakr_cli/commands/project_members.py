@@ -7,7 +7,7 @@ the same ``projects`` Typer app. A project is named by id, slug or name.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 import typer
 
@@ -17,9 +17,6 @@ from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
-
-if TYPE_CHECKING:
-    from beakr_sdk._generated.models import ProjectMemberAdd
 
 app = typer.Typer(help="Members of a project: list, add, remove, invite by email.")
 
@@ -99,13 +96,9 @@ def add_project_member(
     is sent: the server makes someone new a member and leaves an existing
     member's role as it is (re-adding the last owner used to demote them).
     """
-    body: ProjectMemberAdd = {"principal_id": principal_id, "principal_type": "user"}
-    if role is not None:
-        body["role"] = role
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
-        # The SDK's add_member always sends a role (member by default).
-        result = sdk.api.projects.add_member(str(found["id"]), body=body)
+        result = sdk.projects.add_member(str(found["id"]), principal_id, role=role)
     emit(
         result,
         json_out=json_out,
