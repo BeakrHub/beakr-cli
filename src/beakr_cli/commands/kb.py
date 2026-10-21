@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 from itertools import islice
 from pathlib import Path
@@ -44,12 +45,14 @@ proposals_app = typer.Typer(help="Review and apply wiki write proposals.")
 app.add_typer(propose_app, name="propose")
 app.add_typer(proposals_app, name="proposals")
 
-# Common scope options reused across commands
+# Common scope options reused across commands. Every kb command spells it the same
+# (-P, --scope, -s), as the card commands in kb_cards.py do.
 _project_opt = typer.Option(
     None,
     "--project",
     "-P",
     "--scope",
+    "-s",
     help="Project id, slug or name to scope the command.",
     callback=project_ref_callback,
 )
@@ -1155,6 +1158,7 @@ def proposals_show(
         "--project",
         "-P",
         "--scope",
+        "-s",
         help="Only if the proposal is in this project (id, slug or name).",
         callback=project_ref_callback,
     ),
@@ -1241,6 +1245,11 @@ def proposals_dismiss(
 # ---------------------------------------------------------------------------
 
 
+def _title_key(text: str) -> str:
+    """A title compared loosely: case, spacing and punctuation ignored (a slug matches)."""
+    return "-".join(re.findall(r"[^\W_]+", text.casefold()))
+
+
 def _resolve_page(
     ref: str,
     *,
@@ -1250,9 +1259,19 @@ def _resolve_page(
     """Resolve a page reference (title or UUID) to a page dict.
 
     Title resolution goes through wiki_page_title_aliases so renamed
-    pages still resolve via their previous titles. A fuzzy search
-    fallback handles partial input.
+    pages still resolve via their previous titles. A page whose title is the
+    reference written another way (a slug, ``kestrel-widget``) resolves too.
+    Anything else is not found, with the closest titles as suggestions: the
+    search's top hit used to be returned silently, so ``kb cat "No Such Page"``
+    printed an unrelated page and exited 0.
+
+    The closest titles are the server's own when its 404 names them
+    (``error.details.suggestions``, ranked under the caller's access); a
+    server without that field gets them from a search.
     """
+    suggestions: list[str] = []
+    wanted = _title_key(ref)
+    scope_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
         pages = sdk.knowledge.pages
         # Try UUID first
@@ -1266,27 +1285,44 @@ def _resolve_page(
                 pass
 
         # Try exact title (resolves through alias table -- current + previous)
+        server_suggestions = None
         try:
-            return pages.by_title(ref, project_id=_project_id(project=project, mine=mine))
+            return pages.by_title(ref, project_id=scope_id)
+        except NotFoundError as exc:
+            reported = exc.details.get("suggestions")
+            if isinstance(reported, list):
+                server_suggestions = [str(title) for title in reported if title]
         except Exception:
             pass
 
-        # Try fuzzy search (handles partial input and slug-shaped legacy refs)
-        try:
-            results = pages.search(ref, project_id=_project_id(project=project, mine=mine), limit=1)
-            hits = page_rows(results)
-            if hits:
-                page_id = hits[0].get("id")
-                if page_id:
-                    data = pages.get(page_id)
-                    if not _page_matches_scope(data, project=project, mine=mine):
-                        raise ValueError("Page is outside the requested scope.")
+        if server_suggestions is not None:
+            for title in server_suggestions:
+                if wanted and _title_key(title) == wanted:
+                    return pages.by_title(title, project_id=scope_id)
+            suggestions = server_suggestions
+            hits = []
+        else:
+            # An older server names no suggestions: search for them.
+            try:
+                hits = page_rows(pages.search(ref, project_id=scope_id, limit=5))
+            except Exception:
+                hits = []
+        for hit in hits:
+            title = str(hit.get("title") or "")
+            if title and title not in suggestions:
+                suggestions.append(title)
+            if wanted and _title_key(title) == wanted and hit.get("id"):
+                data = pages.get(hit["id"])
+                if _page_matches_scope(data, project=project, mine=mine):
                     return data
-        except Exception:
-            pass
 
     # Not found (exit 4), the code every other missing object gets.
-    raise NotFoundError(f"Page not found: {ref}")
+    if suggestions:
+        raise NotFoundError(
+            f"Page not found: {ref}",
+            fix="Close matches: " + ", ".join(f'"{title}"' for title in suggestions[:5]),
+        )
+    raise NotFoundError(f"Page not found: {ref}", fix="List pages with `beakr kb ls`.")
 
 
 def _page_matches_scope(

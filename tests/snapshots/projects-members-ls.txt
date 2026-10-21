@@ -48,7 +48,7 @@ $ beakr projects members ls 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/members?limit=200
 [exit 0]
 --- stdout
--	Dana Whitfield	role=owner	email=dana@northwind.example
--	Maja Lindqvist	role=member	email=maja@northwind.example
+7c1e2f9a-5b3d-4e8a-9f10-2a6b4c8d0e11	Dana Whitfield	role=owner	email=dana@northwind.example
+3f8a1d27-6c4e-4b9a-8e2f-5d7c9b1a0e22	Maja Lindqvist	role=member	email=maja@northwind.example
 --- stderr
 

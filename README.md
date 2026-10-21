@@ -700,6 +700,8 @@ This writes:
 | `BEAKR_API_KEY` | API key (overrides stored config) |
 | `BEAKR_BASE_URL` / `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
 | `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute writes to an agent. The MCP server defaults to its client's name and version (`claude-code/2.1.283`); set this to tell apart several agents that share one key. The CLI at a terminal sends none. |
+| `BEAKR_RUN` | Sent as `X-Beakr-Run`: groups a script's Knowledge writes into one run that `beakr kb undo-run <run>` takes back together. The MCP server defaults to one run per server process (`stdio:<id>`). |
+| `BEAKR_SESSION` | Sent as `X-Beakr-Session`: the agent session behind the writes, shown on their provenance ("session <id>"). Unset, the CLI and MCP server use the host agent's own session id when it gives one: `CLAUDE_CODE_SESSION_ID` (Claude Code, in its MCP servers and commands), `CODEX_THREAD_ID` (Codex) and `CURSOR_CONVERSATION_ID` (Cursor), the last two only in the shell commands their agents run. Nothing is sent when none is set. |
 | `BEAKR_APP_URL` | Web app URL for pages the CLI opens (default: saved at `beakr auth login`, else `https://app.thebeakr.com`) |
 | `BEAKR_HOME` | Directory for config, credentials and hook state (default: `~/.beakr`) |
 | `BEAKR_NO_KEYRING` | Set to `1` to store sign-in tokens in `~/.beakr/credentials` instead of the keychain |

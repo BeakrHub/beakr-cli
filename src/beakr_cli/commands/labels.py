@@ -201,14 +201,31 @@ def remove_label_member(
     user_id: str = typer.Argument(..., help="User id to remove."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Remove someone from a label."""
+    """Remove someone from a label.
+
+    Safe to repeat: someone who is not on the label is reported
+    (``removed: false``) and the command still succeeds.
+    """
     with get_sdk() as sdk:
         label_id = _label_id(sdk, label)
+        # The server's DELETE answers 204 whether or not the person was on the
+        # label, so only the member list can say whether this removes anyone.
+        wanted = user_id.strip().lower()
+        was_member = any(
+            str(m.get("user_id") or "").lower() == wanted for m in sdk.labels.members(label_id)
+        )
         sdk.labels.remove_member(label_id, user_id)
+
+    def render(data: dict[str, Any]) -> None:
+        if data["removed"]:
+            err_console.print(f"Removed {user_id} from the label.", markup=False)
+        else:
+            err_console.print(f"{user_id} is not on the label; nothing to remove.", markup=False)
+
     emit(
-        {"label_id": label_id, "user_id": user_id, "removed": True},
+        {"label_id": label_id, "user_id": user_id, "removed": was_member},
         json_out=json_out,
-        render=lambda d: err_console.print(f"Removed {d['user_id']} from the label.", markup=False),
+        render=render,
         json_when_piped=False,
     )
 

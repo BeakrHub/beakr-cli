@@ -251,3 +251,60 @@ def test_hooks_status_piped_is_one_line_per_client():
     assert lines[0].startswith("claude\tevents=")
     assert lines[1].startswith("codex\tinstalled=")
     assert "{" not in result.stdout
+
+
+# Root cause: a project membership names its member `principal_id`, which was not
+# one of the compact output's id keys, so piped `projects members ls` printed "-"
+# where the member id belongs and nothing a script could pass to `members rm`.
+@respx.mock
+def test_projects_members_ls_piped_prints_each_member_id():
+    respx.get(f"{API}/v1/projects").respond(json=[{"id": PROJECT, "name": "Assays"}])
+    member = {
+        "principal_type": "user",
+        "principal_id": "33333333-3333-3333-3333-333333333333",
+        "role": "owner",
+        "name": "Local evaluation administrator",
+    }
+    respx.get(f"{API}/v1/projects/{PROJECT}/members").respond(json=[member])
+
+    result = runner.invoke(app, ["projects", "members", "ls", "-P", PROJECT])
+
+    assert result.exit_code == 0, result.output
+    first = result.stdout.splitlines()[0].split("\t")
+    assert first[:2] == [member["principal_id"], "Local evaluation administrator"]
+
+
+# Root cause: the card commands (kb rows, kb query, ...) took -s for the project
+# and the rest of kb did not, so `kb log -s` and `kb proposals ls -s` were usage
+# errors. Every kb command that takes a project now spells it -P, --scope or -s.
+def test_every_kb_command_that_takes_a_project_takes_it_as_P_and_s():
+    import click
+    import typer.main
+
+    def leaves(command, path):
+        if isinstance(command, click.Group):
+            for name, sub in command.commands.items():
+                yield from leaves(sub, [*path, name])
+        else:
+            yield " ".join(path), command
+
+    kb = typer.main.get_command(app).commands["kb"]
+    checked = []
+    for name, command in leaves(kb, ["kb"]):
+        for param in command.params:
+            if "--project" in getattr(param, "opts", []):
+                assert {"-P", "--scope", "-s"} <= set(param.opts), name
+                checked.append(name)
+    assert {"kb log", "kb proposals ls", "kb rows"} <= set(checked)
+
+
+@respx.mock
+def test_kb_proposals_ls_takes_the_project_as_s():
+    proposals = respx.get(f"{API}/v1/knowledge/wiki/proposals").respond(
+        json={"data": [], "has_more": False, "next_cursor": None}
+    )
+
+    result = runner.invoke(app, ["kb", "proposals", "ls", "-s", PROJECT, "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert proposals.calls.last.request.url.params["project_id"] == PROJECT
