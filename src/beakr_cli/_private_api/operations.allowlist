@@ -53,7 +53,6 @@ GET /v1/knowledge/wiki/pages/{page_id}/backlinks
 GET /v1/knowledge/wiki/pages/{page_id}/blame
 GET /v1/knowledge/wiki/pages/{page_id}/section-provenance
 POST /v1/knowledge/profiles
-GET /v1/knowledge/profiles/org
 GET /v1/knowledge/profiles/project/{project_id}
 
 # Personal memory and the inferred profile.

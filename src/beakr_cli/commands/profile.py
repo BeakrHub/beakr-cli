@@ -1,7 +1,6 @@
 """``beakr profile``: the evidence-backed profile agents use, and project profiles.
 
-Shared (project and organization) profile claims are not in this release; a
-project's or the organization's profile document is still shown and started here.
+Project profile documents can be shown and started here.
 """
 
 from __future__ import annotations
@@ -19,23 +18,13 @@ from beakr_cli.output import console, emit, err_console, short
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes
 
-app = typer.Typer(
-    help="Show and correct your profile, and show a project's or the organization's profile."
-)
+app = typer.Typer(help="Show and correct your profile, and show a project's profile.")
 
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 
 
-def _shared_scope(project: str | None, org: bool) -> dict[str, Any] | None:
-    """The project or organization profile a command targets, or None for yours."""
-    if project and org:
-        err_console.print("Use either --project or --org, not both.")
-        raise typer.Exit(2)
-    if project:
-        return {"project_id": project}
-    if org:
-        return {}
-    return None
+def _shared_scope(project: str | None) -> dict | None:
+    return {"project_id": project} if project else None
 
 
 def _render_claims(claims: list[dict[str, Any]]) -> None:
@@ -93,7 +82,6 @@ def show(
         help="Show this project's profile instead of yours.",
         callback=project_ref_callback,
     ),
-    org: bool = typer.Option(False, "--org", help="The organization's profile instead of yours."),
     include_inactive: bool = typer.Option(
         False, "--all", "-a", help="Include dismissed and retired claims."
     ),
@@ -108,22 +96,22 @@ def show(
     ),
     json_out: bool = _json_opt,
 ) -> None:
-    """Show your profile claims, grouped by layer, or a project's or the organization's profile."""
+    """Show your profile claims, grouped by layer, or a project's profile."""
     from beakr_cli.sdk import get_sdk
 
-    scope = _shared_scope(project, org)
+    scope = _shared_scope(project)
     if layer and scope is not None:
-        raise typer.BadParameter("--layer filters your own profile; leave out --project and --org.")
+        raise typer.BadParameter("--layer filters your own profile; leave out --project.")
     with get_sdk() as sdk:
         if scope is not None:
-            document = sdk.profile.project(project) if project else sdk.profile.org()
+            document = sdk.profile.project(project)
             if json_out:
                 emit({"profile": document}, json_out=True)
                 return
             if document:
                 _render_project_profile(document)
             else:
-                name = f"Project {project}" if project else "The organization"
+                name = f"Project {project}"
                 err_console.print(f"{name} has no knowledge profile yet.", markup=False)
             return
         claims = sdk.profile.claims(include_inactive=include_inactive or None, layer=layer or None)
@@ -140,18 +128,17 @@ def create(
         help="Start this project's knowledge profile.",
         callback=project_ref_callback,
     ),
-    org: bool = typer.Option(False, "--org", help="Start the organization's knowledge profile."),
     description: str = typer.Option("", "--description", "-d", help="What it is about."),
     goal: list[str] = typer.Option([], "--goal", help="A goal; repeatable."),
     focus: list[str] = typer.Option([], "--focus", help="A focus area; repeatable."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Start a project's or the organization's knowledge profile (its owners only)."""
+    """Start a project's knowledge profile (its owners only)."""
     from beakr_cli.sdk import get_sdk
 
-    scope = _shared_scope(project, org)
+    scope = _shared_scope(project)
     if scope is None:
-        err_console.print("Name the profile: --project ID or --org.")
+        err_console.print("Name the profile: --project ID.")
         raise typer.Exit(2)
     with get_sdk() as sdk:
         created = sdk.profile.create_profile(

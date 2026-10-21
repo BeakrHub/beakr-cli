@@ -85,14 +85,6 @@ CASES: list[tuple[str, Any, str, str, dict[str, str], Any]] = [
         {},
         {"profile_type": "project", "project_id": "p1", "goals": ["Map it"]},
     ),
-    (
-        "create org profile",
-        lambda c: c.profile.create_profile(name="Lab"),
-        "POST",
-        "/v1/knowledge/profiles",
-        {},
-        {"profile_type": "org", "name": "Lab"},
-    ),
     ("workflow run", lambda c: c.workflows.get_run("r1"), "GET", "/v1/workflows/runs/r1", {}, None),
 ]
 
@@ -112,3 +104,11 @@ def test_resource_request_shape(client, label, invoke, method, path, query, body
         assert not request.content
     else:
         assert json.loads(request.content) == body
+
+
+def test_knowledge_profile_creation_requires_project_before_request():
+    from beakr_cli._private_api.resources.profile import Profile
+    with pytest.raises(ValueError, match="project_id"):
+        Profile.create_profile(None, project_id="")
+    with pytest.raises(TypeError):
+        Profile.create_profile(None, name="Org")

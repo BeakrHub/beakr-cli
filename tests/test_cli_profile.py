@@ -1,4 +1,4 @@
-"""``beakr profile``: your claims, and project and organization profile documents."""
+"""``beakr profile``: your claims, and project profile documents."""
 
 from __future__ import annotations
 
@@ -238,3 +238,12 @@ def test_profile_create_starts_a_project_profile_idempotently() -> None:
 
 def test_profile_create_needs_a_scope() -> None:
     assert CliRunner().invoke(app, ["profile", "create"]).exit_code == 2
+
+
+@pytest.mark.parametrize("command", ["show", "create"])
+@respx.mock
+def test_org_profile_commands_are_retired_without_api_calls(command):
+    # The server no longer serves org profiles; reject stale invocations locally.
+    result = CliRunner().invoke(app, ["profile", command, "--org"])
+    assert result.exit_code == 2
+    assert not respx.calls

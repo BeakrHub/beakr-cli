@@ -438,24 +438,13 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
 
 @mcp.tool(**tool_surface.tool_kwargs("get_profile"))
 async def get_profile(
-    profile_type: str = "org",
-    project_id: str = "",
+    project_id: str,
+    profile_type: str = "project",
 ) -> str:
-    """Get the knowledge profile for an org or project.
-
-    Profiles contain goals, focus areas, core people/organizations/topics,
-    and extraction guidance that shape how knowledge is organized.
-
-    Args:
-        profile_type: One of 'org' or 'project'.
-        project_id: Project ID (required if profile_type is 'project').
-    """
-    if profile_type == "org":
-        data = await _call_api(lambda sdk: sdk.profile.org())
-    elif profile_type == "project" and project_id:
-        data = await _call_api(lambda sdk: sdk.profile.project(project_id))
-    else:
-        return f"Invalid: profile_type='{profile_type}' requires profile_type='org' or project_id."
+    """Get a project's knowledge profile; organization profiles are retired."""
+    if profile_type != "project" or not project_id:
+        return "Invalid: Knowledge Profiles require a project_id."
+    data = await _call_api(lambda sdk: sdk.profile.project(project_id))
 
     if not data:
         return f"No {profile_type} profile found."

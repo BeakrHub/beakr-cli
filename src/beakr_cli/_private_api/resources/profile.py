@@ -1,4 +1,4 @@
-"""Profiles: the caller's inferred profile claims and the org/project knowledge profiles.
+"""Profiles: the caller's inferred profile claims and the project knowledge profiles.
 
 Every route here is unlisted.
 
@@ -79,23 +79,14 @@ class Profile(Resource[M]):
         """Erase a claim permanently (and keep it from being relearned)."""
         return self._run(ops.build_personal_memory_forget_user_profile_claim(claim_id))
 
-    @returns(ops.build_knowledge_get_org_profile)
-    def org(self) -> Any:
-        """The organization's knowledge profile, or None."""
-        return self._run(ops.build_knowledge_get_org_profile())
-
     @returns(ops.build_knowledge_get_project_profile)
     def project(self, project_id: str) -> Any:
         """A project's knowledge profile, or None."""
         return self._run(ops.build_knowledge_get_project_profile(project_id))
 
-    def create_profile(self, *, project_id: str | None = None, **fields: Any) -> Any:
-        """Start a project's knowledge profile, or the organization's without ``project_id``.
-
-        Owners only (project admins; organization admins). Raises a conflict if
-        the profile already exists.
-        """
-        body = clean_body(
-            {"profile_type": "project" if project_id else "org", "project_id": project_id, **fields}
-        )
+    def create_profile(self, *, project_id: str, **fields: Any) -> Any:
+        """Start a project's knowledge profile as a project administrator."""
+        if not project_id:
+            raise ValueError("Knowledge Profiles require a project_id")
+        body = clean_body({**fields, "profile_type": "project", "project_id": project_id})
         return self._run(ops.build_knowledge_create_profile(body=body))
