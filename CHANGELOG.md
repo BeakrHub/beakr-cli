@@ -1406,6 +1406,12 @@ Each release lists the public API changes it supports, taken from the API change
 - **Removals.** Piped, `projects members rm` and `labels members rm` print
   `ID<TAB>removed=true|false` on stdout as `members rm` does. `labels members
   rm` and `labels projects rm` take `--yes` and, without a terminal, need it.
+- **Cite a conversation in a card row.** `kb add-fact`, `kb add-connection` and
+  `kb add-finding` take `--cite-conversation LABEL --excerpt TEXT` (and
+  `--source-title`): the row cites `{{conversation:LABEL}}`, declared as an
+  inline conversation citation with the words cited, as the MCP tools do.
+  `--evidence` is optional with it. `kb rows --to` is described as what it
+  returns: the rows pointing at the page.
 - **Conversations.** `beakr conversations show` labels a turn the agent host
   wrote `system:` (and an agent's prompt to a subagent `agent:`), not `user:`.
   `conversations import --file` sends `--summary` and `--compound`, and a
