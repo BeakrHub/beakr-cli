@@ -1,0 +1,6 @@
+{
+  "operation": "DELETE /v1/me/skills/library/{skill_id}",
+  "source": "synthesized",
+  "status": 204,
+  "body": null
+}

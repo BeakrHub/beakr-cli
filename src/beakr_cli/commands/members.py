@@ -92,14 +92,38 @@ def remove_member(
     org: str | None = _org_opt,
     json_out: bool = _json_opt,
 ) -> None:
-    """Remove a member from the organization."""
+    """Remove a member from the organization.
+
+    Safe to repeat: someone who is not a member is reported (``removed: false``)
+    and the command still succeeds.
+    """
     confirm_or_require_yes(f"Remove {user_id} from the organization?", yes)
     with get_sdk() as sdk:
+        # The server's DELETE answers 204 whether or not the person was a
+        # member, so only the member list can say whether this removes anyone.
+        # The DELETE is still sent: for someone whose access was already
+        # revoked another way it still finishes the removal, and the list holds
+        # active members only.
+        wanted = user_id.strip().lower()
+        was_member = any(
+            str(m.get("user_id") or "").lower() == wanted for m in sdk.members.list(org_id=org)
+        )
         sdk.members.remove(user_id, org_id=org)
+
+    def render(data: dict[str, Any]) -> None:
+        if data["removed"]:
+            console.print(f"Removed {user_id}.", markup=False)
+        else:
+            console.print(
+                f"{user_id} is not a member of the organization; nothing to remove.",
+                markup=False,
+            )
+
     emit(
-        {"user_id": user_id, "removed": True},
+        {"user_id": user_id, "removed": was_member},
         json_out=json_out,
-        render=lambda _: console.print(f"Removed {user_id}.", markup=False),
+        render=render,
+        lines=lambda d: [f"{d['user_id']}\tremoved={'true' if d['removed'] else 'false'}"],
     )
 
 

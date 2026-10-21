@@ -6,6 +6,7 @@ the same ``projects`` Typer app. A project is named by id, slug or name.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from typing import Any
 
 import typer
@@ -78,13 +79,22 @@ def list_project_members(
 def add_project_member(
     project: str = _project_arg,
     principal_id: str = typer.Argument(..., help="User id (from `beakr members ls`)."),
-    role: str = typer.Option("member", "--role", help="member, editor, viewer or owner."),
+    role: str | None = typer.Option(
+        None,
+        "--role",
+        help=(
+            "member, editor, viewer or owner. Default: member for someone new; "
+            "an existing member keeps their role."
+        ),
+    ),
     json_out: bool = _json_opt,
 ) -> None:
     """Give an organization member a role in the project.
 
     Members are people (or service accounts); the server refuses group
-    memberships, so there is no --type to ask for one.
+    memberships, so there is no --type to ask for one. Without --role no role
+    is sent: the server makes someone new a member and leaves an existing
+    member's role as it is (re-adding the last owner used to demote them).
     """
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
@@ -92,8 +102,9 @@ def add_project_member(
     emit(
         result,
         json_out=json_out,
-        render=lambda _: console.print(
-            f"Added {principal_id} to {found.get('name') or project} as {role}.",
+        render=lambda r: console.print(
+            f"Added {principal_id} to {found.get('name') or project} as "
+            f"{role or (r or {}).get('role') or 'member'}.",
             highlight=False,
             markup=False,
         ),
@@ -108,24 +119,72 @@ def remove_project_member(
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Remove a member's access to the project."""
+    """Remove a member's access to the project.
+
+    Safe to repeat: someone who is not a member is reported (``removed: false``)
+    and the command still succeeds.
+    """
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
-        confirm_or_require_yes(
-            f"Remove {principal_id} from {found.get('name') or project}?", yes=yes
-        )
+        name = found.get("name") or project
+        confirm_or_require_yes(f"Remove {principal_id} from {name}?", yes=yes)
+        # The server's DELETE answers 204 whether or not the membership existed,
+        # so only the member list can say whether this removes anyone.
+        members = sdk.projects.members(str(found["id"]))
         sdk.projects.remove_member(str(found["id"]), principal_id, principal_type=principal_type)
-    emit(
-        {
-            "project_id": str(found.get("id")),
-            "principal_id": principal_id,
-            "principal_type": principal_type,
-            "removed": True,
-        },
-        json_out=json_out,
-        render=lambda _: err_console.print(f"Removed {principal_id}.", markup=False),
-        json_when_piped=False,
-    )
+    direct, inherited = _membership(members, principal_id, principal_type)
+    result: dict[str, Any] = {
+        "project_id": str(found.get("id")),
+        "principal_id": principal_id,
+        "principal_type": principal_type,
+        "removed": direct,
+    }
+    if inherited:
+        result["inherited_from"] = inherited
+
+    def render(data: dict[str, Any]) -> None:
+        if data["removed"]:
+            err_console.print(f"Removed {principal_id}.", markup=False)
+        elif inherited:
+            err_console.print(
+                f"{principal_id} has access to {name} only through {inherited}, so there is "
+                "no project membership to remove; take them out of that label instead.",
+                markup=False,
+            )
+        else:
+            err_console.print(
+                f"{principal_id} is not a member of {name}; nothing to remove.", markup=False
+            )
+
+    def lines(data: dict[str, Any]) -> list[str]:
+        # Piped, the outcome is a line on stdout (as `members rm` prints), not
+        # only the sentence on stderr.
+        line = f"{data['principal_id']}\tremoved={'true' if data['removed'] else 'false'}"
+        if data.get("inherited_from"):
+            line += f"\tinherited_from={data['inherited_from']}"
+        return [line]
+
+    emit(result, json_out=json_out, render=render, lines=lines)
+
+
+def _membership(
+    members: Iterable[Mapping[str, Any]], principal_id: str, principal_type: str
+) -> tuple[bool, str | None]:
+    """Whether the principal holds a membership `rm` removes, and any label it inherits from.
+
+    Access through a label is listed too (``inherited_from``), but it is not a
+    project membership: removing the principal from the project leaves it.
+    """
+    wanted = principal_id.strip().lower()
+    inherited = None
+    for member in members:
+        if str(member.get("principal_id") or "").lower() != wanted:
+            continue
+        if member.get("inherited_from"):
+            inherited = inherited or str(member["inherited_from"])
+        elif (member.get("principal_type") or "user") == principal_type:
+            return True, None
+    return False, inherited
 
 
 @app.command("invite")

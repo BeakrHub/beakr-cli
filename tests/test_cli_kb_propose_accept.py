@@ -75,6 +75,21 @@ def test_accept_yes_accepts_when_output_is_not_a_terminal(mode):
 
 
 @respx.mock
+@pytest.mark.parametrize("mode", [[], ["--json"]])
+def test_an_accepted_proposal_is_reported_with_its_status_after_the_accept(mode):
+    # Root cause: the output was the create's proposal with accepted=true added,
+    # so it still said status=pending.
+    _routes()
+    result = _create("--accept", "--yes", *mode)
+    assert result.exit_code == 0, result.output
+    if mode:
+        assert json.loads(result.stdout)["status"] == "accepted"
+    else:
+        assert "status=accepted" in result.stdout.split()
+        assert "status=pending" not in result.stdout.split()
+
+
+@respx.mock
 def test_accept_without_yes_is_refused_not_ignored_when_not_interactive():
     _, accepted = _routes()
     result = _create("--accept", "--json")

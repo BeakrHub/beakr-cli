@@ -1,0 +1,26 @@
+$ beakr skills dismiss 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> POST /v1/me/skills/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/dismiss
+[exit 0]
+--- stdout
+{
+  "status": "dismissed",
+  "proposal_id": "6f8a0c2e-4b6d-4f8a-9c1e-3b5d7f9a1c3e"
+}
+--- stderr
+
+
+$ beakr skills dismiss 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> POST /v1/me/skills/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/dismiss
+[exit 0]
+--- stdout
+Dismissed proposal 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f.
+--- stderr
+
+
+$ beakr skills dismiss 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> POST /v1/me/skills/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/dismiss
+[exit 0]
+--- stdout
+6f8a0c2e-4b6d-4f8a-9c1e-3b5d7f9a1c3e	status=dismissed
+--- stderr
+

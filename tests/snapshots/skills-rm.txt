@@ -1,0 +1,30 @@
+$ beakr skills rm helios-stability-readout --yes --json
+> GET /v1/skills/helios-stability-readout
+> DELETE /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a
+[exit 0]
+--- stdout
+{
+  "skill_id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+  "slug": "helios-stability-readout",
+  "deleted": true
+}
+--- stderr
+
+
+$ beakr skills rm helios-stability-readout --yes
+> GET /v1/skills/helios-stability-readout
+> DELETE /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a
+[exit 0]
+--- stdout
+
+--- stderr
+Deleted helios-stability-readout.
+
+$ beakr skills rm helios-stability-readout --yes
+> GET /v1/skills/helios-stability-readout
+> DELETE /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a
+[exit 0]
+--- stdout
+
+--- stderr
+Deleted helios-stability-readout.

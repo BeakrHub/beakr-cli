@@ -61,6 +61,39 @@ def _agent() -> str | None:
     return os.environ.get("BEAKR_AGENT") or MCP_CLIENT_AGENT.get()
 
 
+#: Where the agent session behind a request is named, first set wins: an explicit
+#: ``BEAKR_SESSION``, then the host's own. Claude Code sets CLAUDE_CODE_SESSION_ID
+#: for its MCP servers and the commands it runs. Codex (CODEX_THREAD_ID,
+#: codex-rs/core/src/exec_env.rs) and Cursor (CURSOR_CONVERSATION_ID, its agent's
+#: shell runner) set theirs only for the shell commands their agent runs: their
+#: MCP servers start with a fixed environment, so there it takes BEAKR_SESSION.
+SESSION_ENV = (
+    "BEAKR_SESSION",
+    "CLAUDE_CODE_SESSION_ID",
+    "CODEX_THREAD_ID",
+    "CURSOR_CONVERSATION_ID",
+)
+
+
+def _session() -> str | None:
+    """The agent session for ``X-Beakr-Session``, as a header-safe label."""
+    for name in SESSION_ENV:
+        value = _UNSAFE_AGENT_CHARS.sub("-", os.environ.get(name, "")).strip(" -")
+        if value:
+            return value[:_MAX_AGENT_CHARS]
+    return None
+
+
+def _headers() -> dict[str, str]:
+    """The CLI's own headers: its version, and the agent session when one is known.
+
+    Sent as a default header, not the SDK's ``session=`` option, so it works with
+    SDK builds that predate it; the API shows it on the writes' provenance.
+    """
+    session = _session()
+    return {**_CLI_HEADERS, "X-Beakr-Session": session} if session else dict(_CLI_HEADERS)
+
+
 def get_sdk(
     *, client_name: str | None = None, timeout: float = 60.0, base_url: str | None = None
 ) -> PrivateBeakr:
@@ -69,7 +102,8 @@ def get_sdk(
     ``BEAKR_AGENT`` is forwarded as ``X-Beakr-Agent`` so a script or hook can
     attribute its writes to the agent session that ran it (in the MCP server
     the client's own clientInfo is the default), and ``BEAKR_RUN`` as
-    ``X-Beakr-Run`` so `beakr kb undo-run <run>` can take back one run's writes.
+    ``X-Beakr-Run`` so `beakr kb undo-run <run>` can take back one run's writes,
+    and the agent session (``SESSION_ENV``) as ``X-Beakr-Session``.
     ``base_url`` overrides the configured API (``BEAKR_BASE_URL``, the config).
     """
     return PrivateBeakr(
@@ -78,7 +112,7 @@ def get_sdk(
         agent=_agent(),
         run=os.environ.get("BEAKR_RUN") or None,
         timeout=timeout,
-        default_headers=_CLI_HEADERS,
+        default_headers=_headers(),
     )
 
 
@@ -99,5 +133,5 @@ def get_async_sdk(
         agent=_agent(),
         run=run,
         timeout=timeout,
-        default_headers=_CLI_HEADERS,
+        default_headers=_headers(),
     )
