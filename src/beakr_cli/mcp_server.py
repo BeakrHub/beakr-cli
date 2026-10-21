@@ -13,15 +13,15 @@ from typing import Any
 from beakr_sdk.sources import public_source as _shared_public_source
 from mcp.types import ToolAnnotations
 
-from beakr_cli import __version__, tool_surface
+from beakr_cli import tool_surface
 
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
 from beakr_cli.mcp_knowledge_status import knowledge_notice
 from beakr_cli.mcp_tools_platform import _project_by_name_or_id
 from beakr_cli.updates import (
-    BOX_INSTRUCTIONS,
-    bundled_with_box,
+    CHECK_OFF,
+    check_disabled,
     detect_install,
     get_update_status,
     installed_version_on_path,
@@ -1005,13 +1005,12 @@ async def beakr_version() -> str:
     import asyncio
     from datetime import timedelta
 
-    info = detect_install()
-    if await asyncio.to_thread(bundled_with_box, info):
-        # Upgraded with the box, so PyPI's latest release says nothing about it.
-        return f"Installed: beakr-cli {__version__}.\n{BOX_INSTRUCTIONS}"
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
+    info = detect_install()
     lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
-    if status.latest is None:
+    if check_disabled():
+        lines.append(CHECK_OFF)
+    elif status.latest is None:
         lines.append("Latest release: unknown (PyPI could not be checked).")
     elif status.update_available:
         lines.append(f"Update available: {status.latest}.")
@@ -1041,12 +1040,12 @@ async def update_beakr() -> str:
     import asyncio
     from datetime import timedelta
 
-    info = detect_install()
-    if await asyncio.to_thread(bundled_with_box, info):
-        return f"Update did not run: {BOX_INSTRUCTIONS}"
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(0))
+    if status.latest is None and check_disabled():
+        return f"Update did not run: {CHECK_OFF} Unset it to look for a newer release."
     if status.latest is not None and not status.update_available:
         return f"No update needed: installed {status.current}, latest release {status.latest}."
+    info = detect_install()
     result = await asyncio.to_thread(run_upgrade, info, expected_version=status.latest)
     if not result.ok:
         tail = f"\n\n{result.output[-2000:]}" if result.output else ""

@@ -122,10 +122,7 @@ def capabilities_unread(request, monkeypatch):
     request.addfinalizer(forget_capabilities)
     if request.node.get_closest_marker("real_capabilities"):
         return
-    from beakr_cli import tool_surface, updates
-
-    # `beakr version` and beakr_version ask the document whether this is a box.
-    monkeypatch.setattr(updates, "_server_is_self_hosted", lambda: False)
+    from beakr_cli import tool_surface
 
     async def nothing_unserved(self, names):
         return set()

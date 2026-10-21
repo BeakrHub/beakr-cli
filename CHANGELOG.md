@@ -1444,14 +1444,12 @@ Each release lists the public API changes it supports, taken from the API change
   `--role` takes the API's roles (`owner`, `admin`, `member`, `viewer`) and
   refuses any other before sending; its help named `editor`, which the API
   does not have.
-- **The CLI a Beakr box bundles.** `beakr version`, `beakr update` and the
-  MCP tools `beakr_version` and `update_beakr` say a box's own copy is upgraded
-  with the box (the box installer's `upgrade`, then the release's `clients/`
-  wheels) instead of "Latest release:
-  unknown (PyPI could not be checked)". A copy is the box's when it was not
-  installed with uv or pipx and `BEAKR_NO_UPDATE_CHECK` is set or the API's
-  document leaves out organization administration; `beakr version --json`
-  reports `bundled_with_box: true`.
+- **Update checks off.** With `BEAKR_NO_UPDATE_CHECK` set (a self-hosted
+  installation sets it for the CLI it bundles), `beakr version`, `beakr update`
+  and the MCP tools `beakr_version` and `update_beakr` say "Update checks are
+  off (BEAKR_NO_UPDATE_CHECK is set)." instead of "Latest release: unknown (PyPI
+  could not be checked)" or "PyPI was unreachable"; `beakr version --json`
+  reports `update_check: "off"`.
 - **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
   prints the status after the accept (`status=accepted`), not the create's
   `pending`.

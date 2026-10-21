@@ -162,20 +162,14 @@ def version(
 
     from beakr_cli import __version__
     from beakr_cli.output import print_json
-    from beakr_cli.updates import (
-        BOX_INSTRUCTIONS,
-        bundled_with_box,
-        detect_install,
-        get_update_status,
-    )
+    from beakr_cli.updates import CHECK_OFF, check_disabled, detect_install, get_update_status
 
-    # A box's CLI is upgraded with the box, so PyPI's latest release says nothing
-    # about it (and a box usually cannot reach PyPI: "could not be checked").
-    on_box = not offline and bundled_with_box(detect_install())
+    # With the check off PyPI is never asked: say so, not "could not be checked".
+    check_off = not offline and check_disabled()
     if json_out:
         report: dict[str, object] = {"version": __version__}
-        if on_box:
-            report.update(bundled_with_box=True, instructions=BOX_INSTRUCTIONS)
+        if check_off:
+            report.update(update_check="off")
         elif not offline:
             status = get_update_status(max_age=timedelta(hours=1))
             report.update(
@@ -192,8 +186,8 @@ def version(
     print(f"beakr-cli {__version__}")
     if offline:
         return
-    if on_box:
-        print(BOX_INSTRUCTIONS)
+    if check_off:
+        print(CHECK_OFF)
         return
     status = get_update_status(max_age=timedelta(hours=1))
     if status.latest is None and status.published_older is not None:
@@ -229,23 +223,16 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
     """``beakr update``; human progress goes to ``console``, the outcome is returned."""
     from datetime import timedelta
 
-    from beakr_cli import __version__
     from beakr_cli.output import console, err_console
     from beakr_cli.updates import (
-        BOX_INSTRUCTIONS,
-        bundled_with_box,
+        CHECK_OFF,
+        check_disabled,
         detect_install,
         get_update_status,
         installed_version_on_path,
         run_upgrade,
     )
 
-    info = detect_install()
-    if bundled_with_box(info):
-        console.print(BOX_INSTRUCTIONS, markup=False)
-        if not check:
-            raise typer.Exit(1)
-        return {"current": __version__, "bundled_with_box": True, "instructions": BOX_INSTRUCTIONS}
     status = get_update_status(max_age=timedelta(0))
     report: dict[str, object] = {
         "current": status.current,
@@ -253,7 +240,13 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
         "update_available": status.update_available,
         "updated": False,
     }
-    if status.latest is None:
+    info = detect_install()
+    if status.latest is None and check_disabled():
+        # The check never ran: PyPI was not asked, so it was not "unreachable".
+        err_console.print(f"{CHECK_OFF} Unset it to look for a newer release.", markup=False)
+        if check or not force:
+            raise typer.Exit(1)
+    elif status.latest is None:
         err_console.print(
             "[yellow]Could not determine the latest release: PyPI was unreachable or is "
             "still publishing a new release. Try again in a few minutes.[/yellow]"

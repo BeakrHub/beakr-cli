@@ -33,6 +33,11 @@ PACKAGE_NAME = "beakr-cli"
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE_NAME}/json"
 DISABLE_ENV = "BEAKR_NO_UPDATE_CHECK"
 DEFAULT_MAX_AGE = timedelta(hours=24)
+#: Said instead of a PyPI line when ``BEAKR_NO_UPDATE_CHECK`` turns the check off:
+#: PyPI was never asked, so "could not be checked" would be wrong. A self-hosted
+#: installation sets it for the CLI it bundles; nothing in the documented API
+#: says a server is self-hosted, so this does not claim one.
+CHECK_OFF = f"Update checks are off ({DISABLE_ENV} is set)."
 
 
 def _cache_file() -> Path:
@@ -267,47 +272,6 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
         f"Upgrade with the tool that installed it, e.g. `pip install --upgrade {PACKAGE_NAME}` "
         "inside the same environment.",
     )
-
-
-# ---------------------------------------------------------------------------
-# A self-hosted Beakr box
-# ---------------------------------------------------------------------------
-
-#: How the CLI a box bundles is upgraded: with the box, never from PyPI.
-#: The box's release ships the CLI and SDK wheels in its ``clients/`` directory
-#: (docker/self-hosted/clients/README.md in beakr-engine), installed into a plain
-#: uv venv, and its installer upgrades the box.
-BOX_INSTRUCTIONS = (
-    "This is the beakr-cli bundled with this Beakr box. It is upgraded with the box: "
-    "upgrade the box with its installer (`install-beakr.py --version NEW upgrade ...`), "
-    "then install the CLI and SDK wheels from that release's `clients/` directory."
-)
-
-
-def bundled_with_box(info: InstallInfo) -> bool:
-    """True when this copy is the CLI a self-hosted Beakr box bundles.
-
-    The box installs it outside uv and pipx (``other``) and either turns the
-    PyPI check off (``BEAKR_NO_UPDATE_CHECK``) or serves an API that leaves out
-    organization administration, as a self-hosted installation does. A copy the
-    user installed with uv or pipx is upgraded from PyPI whatever it talks to.
-    """
-    if info.method is not InstallMethod.other:
-        return False
-    return check_disabled() or _server_is_self_hosted()
-
-
-def _server_is_self_hosted() -> bool:
-    """The configured API's own OpenAPI document leaves out organization administration."""
-    from beakr_cli.sdk import get_sdk
-
-    try:
-        with get_sdk(timeout=5.0) as sdk:
-            capabilities = sdk.meta.capabilities()
-    except Exception:
-        # No configuration, or the server is unreachable: nothing says it is a box.
-        return False
-    return bool(capabilities.documented) and not capabilities.serves("GET", "/v1/organizations")
 
 
 # ---------------------------------------------------------------------------
