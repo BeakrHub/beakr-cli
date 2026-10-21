@@ -108,6 +108,34 @@ def test_keys_create_uses_the_app_url_the_api_reports(monkeypatch):
     assert body["app_url_guessed"] is False
 
 
+# Root cause: a self-hosted box has no browser sign-in, so GET /v1/auth/config
+# answers 503 cli_sign_in_unavailable; the CLI dropped that answer and guessed
+# http://localhost:3000 (app_url_guessed=true). The engine now names its app_url
+# in that error's details, and the CLI reads it there.
+@pytest.mark.real_app_url_report
+@respx.mock
+def test_keys_create_on_a_box_without_sign_in_uses_the_app_url_in_its_refusal(monkeypatch):
+    monkeypatch.setenv("BEAKR_API_URL", "http://localhost:8000")
+    respx.get("http://localhost:8000/v1/auth/config").respond(
+        503,
+        json={
+            "detail": {"code": "cli_sign_in_unavailable", "app_url": "https://box.test:8443"},
+            "error": {
+                "code": "cli_sign_in_unavailable",
+                "message": "Browser sign-in is not configured on this server; "
+                "use an API key instead.",
+                "details": {"app_url": "https://box.test:8443"},
+            },
+        },
+    )
+
+    result = CliRunner().invoke(app, ["keys", "create", "--json"])
+
+    body = json.loads(result.stdout)
+    assert body["url"].startswith("https://box.test:8443/settings?tab=api-keys&newKey=")
+    assert body["app_url_guessed"] is False
+
+
 @pytest.mark.real_app_url_report
 @respx.mock
 def test_an_api_that_reports_no_app_url_falls_back_to_a_flagged_guess(monkeypatch):
@@ -253,6 +281,7 @@ def test_members_rm_refuses_without_yes_when_not_interactive():
 
 @respx.mock
 def test_members_rm_with_explicit_org_and_yes():
+    respx.get(f"{API}/v1/organizations/org-9/members").respond(200, json=[{"user_id": "u1"}])
     route = respx.delete(f"{API}/v1/organizations/org-9/members/u1").respond(204)
 
     result = CliRunner().invoke(app, ["members", "rm", "u1", "--org", "org-9", "--yes"])

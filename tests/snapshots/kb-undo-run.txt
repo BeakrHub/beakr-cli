@@ -57,6 +57,10 @@ $ beakr kb undo-run run-2026-10-01 --yes
   {"dry_run": false}
 [exit 0]
 --- stdout
-conflicts=[{"proposal_id": "5a7c9e1b-3d5f-4b7a-9c1e-4f6a8b0c2d35", "commit_id": "2e4a6c8e-0b2d-4f6a-8e1c-5a7b9d1f3e46", "revert_commit_id": null, "status": "conflict", "conflicts": [{"page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "section_id": "sec_facts"}]}]	dismissed=0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51	dry_run=false	proposals=4	reverted=[{"proposal_id": "8d0f2b4c-6e8a-4c1d-a3f5-6b8c0d2e4f57", "commit_id": "3f5b7d9f-1c3e-4a7b-9f2d-6b8c0e2a4f68", "revert_commit_id": "4a6c8e0a-2d4f-4b8c-8a3e-7c9d1f3b5a79", "status": "applied"}]	run=weekly-helios-digest	truncated=false	unchanged=[{"proposal_id": "71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68", "status": "dismissed"}]
+dismissed=0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51	dry_run=false	proposals=4	run=weekly-helios-digest	truncated=false
+conflicts	proposal_id=5a7c9e1b-3d5f-4b7a-9c1e-4f6a8b0c2d35	commit_id=2e4a6c8e-0b2d-4f6a-8e1c-5a7b9d1f3e46	status=conflict
+conflicts	conflicts	page_id=9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41	section_id=sec_facts
+reverted	proposal_id=8d0f2b4c-6e8a-4c1d-a3f5-6b8c0d2e4f57	commit_id=3f5b7d9f-1c3e-4a7b-9f2d-6b8c0e2a4f68	revert_commit_id=4a6c8e0a-2d4f-4b8c-8a3e-7c9d1f3b5a79	status=applied
+unchanged	proposal_id=71d3b8e5-0a2f-4c6d-9e14-5b7a3c9f2d68	status=dismissed
 --- stderr
 

@@ -1,32 +1,41 @@
-$ beakr skills edit 'Stability study summary' --file SKILL.md --json
-> GET /v1/me/skills/library?limit=200
-> PUT /v1/me/skills/Stability%20study%20summary/files/SKILL.md
-  {"content": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}
+$ beakr skills edit helios-stability-readout --file SKILL.md --json
+> GET /v1/skills/helios-stability-readout
+> GET /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+> PUT /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+  {"expected_sha256": "3e9a7c1d5b2f8e04a6c9d1b7f3e5a2c8d0b4f6e1a9c3d7b5e2f8a0c6d4b1e9f7", "files": {"SKILL.md": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}, "replace": false}
 [exit 0]
 --- stdout
 {
-  "path": "SKILL.md",
-  "skill_id": "228d4b4a-0de4-42d7-8cd0-0bd35275e9ef"
+  "skill_id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+  "slug": "helios-stability-readout",
+  "files": {
+    "SKILL.md": "---\nname: helios-stability-readout\ndescription: Turn an HX-01 stability export into the Helios charter's results table.\n---\n\nRead the export, then fill the table.\n",
+    "scripts/summarize_stability.py": "import pandas as pd\n"
+  },
+  "file_count": 2,
+  "files_sha256": "9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d"
 }
 --- stderr
 
 
-$ beakr skills edit 'Stability study summary' --file SKILL.md
-> GET /v1/me/skills/library?limit=200
-> PUT /v1/me/skills/Stability%20study%20summary/files/SKILL.md
-  {"content": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}
+$ beakr skills edit helios-stability-readout --file SKILL.md
+> GET /v1/skills/helios-stability-readout
+> GET /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+> PUT /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+  {"expected_sha256": "3e9a7c1d5b2f8e04a6c9d1b7f3e5a2c8d0b4f6e1a9c3d7b5e2f8a0c6d4b1e9f7", "files": {"SKILL.md": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}, "replace": false}
 [exit 0]
 --- stdout
-Updated SKILL.md of Stability study summary.
+Updated SKILL.md of helios-stability-readout.
 --- stderr
 
 
-$ beakr skills edit 'Stability study summary' --file SKILL.md
-> GET /v1/me/skills/library?limit=200
-> PUT /v1/me/skills/Stability%20study%20summary/files/SKILL.md
-  {"content": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}
+$ beakr skills edit helios-stability-readout --file SKILL.md
+> GET /v1/skills/helios-stability-readout
+> GET /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+> PUT /v1/skills/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a/bundle
+  {"expected_sha256": "3e9a7c1d5b2f8e04a6c9d1b7f3e5a2c8d0b4f6e1a9c3d7b5e2f8a0c6d4b1e9f7", "files": {"SKILL.md": "---\nname: helios-digest\ndescription: Weekly digest\n---\n\nSteps.\n"}, "replace": false}
 [exit 0]
 --- stdout
--	SKILL.md
+skill_id=5e6e6be8-d5cf-4216-aae7-b4aa6eed776a	slug=helios-stability-readout	files.SKILL.md=--- name: helios-stability-readout description: Turn an HX-01 stability expor...	files.scripts/summarize_stability.py=import pandas as pd	file_count=2	files_sha256=9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d
 --- stderr
 

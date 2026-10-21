@@ -1,0 +1,30 @@
+$ beakr skills uninstall helios-stability-readout --json
+> GET /v1/skills/helios-stability-readout
+> DELETE /v1/me/skills/library/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a
+[exit 0]
+--- stdout
+{
+  "skill_id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+  "slug": "helios-stability-readout",
+  "installed": false
+}
+--- stderr
+
+
+$ beakr skills uninstall helios-stability-readout
+> GET /v1/skills/helios-stability-readout
+> DELETE /v1/me/skills/library/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a
+[exit 0]
+--- stdout
+Uninstalled helios-stability-readout.
+--- stderr
+
+
+$ beakr skills uninstall helios-stability-readout
+> GET /v1/skills/helios-stability-readout
+> DELETE /v1/me/skills/library/5e6e6be8-d5cf-4216-aae7-b4aa6eed776a
+[exit 0]
+--- stdout
+skill_id=5e6e6be8-d5cf-4216-aae7-b4aa6eed776a	slug=helios-stability-readout	installed=false
+--- stderr
+

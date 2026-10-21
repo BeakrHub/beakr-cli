@@ -149,6 +149,39 @@ def test_conversations_show_explains_a_cancelled_compound(keyed, rendered):
     assert "cancelled (kept; run `beakr compound` to resume)" in text
 
 
+# A turn the agent host wrote (author `system`) is stored with role `user`;
+# `show` printed it under "user:", as if the person had typed it.
+@pytest.mark.parametrize("terminal", [True, False])
+@respx.mock
+def test_conversations_show_labels_turns_by_their_author(keyed, monkeypatch, terminal):
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: not terminal)
+    respx.get(f"{API}/v1/conversations/c1").respond(
+        json={
+            "id": "c1",
+            "title": "Importer work",
+            "client": "claude-code",
+            "session_id": "s1",
+            "message_count": 4,
+            "compounded_through": 0,
+            "messages": [
+                {"role": "user", "author": "human", "content": "Fix the importer."},
+                {"role": "user", "author": "system", "content": "<task-notification>done"},
+                {"role": "user", "author": "agent", "content": "Subagent: read importing.py"},
+                {"role": "assistant", "author": "agent", "content": "Fixed."},
+            ],
+        }
+    )
+    result = CliRunner().invoke(app, ["conversations", "show", "c1"])
+    assert result.exit_code == 0, result.output
+    turns = [line for line in result.output.splitlines() if ": " in line][-4:]
+    assert turns == [
+        "user: Fix the importer.",
+        "system: <task-notification>done",
+        "agent: Subagent: read importing.py",
+        "assistant: Fixed.",
+    ]
+
+
 @respx.mock
 def test_conversations_ls_shows_partial_progress(keyed, rendered, monkeypatch):
     monkeypatch.setenv("COLUMNS", "200")
