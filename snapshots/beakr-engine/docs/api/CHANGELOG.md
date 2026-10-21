@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=80f667faa8bba7746c76850a61115f638973cb273f0fafb71698ba55161ae1bf changelog sha256=0d3bafefdd774d60e4419e12f27d3b59af883a0d868289347d1461deaa07eebc -->
+<!-- contract-stamp: public-openapi sha256=38602ac011dfb6dbb0c0adabdc2f26ae443c785576c174fae89c24ecf80ef6ba changelog sha256=5bd37d76006ce36991923392deadf3e35bd973da33d856ea054d581a6cc427a0 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -20,6 +20,84 @@ The first public version.
   `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack` or `email`
   for one a person started by messaging Beakr there.
+- Map card rows: a Facts or Connections row's `row_id` names the row with its
+  When, so a value a card states at two dates is two rows with two ids. On
+  `GET /v1/knowledge/wiki/pages/{page_id}`, `disputed_rows` lists each disputed
+  row under its id and under the id it had before. `edit_rows` on
+  `POST /v1/knowledge/wiki/write` names one of a value's dated rows with `when`
+  in `old_rows`; naming such a value without it is refused, listing its rows. A
+  finding `edit_rows` rewrites keeps its `about`, `finding_scope` and
+  `supersedes` unless the new row sets them.
+- `POST /v1/projects/{project_id}/members`: re-adding an existing member
+  without `role` keeps their role (`member` is the default for a new member
+  only), and giving the project's last owner another role answers
+  `409 last_owner` instead of applying it. The sole owner adding themselves at
+  the default role was demoted and could no longer manage members.
+- `POST /v1/knowledge/wiki/proposals`: an `edit` patch accepts
+  `op: "move_section"` with `section` and an optional `after` (the section to
+  place it after; omitted, it moves to the top of the page), as
+  `knowledge_base_write` does. It was refused with `422`.
+- `GET /v1/bulk/{batch_id}/status`: `summary.duplicates` counts files refused
+  because the same file was already uploaded. They are no longer counted in
+  `summary.failed`, so a batch whose only refusals are duplicates is
+  `completed`, and its `upload_batch` job (`GET /v1/jobs/{job_id}`) succeeds.
+  Each such file still reads `status: "index_failed"` with
+  `error_code: "duplicate"` and `duplicate_of`. The job's `progress.done` no
+  longer counts a skipped file twice.
+- Source records (`sources` on `POST /v1/knowledge/wiki/command` reads and
+  `POST /v1/knowledge/wiki/write` results): an inline `conversation`,
+  `agent_note` or `user_note` citation written with an API credential carries
+  `filed_by`: the person's `user_name` (their display name when the record is
+  read, absent when they have none), the `agent`, `client` and `run` the
+  request declared, the `session` it sent in the new optional
+  `X-Beakr-Session` header (the client's own session id, attribution only),
+  and a `text` line. It never carries the person's id or email. The
+  citation's `meta.filed_by`, which `GET /v1/knowledge/wiki/pages/{page_id}/sources`
+  returns, holds the same fields and the person's `user_id`. Browser requests
+  may send `X-Beakr-Session`.
+- Proposals: a review flag (`POST /v1/knowledge/wiki/write` `flag`) names the
+  person and agent who filed it in `filed_by`, and stays visible to every
+  project member.
+- `GET /v1/knowledge/wiki/pages/by-title`: a title that names no page still
+  answers `404 not_found`, and `error.details.suggestions` now lists the closest
+  live page titles you can read (empty when none is close).
+
+- `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}` and
+  `DELETE /v1/labels/{label_id}/members/{user_id}`: removing the last owner
+  answers `409 last_owner` instead of `403`. The caller may manage the members;
+  another owner is needed first.
+
+- `DELETE /v1/conversations/{conversation_id}`: also deletes one of the caller's
+  own Beakr chats (a conversation of kind `ask_thread`) with its messages. It
+  answered `not_found` for them before. Another person's chat still answers
+  `not_found`.
+- Skills (`skills:read`, `skills:write`) join the documented API.
+  `GET /v1/skills` lists every skill you can use or install: your own, your
+  organization's, the built-in ones and public skills from anywhere, by name.
+  Each skill carries `visibility` (`private`, `org`, `public`), `owner` (`me`,
+  `org`, `system`, `anyone`), `origin` (`created`, `mined`, `imported`,
+  `system`) and `installed`, and the list filters on each (repeat a parameter
+  for more than one value), on `search` and `domain`; `include_content=true`
+  adds each skill's `files` and caps a page at 25 skills. Retired skills are
+  not listed. `GET /v1/skills/{skill_id}` reads one skill by id or slug, with
+  `latest_revision`; a slug resolves to your own skill first, then a built-in,
+  then one you installed, then your organization's, and never to a skill from
+  another organization you have not installed. Only this read takes a slug.
+  `POST /v1/skills` creates a skill from a SKILL.md folder (`files`, path to
+  text), answers it as the read does, honours `Idempotency-Key` and answers
+  409 when a create running at the same time took the same slug.
+  `visibility=public` publishes a skill, every file included, to every Beakr
+  organization. `GET` and `PUT /v1/skills/{skill_id}/bundle` read and replace
+  its files (`files_sha256` is always present; send it back as
+  `expected_sha256`), `GET /v1/skills/{skill_id}/bundle.zip` downloads them as
+  a zip, and `DELETE /v1/skills/{skill_id}` deletes a skill you wrote. `POST`
+  and `DELETE /v1/me/skills/library/{skill_id}` install and uninstall a skill
+  (an uninstalled skill can be installed again), and
+  `GET /v1/me/skills/proposals` with `POST .../accept` and `POST .../dismiss`
+  review the skills Beakr drafted from your work. A skill you wrote in another
+  organization answers 404 here, by id or slug, while it is not installed
+  here, and can be installed here only if it was installed here before.
+  `marketplace` is not given to a new skill as its slug.
 
 - `GET /v1/interview/sendables`: each link carries who it was sent to and how:
   `recipient_email`, `delivery_channel` (`gmail`, `outlook` or `links`), `sent_at`

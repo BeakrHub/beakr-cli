@@ -38,6 +38,7 @@ $ beakr kb graph --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/knowledge/wiki/graph?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
 [exit 0]
 --- stdout
-edges=[{"from": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62", "to": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "type": "links"}]	nodes=[{"id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "label": "Project Helios", "page_type": "project", "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4", "project_name": "Helios", "summary": "Northwind's program to select a thermostable lead from the NW-200 series; NW-217 is the current lead.", "type": "page"}]
+edges	from=5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62	to=9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41	type=links
+nodes	id=9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41	label=Project Helios	page_type=project	project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4	project_name=Helios	summary=Northwind's program to select a thermostable lead from the NW-200 series; NW-...	type=page
 --- stderr
 

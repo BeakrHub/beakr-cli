@@ -103,6 +103,8 @@ def test_doctor_lists_the_areas_the_installation_does_not_provide():
         "organization administration",
         "end-user tokens",
         "integrations",
+        # Documented now, and a box leaves it out.
+        "skills",
     ]
     assert surface["detail"].startswith("this installation does not provide organization members")
 
@@ -118,3 +120,118 @@ def test_doctor_on_a_server_without_a_document_assumes_everything():
     checks = {c["name"]: c for c in json.loads(result.stdout)["checks"]}
     assert checks["surface"]["documented"] is False
     assert checks["surface"]["unavailable"] == []
+
+
+@pytest.mark.parametrize(
+    ("argv", "area"),
+    [
+        (["skills", "ls"], "skills"),
+        (["members", "ls", "--org", "o1"], "organization members"),
+    ],
+)
+@respx.mock
+def test_json_output_for_an_area_the_installation_lacks_is_not_provided(argv, area):
+    # Root cause: --json printed the bare 404 as it came ({"code": "not_found",
+    # "message": "Not Found"}) while the plain output said "does not provide".
+    respx.get(url__startswith=f"{API}/v1/").respond(404, json=BARE)
+
+    result = runner.invoke(internal_app, [*argv, "--json"])
+
+    assert result.exit_code == EXIT_NOT_FOUND, result.output
+    assert json.loads(result.stdout) == {
+        "error": {
+            "message": f"This Beakr installation does not provide {area}.",
+            "exit_code": EXIT_NOT_FOUND,
+            "code": "not_provided",
+        }
+    }
+
+
+@pytest.mark.parametrize(
+    ("argv", "area"),
+    [
+        (["members", "ls"], "organization members"),
+        (["members", "rm", "u1", "--yes"], "organization members"),
+        (["external-users", "ls"], "external users"),
+        (["org", "service-accounts", "ls"], "service accounts"),
+        (["org", "credentials", "ls"], "organization administration"),
+    ],
+)
+@respx.mock
+def test_the_active_org_lookup_is_named_by_the_commands_area(argv, area):
+    # Root cause: with no --org the SDK first reads GET /v1/me/organization,
+    # which a box does not have, and the sentence named that raw route.
+    respx.get(f"{API}/v1/me/organization").respond(404, json=BARE)
+
+    result = runner.invoke(internal_app, argv)
+
+    assert result.exit_code == EXIT_NOT_FOUND, result.output
+    assert f"This Beakr installation does not provide {area}." in result.output
+    assert "/v1/" not in result.output
+
+
+@respx.mock
+def test_a_route_no_area_covers_is_named_by_the_command():
+    respx.get(url__startswith=f"{API}/v1/workflows").respond(404, json=BARE)
+
+    result = runner.invoke(internal_app, ["workflows", "ls"])
+
+    assert result.exit_code == EXIT_NOT_FOUND, result.output
+    assert "This Beakr installation does not provide what `beakr workflows ls` needs." in (
+        result.output
+    )
+    assert "/v1/" not in result.output
+
+
+@pytest.mark.parametrize(
+    ("argv", "path", "area"),
+    [
+        (["members", "ls"], "/v1/me/organization", "organization members"),
+        (["skills", "ls"], "/v1/skills", "skills"),
+    ],
+)
+def test_the_sdks_not_provided_error_is_named_by_the_cli(monkeypatch, argv, path, area):
+    # beakr-sdk now raises NotProvidedError itself (a NotFoundError), with the
+    # path and no response the CLI could re-read; the CLI still names the area
+    # its own way (the command's, for a lookup route) and --json says not_provided.
+    from beakr_sdk.errors import NotProvidedError
+
+    from beakr_cli import sdk as cli_sdk
+
+    def refused(*args, **kwargs):
+        raise NotProvidedError(
+            f"This Beakr installation does not provide GET {path}.",
+            method="GET",
+            path=path,
+            status=404,
+            code="not_found",
+        )
+
+    class Refusing:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def __getattr__(self, name):
+            return self
+
+        def __call__(self, *args, **kwargs):
+            return refused()
+
+    monkeypatch.setattr(cli_sdk, "get_sdk", lambda *a, **k: Refusing())
+    for module in ("members", "skills"):
+        monkeypatch.setattr(f"beakr_cli.commands.{module}.get_sdk", lambda *a, **k: Refusing())
+
+    plain = runner.invoke(internal_app, argv)
+    as_json = runner.invoke(internal_app, [*argv, "--json"])
+
+    assert plain.exit_code == EXIT_NOT_FOUND, plain.output
+    assert f"This Beakr installation does not provide {area}." in plain.output
+    assert "/v1/" not in plain.output
+    error = json.loads(as_json.stdout)["error"]
+    assert (error["code"], error["message"]) == (
+        "not_provided",
+        f"This Beakr installation does not provide {area}.",
+    )

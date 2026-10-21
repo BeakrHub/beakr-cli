@@ -230,6 +230,48 @@ def test_projects_members_ls_and_add(rendered):
     }
 
 
+# Root cause: `members add` sent role="member" when --role was not given, so
+# re-adding someone demoted them (the last owner too). Without --role no role
+# is sent: the server keeps an existing member's role (engine #1689).
+@respx.mock
+def test_projects_members_add_sends_no_role_unless_asked(monkeypatch):
+    _projects()
+    add = respx.post(f"{API}/v1/projects/p1/members").respond(
+        201, json={"principal_id": "u1", "role": "owner"}
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+
+    added = runner.invoke(app, ["projects", "members", "add", "assays", "u1"])
+
+    assert added.exit_code == 0, added.output
+    assert json.loads(add.calls.last.request.content) == {
+        "principal_id": "u1",
+        "principal_type": "user",
+    }
+    assert "Added u1 to Assays as owner." in added.output
+
+
+@respx.mock
+def test_demoting_the_last_owner_reads_as_a_conflict_with_the_fix():
+    _projects()
+    message = "Cannot change the role of the last owner of the project"
+    respx.post(f"{API}/v1/projects/p1/members").respond(
+        409,
+        json={
+            "detail": {"code": "last_owner", "message": message},
+            "error": {"code": "last_owner", "message": message},
+        },
+    )
+
+    result = runner.invoke(app, ["projects", "members", "add", "assays", "u1", "--role", "member"])
+
+    text = " ".join(result.output.split())
+    assert result.exit_code == 5, result.output
+    assert message in text
+    assert "Make another member an owner first" in text
+    assert "--role owner" in text
+
+
 # Root cause: `members add` offered --type group, which the server refuses
 # ("Group project memberships are no longer supported"), so the option only
 # led to a failed request. add takes users only; the option is gone.
@@ -246,6 +288,7 @@ def test_projects_members_add_offers_no_group_type():
 @respx.mock
 def test_projects_members_rm_and_invite():
     _projects()
+    respx.get(f"{API}/v1/projects/p1/members").respond(200, json=[{"principal_id": "u2"}])
     rm = respx.delete(f"{API}/v1/projects/p1/members/user/u2").respond(204)
     invite = respx.post(f"{API}/v1/projects/p1/invite").respond(201, json={"id": "i1"})
     removed = runner.invoke(app, ["projects", "members", "rm", "p1", "u2", "--yes"])
@@ -354,15 +397,37 @@ def test_memory_rm_refuses_without_yes_when_not_interactive():
 
 @respx.mock
 def test_skills_edit_replaces_skill_md(tmp_path):
-    respx.get(f"{API}/v1/me/skills/library").respond(
-        200, json=[{"id": "sk1", "slug": "assay-qc", "owner_type": "user"}]
+    respx.get(f"{API}/v1/skills/assay-qc").respond(
+        200, json={"id": "sk1", "slug": "assay-qc", "owner": "me"}
     )
-    put = respx.put(f"{API}/v1/me/skills/sk1/files/SKILL.md").respond(200, json={"ok": True})
+    respx.get(f"{API}/v1/skills/sk1/bundle").respond(
+        200, json={"skill_id": "sk1", "slug": "assay-qc", "files": {}, "files_sha256": "abc"}
+    )
+    put = respx.put(f"{API}/v1/skills/sk1/bundle").respond(200, json={"skill_id": "sk1"})
     skill_md = tmp_path / "SKILL.md"
     skill_md.write_text("# Assay QC\n")
     result = runner.invoke(app, ["skills", "edit", "assay-qc", "--file", str(skill_md)])
     assert result.exit_code == 0, result.output
-    assert json.loads(put.calls.last.request.content) == {"content": "# Assay QC\n"}
+    # One file overlaid on the rest, conditional on the bundle just read.
+    assert json.loads(put.calls.last.request.content) == {
+        "files": {"SKILL.md": "# Assay QC\n"},
+        "replace": False,
+        "expected_sha256": "abc",
+    }
+
+
+@respx.mock
+def test_skills_edit_refuses_a_skill_you_did_not_write(tmp_path):
+    respx.get(f"{API}/v1/skills/decision-record").respond(
+        200, json={"id": "sk2", "slug": "decision-record", "owner": "system"}
+    )
+    put = respx.put(f"{API}/v1/skills/sk2/bundle").respond(200, json={})
+    skill_md = tmp_path / "SKILL.md"
+    skill_md.write_text("x\n")
+    result = runner.invoke(app, ["skills", "edit", "decision-record", "--file", str(skill_md)])
+    assert result.exit_code == 2
+    assert "not yours" in result.output
+    assert not put.called
 
 
 @respx.mock

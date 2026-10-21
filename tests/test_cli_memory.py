@@ -435,6 +435,61 @@ def test_conversations_import_from_file(tmp_path: Path) -> None:
     }
 
 
+@respx.mock
+def test_a_file_import_refused_for_keeping_nothing_names_the_cli_flags(tmp_path: Path) -> None:
+    # Root cause: the refusal's fix names the API's fields ("set
+    # `store_full_text: true`", "`compound: true`"); the flags are --full-text
+    # and --compound, and --file ignored --compound and --summary.
+    fix = (
+        "Send a `summary` with the messages, set `store_full_text: true` to keep the "
+        "transcript, or set `compound: true` (or `hold_text: true` for a capture you will "
+        "request later) so Beakr reads it before releasing it."
+    )
+    message = "This import sends messages but no summary, so nothing from it would be kept."
+    respx.post(f"{API}/v1/conversations/import").respond(
+        422,
+        json={
+            "detail": {"code": "summary_required", "message": message, "fix": fix},
+            "error": {"code": "summary_required", "message": message, "fix": fix},
+        },
+    )
+    source = tmp_path / "chat.json"
+    source.write_text(
+        json.dumps({"session_id": "s1", "messages": [{"role": "user", "content": "hi"}]})
+    )
+
+    plain = CliRunner().invoke(app, ["conversations", "import", "--file", str(source)])
+    as_json = CliRunner().invoke(app, ["conversations", "import", "--file", str(source), "--json"])
+
+    text = " ".join(plain.output.split())
+    assert plain.exit_code == 1, plain.output
+    assert "--summary" in text and "--full-text" in text and "--compound" in text
+    assert "store_full_text" not in text and "compound: true" not in text
+    assert "--full-text" in json.loads(as_json.stdout)["error"]["fix"]
+
+
+@respx.mock
+def test_a_file_import_sends_the_summary_and_compound_flags(tmp_path: Path) -> None:
+    imported, _ = _mock_import_and_compound()
+    source = tmp_path / "chat.json"
+    source.write_text(
+        json.dumps({"session_id": "s1", "messages": [{"role": "user", "content": "hi"}]})
+    )
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "conversations", "import", "--file", str(source),
+            "--summary", "Said hello.", "--compound",
+        ],
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    body = _body(imported)
+    assert body["summary"] == "Said hello."
+    assert body["compound"] is True
+
+
 def test_conversations_rm_refuses_without_yes_when_not_interactive() -> None:
     assert CliRunner().invoke(app, ["conversations", "rm", "c1"]).exit_code == 2
 

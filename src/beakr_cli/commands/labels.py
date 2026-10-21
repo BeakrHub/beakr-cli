@@ -199,17 +199,36 @@ def add_label_member(
 def remove_label_member(
     label: str = _label_arg,
     user_id: str = typer.Argument(..., help="User id to remove."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Remove someone from a label."""
+    """Remove someone from a label: they lose the access it gave them.
+
+    Safe to repeat: someone who is not on the label is reported
+    (``removed: false``) and the command still succeeds.
+    """
     with get_sdk() as sdk:
         label_id = _label_id(sdk, label)
+        confirm_or_require_yes(f"Remove {user_id} from label {label}?", yes=yes)
+        # The server's DELETE answers 204 whether or not the person was on the
+        # label, so only the member list can say whether this removes anyone.
+        wanted = user_id.strip().lower()
+        was_member = any(
+            str(m.get("user_id") or "").lower() == wanted for m in sdk.labels.members(label_id)
+        )
         sdk.labels.remove_member(label_id, user_id)
+
+    def render(data: dict[str, Any]) -> None:
+        if data["removed"]:
+            err_console.print(f"Removed {user_id} from the label.", markup=False)
+        else:
+            err_console.print(f"{user_id} is not on the label; nothing to remove.", markup=False)
+
     emit(
-        {"label_id": label_id, "user_id": user_id, "removed": True},
+        {"label_id": label_id, "user_id": user_id, "removed": was_member},
         json_out=json_out,
-        render=lambda d: err_console.print(f"Removed {d['user_id']} from the label.", markup=False),
-        json_when_piped=False,
+        render=render,
+        lines=lambda d: [f"{d['user_id']}\tremoved={'true' if d['removed'] else 'false'}"],
     )
 
 
@@ -275,12 +294,16 @@ def attach_label_project(
 def detach_label_project(
     label: str = _label_arg,
     project: str = typer.Argument(..., help="Project id, slug or name."),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     json_out: bool = _json_opt,
 ) -> None:
     """Take a project away from a label's members."""
     project_id = resolve_project_ref(project, param_hint="PROJECT")
     with get_sdk() as sdk:
         label_id = _label_id(sdk, label)
+        confirm_or_require_yes(
+            f"Detach {project} from label {label}? Its members lose that project.", yes=yes
+        )
         sdk.labels.detach_project(label_id, project_id)
     emit(
         {"label_id": label_id, "project_id": project_id, "detached": True},

@@ -1,0 +1,16 @@
+{
+  "operation": "GET /v1/skills/{skill_id}/bundle",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "skill_id": "5e6e6be8-d5cf-4216-aae7-b4aa6eed776a",
+    "slug": "helios-stability-readout",
+    "files": {
+      "SKILL.md": "---\nname: helios-stability-readout\ndescription: Turn an HX-01 stability export into the Helios charter's results table.\n---\n\nRead the export, then fill the table.\n",
+      "scripts/summarize_stability.py": "import pandas as pd\n"
+    },
+    "file_count": 2,
+    "files_sha256": "3e9a7c1d5b2f8e04a6c9d1b7f3e5a2c8d0b4f6e1a9c3d7b5e2f8a0c6d4b1e9f7"
+  }
+}

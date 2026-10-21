@@ -95,15 +95,21 @@ class Auth(Resource[M]):
         """The web app's URL as this API reports it (``app_url`` on ``GET /v1/auth/config``).
 
         Each deployment knows its own web app (a self-hosted box serves it on its
-        own host and port), so links the CLI builds into the app start here.
-        None when the API does not say: an older server, or no sign-in config.
+        own host and port), so links the CLI builds into the app start here. A
+        server without browser sign-in (every self-hosted box) answers ``503
+        cli_sign_in_unavailable`` and names it in the error's ``details``.
+        None when the API does not say: an older server.
         """
 
         def flow() -> Flow:
             try:
                 data = yield ops.build_auth_auth_config()
-            except (NotFoundError, ServerError):
+            except NotFoundError:
                 return None
+            except ServerError as exc:
+                if exc.code != "cli_sign_in_unavailable":
+                    return None
+                data = exc.details
             value = data.get("app_url") if isinstance(data, dict) else None
             return str(value).rstrip("/") if isinstance(value, str) and value.strip() else None
 

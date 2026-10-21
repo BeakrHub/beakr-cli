@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 import respx
 from typer.testing import CliRunner
@@ -591,3 +592,89 @@ def test_an_interactive_accept_review_shows_the_readable_payload(terminal, monke
     assert result.exit_code == 0, result.output
     assert '"proposed_content"' not in result.stdout
     assert "+New hires pair for two weeks." in result.stdout
+
+
+# Root cause: _resolve_page fell back to the wiki search's top hit and returned it
+# silently, so `kb cat "No Such Page"` printed Kestrel Widget and exited 0. The
+# engine resolves a page by exact title only; a near miss is now not found (exit
+# 4) and names the close matches instead.
+@respx.mock
+def test_cat_a_title_that_does_not_exist_fails_and_suggests_close_matches():
+    respx.get(f"{PAGES}/by-title").respond(404, json={"error": {"code": "not_found"}})
+    respx.get(url__regex=rf"{API}/v1/knowledge/wiki/search.*").respond(
+        json=_envelope([{"id": "p-kw", "title": "Kestrel Widget"}])
+    )
+    fetched = respx.get(f"{PAGES}/p-kw").respond(json={**PAGE, "title": "Kestrel Widget"})
+
+    result = runner.invoke(app, ["kb", "cat", "No Such Page"])
+
+    assert result.exit_code == 4, result.output
+    assert "Page not found: No Such Page" in result.stderr
+    assert '"Kestrel Widget"' in result.stderr
+    assert not fetched.called
+    assert "Kestrel Widget" not in result.stdout
+
+
+@respx.mock
+def test_cat_a_slug_of_an_existing_title_still_resolves():
+    respx.get(f"{PAGES}/by-title").respond(404, json={"error": {"code": "not_found"}})
+    respx.get(url__regex=rf"{API}/v1/knowledge/wiki/search.*").respond(
+        json=_envelope([{"id": "p-kw", "title": "Kestrel Widget"}])
+    )
+    respx.get(f"{PAGES}/p-kw").respond(json={**PAGE, "title": "Kestrel Widget"})
+    respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(json=_envelope([]))
+
+    result = runner.invoke(app, ["kb", "cat", "kestrel-widget", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["title"] == "Kestrel Widget"
+
+
+def _not_found_with_suggestions(titles: list[str]) -> httpx.Response:
+    """The engine's by-title 404, naming the closest live titles it can read."""
+    message = "Wiki page not found"
+    return httpx.Response(
+        404,
+        json={
+            "detail": {"code": "not_found", "message": message, "suggestions": titles},
+            "error": {
+                "code": "not_found",
+                "message": message,
+                "details": {"suggestions": titles},
+            },
+        },
+    )
+
+
+@respx.mock
+def test_cat_a_missing_title_shows_the_servers_suggestions_without_searching():
+    respx.get(f"{PAGES}/by-title").mock(
+        return_value=_not_found_with_suggestions(["Kestrel Widget", "Kestrel Notes"])
+    )
+    search = respx.get(url__regex=rf"{API}/v1/knowledge/wiki/search.*").respond(
+        json=_envelope([{"id": "p-other", "title": "Search Hit"}])
+    )
+
+    result = runner.invoke(app, ["kb", "cat", "No Such Page"])
+
+    assert result.exit_code == 4, result.output
+    assert "Page not found: No Such Page" in result.stderr
+    assert '"Kestrel Widget"' in result.stderr and '"Kestrel Notes"' in result.stderr
+    assert "Search Hit" not in result.stderr
+    assert not search.called
+
+
+@respx.mock
+def test_cat_a_slug_resolves_through_the_servers_suggestions():
+    def by_title(request: httpx.Request) -> httpx.Response:
+        if request.url.params["title"] == "Kestrel Widget":
+            return httpx.Response(200, json={**PAGE, "title": "Kestrel Widget"})
+        return _not_found_with_suggestions(["Kestrel Widget"])
+
+    respx.get(f"{PAGES}/by-title").mock(side_effect=by_title)
+    respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(json=_envelope([]))
+
+    result = runner.invoke(app, ["kb", "cat", "kestrel-widget", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.stdout)["title"] == "Kestrel Widget"

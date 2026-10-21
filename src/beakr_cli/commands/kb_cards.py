@@ -8,6 +8,7 @@ shell over the knowledge door, so argument names match the in-product tools.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -36,6 +37,34 @@ _scope_opt = typer.Option(
 )
 _rationale_opt = typer.Option(..., "--rationale", help="Why this change is right.")
 _json_opt = typer.Option(False, "--json", "-j", help="Output the raw door result.")
+_evidence_opt = typer.Option(
+    None,
+    "--evidence",
+    help=(
+        "The source: {{key}} token(s) or the reference a read prints (memo.pdf › p. 7). "
+        "Optional with --cite-conversation."
+    ),
+)
+_conversation_opt = typer.Option(
+    None,
+    "--cite-conversation",
+    help=(
+        "Cite this conversation as the source, under a short label of your choosing "
+        "(cited as {{conversation:LABEL}}); needs --excerpt."
+    ),
+)
+_excerpt_opt = typer.Option(
+    None, "--excerpt", help="With --cite-conversation: the words in it that state this."
+)
+_source_title_opt = typer.Option(
+    None,
+    "--source-title",
+    help="With --cite-conversation: what the conversation was (default: its label).",
+)
+
+#: The label an inline conversation citation may key itself by (the engine's
+#: ``outside_citations._OWN_KEY``, past its ``conversation:``).
+_CONVERSATION_LABEL = re.compile(r"[A-Za-z0-9_.:/-]{1,120}")
 
 
 def _scope(explicit: str | None) -> str | None:
@@ -57,6 +86,51 @@ def _print_result(result: dict[str, Any], *, json_out: bool) -> None:
         render=lambda r: console.print("\n".join(text_lines(r)), markup=False),
         lines=text_lines,
     )
+
+
+def _cited(
+    evidence: str | None,
+    conversation: str | None,
+    excerpt: str | None,
+    source_title: str | None,
+) -> tuple[str, list[dict[str, Any]] | None]:
+    """The row's ``evidence`` and, citing a conversation, its inline ``citations``.
+
+    A conversation is no stored source, so the door cites it as the MCP tools
+    do: ``{{conversation:<label>}}`` in the evidence and a declared citation
+    of source_type ``conversation`` with ``source_title`` and the words cited
+    (``meta.excerpt``). Without it the token named nothing citeable.
+    """
+    if conversation is None:
+        if excerpt is not None or source_title is not None:
+            _usage("--excerpt and --source-title go with --cite-conversation.")
+        if not (evidence or "").strip():
+            _usage("Pass --evidence, or --cite-conversation with --excerpt.")
+        return str(evidence), None
+    label = conversation.strip().strip("{}").strip()
+    label = label.removeprefix("conversation:")
+    if not _CONVERSATION_LABEL.fullmatch(label):
+        _usage(
+            "--cite-conversation takes a short label: letters, digits and _ . : / - (up to 120)."
+        )
+    if not (excerpt or "").strip():
+        _usage("--cite-conversation needs --excerpt: the words in the conversation cited.")
+    key = f"conversation:{label}"
+    citation = {
+        "key": key,
+        "source_type": "conversation",
+        "source_title": (source_title or "").strip() or label,
+        "meta": {"excerpt": str(excerpt).strip()},
+    }
+    token = "{{" + key + "}}"
+    given = (evidence or "").strip()
+    cited = f"{given} {token}" if given else token
+    return cited, [citation]
+
+
+def _usage(message: str) -> None:
+    err_console.print(message, markup=False)
+    raise typer.Exit(2)
 
 
 def _choice(value: str, allowed: tuple[str, ...], option: str) -> str:
@@ -114,7 +188,9 @@ def rows(
     as_of: str | None = typer.Option(
         None, "--as-of", help="Facts: each card's value on this date (YYYY-MM-DD)."
     ),
-    to: str | None = typer.Option(None, "--to", help="Connections: every row involving this page."),
+    to: str | None = typer.Option(
+        None, "--to", help="Connections: the rows pointing at this page (its incoming links)."
+    ),
     connected_to: str | None = typer.Option(
         None, "--connected-to", help="Only cards linked to this page, either direction."
     ),
@@ -239,19 +315,24 @@ def add_fact(
     page: str = typer.Argument(..., help="Card title, slug or ID."),
     attribute: str = typer.Option(..., "--attribute", help="Stable attribute name."),
     value: str = typer.Option(..., "--value", help="The statement as the source gives it."),
-    evidence: str = typer.Option(..., "--evidence", help="{{key}} citation token(s)."),
+    evidence: str | None = _evidence_opt,
     when: str | None = typer.Option(None, "--when", help="YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY."),
+    cite_conversation: str | None = _conversation_opt,
+    excerpt: str | None = _excerpt_opt,
+    source_title: str | None = _source_title_opt,
     rationale: str = _rationale_opt,
     scope: str | None = _scope_opt,
     json_out: bool = _json_opt,
 ) -> None:
     """Propose one Facts row on a project-map card."""
+    cited, citations = _cited(evidence, cite_conversation, excerpt, source_title)
     with get_sdk() as sdk:
         result = sdk.knowledge.add_fact(
             page,
             attribute=attribute,
             value=value,
-            evidence=evidence,
+            evidence=cited,
+            citations=citations,
             when=when,
             rationale=rationale,
             scope=_scope(scope),
@@ -263,19 +344,24 @@ def add_connection(
     page: str = typer.Argument(..., help="Card title, slug or ID."),
     relation: str = typer.Option(..., "--relation", help="Short verb phrase."),
     to: str = typer.Option(..., "--to", help="The other card's title."),
-    evidence: str = typer.Option(..., "--evidence", help="{{key}} citation token(s)."),
+    evidence: str | None = _evidence_opt,
     when: str | None = typer.Option(None, "--when", help="When the connection held."),
+    cite_conversation: str | None = _conversation_opt,
+    excerpt: str | None = _excerpt_opt,
+    source_title: str | None = _source_title_opt,
     rationale: str = _rationale_opt,
     scope: str | None = _scope_opt,
     json_out: bool = _json_opt,
 ) -> None:
     """Propose one Connections row on a project-map card."""
+    cited, citations = _cited(evidence, cite_conversation, excerpt, source_title)
     with get_sdk() as sdk:
         result = sdk.knowledge.add_connection(
             page,
             relation=relation,
             to=to,
-            evidence=evidence,
+            evidence=cited,
+            citations=citations,
             when=when,
             rationale=rationale,
             scope=_scope(scope),
@@ -288,26 +374,33 @@ def add_finding(
     date: str = typer.Option(..., "--date", help="YYYY-MM-DD the finding was reached."),
     kind: str = typer.Option(..., "--kind", help="result|lesson|decision|question|correction."),
     text: str = typer.Option(..., "--text", help="The finding."),
-    evidence: str = typer.Option(..., "--evidence", help="{{key}} citation token(s)."),
+    evidence: str | None = _evidence_opt,
     about: list[str] | None = typer.Option(None, "--about", help="What it is about (repeat)."),
     finding_scope: str | None = typer.Option(None, "--finding-scope", help="Where it holds."),
     supersedes: str | None = typer.Option(None, "--supersedes", help="Finding it replaces."),
+    cite_conversation: str | None = _conversation_opt,
+    excerpt: str | None = _excerpt_opt,
+    source_title: str | None = _source_title_opt,
     rationale: str = _rationale_opt,
     scope: str | None = _scope_opt,
     json_out: bool = _json_opt,
 ) -> None:
     """Propose one dated Findings bullet on a project-map card."""
     _choice(kind, _FINDING_KINDS, "--kind")
+    cited, citations = _cited(evidence, cite_conversation, excerpt, source_title)
     about_value: str | list[str] | None = None
     if about:
         about_value = about[0] if len(about) == 1 else list(about)
     with get_sdk() as sdk:
-        result = sdk.knowledge.add_finding(
-            page,
+        # The SDK's add_finding takes no citations; its write() is the same call.
+        result = sdk.knowledge.write(
+            "add_finding",
+            page=page,
             date=date,
             kind=kind,
             text=text,
-            evidence=evidence,
+            evidence=cited,
+            citations=citations,
             about=about_value,
             finding_scope=finding_scope,
             supersedes=supersedes,
