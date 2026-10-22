@@ -11,11 +11,18 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9f6a75f4cffa83a82cbc59f12b6bfcfd719b1bd23406255debe59f907f12835c changelog sha256=4f12fe108c7c9943109a5c91f45fb6c3c7b3ac577cca7e651dbd72fb5a85ce8e -->
+<!-- contract-stamp: public-openapi sha256=2951348312be1bffff1e62a100793720c312512d8d525c358e55353cc9e01948 changelog sha256=a09197c131182bd47f2b8dab618be870e43c9781e447e808ec32c7e030c9ffff -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/runs` on a thread whose run is still working, from
+  the user who started that run, no longer cancels it when the message is a
+  plain follow-up (no files, workflow, pinned skills or decision). The message
+  is delivered to the running run instead, and the response sets the new
+  `injected_into_run` field to `true`, with that run's `run_id` and
+  `stream_url` and the delivered message as `user_message_id`. A run whose
+  worker has stopped is still replaced by a new run, as before.
 - Agent review, policy writes: `PUT /v1/knowledge/agent-review` and
   `PUT /v1/knowledge/agent-review/projects/{project_id}` merge the fields they
   send; a field left out keeps its value and `null` unsets it. A project
