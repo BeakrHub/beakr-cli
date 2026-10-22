@@ -1444,12 +1444,17 @@ Each release lists the public API changes it supports, taken from the API change
   `--role` takes the API's roles (`owner`, `admin`, `member`, `viewer`) and
   refuses any other before sending; its help named `editor`, which the API
   does not have.
-- **Update checks off.** With `BEAKR_NO_UPDATE_CHECK` set (a self-hosted
-  installation sets it for the CLI it bundles), `beakr version`, `beakr update`
-  and the MCP tools `beakr_version` and `update_beakr` say "Update checks are
-  off (BEAKR_NO_UPDATE_CHECK is set)." instead of "Latest release: unknown (PyPI
-  could not be checked)" or "PyPI was unreachable"; `beakr version --json`
-  reports `update_check: "off"`.
+- **The CLI a self-hosted installation bundles.** `beakr version`, `beakr
+  update` and the MCP tools `beakr_version` and `update_beakr` no longer say
+  "Latest release: unknown (PyPI could not be checked)" there. When the server
+  says it is self-hosted (`deployment: "self_hosted"` on `GET /v1/auth/config`)
+  and the copy was not installed with uv or pipx, they say it is bundled with
+  the installation and is upgraded with it (`install-beakr.py --version <new
+  version> upgrade`); `beakr version --json` reports `bundled_with_box: true`.
+  Otherwise, with `BEAKR_NO_UPDATE_CHECK` set (a server that sends no
+  `deployment`, such as a 0.1.8 box, is unknown), they say "Update checks are
+  off (BEAKR_NO_UPDATE_CHECK is set)." (`update_check: "off"`) instead of a PyPI
+  line.
 - **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
   prints the status after the accept (`status=accepted`), not the create's
   `pending`.
