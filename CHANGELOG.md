@@ -8,6 +8,13 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/runs` on a thread whose run is still working, from
+  the user who started that run, no longer cancels it when the message is a
+  plain follow-up (no files, workflow, pinned skills or decision). The message
+  is delivered to the running run instead, and the response sets the new
+  `injected_into_run` field to `true`, with that run's `run_id` and
+  `stream_url` and the delivered message as `user_message_id`. A run whose
+  worker has stopped is still replaced by a new run, as before.
 - Agent review, policy writes: `PUT /v1/knowledge/agent-review` and
   `PUT /v1/knowledge/agent-review/projects/{project_id}` merge the fields they
   send; a field left out keeps its value and `null` unsets it. A project
