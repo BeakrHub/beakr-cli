@@ -1484,6 +1484,20 @@ Each release lists the public API changes it supports, taken from the API change
   target rationale").
   `--view conflicts` lists one card stating different values for a field at
   the same When; `--view fields` and `groups` are the door's other views.
+- **`scope` on `wiki_stats`, `wiki_graph` and `documents` (stdio MCP).** These
+  tools take the project as `project`; `scope`, as the Knowledge tools name it,
+  was dropped and the answer covered every project. It is read as `project`,
+  as the hosted server's repair does, and the two given with different values
+  are refused.
+- **Sources lists name what each source is.** A `kb cat` and the stdio MCP
+  server's Knowledge results list the cited documents, conversations and
+  notes before the Knowledge pages, count each kind (`1 document, 3
+  conversations, 8 Knowledge pages`) and label a conversation or note line
+  (`- conversation: ...`), with its excerpt when the server sends one, as the
+  hosted server does.
+- **Auto-approve from the outcome.** `kb propose create` reads
+  `outcome.auto_approve` to tell whether the owner's auto-approve applies the
+  proposal, and the reply's text only from a server that does not send it.
 - **`kb entities` piped.** The count per type (`Types: organization 6  person
   4`) is printed on stderr, as it was on a terminal; stdout stays one line per
   page.

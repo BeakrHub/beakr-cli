@@ -17016,7 +17016,7 @@
               }
             ],
             "default": null,
-            "description": "Where it came from.",
+            "description": "What staged it. `mcp` is any client that filed through `POST /v1/knowledge/wiki/write` -- an MCP server, the CLI or an SDK; `filed_by.client` names which (e.g. `sdk-python/0.1.0`).",
             "title": "Source"
           },
           "status": {
@@ -17607,6 +17607,19 @@
       "WikiToolOutcome": {
         "additionalProperties": true,
         "properties": {
+          "auto_approve": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Writes only: true when the caller's auto-approve setting will apply what this call staged (usually within seconds), false when it waits for review.",
+            "title": "Auto Approve"
+          },
           "commit_ids": {
             "default": [],
             "description": "Ids of the commits.",
@@ -17687,7 +17700,7 @@
               }
             ],
             "default": null,
-            "description": "The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows)."
+            "description": "The proposal a section or row write staged (edit_section, add_fact, add_connection, add_finding, edit_rows), or the review a flag filed or joined."
           },
           "sources": {
             "anyOf": [

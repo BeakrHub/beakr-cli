@@ -1005,7 +1005,7 @@ def propose_create(
                 markup=False,
             )
             raise typer.Exit(EXIT_USAGE)
-        proposal, reply = _stage_new_page(
+        proposal, auto_approve = _stage_new_page(
             title=title,
             sections=section_data,
             page_type=page_type,
@@ -1025,7 +1025,7 @@ def propose_create(
                 accept=accept,
                 yes=yes,
                 json_out=json_out,
-                auto_approve=_AUTO_APPROVE_REPLY in reply,
+                auto_approve=auto_approve,
             )
         return
     # The older shape: markdown whose <!-- sec:ID --> markers --sections annotates.
@@ -1077,8 +1077,22 @@ def _usage_error(message: str) -> None:
 
 
 #: The phrase the door's reply opens its auto-approve note with: the owner's
-#: setting applies the proposal, so no one should be told to accept it.
+#: setting applies the proposal, so no one should be told to accept it. Read
+#: only from a server whose outcome does not say so in ``auto_approve``.
 _AUTO_APPROVE_REPLY = "Auto-approve is on"
+
+
+def _auto_approved(result: object, reply: str) -> bool:
+    """Whether the owner's auto-approve applies what this write staged.
+
+    ``outcome.auto_approve`` says so where the server sends it (true or false);
+    an older server says it only in the reply's text.
+    """
+    outcome = result.get("outcome") if isinstance(result, dict) else None
+    flag = outcome.get("auto_approve") if isinstance(outcome, dict) else None
+    if isinstance(flag, bool):
+        return flag
+    return _AUTO_APPROVE_REPLY in reply
 
 
 def _stage_new_page(
@@ -1091,8 +1105,9 @@ def _stage_new_page(
     parent: str | None,
     scope: str,
     json_out: bool,
-) -> tuple[dict | None, str]:
-    """Stage a new page from its sections: the proposal as ``show`` reads it, and the reply.
+) -> tuple[dict | None, bool]:
+    """Stage a new page from its sections: the proposal as ``show`` reads it, and
+    whether the owner's auto-approve applies it.
 
     Through the Knowledge write door (``new``), where Beakr writes the section
     markers and ids, lays a new card out as a card and checks the citations:
@@ -1127,12 +1142,12 @@ def _stage_new_page(
     if proposal is None:
         if not machine_output(result, json_out=json_out, lines=lambda r: reply.splitlines()):
             console.print(reply, markup=False)
-        return None, reply
+        return None, False
     if reply:
         (console if output_mode(json_out) == "human" else err_console).print(
             reply, markup=False, highlight=False
         )
-    return proposal, reply
+    return proposal, _auto_approved(result, reply)
 
 
 @propose_app.command("edit")

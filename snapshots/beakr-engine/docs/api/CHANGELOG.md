@@ -11,10 +11,29 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=806848d8dac46cb084ac633fec05e4b1ab7a7cecb2797106a3b8cfa42100907b changelog sha256=c1a036a7d5259995ac0f677b40781c5583a8676a43f2dd3953797b750118adc5 -->
+<!-- contract-stamp: public-openapi sha256=7cb91a90de92c95a1d2fda279f5006bf42ba9067e23a756a38a92fce077f35d0 changelog sha256=414b134f2c1a5055738fa6832e2999904a39afe929494f869deebfe16bb3d329 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/write` with `action: "flag"` returns `proposal.id`,
+  the review the flag filed, or the open review it joined, as the other writes
+  return the proposal they stage; its text ends with a `Proposal id:` line. On
+  findings (`add_finding`, `edit_rows`), an `about` name that is not a page in
+  the card's project is stored as plain text instead of a link, and a resolved
+  `supersedes` is stored as the replaced finding's date and opening words. A
+  `when` written with one end only, such as `until 2026-04-01`, is still
+  refused with `invalid_arguments`; the message now says how to write it.
+  A successful write's `outcome.auto_approve` says whether the caller's
+  auto-approve setting will apply what it staged (`true`) or it waits for
+  review (`false`).
+- `GET /v1/knowledge/wiki/proposals` and `GET /v1/knowledge/wiki/proposals/{proposal_id}`:
+  `source: "mcp"` means filed through `POST /v1/knowledge/wiki/write` by any
+  client (an MCP server, the CLI or an SDK); `filed_by.client` names which.
+- `POST /v1/knowledge/wiki/command` `rows`: under the default `match`, an
+  `attribute` that is a field's exact name returns only that field, with a line
+  saying so; `match: "similar"` still returns every field whose name holds its
+  words.
 
 - Map card rows: a Facts or Connections row's `row_id` names the row with its
   When, so a value a card states at two dates is two rows with two ids. On
