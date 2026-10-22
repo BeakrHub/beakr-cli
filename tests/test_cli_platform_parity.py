@@ -221,13 +221,34 @@ def test_projects_members_ls_and_add(rendered):
     listed = runner.invoke(app, ["projects", "members", "ls", "assays"])
     assert listed.exit_code == 0, listed.output
     assert "ada@x.test" in listed.output
-    added = runner.invoke(app, ["projects", "members", "add", "Assays", "u2", "--role", "editor"])
+    added = runner.invoke(app, ["projects", "members", "add", "Assays", "u2", "--role", "admin"])
     assert added.exit_code == 0, added.output
     assert json.loads(add.calls.last.request.content) == {
         "principal_id": "u2",
         "principal_type": "user",
-        "role": "editor",
+        "role": "admin",
     }
+
+
+# Root cause: `--role` was free text whose help named "editor", a role the API
+# does not have (its roles are owner, admin, member and viewer), so the help led
+# to a 400 from the server. The option takes the API's roles and refuses any
+# other before a request is made.
+@respx.mock
+def test_projects_members_add_takes_only_the_apis_roles():
+    _projects()
+    add = respx.post(f"{API}/v1/projects/p1/members").respond(201, json={"principal_id": "u2"})
+
+    refused = runner.invoke(app, ["projects", "members", "add", "assays", "u2", "--role", "editor"])
+    shown = runner.invoke(app, ["projects", "members", "add", "--help"])
+
+    assert refused.exit_code == 2, refused.output
+    assert "editor" in refused.output
+    assert not add.called
+    help_text = " ".join(shown.output.split())
+    assert "editor" not in help_text
+    for role in ("owner", "admin", "member", "viewer"):
+        assert role in help_text
 
 
 # Root cause: `members add` sent role="member" when --role was not given, so

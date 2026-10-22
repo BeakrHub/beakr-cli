@@ -128,6 +128,10 @@ Sources cited above:
 Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which read_file opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
 
 Sources (2 documents, 8 Knowledge pages):
+- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · read_file bbcc04f9-a0ba-4d86-a5b3-911a43c5139a · source_ref beakr-source:v1:5047ddc4-1775-4f71-8c48-4fcd488ee840
+  "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+- helios-go-decision-memo.docx › block 1 · read_file fc6ec327-a862-48fd-b445-7bdf4f1121e2 · source_ref beakr-source:v1:b0d1df17-ce40-4c6c-9445-dd44fcf684d4
+  "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
 - Project Helios · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480
 - Project Helios › Budget · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_budget
 - Project Helios › Charter · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_charter
@@ -136,10 +140,6 @@ Sources (2 documents, 8 Knowledge pages):
 - Dana Whitfield · source_ref beakr-source:v1:wiki:36800931-7856-4645-97ab-b9a2eff4b92d
 - Maja Lindqvist · source_ref beakr-source:v1:wiki:2609a4fa-cdb2-449a-b3ac-07746866c8e4
 - Northwind Biosciences · source_ref beakr-source:v1:wiki:7e825a5b-2165-45de-8501-bd9f1e013e99
-- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · read_file bbcc04f9-a0ba-4d86-a5b3-911a43c5139a · source_ref beakr-source:v1:5047ddc4-1775-4f71-8c48-4fcd488ee840
-  "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
-- helios-go-decision-memo.docx › block 1 · read_file fc6ec327-a862-48fd-b445-7bdf4f1121e2 · source_ref beakr-source:v1:b0d1df17-ce40-4c6c-9445-dd44fcf684d4
-  "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
 
 next: Follow an edge with links, references or timeline.
 next: Check where a claim came from with provenance {page} or sources {page}.
@@ -193,6 +193,10 @@ Sources cited above:
 Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which read_file opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
 
 Sources (2 documents, 8 Knowledge pages):
+- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · read_file bbcc04f9-a0ba-4d86-a5b3-911a43c5139a · source_ref beakr-source:v1:5047ddc4-1775-4f71-8c48-4fcd488ee840
+  "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
+- helios-go-decision-memo.docx › block 1 · read_file fc6ec327-a862-48fd-b445-7bdf4f1121e2 · source_ref beakr-source:v1:b0d1df17-ce40-4c6c-9445-dd44fcf684d4
+  "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
 - Project Helios · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480
 - Project Helios › Budget · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_budget
 - Project Helios › Charter · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_charter
@@ -201,10 +205,6 @@ Sources (2 documents, 8 Knowledge pages):
 - Dana Whitfield · source_ref beakr-source:v1:wiki:36800931-7856-4645-97ab-b9a2eff4b92d
 - Maja Lindqvist · source_ref beakr-source:v1:wiki:2609a4fa-cdb2-449a-b3ac-07746866c8e4
 - Northwind Biosciences · source_ref beakr-source:v1:wiki:7e825a5b-2165-45de-8501-bd9f1e013e99
-- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · read_file bbcc04f9-a0ba-4d86-a5b3-911a43c5139a · source_ref beakr-source:v1:5047ddc4-1775-4f71-8c48-4fcd488ee840
-  "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
-- helios-go-decision-memo.docx › block 1 · read_file fc6ec327-a862-48fd-b445-7bdf4f1121e2 · source_ref beakr-source:v1:b0d1df17-ce40-4c6c-9445-dd44fcf684d4
-  "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
 
 next: Follow an edge with links, references or timeline.
 next: Check where a claim came from with provenance {page} or sources {page}.

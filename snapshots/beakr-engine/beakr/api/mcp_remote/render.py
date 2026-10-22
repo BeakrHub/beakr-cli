@@ -189,10 +189,14 @@ def sources_block(sources: list[Any]) -> str:
                 entry["excerpt"] = excerpt
     if not documents:
         return ""
-    lines = [f"Sources ({_count_label(list(documents.values()))}):"]
+    # What the text cites before the Knowledge pages it links: listed in read
+    # order, a page's own sections and linked pages led, and the cap cut the
+    # cited sources first (S18-9).
+    entries = sorted(documents.values(), key=lambda entry: _kind(entry["record"]) == _PAGE)
+    lines = [f"Sources ({_count_label(entries)}):"]
     used = len(lines[0])
     shown = 0
-    for entry in documents.values():
+    for entry in entries:
         block = _document_lines(entry)
         size = sum(len(line) + 1 for line in block)
         if shown and used + size > SOURCES_CHARS:
@@ -208,25 +212,62 @@ def sources_block(sources: list[Any]) -> str:
     return "\n".join(lines)
 
 
-def _is_knowledge_page(record: dict[str, Any]) -> bool:
-    """A cited Knowledge (wiki) page, as opposed to a document or connector item."""
-    return (
-        str(record.get("source_kind") or "").lower() == "wiki"
-        or str(record.get("citation_key") or "").startswith("wiki:")
-        or str(record.get("source_ref") or "").startswith("beakr-source:v1:wiki:")
-    )
+#: The kinds of source a list names, each with its singular and plural, in the
+#: order the count reads. A conversation or a note is not a document: counted as
+#: one, and printed with no label, it read as a file with no place (S18-9).
+_DOCUMENT = "document"
+_PAGE = "Knowledge page"
+_KINDS: tuple[tuple[str, str], ...] = (
+    (_DOCUMENT, "documents"),
+    ("conversation", "conversations"),
+    ("agent note", "agent notes"),
+    ("note", "notes"),
+    (_PAGE, "Knowledge pages"),
+)
+#: A citation key's source type, for the kinds that are not documents.
+_KIND_BY_SOURCE_TYPE = {
+    "wiki": _PAGE,
+    "conversation": "conversation",
+    "agent_note": "agent note",
+    "user_note": "note",
+}
+
+
+def _kind(record: dict[str, Any]) -> str:
+    """Which kind of source ``record`` is: a document, a Knowledge page, a conversation or a note."""
+    if str(record.get("source_ref") or "").startswith("beakr-source:v1:wiki:"):
+        return _PAGE
+    for source_type in (
+        str(record.get("source_kind") or "").lower(),
+        str(record.get("citation_key") or "").partition(":")[0].lower(),
+    ):
+        if source_type in _KIND_BY_SOURCE_TYPE:
+            return _KIND_BY_SOURCE_TYPE[source_type]
+    return _DOCUMENT
+
+
+def _line_label(record: dict[str, Any]) -> str:
+    """``conversation: ``, ``agent note: `` or ``note: `` before a source that is not a file.
+
+    Unlabelled, a conversation's title read as a file with no place in it. A
+    file or a page keeps its line as it was: its path leads, so ``<path> ›
+    <place>`` stays the one piece a reader opens and cites, and ``read_file``
+    or a Knowledge ``source_ref`` already says which it is.
+    """
+    kind = _kind(record)
+    return f"{kind}: " if kind not in (_DOCUMENT, _PAGE) else ""
 
 
 def _count_label(entries: list[dict[str, Any]]) -> str:
-    """``3 documents, 9 Knowledge pages``: a cat cites pages as well as files."""
-    pages = sum(1 for entry in entries if _is_knowledge_page(entry["record"]))
-    others = len(entries) - pages
-    parts = []
-    if others:
-        parts.append(f"{others} document{'s' if others != 1 else ''}")
-    if pages:
-        parts.append(f"{pages} Knowledge page{'s' if pages != 1 else ''}")
-    return ", ".join(parts)
+    """``3 documents, 2 conversations, 9 Knowledge pages``: a cat cites more than files."""
+    counts = {kind: 0 for kind, _plural in _KINDS}
+    for entry in entries:
+        counts[_kind(entry["record"])] += 1
+    return ", ".join(
+        f"{counts[kind]} {kind if counts[kind] == 1 else plural}"
+        for kind, plural in _KINDS
+        if counts[kind]
+    )
 
 
 def _document_lines(entry: dict[str, Any]) -> list[str]:
@@ -263,7 +304,7 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         where.append(f"source_ref {record['source_ref']}")
     tail = f" \u00b7 {' \u00b7 '.join(where)}" if where else ""
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
-    lines = [f"- {head}{tail}".rstrip()]
+    lines = [f"- {_line_label(record)}{head}{tail}".rstrip()]
     if entry["excerpt"]:
         lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"')
     return lines

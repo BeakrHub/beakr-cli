@@ -407,3 +407,259 @@ def test_version_says_a_build_ahead_of_pypi_is_newer() -> None:
     assert "newer than the latest release (0.0.2)" in result.output
     assert "could not be checked" not in result.output
     assert not (config.config_dir() / "update_check.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# BEAKR_NO_UPDATE_CHECK (set by a self-hosted installation for its CLI)
+# ---------------------------------------------------------------------------
+
+# Root cause: on a self-hosted box, which sets BEAKR_NO_UPDATE_CHECK for the CLI
+# it bundles, `beakr version` and beakr_version said "Latest release: unknown
+# (PyPI could not be checked)" although PyPI was never asked. With the check off
+# they say so instead, and claim nothing about the server: the variable alone
+# does not make a box (anyone can set it), and no documented route says one is.
+
+
+def _pypi_must_not_be_asked(monkeypatch) -> None:
+    def no_pypi(timeout):
+        raise AssertionError("PyPI was asked with the update check off")
+
+    monkeypatch.setattr(updates, "fetch_latest_version", no_pypi)
+
+
+def test_version_with_the_check_off_says_so_instead_of_pypi(monkeypatch) -> None:
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    result = CliRunner().invoke(app, ["version"])
+    as_json = CliRunner().invoke(app, ["version", "--json"])
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0].startswith("beakr-cli ")  # `beakr update` parses this line
+    assert lines[1] == "Update checks are off (BEAKR_NO_UPDATE_CHECK is set)."
+    assert "PyPI" not in result.output and "Latest release" not in result.output
+    report = json.loads(as_json.output)
+    assert report["update_check"] == "off" and "latest" not in report
+
+
+def test_update_with_the_check_off_says_so_instead_of_pypi_unreachable(monkeypatch) -> None:
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    result = CliRunner().invoke(app, ["update", "--check"])
+
+    assert result.exit_code == 1
+    assert "Update checks are off (BEAKR_NO_UPDATE_CHECK is set)." in result.output
+    assert "unreachable" not in result.output
+
+
+async def test_beakr_version_tool_with_the_check_off_says_so(monkeypatch) -> None:
+    from beakr_cli import mcp_server
+
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    def no_upgrade(*_args, **_kwargs):
+        raise AssertionError("an upgrade ran with the update check off")
+
+    monkeypatch.setattr(mcp_server, "run_upgrade", no_upgrade)
+
+    text = await mcp_server.beakr_version()
+    refused = await mcp_server.update_beakr()
+
+    assert text.splitlines()[1] == "Update checks are off (BEAKR_NO_UPDATE_CHECK is set)."
+    assert "PyPI" not in text and "Latest release" not in text
+    assert refused == (
+        "Update did not run: Update checks are off (BEAKR_NO_UPDATE_CHECK is set). "
+        "Unset it to look for a newer release."
+    )
+
+
+# ---------------------------------------------------------------------------
+# The CLI a self-hosted installation bundles (the server says deployment=self_hosted)
+# ---------------------------------------------------------------------------
+
+# The installation's own copy is upgraded with the installation, never from PyPI.
+# Only the server's `deployment` on GET /v1/auth/config says it is self-hosted;
+# a server that sends none (a 0.1.8 box) is unknown and gets the wording above.
+
+_BOX = "https://box.test"
+_BOX_LINE = (
+    "bundled with this Beakr installation. It is upgraded with the installation: run "
+    "`install-beakr.py --version <new version> upgrade` (see the Beakr guide, Upgrade)."
+)
+
+
+def _other_install() -> updates.InstallInfo:
+    return updates.InstallInfo(updates.InstallMethod.other, None, "pip install --upgrade")
+
+
+def test_version_on_a_self_hosted_installation_says_how_it_is_upgraded(monkeypatch) -> None:
+    other = _other_install()
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: other)
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    _pypi_must_not_be_asked(monkeypatch)
+
+    result = CliRunner().invoke(app, ["version"])
+    as_json = CliRunner().invoke(app, ["version", "--json"])
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0].startswith("beakr-cli ")
+    assert lines[1] == "B" + _BOX_LINE[1:]
+    assert "PyPI" not in result.output and "Update checks are off" not in result.output
+    report = json.loads(as_json.output)
+    assert report["bundled_with_box"] is True and "latest" not in report
+
+
+async def test_beakr_version_tool_on_a_self_hosted_installation(monkeypatch) -> None:
+    from beakr_cli import mcp_server
+
+    other = _other_install()
+    monkeypatch.setattr(mcp_server, "detect_install", lambda: other)
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    def no_status(**_):
+        raise AssertionError("PyPI was asked about a self-hosted installation's CLI")
+
+    monkeypatch.setattr(mcp_server, "get_update_status", no_status)
+    monkeypatch.setattr(mcp_server, "run_upgrade", no_status)
+
+    text = await mcp_server.beakr_version()
+    refused = await mcp_server.update_beakr()
+
+    assert text == f"Installed: beakr-cli {mcp_server.__version__}, {_BOX_LINE}"
+    assert (
+        refused == f"Update did not run. Installed: beakr-cli {mcp_server.__version__}, {_BOX_LINE}"
+    )
+
+
+@pytest.mark.parametrize("deployment", ["hosted", None])
+def test_a_hosted_or_unknown_deployment_is_not_a_box(monkeypatch, deployment) -> None:
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    monkeypatch.setattr(updates, "server_deployment", lambda: deployment)
+    assert not updates.bundled_with_box(_other_install())
+
+
+def test_a_uv_tool_copy_pointed_at_a_self_hosted_installation_checks_pypi(monkeypatch) -> None:
+    uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    assert not updates.bundled_with_box(uv)
+
+
+@pytest.mark.real_capabilities
+@respx.mock
+def test_the_deployment_is_read_from_the_auth_config_or_its_503(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_URL", _BOX)
+    monkeypatch.setenv("BEAKR_API_KEY", "bk_test_key")
+    config = respx.get(f"{_BOX}/v1/auth/config")
+
+    # A box has no Clerk CLI client: the 503 names the deployment in its details.
+    config.respond(
+        503,
+        json={
+            "error": {
+                "code": "cli_sign_in_unavailable",
+                "message": "Browser sign-in is not configured on this server.",
+                "details": {"app_url": "https://box.test:8443", "deployment": "self_hosted"},
+            }
+        },
+    )
+    assert updates.server_deployment() == "self_hosted"
+
+    config.respond(json={"issuer": "https://clerk.test", "app_url": "x", "deployment": "hosted"})
+    updates._deployments.clear()  # asked once per process: forget the first answer
+    assert updates.server_deployment() == "hosted"
+
+    # A server before the field (a 0.1.8 box) says nothing: unknown.
+    config.respond(json={"issuer": "https://clerk.test", "app_url": "x"})
+    updates._deployments.clear()
+    assert updates.server_deployment() is None
+
+
+# Review of #63: `beakr version` asked GET /v1/auth/config on every run, so a
+# hosted pip user paid up to a 5 s request for wording that could not change.
+# The server is asked only with BEAKR_NO_UPDATE_CHECK set, and once per process.
+
+
+@respx.mock
+def test_version_without_the_check_off_never_asks_the_server(monkeypatch) -> None:
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: _other_install())
+
+    def must_not_ask():
+        raise AssertionError("GET /v1/auth/config was asked with the update check on")
+
+    monkeypatch.setattr(updates, "server_deployment", must_not_ask)
+    respx.get(updates.PYPI_JSON_URL).mock(
+        return_value=httpx.Response(200, json=_pypi("0.3.0", "0.3.1"))
+    )
+
+    result = CliRunner().invoke(app, ["version"])
+
+    assert result.exit_code == 0, result.output
+    assert "Update available: 0.3.1." in result.output
+
+
+@pytest.mark.real_capabilities
+@respx.mock
+def test_the_deployment_is_asked_once_per_command(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_URL", _BOX)
+    monkeypatch.setenv("BEAKR_API_KEY", "bk_test_key")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: uv)
+    config = respx.get(f"{_BOX}/v1/auth/config").respond(
+        json={"issuer": "https://clerk.test", "app_url": "x", "deployment": "self_hosted"}
+    )
+
+    result = CliRunner().invoke(app, ["update", "--check"])
+
+    assert "install-beakr.py" in result.output
+    assert config.call_count == 1
+    assert updates.server_deployment() == "self_hosted"
+    assert config.call_count == 1
+
+
+# Review of the deployment marker: on a self-hosted installation, the check-off
+# refusal said "Unset it to look for a newer release", sending the user to PyPI,
+# which the installation does not install from. It names the installation's
+# upgrade instead.
+
+
+def test_update_with_the_check_off_on_a_self_hosted_server_names_its_upgrade(monkeypatch) -> None:
+    uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: uv)
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    _pypi_must_not_be_asked(monkeypatch)
+
+    result = CliRunner().invoke(app, ["update", "--check"])
+
+    assert result.exit_code == 1
+    text = " ".join(result.output.split())
+    assert "Update checks are off (BEAKR_NO_UPDATE_CHECK is set)." in text
+    assert "install-beakr.py --version <new version> upgrade" in text
+    assert "Unset it" not in text
+
+
+async def test_update_tool_with_the_check_off_on_a_self_hosted_server_names_its_upgrade(
+    monkeypatch,
+) -> None:
+    from beakr_cli import mcp_server
+
+    uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setattr(mcp_server, "detect_install", lambda: uv)
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    _pypi_must_not_be_asked(monkeypatch)
+
+    refused = await mcp_server.update_beakr()
+
+    assert refused == (
+        "Update did not run: Update checks are off (BEAKR_NO_UPDATE_CHECK is set). "
+        f"{updates.BOX_INSTRUCTIONS}"
+    )

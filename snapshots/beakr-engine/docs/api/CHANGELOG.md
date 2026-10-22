@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=38602ac011dfb6dbb0c0adabdc2f26ae443c785576c174fae89c24ecf80ef6ba changelog sha256=45cc3eda862a401eb8b4d16895fc7dfb9064296c662c6cc1bacfedfa2769b18a -->
+<!-- contract-stamp: public-openapi sha256=2c08bb46679083329a3fdebb88279d68260d54713d3171b8570169869151e914 changelog sha256=c18c97e09cc7cbd5938713a5ec9014a287ba5b1c3784ee46611a157692b33512 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -20,6 +20,109 @@ The first public version.
   `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack`, `email`
   or `text` for one a person started by messaging Beakr there.
+  conversation started in the web app or through the API, or `slack` or `email`
+  for one a person started by messaging Beakr there.
+  conversation started in the web app or through the API, or `slack` for one a
+  person started by messaging Beakr in Slack.
+- `POST /v1/runs` on a thread whose run is still working, from
+  the user who started that run, no longer cancels it when the message is a
+  plain follow-up (no files, workflow, pinned skills or decision). The message
+  is delivered to the running run instead, and the response sets the new
+  `injected_into_run` field to `true`, with that run's `run_id` and
+  `stream_url` and the delivered message as `user_message_id`. A run whose
+  worker has stopped is still replaced by a new run, as before.
+- Agent review, policy writes: `PUT /v1/knowledge/agent-review` and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` merge the fields they
+  send; a field left out keeps its value and `null` unsets it. A project
+  follows the organization for every field it does not set, and
+  `project_override` lists only the project's own fields.
+- Agent review, files: the policy on `GET /v1/knowledge/agent-review` and its
+  two `PUT`s takes `agent_uploads_need_a_person` (default `false`). With it on,
+  a file an API key or token uploads or sends to Knowledge is stored and
+  indexed but not compiled:
+  `GET /v1/artifacts` and `GET /v1/artifacts/{artifact_id}` report
+  `knowledge_status: waiting_for_person`, and
+  `POST /v1/artifacts/{artifact_id}/knowledge` answers
+  `queue_result: waiting_for_person`. The new
+  `POST /v1/artifacts/{artifact_id}/knowledge/approve` compiles it; only a
+  signed-in person or a key holding `proposals:accept` may call it (others get
+  `403 person_review_required`; a file not waiting gets `409 not_waiting`). It
+  is the only way a held file is compiled: asking for it again, or turning the
+  setting off, leaves it `waiting_for_person`. With either setting on, an API
+  key or token is also refused direct commits to Knowledge, and cannot turn on
+  a workflow's schedule (`schedule_enabled`) or an output's knowledge
+  auto-sync; a schedule a key set up runs as that key, and so does a schedule
+  whose workflow a key last wrote (creating, editing, forking or upgrading a
+  workflow with a key carries the key onto the configs that run it). With the files setting
+  on, a key's edit of an output holds it (`waiting_for_person`) even when a
+  person enrolled it in auto-sync, approving it compiles it without enrolling
+  auto-sync, and a key cannot attach, edit or sync a project's connector
+  source. An interview write-up sent by a key reports `waiting_for_person`.
+  A desktop app's device token is its person's own device: files it syncs are
+  that person's and are not held.
+- Agent review, proposals: an id in a request that the caller cannot see
+  answers `404 not_found`, whatever its project's policy. A citation's
+  `source_id` no longer counts as a page the request writes to. Rolling back a
+  commit, an activity or a run is gated on the projects it touches, not on
+  every project of the organization.
+- Agent review: an organization or a project can require a person to accept
+  proposals and commit Knowledge. `GET /v1/knowledge/agent-review` reads the
+  organization's policy, a project's override (`project_id`) and the
+  `effective` one; a project's policy replaces the organization's.
+  `PUT /v1/knowledge/agent-review` (organization admins, `members:admin`) and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` (project admins,
+  `projects:admin`; `policy: null` follows the organization) change it, and
+  answer `403 session_required` to a key or token without `proposals:accept`.
+  With `agent_proposals_need_a_person` on, an API key or token without
+  `proposals:accept` is refused with `403 person_review_required` when it
+  accepts any proposal
+  (`POST /v1/knowledge/wiki/proposals/{proposal_id}/accept`) or commits
+  Knowledge any other way without an accept (resolving a conflict, editing
+  card rows, restoring, reverting or undoing). Keys created without a scope
+  list (full access) are refused too. Staging proposals stays open. A
+  signed-in person, or a key holding the new `proposals:accept` scope,
+  accepts and commits. `proposals:accept` marks a key a person reviews with:
+  a key with no scope list never holds it, an OAuth token or an end-user
+  token never carries it, and only a signed-in session creates a key with it.
+  `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` return
+  `needs_person_to_accept`. A person's auto-approve no longer applies in that
+  project, except to capture suggestions when the policy sets
+  `capture_auto_approve_allowed`.
+- `POST /v1/knowledge/wiki/write` with `action: "flag"` returns `proposal.id`,
+  the review the flag filed, or the open review it joined, as the other writes
+  return the proposal they stage; its text ends with a `Proposal id:` line. On
+  findings (`add_finding`, `edit_rows`), an `about` name that is not a page in
+  the card's project is stored as plain text instead of a link (quoted when it
+  holds a comma, so it reads back as one name), and a resolved
+  `supersedes` is stored as the replaced finding's date and opening words. A
+  `when` written with one end only, such as `until 2026-04-01`, is still
+  refused with `invalid_arguments`; the message now says how to write it.
+  A successful write's `outcome.auto_approve` says whether the caller's
+  auto-approve setting will apply what it staged (`true`) or it waits for
+  review (`false`), and a write that staged a proposal returns its id as a
+  top-level `proposal_id` as well as `proposal.id`.
+- `GET /v1/knowledge/wiki/proposals` and `GET /v1/knowledge/wiki/proposals/{proposal_id}`:
+  a read-only `client` names the client that filed the proposal, as it
+  declared itself in `X-Beakr-Client` (for example `sdk-python/0.1.0` or
+  `beakr-cli/0.4.0`). `source: "mcp"` is unchanged and means filed through
+  `POST /v1/knowledge/wiki/write` by any client.
+- The `projects:admin` scope is described as "Create, edit and delete projects;
+  manage project members": `DELETE /v1/projects/{project_id}` deletes the
+  project permanently, which "archive" did not say. The scope grants the same
+  operations as before.
+- `POST /v1/knowledge/wiki/command` `rows`: under the default `match`, an
+  `attribute` that is a field's exact name returns only that field (Facts,
+  Connections and Findings alike), with a line naming the fields it left out
+  and their row counts; `match: "similar"` still returns every field whose name holds its
+  words.
+
+- `POST /v1/knowledge/wiki/write` and the other Knowledge write routes: a
+  citation of a file the caller uploaded, at a place the file does not have (a
+  page, slide, sheet, block, paragraph, line or character range past its end,
+  such as `notes.md › para 7` in a file of four paragraphs), is refused with
+  `citation_not_citeable`, naming the file's extent ("4 paragraphs (para 1 to
+  para 4)"). It was staged as a citation of a passage that does not exist.
 - Map card rows: a Facts or Connections row's `row_id` names the row with its
   When, so a value a card states at two dates is two rows with two ids. On
   `GET /v1/knowledge/wiki/pages/{page_id}`, `disputed_rows` lists each disputed

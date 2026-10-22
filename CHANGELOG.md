@@ -12,14 +12,108 @@ Each release lists the public API changes it supports, taken from the API change
   `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack`, `email`
   or `text` for one a person started by messaging Beakr there.
-- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
-  `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack` or `email`
   for one a person started by messaging Beakr there.
-- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
-  `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack` for one a
   person started by messaging Beakr in Slack.
+- `POST /v1/runs` on a thread whose run is still working, from
+  the user who started that run, no longer cancels it when the message is a
+  plain follow-up (no files, workflow, pinned skills or decision). The message
+  is delivered to the running run instead, and the response sets the new
+  `injected_into_run` field to `true`, with that run's `run_id` and
+  `stream_url` and the delivered message as `user_message_id`. A run whose
+  worker has stopped is still replaced by a new run, as before.
+- Agent review, policy writes: `PUT /v1/knowledge/agent-review` and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` merge the fields they
+  send; a field left out keeps its value and `null` unsets it. A project
+  follows the organization for every field it does not set, and
+  `project_override` lists only the project's own fields.
+- Agent review, files: the policy on `GET /v1/knowledge/agent-review` and its
+  two `PUT`s takes `agent_uploads_need_a_person` (default `false`). With it on,
+  a file an API key or token uploads or sends to Knowledge is stored and
+  indexed but not compiled:
+  `GET /v1/artifacts` and `GET /v1/artifacts/{artifact_id}` report
+  `knowledge_status: waiting_for_person`, and
+  `POST /v1/artifacts/{artifact_id}/knowledge` answers
+  `queue_result: waiting_for_person`. The new
+  `POST /v1/artifacts/{artifact_id}/knowledge/approve` compiles it; only a
+  signed-in person or a key holding `proposals:accept` may call it (others get
+  `403 person_review_required`; a file not waiting gets `409 not_waiting`). It
+  is the only way a held file is compiled: asking for it again, or turning the
+  setting off, leaves it `waiting_for_person`. With either setting on, an API
+  key or token is also refused direct commits to Knowledge, and cannot turn on
+  a workflow's schedule (`schedule_enabled`) or an output's knowledge
+  auto-sync; a schedule a key set up runs as that key, and so does a schedule
+  whose workflow a key last wrote (creating, editing, forking or upgrading a
+  workflow with a key carries the key onto the configs that run it). With the files setting
+  on, a key's edit of an output holds it (`waiting_for_person`) even when a
+  person enrolled it in auto-sync, approving it compiles it without enrolling
+  auto-sync, and a key cannot attach, edit or sync a project's connector
+  source. An interview write-up sent by a key reports `waiting_for_person`.
+  A desktop app's device token is its person's own device: files it syncs are
+  that person's and are not held.
+- Agent review, proposals: an id in a request that the caller cannot see
+  answers `404 not_found`, whatever its project's policy. A citation's
+  `source_id` no longer counts as a page the request writes to. Rolling back a
+  commit, an activity or a run is gated on the projects it touches, not on
+  every project of the organization.
+- Agent review: an organization or a project can require a person to accept
+  proposals and commit Knowledge. `GET /v1/knowledge/agent-review` reads the
+  organization's policy, a project's override (`project_id`) and the
+  `effective` one; a project's policy replaces the organization's.
+  `PUT /v1/knowledge/agent-review` (organization admins, `members:admin`) and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` (project admins,
+  `projects:admin`; `policy: null` follows the organization) change it, and
+  answer `403 session_required` to a key or token without `proposals:accept`.
+  With `agent_proposals_need_a_person` on, an API key or token without
+  `proposals:accept` is refused with `403 person_review_required` when it
+  accepts any proposal
+  (`POST /v1/knowledge/wiki/proposals/{proposal_id}/accept`) or commits
+  Knowledge any other way without an accept (resolving a conflict, editing
+  card rows, restoring, reverting or undoing). Keys created without a scope
+  list (full access) are refused too. Staging proposals stays open. A
+  signed-in person, or a key holding the new `proposals:accept` scope,
+  accepts and commits. `proposals:accept` marks a key a person reviews with:
+  a key with no scope list never holds it, an OAuth token or an end-user
+  token never carries it, and only a signed-in session creates a key with it.
+  `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` return
+  `needs_person_to_accept`. A person's auto-approve no longer applies in that
+  project, except to capture suggestions when the policy sets
+  `capture_auto_approve_allowed`.
+- `POST /v1/knowledge/wiki/write` with `action: "flag"` returns `proposal.id`,
+  the review the flag filed, or the open review it joined, as the other writes
+  return the proposal they stage; its text ends with a `Proposal id:` line. On
+  findings (`add_finding`, `edit_rows`), an `about` name that is not a page in
+  the card's project is stored as plain text instead of a link (quoted when it
+  holds a comma, so it reads back as one name), and a resolved
+  `supersedes` is stored as the replaced finding's date and opening words. A
+  `when` written with one end only, such as `until 2026-04-01`, is still
+  refused with `invalid_arguments`; the message now says how to write it.
+  A successful write's `outcome.auto_approve` says whether the caller's
+  auto-approve setting will apply what it staged (`true`) or it waits for
+  review (`false`), and a write that staged a proposal returns its id as a
+  top-level `proposal_id` as well as `proposal.id`.
+- `GET /v1/knowledge/wiki/proposals` and `GET /v1/knowledge/wiki/proposals/{proposal_id}`:
+  a read-only `client` names the client that filed the proposal, as it
+  declared itself in `X-Beakr-Client` (for example `sdk-python/0.1.0` or
+  `beakr-cli/0.4.0`). `source: "mcp"` is unchanged and means filed through
+  `POST /v1/knowledge/wiki/write` by any client.
+- The `projects:admin` scope is described as "Create, edit and delete projects;
+  manage project members": `DELETE /v1/projects/{project_id}` deletes the
+  project permanently, which "archive" did not say. The scope grants the same
+  operations as before.
+- `POST /v1/knowledge/wiki/command` `rows`: under the default `match`, an
+  `attribute` that is a field's exact name returns only that field (Facts,
+  Connections and Findings alike), with a line naming the fields it left out
+  and their row counts; `match: "similar"` still returns every field whose name holds its
+  words.
+- `POST /v1/knowledge/wiki/write` and the other Knowledge write routes: a
+  citation of a file the caller uploaded, at a place the file does not have (a
+  page, slide, sheet, block, paragraph, line or character range past its end,
+  such as `notes.md › para 7` in a file of four paragraphs), is refused with
+  `citation_not_citeable`, naming the file's extent ("4 paragraphs (para 1 to
+  para 4)"). It was staged as a citation of a passage that does not exist.
 - Map card rows: a Facts or Connections row's `row_id` names the row with its
   When, so a value a card states at two dates is two rows with two ids. On
   `GET /v1/knowledge/wiki/pages/{page_id}`, `disputed_rows` lists each disputed
@@ -1453,6 +1547,31 @@ Each release lists the public API changes it supports, taken from the API change
   `--role` is given, so re-adding a member keeps their role (the server makes
   someone new a member). Refusing to demote or remove the last owner
   (`409 last_owner`, exit 5) says to make another member an owner first.
+  `--role` takes the API's roles (`owner`, `admin`, `member`, `viewer`) and
+  refuses any other before sending; its help named `editor`, which the API
+  does not have.
+- **The CLI a self-hosted installation bundles.** `beakr version`, `beakr
+  update` and the MCP tools `beakr_version` and `update_beakr` no longer say
+  "Latest release: unknown (PyPI could not be checked)" there. When the server
+  says it is self-hosted (`deployment: "self_hosted"` on `GET /v1/auth/config`)
+  and the copy was not installed with uv or pipx, they say it is bundled with
+  the installation and is upgraded with it (`install-beakr.py --version <new
+  version> upgrade`); `beakr version --json` reports `bundled_with_box: true`.
+  Otherwise, with `BEAKR_NO_UPDATE_CHECK` set (a server that sends no
+  `deployment`, such as a 0.1.8 box, is unknown), they say "Update checks are
+  off (BEAKR_NO_UPDATE_CHECK is set)." (`update_check: "off"`) instead of a PyPI
+  line.
+  On a self-hosted server, `beakr update` and `update_beakr` with the check off
+  name the installation's upgrade instead of "Unset it to look for a newer
+  release".
+  The server is asked (`GET /v1/auth/config`) only with `BEAKR_NO_UPDATE_CHECK`
+  set, and once per command: a hosted install never pays for the request.
+- **Areas named by the SDK.** The CLI is pinned to a `beakr-sdk` whose
+  `NotProvidedError` names the area a method was after (`members.list` refused
+  at its active-organization lookup: "organization members"), and uses that
+  area for a lookup refusal when no command names one; every other refusal
+  keeps the CLI's own, more precise name (`beakr org audit`: "the organization
+  audit log").
 - **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
   prints the status after the accept (`status=accepted`), not the create's
   `pending`.
@@ -1472,6 +1591,71 @@ Each release lists the public API changes it supports, taken from the API change
   wrote `system:` (and an agent's prompt to a subagent `agent:`), not `user:`.
   `conversations import --file` sends `--summary` and `--compound`, and a
   refused import that would keep nothing names those flags and `--full-text`.
+- **`kb propose create` takes the page as sections.** `--sections` is the page,
+  `[{title, body, citations?}]`, staged through `POST /v1/knowledge/wiki/write`
+  `new`: Beakr writes the section markers and ids, and a refusal is the
+  engine's, printed once. The door's reply is printed (on stderr when piped):
+  auto-approve applying the proposal, citations still owed, a page with a
+  matching title, the page type used. Under auto-approve no accept is
+  suggested, and `--accept` on a proposal the worker already applied succeeds.
+  `--parent` is resolved first: a title that names no page exits 4 with the
+  closest titles, as before. With `--content` and one `--sections` entry that
+  has no body, the content is that section's body. `--content` alone is staged
+  as before. A `--sections` entry without an id is reported once, not again as
+  "inline citations missing from sections", and a citation's `stance` may be
+  written `supports`, `qualify` or `contradict`.
+- **`api knowledge run-wiki-write`.** The project is `-P`/`--project` as well
+  as `--scope` (and `-P`/`--project` set an operation's `project_id` across
+  `beakr api`, taking a project name or slug as every project option does). `--help` lists each action's fields (`flag`: page, concern,
+  reason, details?), and a write that staged a proposal names it on stderr
+  (`Proposal: <id>`) after the JSON.
+- **`kb rows`.** `--attribute` without `--match` answers the field with exactly
+  that name when one has it, and the wider default match only when none does,
+  saying so on stderr (`--attribute Enrollment` no longer adds "Enrollment
+  target rationale").
+  `--view conflicts` lists one card stating different values for a field at
+  the same When; `--view fields` and `groups` are the door's other views.
+- **`scope` on `wiki_stats`, `wiki_graph` and `documents` (stdio MCP).** These
+  tools take the project as `project`; `scope`, as the Knowledge tools name it,
+  was dropped and the answer covered every project. It is read as `project`,
+  as the hosted server's repair does, and the two given with different values
+  are refused.
+- **Sources lists name what each source is.** A `kb cat` and the stdio MCP
+  server's Knowledge results list the cited documents, conversations and
+  notes before the Knowledge pages, count each kind (`1 document, 3
+  conversations, 8 Knowledge pages`) and label a conversation or note line
+  (`- conversation: ...`), with its excerpt when the server sends one, as the
+  hosted server does.
+- **Work that waits for a person (agent review).** A refusal with
+  `person_review_required` (a project that requires a person to accept
+  proposals, commit Knowledge or approve an agent's upload, and a key that is
+  not one) exits 6, a new exit code, with its own hint: a person does it in the
+  web app, or with a key they created with `proposals:accept`. It applies to
+  `kb proposals accept`, `kb propose ... --accept`, the Knowledge write
+  commands and `files approve`; `--json` names the code.
+- **`beakr files approve FILE_ID`.** Compiles a file an agent's key uploaded
+  that waits for a person (`POST /v1/artifacts/{artifact_id}/knowledge/approve`);
+  a file not waiting exits 5 with a hint. `files ls` and `files show` show each
+  file's Knowledge status (`knowledge=` piped) and, on stderr, which files wait
+  and the command that approves one.
+- **`beakr kb agent-review show|set`.** `show [-P PROJECT]` prints the agent
+  review policy in force and whether the organization or the project sets each
+  field; `set --proposals|--uploads|--capture-auto-approve on|off|unset`
+  changes the organization's policy, or with `-P` a project's own, and
+  `set -P PROJECT --follow-org` drops a project's policy. A credential that may
+  not change it (`session_required`) exits 6, naming the `proposals:accept` key
+  a person can create. Exit 6 keys on the SDK's `PersonReviewRequiredError`.
+  `files approve` is now in the published command tree (it was only in the
+  full one).
+- **`beakr-sdk` for agent review.** The CLI is pinned to a `beakr-sdk` with
+  `files.approve_knowledge`, `knowledge.agent_review` and the typed
+  `PersonReviewRequiredError` and `SessionRequiredError`.
+- **Auto-approve from the outcome.** `kb propose create` reads
+  `outcome.auto_approve` to tell whether the owner's auto-approve applies the
+  proposal, and the reply's text only from a server that does not send it.
+- **`kb entities` piped.** The count per type (`Types: organization 6  person
+  4`) is printed on stderr, as it was on a terminal; stdout stays one line per
+  page.
 
 ## Unreleased
 

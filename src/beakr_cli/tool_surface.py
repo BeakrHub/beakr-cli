@@ -334,7 +334,10 @@ class TieredFastMCP(FastMCP):
         schema = tool.parameters if tool is not None else {}
         declared = set((schema.get("properties") or {}).keys())
         given = dict(arguments or {})
-        normalized = mcp_call_shaping.normalize_arguments(name, given, declared)
+        try:
+            normalized = mcp_call_shaping.normalize_arguments(name, given, declared)
+        except mcp_call_shaping.ConflictingArguments as exc:
+            raise ToolError(str(exc)) from exc
         try:
             # The tool's own dict (``mcp_result.finish`` shape), not FastMCP's
             # conversion of it, which would serialize the whole dict as JSON.

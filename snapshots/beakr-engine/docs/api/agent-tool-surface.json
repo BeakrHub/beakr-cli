@@ -163,7 +163,7 @@
       "tier": "discovery"
     },
     {
-      "description": "Accept and apply a wiki proposal. Only after the user explicitly asks to accept this specific proposal. Call show_proposal first and pass its content_hash as reviewed_hash; the accept applies only that reviewed proposal.",
+      "description": "Accept and apply a wiki proposal. Only after the user explicitly asks to accept this specific proposal. Call show_proposal first and pass its content_hash as reviewed_hash; the accept applies only that reviewed proposal. A proposal show_proposal marks as needing a person is refused to agents (person_review_required): ask the user to accept it in Beakr.",
       "name": "accept_proposal",
       "surfaces": [
         "remote",

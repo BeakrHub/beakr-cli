@@ -94,7 +94,7 @@ CASES: list[SnapshotCase] = [
     c("projects-members-ls", "projects", "members", "ls", "@GET /v1/projects#data.0.id"),
     c(
         "projects-members-add",
-        "projects", "members", "add", "@GET /v1/projects#data.0.id", ID, "--role", "editor",
+        "projects", "members", "add", "@GET /v1/projects#data.0.id", ID, "--role", "admin",
     ),
     c(
         "projects-members-rm",
@@ -114,6 +114,11 @@ CASES: list[SnapshotCase] = [
     c("init", "init", "--project", "@GET /v1/projects#data.0.id"),
     c("files-ls", "files", "ls", "--project", PROJECT),
     c("files-show", "files", "show", ID),
+    c(
+        "files-ls-waiting", "files", "ls", "--project", PROJECT,
+        variants={"GET /v1/artifacts": "waiting"},
+    ),
+    c("files-approve", "files", "approve", ID),
     c("files-download", "files", "download", ID, "--out", "charter.pdf"),
     c(
         "files-download-ref",
@@ -187,6 +192,12 @@ CASES: list[SnapshotCase] = [
         variants={"POST /v1/knowledge/wiki/write": "edit_rows"},
     ),
     c("kb-entities", "kb", "entities", "--project", PROJECT),
+    c("kb-agent-review-show", "kb", "agent-review", "show", "--project", PROJECT),
+    c("kb-agent-review-set", "kb", "agent-review", "set", "--proposals", "on"),
+    c(
+        "kb-agent-review-set-project",
+        "kb", "agent-review", "set", "--project", PROJECT, "--uploads", "on",
+    ),
     c("kb-history", "kb", "history", PAGE, "--project", PROJECT),
     c("kb-conflicts", "kb", "conflicts", "--project", PROJECT),
     c("kb-undo-run", "kb", "undo-run", "run-2026-10-01", "--yes"),

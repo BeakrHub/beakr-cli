@@ -120,9 +120,15 @@ def capabilities_unread(request, monkeypatch):
 
     forget_capabilities()
     request.addfinalizer(forget_capabilities)
+    from beakr_cli import updates
+
+    monkeypatch.setattr(updates, "_deployments", {})
     if request.node.get_closest_marker("real_capabilities"):
         return
     from beakr_cli import tool_surface
+
+    # `beakr version` and beakr_version ask the API's deployment (GET /v1/auth/config).
+    monkeypatch.setattr(updates, "server_deployment", lambda: None)
 
     async def nothing_unserved(self, names):
         return set()
