@@ -19,6 +19,7 @@ from beakr_sdk.errors import (
     KnowledgeCommandError,
     NotFoundError,
     PermissionDeniedError,
+    PersonReviewRequiredError,
 )
 from rich.markup import escape
 from typer.core import TyperGroup
@@ -35,8 +36,18 @@ EXIT_CONFLICT = 5
 #: the work waits for a person, which a script should tell apart.
 EXIT_PERSON_REVIEW = 6
 
-#: The code of that refusal, on a 403 and on a Knowledge door refusal alike.
+#: That refusal's code. A 403 arrives as the SDK's ``PersonReviewRequiredError``;
+#: the Knowledge door answers it in a 200 body, as a ``KnowledgeCommandError``
+#: carrying this code.
 PERSON_REVIEW_REQUIRED = "person_review_required"
+
+
+def needs_a_person(exc: BaseException) -> bool:
+    """Whether ``exc`` is the refusal of work only a person may do."""
+    return isinstance(exc, PersonReviewRequiredError) or (
+        isinstance(exc, KnowledgeCommandError) and exc.code == PERSON_REVIEW_REQUIRED
+    )
+
 
 #: Knowledge refusals of the caller's arguments (a malformed or unknown argument,
 #: a citation that names nothing citeable): usage errors, like Click's own.
@@ -46,7 +57,7 @@ _ARGUMENT_REFUSALS = frozenset(
 
 
 def exit_code_for(exc: BaseException) -> int:
-    if isinstance(exc, BeakrError) and exc.code == PERSON_REVIEW_REQUIRED:
+    if needs_a_person(exc):
         return EXIT_PERSON_REVIEW
     if isinstance(exc, KnowledgeCommandError) and exc.code in _ARGUMENT_REFUSALS:
         return EXIT_USAGE
@@ -153,7 +164,9 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
         return message
     if isinstance(exc, KnowledgeCommandError):
         text = _refusal_text(exc)
-        return f"{text}\n{_CODE_HINTS[exc.code]}" if exc.code == PERSON_REVIEW_REQUIRED else text
+        return f"{text}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}" if needs_a_person(exc) else text
+    if isinstance(exc, PersonReviewRequiredError):
+        return f"{exc}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}"
     if isinstance(exc, BeakrError) and exc.code in _CODE_HINTS:
         return f"{exc}\n{_CODE_HINTS[exc.code]}"
     if isinstance(exc, PermissionDeniedError) and exc.required_scope:
