@@ -62,6 +62,19 @@ def test_the_exit_code_is_its_own() -> None:
     assert EXIT_PERSON_REVIEW == 6
 
 
+def test_the_sdks_typed_refusal_and_a_door_refusal_both_need_a_person() -> None:
+    from beakr_sdk import PersonReviewRequiredError
+    from beakr_sdk.errors import KnowledgeCommandError, PermissionDeniedError
+
+    from beakr_cli.errors import exit_code_for
+
+    assert exit_code_for(PersonReviewRequiredError(_MESSAGE, status=403)) == EXIT_PERSON_REVIEW
+    door = KnowledgeCommandError(_MESSAGE, code="person_review_required", status=200, result={})
+    assert exit_code_for(door) == EXIT_PERSON_REVIEW
+    # Any other 403 is still a credential problem.
+    assert exit_code_for(PermissionDeniedError("Forbidden", status=403)) == 3
+
+
 @respx.mock
 def test_proposals_accept_refused_for_a_person_exits_6_with_its_hint() -> None:
     respx.post(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/accept").mock(
