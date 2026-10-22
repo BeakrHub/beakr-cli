@@ -317,6 +317,15 @@
       "title": "Client Id",
       "type": "string"
      },
+     "deployment": {
+      "description": "Which kind of installation this is: `hosted` (Beakr's service) or `self_hosted` (one you run). A client bundled with a self-hosted installation is upgraded with it, not from a package index.",
+      "enum": [
+       "hosted",
+       "self_hosted"
+      ],
+      "title": "Deployment",
+      "type": "string"
+     },
      "issuer": {
       "description": "The Clerk instance that issues CLI sign-in tokens (its issuer URL). Its endpoints are in `<issuer>/.well-known/oauth-authorization-server`.",
       "title": "Issuer",
@@ -341,7 +350,8 @@
      "issuer_url",
      "client_id",
      "scopes",
-     "app_url"
+     "app_url",
+     "deployment"
     ],
     "title": "AuthConfigResponse",
     "type": "object"
@@ -7384,7 +7394,7 @@
         }
        }
       },
-      "description": "Browser sign-in is not configured on this server: `error.code` is `cli_sign_in_unavailable`, and `error.details.app_url` is this installation's web app base URL. Sign in with an API key instead."
+      "description": "Browser sign-in is not configured on this server: `error.code` is `cli_sign_in_unavailable`, `error.details.app_url` is this installation's web app base URL, and `error.details.deployment` is `hosted` or `self_hosted`, as on a 200. Sign in with an API key instead."
      },
      "5XX": {
       "content": {
