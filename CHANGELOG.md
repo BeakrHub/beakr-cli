@@ -1623,6 +1623,15 @@ Each release lists the public API changes it supports, taken from the API change
   a file not waiting exits 5 with a hint. `files ls` and `files show` show each
   file's Knowledge status (`knowledge=` piped) and, on stderr, which files wait
   and the command that approves one.
+- **`beakr kb agent-review show|set`.** `show [-P PROJECT]` prints the agent
+  review policy in force and whether the organization or the project sets each
+  field; `set --proposals|--uploads|--capture-auto-approve on|off|unset`
+  changes the organization's policy, or with `-P` a project's own, and
+  `set -P PROJECT --follow-org` drops a project's policy. A credential that may
+  not change it (`session_required`) exits 6, naming the `proposals:accept` key
+  a person can create. Exit 6 keys on the SDK's `PersonReviewRequiredError`.
+  `files approve` is now in the published command tree (it was only in the
+  full one).
 - **`beakr-sdk` for agent review.** The CLI is pinned to a `beakr-sdk` with
   `files.approve_knowledge`, `knowledge.agent_review` and the typed
   `PersonReviewRequiredError` and `SessionRequiredError`.
