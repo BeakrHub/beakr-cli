@@ -245,6 +245,7 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
         CHECK_OFF,
         bundled_with_box,
         check_disabled,
+        check_off_fix,
         detect_install,
         get_update_status,
         installed_version_on_path,
@@ -266,7 +267,7 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
     info = detect_install()
     if status.latest is None and check_disabled():
         # The check never ran: PyPI was not asked, so it was not "unreachable".
-        err_console.print(f"{CHECK_OFF} Unset it to look for a newer release.", markup=False)
+        err_console.print(f"{CHECK_OFF} {check_off_fix()}", markup=False)
         if check or not force:
             raise typer.Exit(1)
     elif status.latest is None:

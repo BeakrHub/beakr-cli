@@ -24,6 +24,7 @@ from beakr_cli.updates import (
     box_line,
     bundled_with_box,
     check_disabled,
+    check_off_fix,
     detect_install,
     get_update_status,
     installed_version_on_path,
@@ -1050,7 +1051,8 @@ async def update_beakr() -> str:
         return f"Update did not run. {box_line(__version__)}"
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(0))
     if status.latest is None and check_disabled():
-        return f"Update did not run: {CHECK_OFF} Unset it to look for a newer release."
+        fix = await asyncio.to_thread(check_off_fix)
+        return f"Update did not run: {CHECK_OFF} {fix}"
     if status.latest is not None and not status.update_available:
         return f"No update needed: installed {status.current}, latest release {status.latest}."
     result = await asyncio.to_thread(run_upgrade, info, expected_version=status.latest)

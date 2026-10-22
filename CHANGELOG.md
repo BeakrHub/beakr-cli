@@ -1455,6 +1455,14 @@ Each release lists the public API changes it supports, taken from the API change
   `deployment`, such as a 0.1.8 box, is unknown), they say "Update checks are
   off (BEAKR_NO_UPDATE_CHECK is set)." (`update_check: "off"`) instead of a PyPI
   line.
+  On a self-hosted server, `beakr update` and `update_beakr` with the check off
+  name the installation's upgrade instead of "Unset it to look for a newer
+  release".
+- **Areas named by the SDK.** The CLI is pinned to a `beakr-sdk` whose
+  `NotProvidedError` names the area a method was after (`members.list` refused
+  at its active-organization lookup: "organization members"), and uses that
+  area as given; it names the area from the path or command only when the SDK
+  gives none.
 - **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
   prints the status after the accept (`status=accepted`), not the create's
   `pending`.

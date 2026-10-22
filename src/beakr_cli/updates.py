@@ -287,6 +287,17 @@ BOX_INSTRUCTIONS = (
 )
 
 
+def check_off_fix() -> str:
+    """What to do when the update check is off and no release is known.
+
+    On a self-hosted installation the fix is its upgrade, not PyPI: unsetting
+    the variable there only asks an index the installation does not install from.
+    """
+    if server_deployment() == "self_hosted":
+        return BOX_INSTRUCTIONS
+    return "Unset it to look for a newer release."
+
+
 def box_line(version: str) -> str:
     """What ``beakr_version`` says for the CLI a self-hosted installation bundles."""
     return f"Installed: beakr-cli {version}, bundled with this Beakr installation. " + (

@@ -169,13 +169,18 @@ def not_provided(exc: BeakrError, command: tuple[str, ...] = ()) -> str | None:
 
     Only a route the server does not have answers this bare, so no document
     needs to be read to tell: the reply itself says so. The SDK raises
-    ``NotProvidedError`` for it, with the path; an older SDK raised a plain
-    ``NotFoundError``, read here from its response. ``command`` is as for
-    :func:`area_for`; this module names more areas than the SDK does.
+    ``NotProvidedError`` for it, with the path and, when it knows it, the
+    ``area`` the method was after (``members.list`` refused at its
+    active-organization lookup names organization members); that area is used
+    as given. Otherwise ``command`` and the path name it as for
+    :func:`area_for` (this module names more areas than the SDK does); an older
+    SDK raised a plain ``NotFoundError``, read here from its response.
     """
     from beakr_sdk.errors import NotProvidedError
 
     if isinstance(exc, NotProvidedError):
+        if exc.area:
+            return not_provided_message(exc.area)
         if not exc.path:
             return exc.message
         area = area_for(exc.path, command)
