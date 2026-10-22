@@ -474,3 +474,103 @@ async def test_beakr_version_tool_with_the_check_off_says_so(monkeypatch) -> Non
         "Update did not run: Update checks are off (BEAKR_NO_UPDATE_CHECK is set). "
         "Unset it to look for a newer release."
     )
+
+
+# ---------------------------------------------------------------------------
+# The CLI a self-hosted installation bundles (the server says deployment=self_hosted)
+# ---------------------------------------------------------------------------
+
+# The installation's own copy is upgraded with the installation, never from PyPI.
+# Only the server's `deployment` on GET /v1/auth/config says it is self-hosted;
+# a server that sends none (a 0.1.8 box) is unknown and gets the wording above.
+
+_BOX = "https://box.test"
+_BOX_LINE = (
+    "bundled with this Beakr installation. It is upgraded with the installation: run "
+    "`install-beakr.py --version <new version> upgrade` (see the Beakr guide, Upgrade)."
+)
+
+
+def _other_install() -> updates.InstallInfo:
+    return updates.InstallInfo(updates.InstallMethod.other, None, "pip install --upgrade")
+
+
+def test_version_on_a_self_hosted_installation_says_how_it_is_upgraded(monkeypatch) -> None:
+    other = _other_install()
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: other)
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    _pypi_must_not_be_asked(monkeypatch)
+
+    result = CliRunner().invoke(app, ["version"])
+    as_json = CliRunner().invoke(app, ["version", "--json"])
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0].startswith("beakr-cli ")
+    assert lines[1] == "B" + _BOX_LINE[1:]
+    assert "PyPI" not in result.output and "Update checks are off" not in result.output
+    report = json.loads(as_json.output)
+    assert report["bundled_with_box"] is True and "latest" not in report
+
+
+async def test_beakr_version_tool_on_a_self_hosted_installation(monkeypatch) -> None:
+    from beakr_cli import mcp_server
+
+    other = _other_install()
+    monkeypatch.setattr(mcp_server, "detect_install", lambda: other)
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+
+    def no_status(**_):
+        raise AssertionError("PyPI was asked about a self-hosted installation's CLI")
+
+    monkeypatch.setattr(mcp_server, "get_update_status", no_status)
+    monkeypatch.setattr(mcp_server, "run_upgrade", no_status)
+
+    text = await mcp_server.beakr_version()
+    refused = await mcp_server.update_beakr()
+
+    assert text == f"Installed: beakr-cli {mcp_server.__version__}, {_BOX_LINE}"
+    assert (
+        refused == f"Update did not run. Installed: beakr-cli {mcp_server.__version__}, {_BOX_LINE}"
+    )
+
+
+@pytest.mark.parametrize("deployment", ["hosted", None])
+def test_a_hosted_or_unknown_deployment_is_not_a_box(monkeypatch, deployment) -> None:
+    monkeypatch.setattr(updates, "server_deployment", lambda: deployment)
+    assert not updates.bundled_with_box(_other_install())
+
+
+def test_a_uv_tool_copy_pointed_at_a_self_hosted_installation_checks_pypi(monkeypatch) -> None:
+    uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    assert not updates.bundled_with_box(uv)
+
+
+@pytest.mark.real_capabilities
+@respx.mock
+def test_the_deployment_is_read_from_the_auth_config_or_its_503(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_URL", _BOX)
+    monkeypatch.setenv("BEAKR_API_KEY", "bk_test_key")
+    config = respx.get(f"{_BOX}/v1/auth/config")
+
+    # A box has no Clerk CLI client: the 503 names the deployment in its details.
+    config.respond(
+        503,
+        json={
+            "error": {
+                "code": "cli_sign_in_unavailable",
+                "message": "Browser sign-in is not configured on this server.",
+                "details": {"app_url": "https://box.test:8443", "deployment": "self_hosted"},
+            }
+        },
+    )
+    assert updates.server_deployment() == "self_hosted"
+
+    config.respond(json={"issuer": "https://clerk.test", "app_url": "x", "deployment": "hosted"})
+    assert updates.server_deployment() == "hosted"
+
+    # A server before the field (a 0.1.8 box) says nothing: unknown.
+    config.respond(json={"issuer": "https://clerk.test", "app_url": "x"})
+    assert updates.server_deployment() is None

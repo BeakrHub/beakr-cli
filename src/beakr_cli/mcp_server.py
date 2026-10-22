@@ -13,7 +13,7 @@ from typing import Any
 from beakr_sdk.sources import public_source as _shared_public_source
 from mcp.types import ToolAnnotations
 
-from beakr_cli import tool_surface
+from beakr_cli import __version__, tool_surface
 
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
@@ -21,6 +21,8 @@ from beakr_cli.mcp_knowledge_status import knowledge_notice
 from beakr_cli.mcp_tools_platform import _project_by_name_or_id
 from beakr_cli.updates import (
     CHECK_OFF,
+    box_line,
+    bundled_with_box,
     check_disabled,
     detect_install,
     get_update_status,
@@ -1005,8 +1007,11 @@ async def beakr_version() -> str:
     import asyncio
     from datetime import timedelta
 
-    status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
     info = detect_install()
+    if await asyncio.to_thread(bundled_with_box, info):
+        # Upgraded with the installation, so PyPI's latest release says nothing about it.
+        return box_line(__version__)
+    status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
     lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
     if check_disabled():
         lines.append(CHECK_OFF)
@@ -1040,12 +1045,14 @@ async def update_beakr() -> str:
     import asyncio
     from datetime import timedelta
 
+    info = detect_install()
+    if await asyncio.to_thread(bundled_with_box, info):
+        return f"Update did not run. {box_line(__version__)}"
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(0))
     if status.latest is None and check_disabled():
         return f"Update did not run: {CHECK_OFF} Unset it to look for a newer release."
     if status.latest is not None and not status.update_available:
         return f"No update needed: installed {status.current}, latest release {status.latest}."
-    info = detect_install()
     result = await asyncio.to_thread(run_upgrade, info, expected_version=status.latest)
     if not result.ok:
         tail = f"\n\n{result.output[-2000:]}" if result.output else ""
