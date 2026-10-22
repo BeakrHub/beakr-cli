@@ -114,6 +114,11 @@ CASES: list[SnapshotCase] = [
     c("init", "init", "--project", "@GET /v1/projects#data.0.id"),
     c("files-ls", "files", "ls", "--project", PROJECT),
     c("files-show", "files", "show", ID),
+    c(
+        "files-ls-waiting", "files", "ls", "--project", PROJECT,
+        variants={"GET /v1/artifacts": "waiting"},
+    ),
+    c("files-approve", "files", "approve", ID),
     c("files-download", "files", "download", ID, "--out", "charter.pdf"),
     c(
         "files-download-ref",

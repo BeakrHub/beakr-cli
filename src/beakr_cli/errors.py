@@ -2,7 +2,8 @@
 
 Scripts and agents branch on the exit code, so it is part of the CLI's
 contract: 0 ok, 1 error, 2 usage, 3 authentication or permission, 4 not found,
-5 conflict. Usage errors (2) come from Click itself.
+5 conflict, 6 a person must do it (``person_review_required``). Usage errors
+(2) come from Click itself.
 """
 
 from __future__ import annotations
@@ -28,6 +29,14 @@ EXIT_USAGE = 2
 EXIT_AUTH = 3
 EXIT_NOT_FOUND = 4
 EXIT_CONFLICT = 5
+#: The project requires a person to accept proposals and commit Knowledge, and
+#: this credential is not one (403 ``person_review_required``). Not 3: the
+#: credential is valid and a retry with another key will not help an agent;
+#: the work waits for a person, which a script should tell apart.
+EXIT_PERSON_REVIEW = 6
+
+#: The code of that refusal, on a 403 and on a Knowledge door refusal alike.
+PERSON_REVIEW_REQUIRED = "person_review_required"
 
 #: Knowledge refusals of the caller's arguments (a malformed or unknown argument,
 #: a citation that names nothing citeable): usage errors, like Click's own.
@@ -37,6 +46,8 @@ _ARGUMENT_REFUSALS = frozenset(
 
 
 def exit_code_for(exc: BaseException) -> int:
+    if isinstance(exc, BeakrError) and exc.code == PERSON_REVIEW_REQUIRED:
+        return EXIT_PERSON_REVIEW
     if isinstance(exc, KnowledgeCommandError) and exc.code in _ARGUMENT_REFUSALS:
         return EXIT_USAGE
     if isinstance(exc, (AuthenticationError, PermissionDeniedError)):
@@ -89,6 +100,16 @@ _CODE_HINTS = {
         "then retry from the browser (or approve the CLI sign-in again)."
     ),
     "forbidden": "This needs a role you do not have here (often organization admin).",
+    PERSON_REVIEW_REQUIRED: (
+        "Nothing was applied: this project requires a person to accept proposals, commit "
+        "Knowledge and approve agent uploads. Ask a person to do it in the Beakr web app, or "
+        "run it with an API key a signed-in person created with the proposals:accept scope "
+        "(BEAKR_API_KEY). Staging proposals (beakr kb propose, kb add-fact) still works."
+    ),
+    "not_waiting": (
+        "Only a file whose knowledge_status is waiting_for_person needs approving "
+        "(beakr files show FILE_ID); beakr projects retry sends any other file to Knowledge."
+    ),
     "last_owner": (
         "It must keep an owner. Make another member an owner first "
         "(for a project: beakr projects members add PROJECT USER_ID --role owner), "
@@ -131,7 +152,8 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
     if message:
         return message
     if isinstance(exc, KnowledgeCommandError):
-        return _refusal_text(exc)
+        text = _refusal_text(exc)
+        return f"{text}\n{_CODE_HINTS[exc.code]}" if exc.code == PERSON_REVIEW_REQUIRED else text
     if isinstance(exc, BeakrError) and exc.code in _CODE_HINTS:
         return f"{exc}\n{_CODE_HINTS[exc.code]}"
     if isinstance(exc, PermissionDeniedError) and exc.required_scope:

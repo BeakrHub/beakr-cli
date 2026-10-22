@@ -196,6 +196,7 @@ are stable:
 | 3 | not signed in, or the credential lacks a scope |
 | 4 | not found |
 | 5 | conflict |
+| 6 | a person must do it: the project requires a person to accept proposals, commit Knowledge or approve an agent's upload (`person_review_required`) |
 
 ## Signing in and API keys
 

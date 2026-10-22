@@ -8,6 +8,64 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Agent review, policy writes: `PUT /v1/knowledge/agent-review` and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` merge the fields they
+  send; a field left out keeps its value and `null` unsets it. A project
+  follows the organization for every field it does not set, and
+  `project_override` lists only the project's own fields.
+- Agent review, files: the policy on `GET /v1/knowledge/agent-review` and its
+  two `PUT`s takes `agent_uploads_need_a_person` (default `false`). With it on,
+  a file an API key or token uploads or sends to Knowledge is stored and
+  indexed but not compiled:
+  `GET /v1/artifacts` and `GET /v1/artifacts/{artifact_id}` report
+  `knowledge_status: waiting_for_person`, and
+  `POST /v1/artifacts/{artifact_id}/knowledge` answers
+  `queue_result: waiting_for_person`. The new
+  `POST /v1/artifacts/{artifact_id}/knowledge/approve` compiles it; only a
+  signed-in person or a key holding `proposals:accept` may call it (others get
+  `403 person_review_required`; a file not waiting gets `409 not_waiting`). It
+  is the only way a held file is compiled: asking for it again, or turning the
+  setting off, leaves it `waiting_for_person`. With either setting on, an API
+  key or token is also refused direct commits to Knowledge, and cannot turn on
+  a workflow's schedule (`schedule_enabled`) or an output's knowledge
+  auto-sync; a schedule a key set up runs as that key, and so does a schedule
+  whose workflow a key last wrote (creating, editing, forking or upgrading a
+  workflow with a key carries the key onto the configs that run it). With the files setting
+  on, a key's edit of an output holds it (`waiting_for_person`) even when a
+  person enrolled it in auto-sync, approving it compiles it without enrolling
+  auto-sync, and a key cannot attach, edit or sync a project's connector
+  source. An interview write-up sent by a key reports `waiting_for_person`.
+  A desktop app's device token is its person's own device: files it syncs are
+  that person's and are not held.
+- Agent review, proposals: an id in a request that the caller cannot see
+  answers `404 not_found`, whatever its project's policy. A citation's
+  `source_id` no longer counts as a page the request writes to. Rolling back a
+  commit, an activity or a run is gated on the projects it touches, not on
+  every project of the organization.
+- Agent review: an organization or a project can require a person to accept
+  proposals and commit Knowledge. `GET /v1/knowledge/agent-review` reads the
+  organization's policy, a project's override (`project_id`) and the
+  `effective` one; a project's policy replaces the organization's.
+  `PUT /v1/knowledge/agent-review` (organization admins, `members:admin`) and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` (project admins,
+  `projects:admin`; `policy: null` follows the organization) change it, and
+  answer `403 session_required` to a key or token without `proposals:accept`.
+  With `agent_proposals_need_a_person` on, an API key or token without
+  `proposals:accept` is refused with `403 person_review_required` when it
+  accepts any proposal
+  (`POST /v1/knowledge/wiki/proposals/{proposal_id}/accept`) or commits
+  Knowledge any other way without an accept (resolving a conflict, editing
+  card rows, restoring, reverting or undoing). Keys created without a scope
+  list (full access) are refused too. Staging proposals stays open. A
+  signed-in person, or a key holding the new `proposals:accept` scope,
+  accepts and commits. `proposals:accept` marks a key a person reviews with:
+  a key with no scope list never holds it, an OAuth token or an end-user
+  token never carries it, and only a signed-in session creates a key with it.
+  `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` return
+  `needs_person_to_accept`. A person's auto-approve no longer applies in that
+  project, except to capture suggestions when the policy sets
+  `capture_auto_approve_allowed`.
 - `POST /v1/knowledge/wiki/write` with `action: "flag"` returns `proposal.id`,
   the review the flag filed, or the open review it joined, as the other writes
   return the proposal they stage; its text ends with a `Proposal id:` line. On
@@ -1553,6 +1611,21 @@ Each release lists the public API changes it supports, taken from the API change
   conversations, 8 Knowledge pages`) and label a conversation or note line
   (`- conversation: ...`), with its excerpt when the server sends one, as the
   hosted server does.
+- **Work that waits for a person (agent review).** A refusal with
+  `person_review_required` (a project that requires a person to accept
+  proposals, commit Knowledge or approve an agent's upload, and a key that is
+  not one) exits 6, a new exit code, with its own hint: a person does it in the
+  web app, or with a key they created with `proposals:accept`. It applies to
+  `kb proposals accept`, `kb propose ... --accept`, the Knowledge write
+  commands and `files approve`; `--json` names the code.
+- **`beakr files approve FILE_ID`.** Compiles a file an agent's key uploaded
+  that waits for a person (`POST /v1/artifacts/{artifact_id}/knowledge/approve`);
+  a file not waiting exits 5 with a hint. `files ls` and `files show` show each
+  file's Knowledge status (`knowledge=` piped) and, on stderr, which files wait
+  and the command that approves one.
+- **`beakr-sdk` for agent review.** The CLI is pinned to a `beakr-sdk` with
+  `files.approve_knowledge`, `knowledge.agent_review` and the typed
+  `PersonReviewRequiredError` and `SessionRequiredError`.
 - **Auto-approve from the outcome.** `kb propose create` reads
   `outcome.auto_approve` to tell whether the owner's auto-approve applies the
   proposal, and the reply's text only from a server that does not send it.
