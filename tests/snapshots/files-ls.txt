@@ -110,12 +110,13 @@ $ beakr files ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 [exit 0]
 --- stdout
 Files
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━┓
-┃ID                                   ┃ Title                        ┃ Type ┃ Updated   ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━┩
-│0c7d0f1a-876b-4349-acbe-1979fc33d706 │ Helios charter v3.pdf        │ doc  │ 2026-09-14│
-│0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411 │ HX-01 stability summary.xlsx │ doc  │ 2026-09-29│
-└─────────────────────────────────────┴──────────────────────────────┴──────┴───────────┘
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━┓
+┃ID                                   ┃ Title                       ┃ Type ┃ Knowledge ┃ Updated   ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━┩
+│0c7d0f1a-876b-4349-acbe-1979fc33d706 │ Helios charter v3.pdf       │ doc  │ created   │ 2026-09-14│
+│0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411 │ HX-01 stability             │ doc  │ queued    │ 2026-09-29│
+│                                     │ summary.xlsx                │      │           │           │
+└─────────────────────────────────────┴─────────────────────────────┴──────┴───────────┴───────────┘
 --- stderr
 
 
@@ -123,7 +124,7 @@ $ beakr files ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/artifacts?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
 [exit 0]
 --- stdout
-0c7d0f1a-876b-4349-acbe-1979fc33d706	Helios charter v3.pdf	type=doc	source_url=https://drive.google.com/file/d/1Hx7Qm2Lk9vR4tN8pZ3wY6bC0dE5fGhIj/view
-0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411	HX-01 stability summary.xlsx	type=doc
+0c7d0f1a-876b-4349-acbe-1979fc33d706	Helios charter v3.pdf	type=doc	source_url=https://drive.google.com/file/d/1Hx7Qm2Lk9vR4tN8pZ3wY6bC0dE5fGhIj/view	knowledge=created
+0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411	HX-01 stability summary.xlsx	type=doc	knowledge=queued
 --- stderr
 

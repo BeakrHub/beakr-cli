@@ -26,6 +26,7 @@ from beakr_cli.commands import (
     interview_links,
     interviews,
     jobs,
+    kb_agent_review,
     kb_cards,
     kb_entities,
     keys,
@@ -50,12 +51,13 @@ from beakr_cli.project_ref import project_ref_callback
 
 internal_app = typer.Typer(
     name="beakr",
-    # Maps API errors to stable exit codes: 3 auth, 4 not found, 5 conflict.
+    # Maps API errors to stable exit codes: 3 auth, 4 not found, 5 conflict, 6 needs a person.
     cls=BeakrGroup,
     help=(
         "CLI for Beakr: sign in, manage projects and members, upload files, read and "
         "write Knowledge, sync skills, and connect Claude Code and Codex. Every command "
-        "takes --json; exit codes: 0 ok, 1 error, 2 usage, 3 auth, 4 not found, 5 conflict."
+        "takes --json; exit codes: 0 ok, 1 error, 2 usage, 3 auth, 4 not found, 5 conflict, "
+        "6 needs a person."
     ),
     no_args_is_help=True,
 )
@@ -74,6 +76,7 @@ for _module in (
     documents,
     kb_cards,
     kb_entities,
+    kb_agent_review,
     profile,
     skills,
     memory,

@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c718afd64eeca1bb68e16df0d0ca86b8036c86c946f836cf7b71eae8dafc10e6 changelog sha256=8f731d1b954a592aa4ad1ce4a98cb301374c197dac762696d5045f6650e05480 -->
+<!-- contract-stamp: public-openapi sha256=c86e0aff8236cd5d8a13fd398c6762f26ed7c971b6b14c6835307b476d39827e changelog sha256=c18c97e09cc7cbd5938713a5ec9014a287ba5b1c3784ee46611a157692b33512 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -20,6 +20,75 @@ The first public version.
   `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack`, `email`
   or `text` for one a person started by messaging Beakr there.
+  conversation started in the web app or through the API, or `slack` or `email`
+  for one a person started by messaging Beakr there.
+  conversation started in the web app or through the API, or `slack` for one a
+  person started by messaging Beakr in Slack.
+- `POST /v1/runs` on a thread whose run is still working, from
+  the user who started that run, no longer cancels it when the message is a
+  plain follow-up (no files, workflow, pinned skills or decision). The message
+  is delivered to the running run instead, and the response sets the new
+  `injected_into_run` field to `true`, with that run's `run_id` and
+  `stream_url` and the delivered message as `user_message_id`. A run whose
+  worker has stopped is still replaced by a new run, as before.
+- Agent review, policy writes: `PUT /v1/knowledge/agent-review` and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` merge the fields they
+  send; a field left out keeps its value and `null` unsets it. A project
+  follows the organization for every field it does not set, and
+  `project_override` lists only the project's own fields.
+- Agent review, files: the policy on `GET /v1/knowledge/agent-review` and its
+  two `PUT`s takes `agent_uploads_need_a_person` (default `false`). With it on,
+  a file an API key or token uploads or sends to Knowledge is stored and
+  indexed but not compiled:
+  `GET /v1/artifacts` and `GET /v1/artifacts/{artifact_id}` report
+  `knowledge_status: waiting_for_person`, and
+  `POST /v1/artifacts/{artifact_id}/knowledge` answers
+  `queue_result: waiting_for_person`. The new
+  `POST /v1/artifacts/{artifact_id}/knowledge/approve` compiles it; only a
+  signed-in person or a key holding `proposals:accept` may call it (others get
+  `403 person_review_required`; a file not waiting gets `409 not_waiting`). It
+  is the only way a held file is compiled: asking for it again, or turning the
+  setting off, leaves it `waiting_for_person`. With either setting on, an API
+  key or token is also refused direct commits to Knowledge, and cannot turn on
+  a workflow's schedule (`schedule_enabled`) or an output's knowledge
+  auto-sync; a schedule a key set up runs as that key, and so does a schedule
+  whose workflow a key last wrote (creating, editing, forking or upgrading a
+  workflow with a key carries the key onto the configs that run it). With the files setting
+  on, a key's edit of an output holds it (`waiting_for_person`) even when a
+  person enrolled it in auto-sync, approving it compiles it without enrolling
+  auto-sync, and a key cannot attach, edit or sync a project's connector
+  source. An interview write-up sent by a key reports `waiting_for_person`.
+  A desktop app's device token is its person's own device: files it syncs are
+  that person's and are not held.
+- Agent review, proposals: an id in a request that the caller cannot see
+  answers `404 not_found`, whatever its project's policy. A citation's
+  `source_id` no longer counts as a page the request writes to. Rolling back a
+  commit, an activity or a run is gated on the projects it touches, not on
+  every project of the organization.
+- Agent review: an organization or a project can require a person to accept
+  proposals and commit Knowledge. `GET /v1/knowledge/agent-review` reads the
+  organization's policy, a project's override (`project_id`) and the
+  `effective` one; a project's policy replaces the organization's.
+  `PUT /v1/knowledge/agent-review` (organization admins, `members:admin`) and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` (project admins,
+  `projects:admin`; `policy: null` follows the organization) change it, and
+  answer `403 session_required` to a key or token without `proposals:accept`.
+  With `agent_proposals_need_a_person` on, an API key or token without
+  `proposals:accept` is refused with `403 person_review_required` when it
+  accepts any proposal
+  (`POST /v1/knowledge/wiki/proposals/{proposal_id}/accept`) or commits
+  Knowledge any other way without an accept (resolving a conflict, editing
+  card rows, restoring, reverting or undoing). Keys created without a scope
+  list (full access) are refused too. Staging proposals stays open. A
+  signed-in person, or a key holding the new `proposals:accept` scope,
+  accepts and commits. `proposals:accept` marks a key a person reviews with:
+  a key with no scope list never holds it, an OAuth token or an end-user
+  token never carries it, and only a signed-in session creates a key with it.
+  `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` return
+  `needs_person_to_accept`. A person's auto-approve no longer applies in that
+  project, except to capture suggestions when the policy sets
+  `capture_auto_approve_allowed`.
 - `POST /v1/knowledge/wiki/write` with `action: "flag"` returns `proposal.id`,
   the review the flag filed, or the open review it joined, as the other writes
   return the proposal they stage; its text ends with a `Proposal id:` line. On

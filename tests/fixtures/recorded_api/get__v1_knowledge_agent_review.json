@@ -1,0 +1,25 @@
+{
+  "operation": "GET /v1/knowledge/agent-review",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "available": true,
+    "org": {
+      "agent_proposals_need_a_person": true,
+      "agent_uploads_need_a_person": false,
+      "capture_auto_approve_allowed": true
+    },
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "project_override": {
+      "agent_proposals_need_a_person": null,
+      "agent_uploads_need_a_person": true,
+      "capture_auto_approve_allowed": null
+    },
+    "effective": {
+      "agent_proposals_need_a_person": true,
+      "agent_uploads_need_a_person": true,
+      "capture_auto_approve_allowed": true
+    }
+  }
+}

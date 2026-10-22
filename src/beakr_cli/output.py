@@ -35,11 +35,22 @@ def print_markdown(text: str) -> None:
     console.print(Markdown(text))
 
 
-def print_table(columns: list[str], rows: list[list[str]], title: str = "") -> None:
+def print_table(
+    columns: list[str],
+    rows: list[list[str]],
+    title: str = "",
+    *,
+    whole: tuple[str, ...] = (),
+) -> None:
+    """``whole`` names columns never shortened to fit (ids a reader copies)."""
     # A title can carry server data too (a page title, a project name).
     table = Table(title=escape(title), show_lines=False, pad_edge=False)
-    for col in columns:
-        table.add_column(col)
+    for index, col in enumerate(columns):
+        if col in whole:
+            widest = max([len(col), *(len(str(row[index])) for row in rows)])
+            table.add_column(col, no_wrap=True, min_width=widest)
+        else:
+            table.add_column(col)
     for row in rows:
         # Cells carry server data (page titles, summaries, the agent name a
         # caller declared in X-Beakr-Agent): escape it so Rich prints it as text
