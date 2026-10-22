@@ -829,6 +829,28 @@
    "summary": "Update an external user"
   },
   {
+   "action": "approve-artifact-knowledge",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/artifacts/{artifact_id}/knowledge/approve",
+   "paginated": false,
+   "path": "/v1/artifacts/{artifact_id}/knowledge/approve",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Approve a file for Knowledge"
+  },
+  {
    "action": "create-knowledge-from-artifact",
    "anonymous": false,
    "area": "files",
@@ -2211,6 +2233,28 @@
    "summary": "Search and read original documents"
   },
   {
+   "action": "get-agent-review-settings",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/agent-review",
+   "paginated": false,
+   "path": "/v1/knowledge/agent-review",
+   "path_params": [],
+   "query": [
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get the agent review policy"
+  },
+  {
    "action": "get-proposal",
    "anonymous": false,
    "area": "knowledge",
@@ -3455,6 +3499,80 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "Search Knowledge pages"
+  },
+  {
+   "action": "set-org-agent-review",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Only a person may accept proposals (an API key or token's accept of any proposal is refused with 403 person_review_required), and the person's auto-approve does not apply. With this or agent_uploads_need_a_person on, a key or token is also refused every other commit to Knowledge that has no accept (direct page writes, reverts, conflict resolution).",
+      "name": "agent_proposals_need_a_person",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Files an API key or token uploads or sends to Knowledge are stored, but compiled into Knowledge only after a person (or a key holding proposals:accept) approves them with POST /v1/artifacts/{artifact_id}/knowledge/approve. Until then the file reads knowledge_status waiting_for_person. Turning this off does not compile held files: each still waits for a person's approval.",
+      "name": "agent_uploads_need_a_person",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "With agent_proposals_need_a_person on, still let a person's own auto-approve accept the capture suggestions filed for them. Ignored while it is off.",
+      "name": "capture_auto_approve_allowed",
+      "required": false,
+      "type": "boolean"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/knowledge/agent-review",
+   "paginated": false,
+   "path": "/v1/knowledge/agent-review",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Set the organization's agent review policy"
+  },
+  {
+   "action": "set-project-agent-review",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The fields to change. A field left out keeps its value; null unsets it. Unset on the organization means off; unset on a project means it follows the organization for that field. So a client that does not know a field never resets it, and a project override never silently exempts the project from a field it does not set.",
+      "name": "policy",
+      "required": true,
+      "type": "object"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/knowledge/agent-review/projects/{project_id}",
+   "paginated": false,
+   "path": "/v1/knowledge/agent-review/projects/{project_id}",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Set a project's agent review policy"
   },
   {
    "action": "add-label-member",

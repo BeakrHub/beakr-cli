@@ -47,6 +47,129 @@
         "title": "AgentContext",
         "type": "object"
       },
+      "AgentReviewPolicyBody": {
+        "description": "One level's policy, every field resolved.",
+        "properties": {
+          "agent_proposals_need_a_person": {
+            "description": "Only a person may accept proposals (an API key or token's accept of any proposal is refused with 403 person_review_required), and the person's auto-approve does not apply. With this or agent_uploads_need_a_person on, a key or token is also refused every other commit to Knowledge that has no accept (direct page writes, reverts, conflict resolution).",
+            "title": "Agent Proposals Need A Person",
+            "type": "boolean"
+          },
+          "agent_uploads_need_a_person": {
+            "description": "Files an API key or token uploads or sends to Knowledge are stored, but compiled into Knowledge only after a person (or a key holding proposals:accept) approves them with POST /v1/artifacts/{artifact_id}/knowledge/approve. Until then the file reads knowledge_status waiting_for_person. Turning this off does not compile held files: each still waits for a person's approval.",
+            "title": "Agent Uploads Need A Person",
+            "type": "boolean"
+          },
+          "capture_auto_approve_allowed": {
+            "description": "With agent_proposals_need_a_person on, still let a person's own auto-approve accept the capture suggestions filed for them. Ignored while it is off.",
+            "title": "Capture Auto Approve Allowed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "agent_proposals_need_a_person",
+          "capture_auto_approve_allowed",
+          "agent_uploads_need_a_person"
+        ],
+        "title": "AgentReviewPolicyBody",
+        "type": "object"
+      },
+      "AgentReviewPolicyChange": {
+        "additionalProperties": false,
+        "description": "The fields to change. A field left out keeps its value; null unsets it.\n\nUnset on the organization means off; unset on a project means it follows the\norganization for that field. So a client that does not know a field never\nresets it, and a project override never silently exempts the project from a\nfield it does not set.",
+        "properties": {
+          "agent_proposals_need_a_person": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only a person may accept proposals (an API key or token's accept of any proposal is refused with 403 person_review_required), and the person's auto-approve does not apply. With this or agent_uploads_need_a_person on, a key or token is also refused every other commit to Knowledge that has no accept (direct page writes, reverts, conflict resolution).",
+            "title": "Agent Proposals Need A Person"
+          },
+          "agent_uploads_need_a_person": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Files an API key or token uploads or sends to Knowledge are stored, but compiled into Knowledge only after a person (or a key holding proposals:accept) approves them with POST /v1/artifacts/{artifact_id}/knowledge/approve. Until then the file reads knowledge_status waiting_for_person. Turning this off does not compile held files: each still waits for a person's approval.",
+            "title": "Agent Uploads Need A Person"
+          },
+          "capture_auto_approve_allowed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With agent_proposals_need_a_person on, still let a person's own auto-approve accept the capture suggestions filed for them. Ignored while it is off.",
+            "title": "Capture Auto Approve Allowed"
+          }
+        },
+        "title": "AgentReviewPolicyChange",
+        "type": "object"
+      },
+      "AgentReviewSettingsOut": {
+        "description": "Both levels of the setting and the policy they resolve to.",
+        "properties": {
+          "available": {
+            "description": "Whether this setting can be changed here at all.",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "effective": {
+            "$ref": "#/components/schemas/AgentReviewPolicyBody",
+            "description": "The policy in force for project_id (the organization's without one)."
+          },
+          "org": {
+            "$ref": "#/components/schemas/AgentReviewPolicyBody",
+            "description": "The organization's policy."
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the project it belongs to, or the project to act in.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "title": "Project Id"
+          },
+          "project_override": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentReviewPolicyChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The fields this project sets itself (null fields follow the organization); null when it follows the organization for all of them."
+          }
+        },
+        "required": [
+          "available",
+          "org",
+          "effective"
+        ],
+        "title": "AgentReviewSettingsOut",
+        "type": "object"
+      },
       "ApiError": {
         "additionalProperties": true,
         "description": "Why the request failed and how to correct it.",
@@ -167,7 +290,7 @@
                 "items": {
                   "type": "string"
                 },
-                "maxItems": 23,
+                "maxItems": 24,
                 "type": "array"
               },
               {
@@ -893,7 +1016,8 @@
                   "failed",
                   "stale",
                   "incomplete",
-                  "skipped"
+                  "skipped",
+                  "waiting_for_person"
                 ],
                 "type": "string"
               },
@@ -901,7 +1025,7 @@
                 "type": "null"
               }
             ],
-            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`.",
+            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.",
             "title": "Knowledge Status"
           },
           "knowledge_version_id": {
@@ -986,7 +1110,7 @@
           },
           "queue_result": {
             "$ref": "#/components/schemas/WikiIngestQueueResult",
-            "description": "Queue result: one of `queued`, `already_queued`, `already_current`."
+            "description": "Queue result: one of `queued`, `already_queued`, `already_current`, `waiting_for_person`."
           },
           "saved_to_files": {
             "description": "True when project Files lists this artifact.\n\nA project home alone is not a Save: template drafts and supporting Ask\noutputs keep a home for access but stay out of Files until promoted.\nClients label location from this flag, not from home_project_id.",
@@ -1483,7 +1607,8 @@
                   "failed",
                   "stale",
                   "incomplete",
-                  "skipped"
+                  "skipped",
+                  "waiting_for_person"
                 ],
                 "type": "string"
               },
@@ -1491,7 +1616,7 @@
                 "type": "null"
               }
             ],
-            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`.",
+            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.",
             "title": "Knowledge Status"
           },
           "knowledge_version_id": {
@@ -3930,7 +4055,7 @@
             "items": {
               "type": "string"
             },
-            "maxItems": 23,
+            "maxItems": 24,
             "minItems": 1,
             "title": "Scopes",
             "type": "array"
@@ -7914,7 +8039,7 @@
             "type": "string"
           },
           "status": {
-            "description": "How the file's ingest into the project's Knowledge is going: `queued`, `processing`, `done`, `failed`, `skipped`, or `removed` (the file was deleted).",
+            "description": "How the file's ingest into the project's Knowledge is going: `queued`, `processing`, `done`, `failed`, `skipped`, `removed` (the file was deleted), or `waiting_for_person`: an API key or token sent it where a person must approve agents' files. Sending it again does not release it; a person approves the file with `POST /v1/artifacts/{artifact_id}/knowledge/approve`.",
             "title": "Status",
             "type": "string"
           }
@@ -15768,7 +15893,8 @@
         "enum": [
           "queued",
           "already_queued",
-          "already_current"
+          "already_current",
+          "waiting_for_person"
         ],
         "title": "WikiIngestQueueResult",
         "type": "string"
@@ -16945,6 +17071,12 @@
             "title": "Id",
             "type": "string"
           },
+          "needs_person_to_accept": {
+            "default": false,
+            "description": "True when this proposal's project requires a person to accept proposals: an accept from an API key or token is refused (403 person_review_required) unless the key holds the proposals:accept scope.",
+            "title": "Needs Person To Accept",
+            "type": "boolean"
+          },
           "page_id": {
             "anyOf": [
               {
@@ -17751,6 +17883,27 @@
           "outcome"
         ],
         "title": "WikiWriteResult",
+        "type": "object"
+      },
+      "beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate": {
+        "additionalProperties": false,
+        "properties": {
+          "policy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentReviewPolicyChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The fields to change in the project's own policy (merged; null fields follow the organization); null to follow the organization for every field."
+          }
+        },
+        "required": [
+          "policy"
+        ],
+        "title": "ProjectOverrideUpdate",
         "type": "object"
       }
     },
@@ -18606,7 +18759,7 @@
     },
     "/v1/artifacts/{artifact_id}/knowledge": {
       "post": {
-        "description": "Compile an already indexed file into its project's Knowledge, for a file uploaded with `ingest_to_wiki: false` or one to compile again. The file is not parsed again. A file still being indexed answers `409`; retry once its indexing job has finished. For an output (a document Beakr wrote), this also turns on automatic recompiles when it changes, reported as `knowledge_autosync`.",
+        "description": "Compile an already indexed file into its project's Knowledge, for a file uploaded with `ingest_to_wiki: false` or one to compile again. The file is not parsed again. A file still being indexed answers `409`; retry once its indexing job has finished. For an output (a document Beakr wrote), this also turns on automatic recompiles when it changes, reported as `knowledge_autosync`. Asked by an API key or token where a person must approve agents' files, it is not compiled: `queue_result` is `waiting_for_person`.",
         "operationId": "create_knowledge_from_artifact_route_v1_artifacts__artifact_id__knowledge_post",
         "parameters": [
           {
@@ -18671,6 +18824,84 @@
           }
         ],
         "summary": "Compile a file into Knowledge",
+        "tags": [
+          "public",
+          "files"
+        ],
+        "x-beakr-job": {
+          "at": "",
+          "kind": "knowledge_compile"
+        },
+        "x-beakr-scope": "uploads:write"
+      }
+    },
+    "/v1/artifacts/{artifact_id}/knowledge/approve": {
+      "post": {
+        "description": "Compile a file an API key or token asked to put into Knowledge, in a project whose `agent_uploads_need_a_person` policy is on (`GET /v1/knowledge/agent-review`). Until then the file reads `knowledge_status: waiting_for_person`. Only a signed-in person or a key holding `proposals:accept` may approve: any other key or token answers `403 person_review_required`. A file that is not waiting answers `409 not_waiting`.",
+        "operationId": "approve_artifact_knowledge_route_v1_artifacts__artifact_id__knowledge_approve_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+              ],
+              "format": "uuid",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactKnowledgeQueueResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Approve a file for Knowledge",
         "tags": [
           "public",
           "files"
@@ -21693,6 +21924,238 @@
         ]
       }
     },
+    "/v1/knowledge/agent-review": {
+      "get": {
+        "description": "Whether a person must accept agents' proposals, for the org and `project_id`. Whether a person must accept agents' proposals, for the org and ``project_id``.",
+        "operationId": "get_agent_review_settings_v1_knowledge_agent_review_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentReviewSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the agent review policy",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:read"
+      },
+      "put": {
+        "description": "Change fields of the organization's policy (fields a project sets itself win there).",
+        "operationId": "set_org_agent_review_v1_knowledge_agent_review_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AgentReviewPolicyChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentReviewSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set the organization's agent review policy",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "members:admin"
+      }
+    },
+    "/v1/knowledge/agent-review/projects/{project_id}": {
+      "put": {
+        "description": "Give one project its own policy, or clear it to follow the organization's.",
+        "operationId": "set_project_agent_review_v1_knowledge_agent_review_projects__project_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentReviewSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set a project's agent review policy",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "projects:admin"
+      }
+    },
     "/v1/knowledge/documents": {
       "post": {
         "description": "Search and read the original documents: the `documents` tool for API callers. Search and read the original documents: the ``documents`` tool for API callers.\n\nBehind the ``documents_api`` flag. Same commands and arguments as Beakr's own\nagents use (``beakr/engines/tools/documents``): ``grep`` (ripgrep options across\nevery document in scope), ``read`` (line-numbered text of one document), ``ls``,\nand ``search`` (passages ranked by meaning, grouped by document; the response\nadds ``results``, one public source record per document with its passages).\n\nBody:\n    command: grep | read | ls | search (required).\n    arguments: that command's options, e.g. {\"pattern\": \"comfort letter\", \"output_mode\": \"files_with_matches\"}.\n    project_id: Optional scope: a project id or name (``project`` is accepted too).\n        Without one, a command covers everything the caller can read; a\n        project-restricted credential, all of its projects.",
@@ -23259,7 +23722,7 @@
     },
     "/v1/knowledge/wiki/proposals/{proposal_id}/accept": {
       "post": {
-        "description": "Accept a wiki proposal \u2014 apply the proposed changes.",
+        "description": "Accept a wiki proposal \u2014 apply the proposed changes.\n\nIn a project that requires a person to accept proposals\n(``GET /v1/knowledge/agent-review``), an API key or token accepting any\nproposal is refused with 403 ``person_review_required`` unless the key holds\nthe ``proposals:accept`` scope. The proposal read says so in\n``needs_person_to_accept``.",
         "operationId": "accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post",
         "parameters": [
           {
