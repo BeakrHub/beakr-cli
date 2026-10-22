@@ -59,12 +59,13 @@ $ beakr files show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 [exit 0]
 --- stdout
 Helios charter v3.pdf (0c7d0f1a-876b-4349-acbe-1979fc33d706)
-Type:    doc
-MIME:    application/pdf
-Project: 4dd25154-0d80-44ab-b4c2-167319bfacb4
-Version: da7d3920-230d-4678-9f76-3be63eefbb2b
-Created: 2026-09-14T15:22:08Z
-Updated: 2026-09-14T15:24:51Z
+Type:      doc
+Knowledge: created
+MIME:      application/pdf
+Project:   4dd25154-0d80-44ab-b4c2-167319bfacb4
+Version:   da7d3920-230d-4678-9f76-3be63eefbb2b
+Created:   2026-09-14T15:22:08Z
+Updated:   2026-09-14T15:24:51Z
 
 Charter for Project Helios: scope, milestones and the lead-selection criteria.
 --- stderr

@@ -196,6 +196,7 @@ are stable:
 | 3 | not signed in, or the credential lacks a scope |
 | 4 | not found |
 | 5 | conflict |
+| 6 | a person must do it: the project requires a person to accept proposals, commit Knowledge or approve an agent's upload (`person_review_required`) |
 
 ## Signing in and API keys
 
@@ -669,6 +670,13 @@ context. To cite the current session or another source that is not in the wiki
 yet, use a stable key such as `agent_note:launch-risk`, set `source_type` to
 `conversation`, `agent_note`, or `user_note`, and provide `source_title` plus
 `meta.excerpt`, `meta.content`, or `meta.text`.
+
+Where an organization or a project requires a person to accept what API keys
+write, `beakr kb agent-review show [-P <project>]` says what is in force and
+where it comes from; a person (or a key they created with `proposals:accept`)
+changes it with `beakr kb agent-review set --proposals on` (`-P <project>` for
+one project, `--follow-org` to drop a project's own policy). Work that waits
+for a person exits 6; `beakr files approve <file-id>` sends a held upload on.
 
 Write proposals require exactly one project scope. Use `--project <project-id>`
 for shared/team knowledge or `--mine` to resolve and use your personal project.

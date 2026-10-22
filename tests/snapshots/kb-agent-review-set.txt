@@ -1,0 +1,49 @@
+$ beakr kb agent-review set --proposals on --json
+> PUT /v1/knowledge/agent-review
+  {"agent_proposals_need_a_person": true}
+[exit 0]
+--- stdout
+{
+  "available": true,
+  "org": {
+    "agent_proposals_need_a_person": true,
+    "agent_uploads_need_a_person": false,
+    "capture_auto_approve_allowed": true
+  },
+  "project_id": null,
+  "project_override": null,
+  "effective": {
+    "agent_proposals_need_a_person": true,
+    "agent_uploads_need_a_person": false,
+    "capture_auto_approve_allowed": true
+  }
+}
+--- stderr
+
+
+$ beakr kb agent-review set --proposals on
+> PUT /v1/knowledge/agent-review
+  {"agent_proposals_need_a_person": true}
+[exit 0]
+--- stdout
+Agent review for the organization
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━┳━━━━━┳━━━━━━━━┓
+┃Field                         ┃ In force ┃ From ┃ Org ┃ Project┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━╇━━━━━╇━━━━━━━━┩
+│agent_proposals_need_a_person │ on       │ org  │ on  │ -      │
+│agent_uploads_need_a_person   │ off      │ org  │ off │ -      │
+│capture_auto_approve_allowed  │ on       │ org  │ on  │ -      │
+└──────────────────────────────┴──────────┴──────┴─────┴────────┘
+--- stderr
+
+
+$ beakr kb agent-review set --proposals on
+> PUT /v1/knowledge/agent-review
+  {"agent_proposals_need_a_person": true}
+[exit 0]
+--- stdout
+agent_proposals_need_a_person	effective=on	from=org	org=on	project=-
+agent_uploads_need_a_person	effective=off	from=org	org=off	project=-
+capture_auto_approve_allowed	effective=on	from=org	org=on	project=-
+--- stderr
+

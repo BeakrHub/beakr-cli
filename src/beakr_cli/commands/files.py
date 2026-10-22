@@ -1,5 +1,5 @@
 """File commands: ``beakr upload`` (also ``beakr files upload``) and
-``beakr files ls|show|download|rm``.
+``beakr files ls|show|approve|download|rm``.
 """
 
 from __future__ import annotations
@@ -12,6 +12,7 @@ from beakr_sdk.resources._upload import iter_folder_files
 from rich.markup import escape
 
 from beakr_cli.commands.jobs import all_uploaded, duplicate_of, wait_for_jobs
+from beakr_cli.compact import summary_line
 from beakr_cli.output import console, emit, err_console, page_rows, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -348,20 +349,52 @@ def list_files(
             err_console.print("No files.")
             return
         print_table(
-            ["ID", "Title", "Type", "Updated"],
+            ["ID", "Title", "Type", "Knowledge", "Updated"],
             [
                 [
                     str(a.get("id", "")),
                     short(a.get("title"), 48),
                     str(a.get("artifact_type") or ""),
+                    str(a.get("knowledge_status") or ""),
                     str(a.get("updated_at") or "")[:10],
                 ]
                 for a in rows
             ],
             title="Files",
+            whole=("ID",),
         )
+        _waiting_note(rows)
 
-    emit(items, json_out=json_out, render=render)
+    def lines(rows: list[dict[str, Any]]) -> list[str]:
+        _waiting_note(rows)
+        return [_file_line(row) for row in rows]
+
+    emit(items, json_out=json_out, render=render, lines=lines)
+
+
+#: A file an agent's key uploaded where the project requires a person to approve
+#: it: stored and indexed, not compiled into Knowledge until approved.
+_WAITING = "waiting_for_person"
+
+
+def _file_line(row: dict[str, Any]) -> str:
+    """The compact line of one file, with its ``knowledge=`` status when it has one."""
+    line = summary_line(row)
+    status = row.get("knowledge_status")
+    return f"{line}\tknowledge={status}" if status and "\tknowledge=" not in line else line
+
+
+def _waiting_note(rows: list[dict[str, Any]]) -> None:
+    """On stderr: how many files wait for a person, and the command that approves one."""
+    waiting = [row for row in rows if row.get("knowledge_status") == _WAITING]
+    if waiting:
+        err_console.print(
+            f"{len(waiting)} file(s) wait for a person to approve them into Knowledge: "
+            f"beakr files approve {waiting[0].get('id')}",
+            highlight=False,
+            markup=False,
+            soft_wrap=True,
+        )
 
 
 @app.command("show")
@@ -377,6 +410,7 @@ def show_file(
         console.print(f"[bold]{escape(str(a.get('title')))}[/bold] ({escape(str(a.get('id')))})")
         for label, key in (
             ("Type", "artifact_type"),
+            ("Knowledge", "knowledge_status"),
             ("MIME", "mime_type"),
             ("Project", "home_project_id"),
             ("Version", "current_version_id"),
@@ -384,11 +418,48 @@ def show_file(
             ("Updated", "updated_at"),
         ):
             if a.get(key):
-                console.print(f"{label + ':':<9}{a[key]}", markup=False)
+                console.print(f"{label + ':':<11}{a[key]}", markup=False)
         if a.get("description"):
             console.print(f"\n{a['description']}", markup=False)
+        if a.get("knowledge_status") == _WAITING:
+            console.print(
+                f"\nWaiting for a person to approve it into Knowledge: "
+                f"beakr files approve {a.get('id')}",
+                markup=False,
+                soft_wrap=True,
+            )
 
     emit(artifact, json_out=json_out, render=render)
+
+
+@app.command("approve")
+def approve_file(
+    artifact_id: str = typer.Argument(..., help="File id (knowledge_status waiting_for_person)."),
+    json_out: bool = _json_opt,
+) -> None:
+    """Approve a file an agent uploaded into Knowledge, and compile it.
+
+    Where a project requires a person to approve agent uploads, a file an API
+    key or token sent is stored and indexed but waits (knowledge_status
+    waiting_for_person) until a person approves it. Only a signed-in person or
+    a key holding proposals:accept may (exit 6 otherwise); a file not waiting
+    exits 5.
+    """
+    with get_sdk() as sdk:
+        result = sdk.files.approve_knowledge(artifact_id)
+
+    def render(r: dict[str, Any]) -> None:
+        status = r.get("knowledge_status") or r.get("queue_result") or "queued"
+        name = f"{r['title']} ({artifact_id})" if r.get("title") else artifact_id
+        console.print(f"Approved {name}: Knowledge {status}.", markup=False)
+
+    emit(
+        result,
+        json_out=json_out,
+        render=render,
+        lines=lambda r: [_file_line(r)],
+        hint=f"beakr files show {artifact_id}  (Knowledge compiles in a few minutes)",
+    )
 
 
 @app.command("download")

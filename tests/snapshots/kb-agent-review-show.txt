@@ -1,0 +1,50 @@
+$ beakr kb agent-review show --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/agent-review?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+{
+  "available": true,
+  "org": {
+    "agent_proposals_need_a_person": true,
+    "agent_uploads_need_a_person": false,
+    "capture_auto_approve_allowed": true
+  },
+  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+  "project_override": {
+    "agent_proposals_need_a_person": null,
+    "agent_uploads_need_a_person": true,
+    "capture_auto_approve_allowed": null
+  },
+  "effective": {
+    "agent_proposals_need_a_person": true,
+    "agent_uploads_need_a_person": true,
+    "capture_auto_approve_allowed": true
+  }
+}
+--- stderr
+
+
+$ beakr kb agent-review show --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/agent-review?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+Agent review for project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━┳━━━━━┳━━━━━━━━┓
+┃Field                         ┃ In force ┃ From    ┃ Org ┃ Project┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━╇━━━━━╇━━━━━━━━┩
+│agent_proposals_need_a_person │ on       │ org     │ on  │ -      │
+│agent_uploads_need_a_person   │ on       │ project │ off │ on     │
+│capture_auto_approve_allowed  │ on       │ org     │ on  │ -      │
+└──────────────────────────────┴──────────┴─────────┴─────┴────────┘
+--- stderr
+
+
+$ beakr kb agent-review show --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/agent-review?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+[exit 0]
+--- stdout
+agent_proposals_need_a_person	effective=on	from=org	org=on	project=-
+agent_uploads_need_a_person	effective=on	from=project	org=off	project=on
+capture_auto_approve_allowed	effective=on	from=org	org=on	project=-
+--- stderr
+
