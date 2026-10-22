@@ -309,24 +309,40 @@ def bundled_with_box(info: InstallInfo) -> bool:
     """True when this copy is the CLI a self-hosted Beakr installation bundles.
 
     Only the server says it is self-hosted: ``deployment`` on ``GET
-    /v1/auth/config`` is ``self_hosted``. ``BEAKR_NO_UPDATE_CHECK``, which the
-    installation sets, anyone can set, and a server that sends no
+    /v1/auth/config`` is ``self_hosted``. It is asked only with
+    ``BEAKR_NO_UPDATE_CHECK`` set: the installation sets it, but so can anyone,
+    so it is the condition for asking, not the answer. A server that sends no
     ``deployment`` (a 0.1.8 box) is unknown, not a box. The installation puts
     its CLI outside uv and pipx (``other``); a copy the user installed with uv
     or pipx is upgraded from PyPI whatever it talks to.
     """
-    if info.method is not InstallMethod.other:
+    if info.method is not InstallMethod.other or not check_disabled():
+        # Without BEAKR_NO_UPDATE_CHECK (which an installation sets for its CLI)
+        # the answer cannot change the wording, so the server is not asked.
         return False
     return server_deployment() == "self_hosted"
 
 
+#: Each API's answer, asked at most once per process (a command, or the MCP server).
+_deployments: dict[str, str | None] = {}
+
+
 def server_deployment() -> str | None:
     """``hosted``, ``self_hosted``, or None when the configured API does not say."""
+    from beakr_sdk.credentials import resolve_base_url
+
+    base_url = resolve_base_url()
+    if base_url not in _deployments:
+        _deployments[base_url] = _read_deployment(base_url)
+    return _deployments[base_url]
+
+
+def _read_deployment(base_url: str) -> str | None:
     from beakr_cli._private_api import PrivateBeakr
     from beakr_cli.sdk import CLI_CLIENT_NAME
 
     try:
-        with PrivateBeakr(client_name=CLI_CLIENT_NAME, timeout=5.0) as sdk:
+        with PrivateBeakr(base_url=base_url, client_name=CLI_CLIENT_NAME, timeout=5.0) as sdk:
             return sdk.auth.deployment()
     except Exception:
         # No configuration, or the server is unreachable: it said nothing.

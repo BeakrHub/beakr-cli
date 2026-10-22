@@ -520,6 +520,7 @@ async def test_beakr_version_tool_on_a_self_hosted_installation(monkeypatch) -> 
     other = _other_install()
     monkeypatch.setattr(mcp_server, "detect_install", lambda: other)
     monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
 
     def no_status(**_):
         raise AssertionError("PyPI was asked about a self-hosted installation's CLI")
@@ -538,12 +539,14 @@ async def test_beakr_version_tool_on_a_self_hosted_installation(monkeypatch) -> 
 
 @pytest.mark.parametrize("deployment", ["hosted", None])
 def test_a_hosted_or_unknown_deployment_is_not_a_box(monkeypatch, deployment) -> None:
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
     monkeypatch.setattr(updates, "server_deployment", lambda: deployment)
     assert not updates.bundled_with_box(_other_install())
 
 
 def test_a_uv_tool_copy_pointed_at_a_self_hosted_installation_checks_pypi(monkeypatch) -> None:
     uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
     monkeypatch.setattr(updates, "server_deployment", lambda: "self_hosted")
     assert not updates.bundled_with_box(uv)
 
@@ -569,11 +572,56 @@ def test_the_deployment_is_read_from_the_auth_config_or_its_503(monkeypatch) -> 
     assert updates.server_deployment() == "self_hosted"
 
     config.respond(json={"issuer": "https://clerk.test", "app_url": "x", "deployment": "hosted"})
+    updates._deployments.clear()  # asked once per process: forget the first answer
     assert updates.server_deployment() == "hosted"
 
     # A server before the field (a 0.1.8 box) says nothing: unknown.
     config.respond(json={"issuer": "https://clerk.test", "app_url": "x"})
+    updates._deployments.clear()
     assert updates.server_deployment() is None
+
+
+# Review of #63: `beakr version` asked GET /v1/auth/config on every run, so a
+# hosted pip user paid up to a 5 s request for wording that could not change.
+# The server is asked only with BEAKR_NO_UPDATE_CHECK set, and once per process.
+
+
+@respx.mock
+def test_version_without_the_check_off_never_asks_the_server(monkeypatch) -> None:
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: _other_install())
+
+    def must_not_ask():
+        raise AssertionError("GET /v1/auth/config was asked with the update check on")
+
+    monkeypatch.setattr(updates, "server_deployment", must_not_ask)
+    respx.get(updates.PYPI_JSON_URL).mock(
+        return_value=httpx.Response(200, json=_pypi("0.3.0", "0.3.1"))
+    )
+
+    result = CliRunner().invoke(app, ["version"])
+
+    assert result.exit_code == 0, result.output
+    assert "Update available: 0.3.1." in result.output
+
+
+@pytest.mark.real_capabilities
+@respx.mock
+def test_the_deployment_is_asked_once_per_command(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_API_URL", _BOX)
+    monkeypatch.setenv("BEAKR_API_KEY", "bk_test_key")
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+    uv = updates.InstallInfo(updates.InstallMethod.uv_tool, ["uv"], "Run `beakr update`.")
+    monkeypatch.setattr(updates, "detect_install", lambda prefix=None: uv)
+    config = respx.get(f"{_BOX}/v1/auth/config").respond(
+        json={"issuer": "https://clerk.test", "app_url": "x", "deployment": "self_hosted"}
+    )
+
+    result = CliRunner().invoke(app, ["update", "--check"])
+
+    assert "install-beakr.py" in result.output
+    assert config.call_count == 1
+    assert updates.server_deployment() == "self_hosted"
+    assert config.call_count == 1
 
 
 # Review of the deployment marker: on a self-hosted installation, the check-off

@@ -265,3 +265,25 @@ def test_the_area_the_sdk_names_is_used_as_given():
         code="not_found",
     )
     assert not_provided(unnamed) == "This Beakr installation does not provide Knowledge statistics."
+
+
+def test_a_refusal_the_cli_names_more_precisely_keeps_its_name():
+    # Review of #63: the SDK's area was used for every refusal, so on a box
+    # `beakr org audit` said "organization administration" (the SDK's name for
+    # /v1/organizations/...) instead of the CLI's "the organization audit log".
+    # The SDK's area names only a refusal at the active-organization lookup.
+    from beakr_sdk.errors import NotProvidedError
+
+    from beakr_cli.capabilities import not_provided
+
+    audit = NotProvidedError(
+        "This Beakr installation does not provide organization administration.",
+        area="organization administration",
+        method="GET",
+        path="/v1/organizations/o1/audit",
+        status=404,
+        code="not_found",
+    )
+    expected = "This Beakr installation does not provide the organization audit log."
+    assert not_provided(audit) == expected
+    assert not_provided(audit, ("org", "audit")) == expected

@@ -1458,11 +1458,14 @@ Each release lists the public API changes it supports, taken from the API change
   On a self-hosted server, `beakr update` and `update_beakr` with the check off
   name the installation's upgrade instead of "Unset it to look for a newer
   release".
+  The server is asked (`GET /v1/auth/config`) only with `BEAKR_NO_UPDATE_CHECK`
+  set, and once per command: a hosted install never pays for the request.
 - **Areas named by the SDK.** The CLI is pinned to a `beakr-sdk` whose
   `NotProvidedError` names the area a method was after (`members.list` refused
   at its active-organization lookup: "organization members"), and uses that
-  area as given; it names the area from the path or command only when the SDK
-  gives none.
+  area for a lookup refusal when no command names one; every other refusal
+  keeps the CLI's own, more precise name (`beakr org audit`: "the organization
+  audit log").
 - **`--accept` reports the accepted proposal.** `kb propose ... --accept --yes`
   prints the status after the accept (`status=accepted`), not the create's
   `pending`.
