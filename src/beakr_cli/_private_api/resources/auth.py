@@ -100,6 +100,21 @@ class Auth(Resource[M]):
         cli_sign_in_unavailable`` and names it in the error's ``details``.
         None when the API does not say: an older server.
         """
+        value = self._reported("app_url")
+        return str(value).rstrip("/") if isinstance(value, str) and value.strip() else None
+
+    def deployment(self) -> str | None:
+        """``hosted`` or ``self_hosted``, as this API reports it (``GET /v1/auth/config``).
+
+        Read like :meth:`app_url`, from the 200 body or the 503's ``details``.
+        None when the API does not say (a server before the field, including a
+        0.1.8 box) or says something else: unknown, not hosted.
+        """
+        value = self._reported("deployment")
+        return value if value in ("hosted", "self_hosted") else None
+
+    def _reported(self, field: str) -> object:
+        """One field of ``GET /v1/auth/config``, from its 200 body or its 503's ``details``."""
 
         def flow() -> Flow:
             try:
@@ -110,8 +125,7 @@ class Auth(Resource[M]):
                 if exc.code != "cli_sign_in_unavailable":
                     return None
                 data = exc.details
-            value = data.get("app_url") if isinstance(data, dict) else None
-            return str(value).rstrip("/") if isinstance(value, str) and value.strip() else None
+            return data.get(field) if isinstance(data, dict) else None
 
         return self._drive(flow())
 

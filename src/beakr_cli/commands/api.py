@@ -47,6 +47,37 @@ _TYPES: dict[str, Any] = {
 #: Option names every generated command may define for itself.
 _RESERVED = {"all", "data", "json", "out", "help"}
 
+#: The field naming the one project an operation works in: the Knowledge door's
+#: ``scope`` (a project name or id), else a ``project_id``. It also answers to
+#: ``-P``/``--project``, as the project option of every other command does;
+#: ``api knowledge run-wiki-write`` took only ``--scope`` (swarm 018).
+_DOOR_OPS = {"POST /v1/knowledge/wiki/command", "POST /v1/knowledge/wiki/write"}
+_PROJECT_ALIASES = ("-P", "--project")
+
+#: Each write action's fields, for ``api knowledge run-wiki-write --help``: the
+#: options are one flat list, and a field's description names some of the
+#: actions it serves but not all (``flag`` needs page, concern and reason).
+_WRITE_ACTION_FIELDS = (
+    "Fields by action (? = optional; object fields such as sections, citations, rows, "
+    "old_rows, edits and patches go in --data):\n\n"
+    "new: title, page_type, summary, sections, parent?\n\n"
+    "edit_section: page, section_id, new_section_body, citations?, section_title?, after?\n\n"
+    "edit: page, patches or sections\n\n"
+    "add_fact: page, attribute, value, evidence, when?\n\n"
+    "add_connection: page, relation, to, evidence, when?\n\n"
+    "add_finding: page, date, kind, text, evidence, about?, finding_scope?, supersedes?\n\n"
+    "edit_rows: page, table, old_rows, rows, reason (to delete rows); or page, table, edits\n\n"
+    "sort_table: page, table, order_by\n\n"
+    "flag: page, concern, reason, details?, section_id?\n\n"
+    "find_replace: replacements. mv: page or pages, parent?, title?. archive: page or "
+    "pages. merge: canonical, duplicate, merge_sections?. copy: page or pages, scope "
+    "(the target project). "
+    "page_type: key, label?, description?, when_to_use?\n\n"
+    "Every action except page_type needs --rationale. --action help (with --topic ACTION) "
+    "returns Beakr's full guidance."
+)
+_EPILOGS = {"POST /v1/knowledge/wiki/write": _WRITE_ACTION_FIELDS}
+
 
 @lru_cache(maxsize=1)
 def manifest() -> dict[str, Any]:
@@ -68,7 +99,13 @@ def _flag(name: str) -> str:
 
 
 def _option(
-    field: dict[str, Any], dest: str, flag: str, *, required: bool, body: bool
+    field: dict[str, Any],
+    dest: str,
+    flag: str,
+    *,
+    required: bool,
+    body: bool,
+    aliases: tuple[str, ...] = (),
 ) -> click.Option:
     """One query parameter or body field as a Click option."""
     help_text = field.get("description") or ""
@@ -91,12 +128,24 @@ def _option(
             help=help_text,
         )
     return click.Option(
-        [flag, dest],
+        [flag, *aliases, dest],
         type=kind,
+        # ``-P`` on a ``project_id`` takes a project name or slug, as it does on
+        # every other command; the Knowledge door's ``scope`` reads names itself.
+        callback=_project_id_callback if aliases and field["name"] == "project_id" else None,
         multiple=bool(field.get("multiple")),
         required=required and not body,
         help=help_text,
     )
+
+
+def _project_id_callback(ctx: click.Context, param: click.Parameter, value: Any) -> Any:
+    """A project id, slug or name as the project's id (``project_ref``)."""
+    if not value:
+        return value
+    from beakr_cli.project_ref import resolve_project_ref
+
+    return resolve_project_ref(str(value), param_hint="-P/--project")
 
 
 def _read_data(value: str | None) -> Any:
@@ -114,9 +163,25 @@ def _read_data(value: str | None) -> Any:
         raise click.BadParameter(f"not valid JSON: {exc}", param_hint="--data") from exc
 
 
+def _project_field(entry: dict[str, Any]) -> str | None:
+    """The query parameter or body field ``-P``/``--project`` sets, if the operation has one."""
+    names = [
+        (param["name"], param["type"], bool(param.get("multiple")))
+        for param in [*entry["query"], *((entry.get("body") or {}).get("fields") or [])]
+    ]
+    wanted = "scope" if entry["op"] in _DOOR_OPS else "project_id"
+    if any(name in ("project", "P") for name, _, _ in names):
+        return None
+    for name, kind, multiple in names:
+        if name == wanted and kind == "string" and not multiple:
+            return name
+    return None
+
+
 def build_command(entry: dict[str, Any]) -> click.Command:
     """The Click command for one operation."""
     params: list[click.Parameter] = []
+    project_field = _project_field(entry)
     for param in entry["path_params"]:
         params.append(
             click.Argument(
@@ -142,8 +207,11 @@ def build_command(entry: dict[str, Any]) -> click.Command:
                 _flag(f"param-{param['name']}" if param["name"] in _RESERVED else param["name"]),
                 required=param["required"],
                 body=False,
+                aliases=_PROJECT_ALIASES if param["name"] == project_field else (),
             )
         )
+        if param["name"] == project_field:
+            project_field = None
 
     body = entry.get("body")
     field_dests: dict[str, str] = {}
@@ -157,7 +225,14 @@ def build_command(entry: dict[str, Any]) -> click.Command:
                 option = f"body-{field['name']}"
             dest = f"b__{field['name']}"
             params.append(
-                _option(field, dest, _flag(option), required=field["required"], body=True)
+                _option(
+                    field,
+                    dest,
+                    _flag(option),
+                    required=field["required"],
+                    body=True,
+                    aliases=_PROJECT_ALIASES if field["name"] == project_field else (),
+                )
             )
             (file_dests if field.get("binary") else field_dests)[dest] = field["name"]
         if body["media"] == "json":
@@ -196,6 +271,7 @@ def build_command(entry: dict[str, Any]) -> click.Command:
         params=params,
         callback=callback,
         help="\n\n".join([lines[0], " ".join(lines[2:])]),
+        epilog=_EPILOGS.get(entry["op"]),
         short_help=(entry["summary"] or entry["op"])[:90],
     )
     command.beakr_operation = entry["op"]  # type: ignore[attr-defined]
@@ -310,6 +386,23 @@ def _invoke(
         sys.stdout.write(str(result))
     else:
         print_json(result)
+        _note_proposal(result)
+
+
+def _note_proposal(result: Any) -> None:
+    """``Proposal: <id>`` on stderr when a write staged one (stdout stays the JSON).
+
+    A Knowledge write answers its proposal under ``proposal`` (or ``proposals``),
+    beside a text that a script must otherwise parse to find the id to accept.
+    """
+    from beakr_cli.output import err_console
+
+    if not isinstance(result, dict):
+        return
+    staged = [result.get("proposal"), *(result.get("proposals") or [])]
+    ids = list(dict.fromkeys(str(p["id"]) for p in staged if isinstance(p, dict) and p.get("id")))
+    for proposal_id in ids:
+        err_console.print(f"Proposal: {proposal_id}", highlight=False, markup=False)
 
 
 def _content_type(path: Path) -> str:

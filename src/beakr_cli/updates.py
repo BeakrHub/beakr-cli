@@ -33,6 +33,11 @@ PACKAGE_NAME = "beakr-cli"
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE_NAME}/json"
 DISABLE_ENV = "BEAKR_NO_UPDATE_CHECK"
 DEFAULT_MAX_AGE = timedelta(hours=24)
+#: Said instead of a PyPI line when ``BEAKR_NO_UPDATE_CHECK`` turns the check off:
+#: PyPI was never asked, so "could not be checked" would be wrong. A self-hosted
+#: installation sets it for the CLI it bundles; nothing in the documented API
+#: says a server is self-hosted, so this does not claim one.
+CHECK_OFF = f"Update checks are off ({DISABLE_ENV} is set)."
 
 
 def _cache_file() -> Path:
@@ -267,6 +272,81 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
         f"Upgrade with the tool that installed it, e.g. `pip install --upgrade {PACKAGE_NAME}` "
         "inside the same environment.",
     )
+
+
+# ---------------------------------------------------------------------------
+# The CLI a self-hosted installation bundles
+# ---------------------------------------------------------------------------
+
+#: How the CLI a self-hosted installation bundles is upgraded: with the
+#: installation (its installer's ``upgrade``, the Beakr guide's "Upgrade"),
+#: never from PyPI.
+BOX_INSTRUCTIONS = (
+    "It is upgraded with the installation: run `install-beakr.py --version <new version> "
+    "upgrade` (see the Beakr guide, Upgrade)."
+)
+
+
+def check_off_fix() -> str:
+    """What to do when the update check is off and no release is known.
+
+    On a self-hosted installation the fix is its upgrade, not PyPI: unsetting
+    the variable there only asks an index the installation does not install from.
+    """
+    if server_deployment() == "self_hosted":
+        return BOX_INSTRUCTIONS
+    return "Unset it to look for a newer release."
+
+
+def box_line(version: str) -> str:
+    """What ``beakr_version`` says for the CLI a self-hosted installation bundles."""
+    return f"Installed: beakr-cli {version}, bundled with this Beakr installation. " + (
+        BOX_INSTRUCTIONS
+    )
+
+
+def bundled_with_box(info: InstallInfo) -> bool:
+    """True when this copy is the CLI a self-hosted Beakr installation bundles.
+
+    Only the server says it is self-hosted: ``deployment`` on ``GET
+    /v1/auth/config`` is ``self_hosted``. It is asked only with
+    ``BEAKR_NO_UPDATE_CHECK`` set: the installation sets it, but so can anyone,
+    so it is the condition for asking, not the answer. A server that sends no
+    ``deployment`` (a 0.1.8 box) is unknown, not a box. The installation puts
+    its CLI outside uv and pipx (``other``); a copy the user installed with uv
+    or pipx is upgraded from PyPI whatever it talks to.
+    """
+    if info.method is not InstallMethod.other or not check_disabled():
+        # Without BEAKR_NO_UPDATE_CHECK (which an installation sets for its CLI)
+        # the answer cannot change the wording, so the server is not asked.
+        return False
+    return server_deployment() == "self_hosted"
+
+
+#: Each API's answer, asked at most once per process (a command, or the MCP server).
+_deployments: dict[str, str | None] = {}
+
+
+def server_deployment() -> str | None:
+    """``hosted``, ``self_hosted``, or None when the configured API does not say."""
+    from beakr_sdk.credentials import resolve_base_url
+
+    base_url = resolve_base_url()
+    if base_url not in _deployments:
+        _deployments[base_url] = _read_deployment(base_url)
+    return _deployments[base_url]
+
+
+def _read_deployment(base_url: str) -> str | None:
+    from beakr_cli._private_api import PrivateBeakr
+    from beakr_cli.sdk import CLI_CLIENT_NAME
+
+    try:
+        with PrivateBeakr(base_url=base_url, client_name=CLI_CLIENT_NAME, timeout=5.0) as sdk:
+            return sdk.auth.deployment()
+    except Exception:
+        # No configuration, or the server is unreachable: it said nothing.
+        return None
 
 
 # ---------------------------------------------------------------------------

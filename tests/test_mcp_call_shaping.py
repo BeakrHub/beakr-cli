@@ -231,3 +231,41 @@ async def test_research_passes_quick_only_when_asked() -> None:
         {"query": "How long is a lease?", "quick": True},
         {"query": "How long is a lease?"},
     ]
+
+
+PROJECT_ID = "e56b7c9b-4616-4c89-94bc-6c1c49af35cc"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool", "arguments", "method", "path"),
+    [
+        ("wiki_stats", {}, "GET", "/v1/knowledge/stats"),
+        ("wiki_graph", {}, "GET", "/v1/knowledge/wiki/graph"),
+        ("documents", {"command": "ls"}, "POST", "/v1/knowledge/documents"),
+    ],
+)
+@respx.mock
+async def test_scope_is_read_as_project_on_the_tools_that_take_project(
+    tool: str, arguments: dict[str, Any], method: str, path: str
+) -> None:
+    # Q18-1: wiki_stats {"scope": <project id>} answered for the whole box, the
+    # undeclared scope dropped; the Knowledge tools taught agents to send it.
+    route = respx.route(method=method, url__regex=rf"{API}{path}.*").mock(
+        return_value=Response(200, json={"pages": 1, "sources": 2, "nodes": [], "edges": []})
+    )
+    await _call(tool, {**arguments, "scope": PROJECT_ID})
+    assert route.called
+    request = route.calls.last.request
+    sent = request.url.params.get("project_id") or json.loads(request.content or b"{}").get(
+        "project_id"
+    )
+    assert sent == PROJECT_ID
+
+
+@pytest.mark.asyncio
+async def test_scope_and_project_with_different_values_are_refused() -> None:
+    other = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+    result = await _call("wiki_stats", {"scope": PROJECT_ID, "project": other})
+    assert result.isError
+    assert "`scope` and `project` are both given" in result.content[0].text

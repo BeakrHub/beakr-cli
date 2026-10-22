@@ -235,3 +235,55 @@ def test_the_sdks_not_provided_error_is_named_by_the_cli(monkeypatch, argv, path
         "not_provided",
         f"This Beakr installation does not provide {area}.",
     )
+
+
+def test_the_area_the_sdk_names_is_used_as_given():
+    # Root cause (review of beakr-sdk #47): the SDK names the area a method was
+    # after when its active-organization lookup is refused (members.list ->
+    # "organization members"), but the CLI re-derived the area from the path,
+    # and without a command /v1/me/organization read as "organization
+    # administration" (the MCP tools pass no command).
+    from beakr_sdk.errors import NotProvidedError
+
+    from beakr_cli.capabilities import not_provided
+
+    refused = NotProvidedError(
+        "This Beakr installation does not provide organization members.",
+        area="organization members",
+        method="GET",
+        path="/v1/me/organization",
+        status=404,
+        code="not_found",
+    )
+    assert not_provided(refused) == "This Beakr installation does not provide organization members."
+    # With no area from the SDK, the CLI still names it from the path.
+    unnamed = NotProvidedError(
+        "This Beakr installation does not provide GET /v1/knowledge/stats.",
+        method="GET",
+        path="/v1/knowledge/stats",
+        status=404,
+        code="not_found",
+    )
+    assert not_provided(unnamed) == "This Beakr installation does not provide Knowledge statistics."
+
+
+def test_a_refusal_the_cli_names_more_precisely_keeps_its_name():
+    # Review of #63: the SDK's area was used for every refusal, so on a box
+    # `beakr org audit` said "organization administration" (the SDK's name for
+    # /v1/organizations/...) instead of the CLI's "the organization audit log".
+    # The SDK's area names only a refusal at the active-organization lookup.
+    from beakr_sdk.errors import NotProvidedError
+
+    from beakr_cli.capabilities import not_provided
+
+    audit = NotProvidedError(
+        "This Beakr installation does not provide organization administration.",
+        area="organization administration",
+        method="GET",
+        path="/v1/organizations/o1/audit",
+        status=404,
+        code="not_found",
+    )
+    expected = "This Beakr installation does not provide the organization audit log."
+    assert not_provided(audit) == expected
+    assert not_provided(audit, ("org", "audit")) == expected

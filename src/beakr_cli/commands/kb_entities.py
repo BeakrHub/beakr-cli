@@ -15,6 +15,7 @@ import typer
 
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.commands.kb import log
+from beakr_cli.compact import compact_lines
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -53,6 +54,8 @@ def entities(
             )
         )
 
+    truncated = len(pages) >= limit
+
     def render(rows: list[dict[str, Any]]) -> None:
         if not rows:
             err_console.print(
@@ -60,12 +63,7 @@ def entities(
             )
             return
         if not page_type:
-            counts = Counter(str(p.get("page_type") or "untyped") for p in rows)
-            console.print(
-                "  ".join(f"{kind} {count}" for kind, count in counts.most_common()),
-                highlight=False,
-                markup=False,
-            )
+            console.print(_type_counts(rows, truncated=truncated), highlight=False, markup=False)
         ordered = sorted(
             rows, key=lambda p: (str(p.get("page_type") or ""), str(p.get("title") or ""))
         )
@@ -83,7 +81,23 @@ def entities(
             title=f"Entities ({len(rows)})" + (" (more: --limit)" if len(rows) >= limit else ""),
         )
 
-    emit(pages, json_out=json_out, render=render)
+    def lines(rows: list[dict[str, Any]]) -> list[str]:
+        # Piped, the counts go to stderr: stdout stays one TSV line per page,
+        # for `cut -f1` and `read id title`.
+        if rows and not page_type:
+            err_console.print(
+                _type_counts(rows, truncated=truncated), highlight=False, markup=False
+            )
+        return compact_lines(rows)
+
+    emit(pages, json_out=json_out, render=render, lines=lines)
+
+
+def _type_counts(rows: list[dict[str, Any]], *, truncated: bool) -> str:
+    """``Types: organization 6  person 4 ...``, most pages first."""
+    counts = Counter(str(p.get("page_type") or "untyped") for p in rows)
+    line = "Types: " + "  ".join(f"{kind} {count}" for kind, count in counts.most_common())
+    return line + (f"  (of the first {len(rows)} pages; more: --limit)" if truncated else "")
 
 
 def conflicts(
