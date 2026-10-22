@@ -192,6 +192,12 @@ CASES: list[SnapshotCase] = [
         variants={"POST /v1/knowledge/wiki/write": "edit_rows"},
     ),
     c("kb-entities", "kb", "entities", "--project", PROJECT),
+    c("kb-agent-review-show", "kb", "agent-review", "show", "--project", PROJECT),
+    c("kb-agent-review-set", "kb", "agent-review", "set", "--proposals", "on"),
+    c(
+        "kb-agent-review-set-project",
+        "kb", "agent-review", "set", "--project", PROJECT, "--uploads", "on",
+    ),
     c("kb-history", "kb", "history", PAGE, "--project", PROJECT),
     c("kb-conflicts", "kb", "conflicts", "--project", PROJECT),
     c("kb-undo-run", "kb", "undo-run", "run-2026-10-01", "--yes"),
