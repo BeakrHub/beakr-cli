@@ -38,7 +38,17 @@ ALIASES: dict[str, dict[str, str]] = {
     "research": {"question": "query", "q": "query", "scope": "project"},
     "knowledge_base": {"cmd": "command", "project": "scope"},
     "knowledge_base_write": {"project": "scope"},
+    # The Knowledge tools take the project as ``scope``, so an agent carries it
+    # across; these took only ``project`` and answered for every project when
+    # given ``scope`` (Q18-1). The hosted server's repair reads it the same way.
+    "wiki_stats": {"scope": "project"},
+    "wiki_graph": {"scope": "project"},
+    "documents": {"scope": "project"},
 }
+
+
+class ConflictingArguments(ValueError):
+    """An alias and the parameter it names were both given, with different values."""
 
 
 def normalize_arguments(
@@ -49,6 +59,12 @@ def normalize_arguments(
     for alias, target in ALIASES.get(tool, {}).items():
         if alias in result and alias not in declared:
             value = result.pop(alias)
+            if target in result and result[target] != value:
+                # Two readings of one argument: refused, not one kept silently.
+                raise ConflictingArguments(
+                    f"{tool}: `{alias}` and `{target}` are both given, with different "
+                    f"values; this tool takes `{target}`. Pass one."
+                )
             result.setdefault(target, value)
     container = FOLDED_OPTIONS.get(tool)
     if container is None:

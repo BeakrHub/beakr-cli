@@ -555,3 +555,74 @@ def test_entities_piped_counts_go_to_stderr_and_stdout_stays_tsv() -> None:
     assert "Types: organization 2  person 1" in result.stderr
     assert "Types:" not in result.stdout
     assert [line.split("\t")[0] for line in result.stdout.splitlines()] == ["p1", "p2", "p3"]
+
+
+# --- follow-ups: outcome.auto_approve, the Sources footer (engine #1720) --------
+
+
+def _staged_reply(text: str, auto_approve: bool | None) -> httpx.Response:
+    outcome: dict = {"status": "success"}
+    if auto_approve is not None:
+        outcome["auto_approve"] = auto_approve
+    return httpx.Response(
+        200,
+        json={
+            "content": [{"type": "text", "text": text}],
+            "outcome": outcome,
+            "proposal": {"id": PROPOSAL, "content_hash": HASH},
+        },
+    )
+
+
+@pytest.mark.parametrize(
+    ("text", "auto_approve", "hinted"),
+    [
+        # The outcome says so: no accept hint, whatever the text.
+        ("Proposed new page 'VB-77'.", True, False),
+        # The outcome says it waits for review: the hint stays, whatever the text.
+        ("Auto-approve is on elsewhere; this one waits.", False, True),
+        # An older server: only the text says it.
+        (_AUTO_REPLY, None, False),
+    ],
+)
+@respx.mock
+def test_propose_create_reads_auto_approve_from_the_outcome_first(
+    text: str, auto_approve: bool | None, hinted: bool
+) -> None:
+    respx.post(f"{API}/v1/knowledge/wiki/write").mock(
+        return_value=_staged_reply(text, auto_approve)
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").mock(
+        return_value=httpx.Response(200, json=_staged_proposal())
+    )
+
+    result = _invoke_create()
+
+    assert result.exit_code == 0, result.output
+    assert (f"beakr kb proposals accept {PROPOSAL}" in result.stdout) is hinted
+
+
+def test_sources_footer_counts_by_kind_and_lists_cited_sources_first() -> None:
+    from beakr_cli.mcp_render import sources_block
+
+    listing = sources_block(
+        [
+            {
+                "source_ref": "beakr-source:v1:wiki:ad536158-03fb-40e9-b12b-a4eccdb9b106",
+                "citation_key": "wiki:ad536158-03fb-40e9-b12b-a4eccdb9b106",
+                "name": "VB-77",
+            },
+            {
+                "source_ref": "beakr-source:v1:f66951cb-e0dc-4ea1-9784-d737f6a3ea0d",
+                "citation_key": "conversation:ci-r1-1",
+                "name": "CI research: Veritas Bio Q3 2026 pipeline update (2026-10-02)",
+                "excerpts": [{"text": "Veritas Bio moved VB-77 into Phase 2b."}],
+            },
+        ]
+    )
+
+    lines = listing.splitlines()
+    assert lines[0] == "Sources (1 conversation, 1 Knowledge page):"
+    assert lines[1].startswith("- conversation: CI research: Veritas Bio Q3 2026")
+    assert lines[2] == '  "Veritas Bio moved VB-77 into Phase 2b."'
+    assert lines[3].startswith("- VB-77 ")
