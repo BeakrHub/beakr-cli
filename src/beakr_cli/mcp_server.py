@@ -20,6 +20,8 @@ from beakr_cli.mcp_errors import call_api as _call_api
 from beakr_cli.mcp_knowledge_status import knowledge_notice
 from beakr_cli.mcp_tools_platform import _project_by_name_or_id
 from beakr_cli.updates import (
+    CHECK_OFF,
+    check_disabled,
     detect_install,
     get_update_status,
     installed_version_on_path,
@@ -1006,7 +1008,9 @@ async def beakr_version() -> str:
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
     info = detect_install()
     lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
-    if status.latest is None:
+    if check_disabled():
+        lines.append(CHECK_OFF)
+    elif status.latest is None:
         lines.append("Latest release: unknown (PyPI could not be checked).")
     elif status.update_available:
         lines.append(f"Update available: {status.latest}.")
@@ -1037,6 +1041,8 @@ async def update_beakr() -> str:
     from datetime import timedelta
 
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(0))
+    if status.latest is None and check_disabled():
+        return f"Update did not run: {CHECK_OFF} Unset it to look for a newer release."
     if status.latest is not None and not status.update_available:
         return f"No update needed: installed {status.current}, latest release {status.latest}."
     info = detect_install()

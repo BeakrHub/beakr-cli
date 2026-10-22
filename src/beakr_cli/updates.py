@@ -33,6 +33,11 @@ PACKAGE_NAME = "beakr-cli"
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE_NAME}/json"
 DISABLE_ENV = "BEAKR_NO_UPDATE_CHECK"
 DEFAULT_MAX_AGE = timedelta(hours=24)
+#: Said instead of a PyPI line when ``BEAKR_NO_UPDATE_CHECK`` turns the check off:
+#: PyPI was never asked, so "could not be checked" would be wrong. A self-hosted
+#: installation sets it for the CLI it bundles; nothing in the documented API
+#: says a server is self-hosted, so this does not claim one.
+CHECK_OFF = f"Update checks are off ({DISABLE_ENV} is set)."
 
 
 def _cache_file() -> Path:

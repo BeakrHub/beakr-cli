@@ -7,6 +7,7 @@ the same ``projects`` Typer app. A project is named by id, slug or name.
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
+from enum import Enum
 from typing import Any
 
 import typer
@@ -19,6 +20,16 @@ from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
 
 app = typer.Typer(help="Members of a project: list, add, remove, invite by email.")
+
+
+class ProjectRole(str, Enum):
+    """The roles ``POST /v1/projects/{project_id}/members`` gives (``MembershipRole``)."""
+
+    owner = "owner"
+    admin = "admin"
+    member = "member"
+    viewer = "viewer"
+
 
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 _project_arg = typer.Argument(..., help="Project id, slug or name.")
@@ -79,11 +90,11 @@ def list_project_members(
 def add_project_member(
     project: str = _project_arg,
     principal_id: str = typer.Argument(..., help="User id (from `beakr members ls`)."),
-    role: str | None = typer.Option(
+    role: ProjectRole | None = typer.Option(
         None,
         "--role",
         help=(
-            "member, editor, viewer or owner. Default: member for someone new; "
+            "owner, admin, member or viewer. Default: member for someone new; "
             "an existing member keeps their role."
         ),
     ),
@@ -98,13 +109,15 @@ def add_project_member(
     """
     with get_sdk() as sdk:
         found = _resolve_project_ref(sdk, project)
-        result = sdk.projects.add_member(str(found["id"]), principal_id, role=role)
+        result = sdk.projects.add_member(
+            str(found["id"]), principal_id, role=role.value if role else None
+        )
     emit(
         result,
         json_out=json_out,
         render=lambda r: console.print(
             f"Added {principal_id} to {found.get('name') or project} as "
-            f"{role or (r or {}).get('role') or 'member'}.",
+            f"{(role.value if role else None) or (r or {}).get('role') or 'member'}.",
             highlight=False,
             markup=False,
         ),

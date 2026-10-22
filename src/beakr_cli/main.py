@@ -162,11 +162,15 @@ def version(
 
     from beakr_cli import __version__
     from beakr_cli.output import print_json
-    from beakr_cli.updates import detect_install, get_update_status
+    from beakr_cli.updates import CHECK_OFF, check_disabled, detect_install, get_update_status
 
+    # With the check off PyPI is never asked: say so, not "could not be checked".
+    check_off = not offline and check_disabled()
     if json_out:
         report: dict[str, object] = {"version": __version__}
-        if not offline:
+        if check_off:
+            report.update(update_check="off")
+        elif not offline:
             status = get_update_status(max_age=timedelta(hours=1))
             report.update(
                 latest=status.latest,
@@ -181,6 +185,9 @@ def version(
     # upgraded binary to confirm what is now on PATH.
     print(f"beakr-cli {__version__}")
     if offline:
+        return
+    if check_off:
+        print(CHECK_OFF)
         return
     status = get_update_status(max_age=timedelta(hours=1))
     if status.latest is None and status.published_older is not None:
@@ -218,6 +225,8 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
 
     from beakr_cli.output import console, err_console
     from beakr_cli.updates import (
+        CHECK_OFF,
+        check_disabled,
         detect_install,
         get_update_status,
         installed_version_on_path,
@@ -232,7 +241,12 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
         "updated": False,
     }
     info = detect_install()
-    if status.latest is None:
+    if status.latest is None and check_disabled():
+        # The check never ran: PyPI was not asked, so it was not "unreachable".
+        err_console.print(f"{CHECK_OFF} Unset it to look for a newer release.", markup=False)
+        if check or not force:
+            raise typer.Exit(1)
+    elif status.latest is None:
         err_console.print(
             "[yellow]Could not determine the latest release: PyPI was unreachable or is "
             "still publishing a new release. Try again in a few minutes.[/yellow]"

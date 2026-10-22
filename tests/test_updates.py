@@ -407,3 +407,70 @@ def test_version_says_a_build_ahead_of_pypi_is_newer() -> None:
     assert "newer than the latest release (0.0.2)" in result.output
     assert "could not be checked" not in result.output
     assert not (config.config_dir() / "update_check.json").exists()
+
+
+# ---------------------------------------------------------------------------
+# BEAKR_NO_UPDATE_CHECK (set by a self-hosted installation for its CLI)
+# ---------------------------------------------------------------------------
+
+# Root cause: on a self-hosted box, which sets BEAKR_NO_UPDATE_CHECK for the CLI
+# it bundles, `beakr version` and beakr_version said "Latest release: unknown
+# (PyPI could not be checked)" although PyPI was never asked. With the check off
+# they say so instead, and claim nothing about the server: the variable alone
+# does not make a box (anyone can set it), and no documented route says one is.
+
+
+def _pypi_must_not_be_asked(monkeypatch) -> None:
+    def no_pypi(timeout):
+        raise AssertionError("PyPI was asked with the update check off")
+
+    monkeypatch.setattr(updates, "fetch_latest_version", no_pypi)
+
+
+def test_version_with_the_check_off_says_so_instead_of_pypi(monkeypatch) -> None:
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    result = CliRunner().invoke(app, ["version"])
+    as_json = CliRunner().invoke(app, ["version", "--json"])
+
+    assert result.exit_code == 0, result.output
+    lines = result.output.splitlines()
+    assert lines[0].startswith("beakr-cli ")  # `beakr update` parses this line
+    assert lines[1] == "Update checks are off (BEAKR_NO_UPDATE_CHECK is set)."
+    assert "PyPI" not in result.output and "Latest release" not in result.output
+    report = json.loads(as_json.output)
+    assert report["update_check"] == "off" and "latest" not in report
+
+
+def test_update_with_the_check_off_says_so_instead_of_pypi_unreachable(monkeypatch) -> None:
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    result = CliRunner().invoke(app, ["update", "--check"])
+
+    assert result.exit_code == 1
+    assert "Update checks are off (BEAKR_NO_UPDATE_CHECK is set)." in result.output
+    assert "unreachable" not in result.output
+
+
+async def test_beakr_version_tool_with_the_check_off_says_so(monkeypatch) -> None:
+    from beakr_cli import mcp_server
+
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setenv(updates.DISABLE_ENV, "1")
+
+    def no_upgrade(*_args, **_kwargs):
+        raise AssertionError("an upgrade ran with the update check off")
+
+    monkeypatch.setattr(mcp_server, "run_upgrade", no_upgrade)
+
+    text = await mcp_server.beakr_version()
+    refused = await mcp_server.update_beakr()
+
+    assert text.splitlines()[1] == "Update checks are off (BEAKR_NO_UPDATE_CHECK is set)."
+    assert "PyPI" not in text and "Latest release" not in text
+    assert refused == (
+        "Update did not run: Update checks are off (BEAKR_NO_UPDATE_CHECK is set). "
+        "Unset it to look for a newer release."
+    )
