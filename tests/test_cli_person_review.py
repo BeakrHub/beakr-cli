@@ -271,6 +271,23 @@ def test_files_ls_piped_names_each_files_knowledge_status() -> None:
 
 
 @respx.mock
+def test_files_ls_waiting_asks_the_engine_for_the_held_files() -> None:
+    # The console and CLI found held files by listing every file and keeping
+    # the waiting ones; the list now filters on knowledge_status (engine Y17).
+    route = respx.get(f"{API}/v1/artifacts").mock(return_value=_files_page())
+
+    result = CliRunner().invoke(app, ["files", "ls", "-P", PROJECT, "--waiting"])
+
+    assert result.exit_code == 0, result.output
+    params = route.calls.last.request.url.params
+    assert params["knowledge_status"] == "waiting_for_person"
+    assert params["project_id"] == PROJECT
+
+    CliRunner().invoke(app, ["files", "ls", "-P", PROJECT])
+    assert "knowledge_status" not in route.calls.last.request.url.params
+
+
+@respx.mock
 def test_files_show_says_a_file_waits_for_a_person(monkeypatch) -> None:
     monkeypatch.setenv("BEAKR_OUTPUT", "human")
     respx.get(f"{API}/v1/artifacts/{FILE}").mock(

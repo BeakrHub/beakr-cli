@@ -163,10 +163,14 @@ def upload_command(
     waited = wait and bool(job_ids)
     knowledge_failed: list[dict[str, Any]] = []
     knowledge_settled = False
+    knowledge_statuses: dict[str, str | None] = {}
     if wait_knowledge and project_id and all_uploaded(list(states.values()) if waited else []):
-        knowledge_failed, knowledge_settled = _wait_for_uploaded_knowledge(
+        knowledge_failed, knowledge_settled, knowledge_statuses = _wait_for_uploaded_knowledge(
             results, str(project_id), timeout=timeout
         )
+    knowledge_incomplete = sorted(
+        file_id for file_id, status in knowledge_statuses.items() if status in _NEEDS_RETRY
+    )
 
     def render(rows: list[dict[str, Any]]) -> None:
         for row in rows:
@@ -189,6 +193,8 @@ def upload_command(
             note = (
                 f"{len(knowledge_failed)} failed to reach Knowledge."
                 if knowledge_failed
+                else f"{len(knowledge_incomplete)} only partly in Knowledge."
+                if knowledge_incomplete
                 else "Indexed and in Knowledge."
             )
         elif waited:
@@ -215,7 +221,9 @@ def upload_command(
                     "reason": failure.get("reason"),
                 }
             elif knowledge_settled and file_id not in failed_ids:
-                row["knowledge"] = {"status": "ready"}
+                # The file's own knowledge_status, the word `beakr files ls` and
+                # `files show` print for it (``created`` once it is in Knowledge).
+                row["knowledge"] = {"status": knowledge_statuses.get(file_id)}
     emit(
         results,
         json_out=json_out,
@@ -227,24 +235,33 @@ def upload_command(
             waited=waited,
             failed=waited and not all_uploaded(list(states.values())),
             project_id=project_id,
-            knowledge_failed=bool(knowledge_failed),
+            knowledge_failed=bool(knowledge_failed or knowledge_incomplete),
             knowledge_settled=knowledge_settled,
         ),
     )
     if waited and not all_uploaded(list(states.values())):
         raise typer.Exit(1)
-    if wait_knowledge and (knowledge_failed or not knowledge_settled):
+    if wait_knowledge and (knowledge_failed or knowledge_incomplete or not knowledge_settled):
         raise typer.Exit(1)
+
+
+#: A file's knowledge_status when its latest attempt saved only part of its
+#: changes: settled but not wholly in Knowledge; `beakr projects retry` resumes it.
+_NEEDS_RETRY = frozenset({"incomplete"})
 
 
 def _wait_for_uploaded_knowledge(
     results: list[dict[str, Any]], project_id: str, *, timeout: float
-) -> tuple[list[dict[str, Any]], bool]:
-    """Wait for the project's Knowledge; return the uploaded files that failed, and if it settled.
+) -> tuple[list[dict[str, Any]], bool, dict[str, str | None]]:
+    """Wait for the project's Knowledge; return the uploaded files that failed, if it
+    settled, and each uploaded file's own ``knowledge_status``.
 
-    The project status is the read: the uploaded files are ready when nothing
+    The project status is the read: the uploaded files are settled when nothing
     in the project is queued or running, which also waits out any other files
     compiling at the same time. Failures are reported only for these files.
+    Each file's status is then read from the file itself, so the upload reports
+    the word `beakr files ls` prints for it (an incomplete file is neither
+    failed nor ready, and the project counts used to read ready over it).
     """
     from beakr_cli.commands.project_knowledge import (
         failed_among,
@@ -257,11 +274,22 @@ def _wait_for_uploaded_knowledge(
     with get_sdk(timeout=300.0) as sdk:
         status = wait_for_knowledge(sdk, project_id, timeout=timeout)
         if status is None:
-            return [], False
+            return [], False, {}
         failed = failed_among(sdk, project_id, status, uploaded)
+        statuses = {
+            file_id: (sdk.files.get(file_id) or {}).get("knowledge_status")
+            for file_id in sorted(uploaded)
+        }
     for row in failed:
         err_console.print(f"Failed: {failed_file_line(row)}", highlight=False, markup=False)
-    return failed, True
+    for file_id, file_status in statuses.items():
+        if file_status in _NEEDS_RETRY:
+            err_console.print(
+                f"Incomplete: only part of its changes reached Knowledge ({file_id})",
+                highlight=False,
+                markup=False,
+            )
+    return failed, True, statuses
 
 
 def _knowledge_file_id(row: dict[str, Any]) -> str:
@@ -331,6 +359,12 @@ def list_files(
     project: str | None = _project_opt,
     folder: str | None = typer.Option(None, "--folder", "-f", help="Folder id."),
     search: str | None = typer.Option(None, "--search", "-s", help="Title search."),
+    waiting: bool = typer.Option(
+        False,
+        "--waiting",
+        help="Only files waiting for a person to approve them into Knowledge "
+        "(knowledge_status waiting_for_person).",
+    ),
     limit: int = typer.Option(50, "--limit", "-n", help="Max files (1-200)."),
     json_out: bool = _json_opt,
 ) -> None:
@@ -340,13 +374,16 @@ def list_files(
             project_id=resolve_project(project),
             folder_id=folder,
             search=search,
+            # Filtered by the engine, so a project's held files are one page,
+            # not a scan of every file.
+            knowledge_status=_WAITING if waiting else None,
             limit=max(1, min(limit, 200)),
         )
     items = page.get("data", []) if isinstance(page, dict) else page
 
     def render(rows: list[dict[str, Any]]) -> None:
         if not rows:
-            err_console.print("No files.")
+            err_console.print("No files wait for a person." if waiting else "No files.")
             return
         print_table(
             ["ID", "Title", "Type", "Knowledge", "Updated"],

@@ -1025,7 +1025,7 @@
                 "type": "null"
               }
             ],
-            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.",
+            "description": "Where the file's current version is in the project's Knowledge: `queued` or `running` (being added); `created` (added: Knowledge was built from it, the finished state); `incomplete` (only part of its changes were saved; a retry resumes it); `failed`; `stale` (an older version is in Knowledge, or the file changed since); `skipped` (read, with nothing to add); `waiting_for_person` (held until a person approves it). Null when it was never sent to Knowledge.",
             "title": "Knowledge Status"
           },
           "knowledge_version_id": {
@@ -1616,7 +1616,7 @@
                 "type": "null"
               }
             ],
-            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.",
+            "description": "Where the file's current version is in the project's Knowledge: `queued` or `running` (being added); `created` (added: Knowledge was built from it, the finished state); `incomplete` (only part of its changes were saved; a retry resumes it); `failed`; `stale` (an older version is in Knowledge, or the file changed since); `skipped` (read, with nothing to add); `waiting_for_person` (held until a person approves it). Null when it was never sent to Knowledge.",
             "title": "Knowledge Status"
           },
           "knowledge_version_id": {
@@ -4976,6 +4976,19 @@
             "title": "Offset",
             "type": "integer"
           },
+          "project": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only open a file in this project: its id or name, as GET /v1/projects lists it. A path or name then resolves among that project's files alone, and a reference to a file elsewhere answers 404. A project you cannot read answers 404 not_found, naming the closest projects you can. Omit to read across every project you can see.",
+            "title": "Project"
+          },
           "reference": {
             "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
             "maxLength": 2048,
@@ -6922,7 +6935,7 @@
             "type": "string"
           },
           "outcome": {
-            "description": "`queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt did not fail; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it failed but cannot be retried now; see `reason`).",
+            "description": "`queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt neither failed nor saved only part of its changes; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it cannot be retried now; see `reason`).",
             "enum": [
               "queued",
               "already_queued",
@@ -6954,7 +6967,7 @@
         "type": "object"
       },
       "KnowledgeRetryRequest": {
-        "description": "Which failed files to send to Knowledge again.",
+        "description": "Which failed or incomplete files to send to Knowledge again.",
         "properties": {
           "artifact_ids": {
             "anyOf": [
@@ -6970,7 +6983,7 @@
                 "type": "null"
               }
             ],
-            "description": "Files to retry, up to 500. Omit to retry every failed file in the project (up to 500 per call; `has_more` says when more remain).",
+            "description": "Files to retry, up to 500. Omit to retry every failed or incomplete file in the project (up to 500 per call; `has_more` says when more remain).",
             "title": "Artifact Ids"
           }
         },
@@ -7005,7 +7018,7 @@
           },
           "not_failed": {
             "default": 0,
-            "description": "Named files whose latest attempt did not fail.",
+            "description": "Named files whose latest attempt neither failed nor was incomplete.",
             "title": "Not Failed",
             "type": "integer"
           },
@@ -7023,7 +7036,7 @@
           },
           "skipped": {
             "default": 0,
-            "description": "Failed files that could not be retried now.",
+            "description": "Failed or incomplete files that could not be retried now.",
             "title": "Skipped",
             "type": "integer"
           }
@@ -10346,7 +10359,7 @@
         "type": "object"
       },
       "ProjectKnowledgeStatusResponse": {
-        "description": "A project's Knowledge status: coverage counts, readiness and the files that failed.\n\nCounts cover the files the caller can read. ``queued``, ``running`` and\n``failed`` break the coverage counts down further: ``queued + running`` is\n``syncing``, and ``failed`` is part of ``eligible``.",
+        "description": "A project's Knowledge status: coverage counts, readiness and the files that failed.\n\nCounts cover the files the caller can read. ``queued``, ``running``,\n``failed`` and ``incomplete`` break the coverage counts down further:\n``queued + running`` is ``syncing``, and ``failed`` and ``incomplete`` are\nparts of ``eligible``.",
         "properties": {
           "eligible": {
             "default": 0,
@@ -10380,6 +10393,12 @@
             "description": "Pass as `cursor` to `GET /v1/projects/{project_id}/knowledge/failed-files` for the failed files after these; null when `failed_files` holds them all.",
             "title": "Failed Files Next Cursor"
           },
+          "incomplete": {
+            "default": 0,
+            "description": "Files whose latest attempt saved only part of its changes to Knowledge (their `knowledge_status` is `incomplete`; a subset of `eligible`, never counted in `failed`). A retry resumes them.",
+            "title": "Incomplete",
+            "type": "integer"
+          },
           "knowledge_skipped": {
             "default": 0,
             "description": "Files that finished processing without producing Knowledge (a subset of `synced`).",
@@ -10407,7 +10426,7 @@
           },
           "ready": {
             "default": true,
-            "description": "True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed files do not make it false; check `failed`.",
+            "description": "True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed and incomplete files do not make it false; check `failed` and `incomplete`.",
             "title": "Ready",
             "type": "boolean"
           },
@@ -18126,6 +18145,25 @@
               ],
               "description": "Case-insensitive search across title, description, and artifact type",
               "title": "Search"
+            }
+          },
+          {
+            "description": "Only files whose `knowledge_status` is this. `waiting_for_person`: files held out of Knowledge until a person approves them (`POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen needs no scan of every file.",
+            "in": "query",
+            "name": "knowledge_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "waiting_for_person",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only files whose `knowledge_status` is this. `waiting_for_person`: files held out of Knowledge until a person approves them (`POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen needs no scan of every file.",
+              "title": "Knowledge Status"
             }
           },
           {
@@ -29021,7 +29059,7 @@
     },
     "/v1/projects/{project_id}/knowledge/retry-failed": {
       "post": {
-        "description": "Send the project's failed files to Knowledge again: all of them, or the ones named.\n\nSafe to repeat. A file already queued or running is left alone, and one\nwhose latest attempt did not fail is never re-sent, so calling this again\nbefore the retried files finish queues nothing new. Needs permission to add\nfiles to the project; a project you cannot read is a 404.",
+        "description": "Send the project's failed and incomplete files to Knowledge again: all of them, or the ones named.\n\nAn incomplete file (its latest attempt saved only part of its changes) is\nresumed from what was saved. Safe to repeat. A file already queued or\nrunning is left alone, and one whose latest attempt neither failed nor was\nincomplete is never re-sent, so calling this again\nbefore the retried files finish queues nothing new. Needs permission to add\nfiles to the project; a project you cannot read is a 404.",
         "operationId": "retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post",
         "parameters": [
           {

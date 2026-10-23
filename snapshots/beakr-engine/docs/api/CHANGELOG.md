@@ -11,11 +11,30 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=2951348312be1bffff1e62a100793720c312512d8d525c358e55353cc9e01948 changelog sha256=a09197c131182bd47f2b8dab618be870e43c9781e447e808ec32c7e030c9ffff -->
+<!-- contract-stamp: public-openapi sha256=48d65cec67345848851eb3b895217d4a4d5a0bbcc961038114ba5c2c89811f67 changelog sha256=bd50d3db7da46b1ae541a03121d342123ecc51c6dccb0bc900df7c0e5b08df5b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/artifacts` takes a new `knowledge_status` filter. `knowledge_status=waiting_for_person` lists only
+  the files held out of Knowledge until a person approves them (with
+  `POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen no
+  longer pages through every file. Any other value is refused with `422`.
+- `POST /v1/artifacts/read` takes `project`, a project id or name: the
+  reference then resolves among that project's files only, and a file elsewhere
+  answers `404`. `POST /v1/knowledge/documents` now refuses a `project_id` that
+  is not a project you can read, where it answered an empty listing. On both, a
+  project that names nothing you can read answers `404 not_found`, and the
+  message names the closest projects you can read.
+- `GET /v1/projects/{project_id}/knowledge-summary` adds `incomplete`: files
+  whose latest attempt saved only part of its changes to Knowledge
+  (`knowledge_status: incomplete`). They were counted in neither `failed` nor
+  anything else, so a project could read ready with nothing failed while one
+  of its files was incomplete.
+  `POST /v1/projects/{project_id}/knowledge/retry-failed` now also resumes
+  incomplete files, with or without `artifact_ids`. The `knowledge_status` of
+  `GET /v1/artifacts` and `GET /v1/artifacts/{artifact_id}` describes each of
+  its values; `created` is the finished state.
 - `POST /v1/runs` on a thread whose run is still working, from
   the user who started that run, no longer cancels it when the message is a
   plain follow-up (no files, workflow, pinned skills or decision). The message

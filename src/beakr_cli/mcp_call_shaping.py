@@ -7,11 +7,12 @@ beside ``command`` instead of inside ``arguments``, and ``research`` answered a
 pydantic dump ending in an errors.pydantic.dev link -- so the agent paid a
 retry, sometimes several, to learn the calling convention.
 
-Three things happen here, all before or after the tool runs and none of them
+Four things happen here, all before or after the tool runs and none of them
 visible in the input schema (which stays small):
 
 * :func:`normalize_arguments` folds a Knowledge tool's top-level options into
-  ``arguments`` (explicit ``arguments`` keys win) and renames known aliases.
+  ``arguments`` (explicit ``arguments`` keys win) and renames known aliases;
+  :func:`unknown_arguments` then refuses any argument the tool does not take.
 * :func:`validation_message` turns a pydantic validation error into one line
   naming what is missing and the call that works.
 * :func:`compact_error` reduces an error result to ``{status, error_code,
@@ -44,6 +45,8 @@ ALIASES: dict[str, dict[str, str]] = {
     "wiki_stats": {"scope": "project"},
     "wiki_graph": {"scope": "project"},
     "documents": {"scope": "project"},
+    "read_file": {"scope": "project"},
+    "get_profile": {"scope": "project_id", "project": "project_id"},
 }
 
 
@@ -85,6 +88,31 @@ def normalize_arguments(
     return result
 
 
+def unknown_arguments(
+    tool: str, arguments: dict[str, Any], schema: dict[str, Any]
+) -> dict[str, Any] | None:
+    """The ``invalid_arguments`` error for arguments ``tool`` does not take, or None.
+
+    Pydantic ignores an argument the signature does not name, so ``documents``
+    given ``scope`` before it was an alias, or ``read_file`` given ``scope``,
+    answered for every project the caller can see (Y12). The hosted server's
+    input schema says ``additionalProperties: false``; this is the same check,
+    after the aliases above are applied.
+    """
+    properties = set((schema.get("properties") or {}).keys())
+    unknown = sorted(set(arguments) - properties)
+    if not unknown:
+        return None
+    named = ", ".join(f"`{key}`" for key in unknown)
+    return {
+        "status": "error",
+        "error_code": "invalid_arguments",
+        "message": f"{tool} does not take {named}; nothing was run.",
+        "fix": f"Pass only {', '.join(sorted(properties)) or 'no arguments'}: "
+        f"{_example(tool, schema)}",
+    }
+
+
 def _example(tool: str, schema: dict[str, Any]) -> str:
     required = list(schema.get("required") or [])
     example = {name: "..." for name in required}
@@ -93,9 +121,7 @@ def _example(tool: str, schema: dict[str, Any]) -> str:
     return json.dumps(example)
 
 
-def validation_message(
-    tool: str, error: ValidationError, schema: dict[str, Any], given: dict[str, Any]
-) -> str:
+def validation_message(tool: str, error: ValidationError, schema: dict[str, Any]) -> str:
     """One line: what was wrong with the call and the call that works."""
     properties = set((schema.get("properties") or {}).keys())
     problems: list[str] = []
@@ -109,9 +135,6 @@ def validation_message(
     optional = sorted(properties - set(schema.get("required") or []))
     if optional:
         line += f" (optional: {', '.join(optional)})"
-    unknown = sorted(set(given) - properties)
-    if unknown:
-        line += f"; ignored unknown {', '.join(f'`{key}`' for key in unknown)}"
     return line
 
 

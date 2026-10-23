@@ -62,7 +62,7 @@ async def test_context_resolves_a_project_name() -> None:
     assert await context(project="platform") == "ctx"
     assert json.loads(route.calls.last.request.content)["project_id"] == PROJECT_ID
 
-    with pytest.raises(ValueError, match="No single project named 'Nope'"):
+    with pytest.raises(ValueError, match="No project you can read matches 'Nope'"):
         await context(project="Nope")
 
     await context()
