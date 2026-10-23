@@ -1025,6 +1025,12 @@
      "type": "string"
     },
     {
+     "description": "Only files whose `knowledge_status` is this. `waiting_for_person`: files held out of Knowledge until a person approves them (`POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen needs no scan of every file.",
+     "name": "knowledge_status",
+     "required": false,
+     "type": "string"
+    },
+    {
      "description": "Filter to artifacts in projects connected to this label",
      "name": "label_id",
      "required": false,
@@ -1147,6 +1153,12 @@
       "name": "offset",
       "required": false,
       "type": "integer"
+     },
+     {
+      "description": "Only open a file in this project: its id or name, as GET /v1/projects lists it. A path or name then resolves among that project's files alone, and a reference to a file elsewhere answers 404. A project you cannot read answers 404 not_found, naming the closest projects you can. Omit to read across every project you can see.",
+      "name": "project",
+      "required": false,
+      "type": "string"
      },
      {
       "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
@@ -4874,7 +4886,7 @@
    "body": {
     "fields": [
      {
-      "description": "Files to retry, up to 500. Omit to retry every failed file in the project (up to 500 per call; `has_more` says when more remain).",
+      "description": "Files to retry, up to 500. Omit to retry every failed or incomplete file in the project (up to 500 per call; `has_more` says when more remain).",
       "multiple": true,
       "name": "artifact_ids",
       "required": false,

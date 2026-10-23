@@ -41,14 +41,21 @@ def _require_project(project: str | None) -> str:
 
 
 def state_phrase(status: dict[str, Any]) -> str:
-    """``ready``, ``ready, 2 failed``, ``queued (4 files)`` or ``compiling (3 running, ...)``."""
+    """``ready``, ``ready, 2 failed, 1 incomplete``, ``queued (4 files)`` or ``compiling (...)``."""
     queued, running = int(status.get("queued") or 0), int(status.get("running") or 0)
     failed = int(status.get("failed") or 0)
+    # Saved only part of its changes: neither failed nor wholly in Knowledge.
+    incomplete = int(status.get("incomplete") or 0)
     if running:
         return f"compiling ({running} running, {queued} queued)"
     if queued:
         return f"queued ({queued} {'file' if queued == 1 else 'files'})"
-    return f"ready, {failed} failed" if failed else "ready"
+    parts = ["ready"]
+    if failed:
+        parts.append(f"{failed} failed")
+    if incomplete:
+        parts.append(f"{incomplete} incomplete")
+    return ", ".join(parts)
 
 
 def progress_line(status: dict[str, Any]) -> str:
@@ -70,12 +77,15 @@ def _render_status(project_ref: str) -> Callable[[dict[str, Any]], None]:
     def render(status: dict[str, Any]) -> None:
         console.print(f"Knowledge: [bold]{escape(str(state_phrase(status)))}[/bold]")
         failed = int(status.get("failed") or 0)
-        behind = max(0, int(status.get("eligible") or 0) - failed)
+        incomplete = int(status.get("incomplete") or 0)
+        behind = max(0, int(status.get("eligible") or 0) - failed - incomplete)
         skipped = int(status.get("knowledge_skipped") or 0)
         processed = f"{int(status.get('synced') or 0)} processed"
         if skipped:
             processed += f" ({skipped} with nothing to add)"
         parts = [f"{int(status.get('total') or 0)} files", processed]
+        if incomplete:
+            parts.append(f"{incomplete} only partly in Knowledge")
         if behind:
             parts.append(f"{behind} not sent or out of date")
         console.print("Files: " + ", ".join(parts), highlight=False, markup=False)
@@ -93,6 +103,11 @@ def _render_status(project_ref: str) -> Callable[[dict[str, Any]], None]:
                 f"[dim]Retry them: beakr projects retry -P {escape(str(project_ref))}[/dim]",
                 highlight=False,
             )
+        elif incomplete:
+            console.print(
+                f"[dim]Resume them: beakr projects retry -P {escape(str(project_ref))}[/dim]",
+                highlight=False,
+            )
         elif not status.get("ready"):
             console.print("[dim]Answers from this project may be incomplete until then.[/dim]")
 
@@ -105,7 +120,10 @@ def _status_lines(status: dict[str, Any]) -> list[str]:
         "\t".join(
             [
                 "ready" if status.get("ready") else "building",
-                *(f"{key}={int(status.get(key) or 0)}" for key in ("queued", "running", "failed")),
+                *(
+                    f"{key}={int(status.get(key) or 0)}"
+                    for key in ("queued", "running", "failed", "incomplete")
+                ),
             ]
         )
     ]
@@ -139,14 +157,18 @@ def status_command(
         json_out=json_out,
         render=_render_status(project or project_id),
         lines=_status_lines,
-        hint=(f"beakr projects retry -P {project or project_id}" if status.get("failed") else None),
+        hint=(
+            f"beakr projects retry -P {project or project_id}"
+            if status.get("failed") or status.get("incomplete")
+            else None
+        ),
     )
 
 
 def _render_retry(result: dict[str, Any]) -> None:
     queued = int(result.get("queued") or 0)
     if not result.get("files"):
-        console.print("No failed files to retry.")
+        console.print("No failed or incomplete files to retry.")
         return
     console.print(
         f"Sent {queued} {'file' if queued == 1 else 'files'} to Knowledge again.", markup=False
@@ -175,7 +197,7 @@ def retry_command(
     ),
     json_out: bool = _json_opt,
 ) -> None:
-    """Send the project's failed files to Knowledge again (all of them, or --file ones).
+    """Send the project's failed and incomplete files to Knowledge again (all, or --file ones).
 
     Safe to repeat: files already queued or running are left alone. Exit 1 when a
     named file could not be retried.
