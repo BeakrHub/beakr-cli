@@ -8,6 +8,26 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Model refusals and fallbacks: three new reads, each needing `kb:read` and
+  answering `404 not_found` for a project you cannot read.
+  `GET /v1/projects/{project_id}/model-refusals/summary` counts the project's
+  refusals (a model declined) and fallbacks (another model was tried) over
+  `window` (`24h`, `7d` or `30d`, default `7d`), with how they ended
+  (`recovered`, `failed`, `skipped`), the number of files affected, and counts
+  by stage and by the model that refused, and `fallback_ladder`: the fallback
+  models in force, in order, each with whether it is available.
+  `GET /v1/projects/{project_id}/model-refusals` lists the events, newest
+  first, filtered by `artifact_id`, `outcome` or `stage`; each names the
+  `stage`, `event_type` (`refusal` or `fallback`), `refused_model`,
+  `refusal_kind` (`stop_reason`, `policy_text`, `empty` or `blocked`),
+  `fallback_model`, `outcome`, `outcome_reason` (for example
+  `no_available_fallback`) and an `excerpt`: the provider's refusal
+  category or explanation, or the model's refusal in words, never the model's
+  answer, and often `null`.
+  `GET /v1/projects/{project_id}/model-refusals/files` lists the files with
+  events in the window, most refusals first. Files in `GET /v1/artifacts`
+  and `GET /v1/artifacts/{artifact_id}` carry `model_refusal_count` and
+  `compile_needed_fallback`.
 - `GET /v1/artifacts` takes a new `knowledge_status` filter. `knowledge_status=waiting_for_person` lists only
   the files held out of Knowledge until a person approves them (with
   `POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen no

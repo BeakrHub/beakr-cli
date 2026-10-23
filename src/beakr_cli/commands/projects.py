@@ -8,7 +8,7 @@ from typing import Any
 import typer
 from rich.markup import escape
 
-from beakr_cli.commands import project_knowledge, project_profile
+from beakr_cli.commands import model_refusals, project_knowledge, project_profile
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import CAPTURE_FIELD, LEARNING_FIELD, read_binding, write_binding
 from beakr_cli.project_ref import find_project, project_ref_callback
@@ -286,5 +286,6 @@ def init_command(
 def register(root: typer.Typer) -> None:
     project_knowledge.register(app)
     project_profile.register(app)
+    model_refusals.register(app)
     root.add_typer(app, name="projects")
     root.command("init")(init_command)
