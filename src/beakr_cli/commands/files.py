@@ -35,10 +35,12 @@ _project_opt = typer.Option(
 def upload_command(
     paths: list[Path] = typer.Argument(
         ...,
-        help="Files or folders to upload. A folder's files keep their paths relative to "
-        "it (docs/guides/a.md lands as guides/a.md); its own name is not added. Each file "
-        "records where it sat (docs/guides/a.md, or deals/acme/memo.pdf as typed), which "
-        "Knowledge reads name it by and read_file opens.",
+        help="Files or folders to upload. A folder's own name becomes the top folder, "
+        "with its subdirectories as folders inside it (uploading docs/ puts "
+        "docs/guides/a.md in the folder docs/guides); --no-mirror puts every file at the "
+        "top level instead. Each file records where it sat (docs/guides/a.md, or "
+        "deals/acme/memo.pdf as typed), which Knowledge reads name it by and read_file "
+        "opens.",
     ),
     project: str | None = _project_opt,
     folder: str | None = typer.Option(None, "--folder", "-f", help="Folder id to file into."),

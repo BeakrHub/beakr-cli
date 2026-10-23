@@ -133,4 +133,7 @@ def test_upload_wait_says_knowledge_compiles_afterwards(monkeypatch, tmp_path):
 
 def test_upload_help_says_how_folder_paths_are_kept():
     text = " ".join(runner.invoke(app, ["upload", "--help"], env={"COLUMNS": "200"}).stdout.split())
-    assert "its own name is not added" in text and "--no-mirror" in text
+    # The folder's own name IS added (the SDK's upload_folder defaults
+    # root_folder=True); the help used to say it was not.
+    assert "A folder's own name becomes the top folder" in text and "--no-mirror" in text
+    assert "its own name is not added" not in text
