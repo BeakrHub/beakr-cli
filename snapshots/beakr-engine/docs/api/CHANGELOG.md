@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=48d65cec67345848851eb3b895217d4a4d5a0bbcc961038114ba5c2c89811f67 changelog sha256=bd50d3db7da46b1ae541a03121d342123ecc51c6dccb0bc900df7c0e5b08df5b -->
+<!-- contract-stamp: public-openapi sha256=48d65cec67345848851eb3b895217d4a4d5a0bbcc961038114ba5c2c89811f67 changelog sha256=6ebe5a104e8e5201d95d63a4a8fb24fd964770feb6897756216d13dce9778a5f -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -26,6 +26,12 @@ The first public version.
   is not a project you can read, where it answered an empty listing. On both, a
   project that names nothing you can read answers `404 not_found`, and the
   message names the closest projects you can read.
+- `PUT /v1/knowledge/agent-review` and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` answer `404` with the
+  code `feature_disabled` (it was `not_found`) where agent review is not
+  available on the installation, as `available: false` on
+  `GET /v1/knowledge/agent-review` reports. A caller without the
+  `members:admin` scope is refused `403 insufficient_scope` before this.
 - `GET /v1/projects/{project_id}/knowledge-summary` adds `incomplete`: files
   whose latest attempt saved only part of its changes to Knowledge
   (`knowledge_status: incomplete`). They were counted in neither `failed` nor

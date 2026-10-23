@@ -678,8 +678,11 @@ Where an organization or a project requires a person to accept what API keys
 write, `beakr kb agent-review show [-P <project>]` says what is in force and
 where it comes from; a person (or a key they created with `proposals:accept`)
 changes it with `beakr kb agent-review set --proposals on` (`-P <project>` for
-one project, `--follow-org` to drop a project's own policy). Work that waits
-for a person exits 6; `beakr files approve <file-id>` sends a held upload on.
+one project, `--follow-org` to drop a project's own policy). `set` exits 3
+for a key without the `members:admin` scope, 4 where agent review is not
+available on the installation (`show` says so), and 6 for a key that is not a
+person's. Work that waits for a person exits 6; `beakr files approve <file-id>`
+sends a held upload on.
 
 Write proposals require exactly one project scope. Use `--project <project-id>`
 for shared/team knowledge or `--mine` to resolve and use your personal project.

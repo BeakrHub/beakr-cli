@@ -18,6 +18,12 @@ Each release lists the public API changes it supports, taken from the API change
   is not a project you can read, where it answered an empty listing. On both, a
   project that names nothing you can read answers `404 not_found`, and the
   message names the closest projects you can read.
+- `PUT /v1/knowledge/agent-review` and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` answer `404` with the
+  code `feature_disabled` (it was `not_found`) where agent review is not
+  available on the installation, as `available: false` on
+  `GET /v1/knowledge/agent-review` reports. A caller without the
+  `members:admin` scope is refused `403 insufficient_scope` before this.
 - `GET /v1/projects/{project_id}/knowledge-summary` adds `incomplete`: files
   whose latest attempt saved only part of its changes to Knowledge
   (`knowledge_status: incomplete`). They were counted in neither `failed` nor
