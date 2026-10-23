@@ -10,10 +10,6 @@ Each release lists the public API changes it supports, taken from the API change
 
 - `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
   `GET /v1/threads/{thread_id}` return `origin`: null for a
-  conversation started in the web app or through the API, or `slack`, `email`
-  or `text` for one a person started by messaging Beakr there.
-  conversation started in the web app or through the API, or `slack` or `email`
-  for one a person started by messaging Beakr there.
   conversation started in the web app or through the API, or `slack` for one a
   person started by messaging Beakr in Slack.
 - `POST /v1/runs` on a thread whose run is still working, from
