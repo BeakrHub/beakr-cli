@@ -11,17 +11,13 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=2c08bb46679083329a3fdebb88279d68260d54713d3171b8570169869151e914 changelog sha256=c18c97e09cc7cbd5938713a5ec9014a287ba5b1c3784ee46611a157692b33512 -->
+<!-- contract-stamp: public-openapi sha256=2c08bb46679083329a3fdebb88279d68260d54713d3171b8570169869151e914 changelog sha256=c1436bf276c9794fecfbc7c6af0f0ddf66d6fa5e472dbcdfc0f281a9a835c536 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
 - `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
   `GET /v1/threads/{thread_id}` return `origin`: null for a
-  conversation started in the web app or through the API, or `slack`, `email`
-  or `text` for one a person started by messaging Beakr there.
-  conversation started in the web app or through the API, or `slack` or `email`
-  for one a person started by messaging Beakr there.
   conversation started in the web app or through the API, or `slack` for one a
   person started by messaging Beakr in Slack.
 - `POST /v1/runs` on a thread whose run is still working, from
