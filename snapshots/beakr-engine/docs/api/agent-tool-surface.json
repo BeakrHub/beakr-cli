@@ -82,7 +82,7 @@
       "tier": "eager"
     },
     {
-      "description": "Read a file's text (PDF, Word, sheet, slides, text, or a canvas): the original a Knowledge citation points at. Use when you need the exact wording or a value the excerpt does not hold. Pass `artifact_id`: the file id (`read_file <id>` in a result's Sources, or location.file_id), a version id, a citation's reference (memo.pdf \u203a p. 7), or the file's path from a Sources line (deals/x/Closing/memo.docx). Add ' \u203a <unit>' (memo.pdf \u203a p. 7, book.xlsx \u203a sheet 2, B4:D9, notes.md \u203a lines 10-30) to get the window around that place. Connected items (Slack, email, calendar, Jira) are not stored as files: use their excerpt and url. Long files come back in pieces: pass `offset` to continue.",
+      "description": "Read a file's text (PDF, Word, sheet, slides, text, or a canvas): the original a Knowledge citation points at. Use when you need the exact wording or a value the excerpt does not hold. Pass `artifact_id`: the file id (`read_file <id>` in a result's Sources, or location.file_id), a version id, a citation's reference (memo.pdf \u203a p. 7), or the file's path from a Sources line (deals/x/Closing/memo.docx). Add ' \u203a <unit>' (memo.pdf \u203a p. 7, book.xlsx \u203a sheet 2, B4:D9, notes.md \u203a lines 10-30) to get the window around that place. Pass `project` (a name or id) to open only a file in that project. Connected items (Slack, email, calendar, Jira) are not stored as files: use their excerpt and url. Long files come back in pieces: pass `offset` to continue.",
       "name": "read_file",
       "surfaces": [
         "remote",

@@ -106,6 +106,11 @@ TOOL_OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "conversations_search": (("GET", "/v1/conversations"), ("GET", "/v1/conversations/search")),
     "import_conversation": (("POST", "/v1/conversations/import"),),
     "skills": (("GET", "/v1/skills"),),
+    # The audit route itself is not in the documented contract, so the tool is
+    # judged by the organization administration it belongs to: a self-hosted
+    # box leaves the whole area out (no /v1/organizations route at all), and
+    # 0.1.9 still listed org_audit_log there, while it hid skills.
+    "org_audit_log": (("GET", "/v1/organizations/{org_id}"),),
 }
 
 

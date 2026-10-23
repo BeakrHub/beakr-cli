@@ -1,0 +1,74 @@
+$ beakr projects refusals 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/model-refusals/summary?window=7d
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/model-refusals/files?limit=50&window=7d
+[exit 0]
+--- stdout
+{
+  "summary": {
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "window": "7d",
+    "since": "2026-10-16T00:00:00Z",
+    "until": "2026-10-23T00:00:00Z",
+    "refusals": 3,
+    "fallbacks": 2,
+    "files_affected": 1,
+    "outcomes": {
+      "recovered": 2,
+      "failed": 1,
+      "skipped": 0
+    },
+    "by_stage": {
+      "compile": {
+        "refusals": 3,
+        "fallbacks": 2
+      }
+    },
+    "by_model": {
+      "claude-sonnet-5-5": 3
+    },
+    "fallback_ladder": {
+      "claude-haiku-5-5": true
+    }
+  },
+  "files": [
+    {
+      "artifact_id": "0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411",
+      "title": "HX-01 stability summary.xlsx",
+      "refusals": 3,
+      "fallbacks": 2,
+      "recovered": 2,
+      "failed": 1,
+      "skipped": 0,
+      "last_event_at": "2026-10-22T14:05:00Z"
+    }
+  ]
+}
+--- stderr
+
+
+$ beakr projects refusals 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/model-refusals/summary?window=7d
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/model-refusals/files?limit=50&window=7d
+[exit 0]
+--- stdout
+7d: 3 refusals, 2 fallbacks, 1 files; recovered=2 failed=1 skipped=0
+Files
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━┳━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━━━━┓
+┃ID                                   ┃ File           ┃ Refusals ┃ Fallbacks ┃ Failed ┃ Last      ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━╇━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━━━━┩
+│0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411 │ HX-01          │ 3        │ 2         │ 1      │ 2026-10-22│
+│                                     │ stability      │          │           │        │           │
+│                                     │ summary.xlsx   │          │           │        │           │
+└─────────────────────────────────────┴────────────────┴──────────┴───────────┴────────┴───────────┘
+--- stderr
+
+
+$ beakr projects refusals 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/model-refusals/summary?window=7d
+> GET /v1/projects/4dd25154-0d80-44ab-b4c2-167319bfacb4/model-refusals/files?limit=50&window=7d
+[exit 0]
+--- stdout
+7d: 3 refusals, 2 fallbacks, 1 files; recovered=2 failed=1 skipped=0
+0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411	HX-01 stability summary.xlsx	refusals=3	fallbacks=2	failed=1
+--- stderr
+

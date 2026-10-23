@@ -5,9 +5,13 @@ The policy (``GET``/``PUT /v1/knowledge/agent-review``, through the SDK's
 organization for every field it does not set. ``show`` prints the policy in
 force and where each field comes from. ``set`` changes the organization's
 policy, or with ``-P`` a project's own (``--follow-org`` drops it). Changing it
-needs a signed-in person or a key holding ``proposals:accept``: any other key
-is refused (``SessionRequiredError``), which exits 6 as the other work only a
-person may do does.
+needs a signed-in person or a key holding ``proposals:accept``. The engine
+checks in this order: a key without the ``members:admin`` scope is refused
+first (403 ``insufficient_scope``, exit 3, as every missing scope is); where
+agent review is not available on the installation (``available: false``) a
+change is refused with 404 ``feature_disabled`` (exit 4); and a key that is
+not a person's is refused (``SessionRequiredError``), which exits 6 as the
+other work only a person may do does.
 """
 
 from __future__ import annotations
@@ -16,9 +20,10 @@ from typing import Any
 
 import typer
 from beakr_sdk import SessionRequiredError
+from beakr_sdk.errors import NotFoundError
 
 from beakr_cli.commands.kb import app as kb_app
-from beakr_cli.errors import EXIT_PERSON_REVIEW, error_object
+from beakr_cli.errors import EXIT_NOT_FOUND, EXIT_PERSON_REVIEW, error_object
 from beakr_cli.output import emit, err_console, output_mode, print_json, print_table
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.sdk import get_sdk
@@ -54,6 +59,14 @@ _REFUSED_HINT = (
     "Changing agent review needs a signed-in person or an API key a person created with the "
     "proposals:accept scope (BEAKR_API_KEY); this credential is neither. Change it in the "
     "Beakr web app, or ask a person to."
+)
+
+#: What ``show`` and a refused ``set`` say where the installation does not offer
+#: agent review (``available: false``; the writes answer 404 ``feature_disabled``).
+_NOT_AVAILABLE = "Agent review is not available on this installation."
+_NOT_AVAILABLE_HINT = (
+    "An administrator of this Beakr installation must enable agent review before it can "
+    "be changed; nothing was changed."
 )
 
 _project_opt = typer.Option(
@@ -98,8 +111,7 @@ def _on(value: Any) -> str:
 
 def _show(settings: dict[str, Any], *, json_out: bool) -> None:
     def render(s: dict[str, Any]) -> None:
-        if s.get("available") is False:
-            err_console.print("Agent review cannot be changed in this organization.")
+        _unavailable_note(s)
         where = f"project {s['project_id']}" if s.get("project_id") else "the organization"
         print_table(
             ["Field", "In force", "From", "Org", "Project"],
@@ -117,6 +129,8 @@ def _show(settings: dict[str, Any], *, json_out: bool) -> None:
         )
 
     def lines(s: dict[str, Any]) -> list[str]:
+        # Piped output said nothing of it before; only --json carried available.
+        _unavailable_note(s)
         return [
             f"{row['field']}\teffective={_on(row['effective'])}\tfrom={row['from']}"
             f"\torg={_on(row['org'])}\tproject={_on(row['project'])}"
@@ -124,6 +138,12 @@ def _show(settings: dict[str, Any], *, json_out: bool) -> None:
         ]
 
     emit(settings, json_out=json_out, render=render, lines=lines)
+
+
+def _unavailable_note(settings: dict[str, Any]) -> None:
+    """On stderr, where the installation does not offer agent review."""
+    if settings.get("available") is False:
+        err_console.print(_NOT_AVAILABLE, markup=False, highlight=False)
 
 
 @app.command("show")
@@ -149,7 +169,9 @@ def set_policy(
 
     Only the fields given change; `unset` drops one (a project's then follows
     the organization). Needs a signed-in person or a key holding
-    proposals:accept (exit 6 otherwise).
+    proposals:accept. A key without the members:admin scope exits 3; where
+    agent review is not available on this installation, 4; a key that is not
+    a person's, 6.
     """
     given = {
         field: value
@@ -179,7 +201,28 @@ def set_policy(
                 settings = review.set(**changes)
     except SessionRequiredError as refused:
         _refused(refused, json_out=json_out)
+    except NotFoundError as missing:
+        # The organization's route 404s only where agent review is unavailable
+        # (an engine before 0.1.10 says so with the bare not_found code); a
+        # project's route may also 404 for the project, so it needs the code.
+        if missing.code == "feature_disabled" or not project:
+            _not_available(missing, json_out=json_out)
+        raise
     _show(settings, json_out=json_out)
+
+
+def _not_available(exc: NotFoundError, *, json_out: bool) -> None:
+    """Agent review is off on this installation: say so, not "check the id or name"."""
+    if output_mode(json_out) == "json":
+        body = error_object(exc, EXIT_NOT_FOUND, ("kb", "agent-review", "set"))
+        body["error"]["code"] = "feature_disabled"
+        body["error"]["message"] = _NOT_AVAILABLE
+        body["error"]["fix"] = _NOT_AVAILABLE_HINT
+        print_json(body)
+    err_console.print(
+        f"Error: {_NOT_AVAILABLE}\n{_NOT_AVAILABLE_HINT}", markup=False, highlight=False
+    )
+    raise typer.Exit(EXIT_NOT_FOUND) from exc
 
 
 def _refused(exc: SessionRequiredError, *, json_out: bool) -> None:

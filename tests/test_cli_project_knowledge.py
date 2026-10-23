@@ -34,7 +34,7 @@ def authenticated(monkeypatch):
     monkeypatch.setattr("beakr_sdk.client.time.sleep", lambda _seconds: None)
 
 
-def _status(*, queued=0, running=0, failed=()):
+def _status(*, queued=0, running=0, failed=(), incomplete=0):
     return httpx.Response(
         200,
         json={
@@ -47,6 +47,7 @@ def _status(*, queued=0, running=0, failed=()):
             "queued": queued,
             "running": running,
             "failed": len(failed),
+            "incomplete": incomplete,
             "ready": queued + running == 0,
             "failed_files": [
                 {
@@ -65,11 +66,19 @@ def _status(*, queued=0, running=0, failed=()):
     )
 
 
-def _upload(tmp_path, *extra):
+def _file(artifact_id: str, knowledge_status: str = "created") -> None:
+    """``GET /v1/artifacts/{id}``: the file's own Knowledge status, as `files ls` reads it."""
+    respx.get(f"{API}/v1/artifacts/{artifact_id}").respond(
+        json={"id": artifact_id, "title": artifact_id, "knowledge_status": knowledge_status}
+    )
+
+
+def _upload(tmp_path, *extra, knowledge_status="created"):
     mock_resumable_uploads(API)
     respx.get(url__regex=rf"{API}/v1/jobs/.+").respond(
         json={"job_id": "j", "kind": "artifact_index", "status": "succeeded"}
     )
+    _file("art-notes.md", knowledge_status)
     path = tmp_path / "notes.md"
     path.write_text("hello")
     return runner.invoke(app, ["upload", str(path), "-P", PROJECT, "--wait-knowledge", *extra])
@@ -86,11 +95,27 @@ def test_wait_knowledge_prints_progress_and_succeeds_when_ready(tmp_path):
     progress = [line for line in result.stderr.splitlines() if line.startswith("Knowledge:")]
     # One line per change, not per poll.
     assert progress == [
-        "Knowledge: 1 queued, 0 running, 0 failed",
-        "Knowledge: 0 queued, 1 running, 0 failed",
-        "Knowledge: 0 queued, 0 running, 0 failed",
+        "Knowledge: 1 queued, 0 running",
+        "Knowledge: 0 queued, 1 running",
+        "Knowledge: 0 queued, 0 running",
     ]
-    assert "knowledge=ready" in result.stdout
+    # The file's own knowledge_status, the word `beakr files ls` prints for it:
+    # the wait said "ready" while ls said "created" for the same file.
+    assert "knowledge=created" in result.stdout
+
+
+@respx.mock
+def test_wait_knowledge_reports_an_incomplete_file_and_exits_1(tmp_path):
+    # Root cause (0.1.8 box, a VCF): its compile saved only part of its changes,
+    # so `files ls` read incomplete, while the project read ready with 0 failed
+    # and the upload said the file was ready. The upload now reports each file's
+    # own status and names the retry that resumes it.
+    respx.get(STATUS).mock(return_value=_status(incomplete=1))
+    result = _upload(tmp_path, "--json", knowledge_status="incomplete")
+    assert result.exit_code == 1, result.output
+    [row] = json.loads(result.stdout)
+    assert row["knowledge"] == {"status": "incomplete"}
+    assert "Incomplete: " in result.stderr and "(art-notes.md)" in result.stderr
 
 
 #: What GET /v1/jobs answers for an upload whose bytes were already in the project:
@@ -121,17 +146,19 @@ def test_a_duplicate_upload_is_already_uploaded_and_waits_for_the_kept_file(tmp_
     # Indexing rejected the re-upload and kept the existing file; the upload did
     # what was asked, so it succeeds once the kept file's Knowledge is ready.
     reads = respx.get(STATUS).mock(side_effect=[_status(running=1), _status()])
+    _file(KEPT)
     result = _upload_duplicate(tmp_path, "--wait-knowledge")
     assert result.exit_code == 0, result.output
     assert reads.call_count == 2
     assert "Already uploaded: " in result.stderr and f"({KEPT})" in result.stderr
     assert f"duplicate_of={KEPT}" in result.stdout
-    assert "knowledge=ready" in result.stdout
+    assert "knowledge=created" in result.stdout
 
 
 @respx.mock
 def test_a_duplicate_upload_reports_the_kept_files_knowledge_failure(tmp_path):
     respx.get(STATUS).mock(return_value=_status(failed=(KEPT,)))
+    _file(KEPT, "failed")
     result = _upload_duplicate(tmp_path, "--wait-knowledge", "--json")
     assert result.exit_code == 1
     [row] = json.loads(result.stdout)
@@ -164,7 +191,7 @@ def test_a_real_job_failure_still_exits_1(tmp_path):
 def test_wait_knowledge_exits_1_naming_the_uploaded_file_that_failed(tmp_path):
     # Another file of the project failed too; only the uploaded one is reported.
     respx.get(STATUS).mock(return_value=_status(failed=("art-notes.md", "other-file")))
-    result = _upload(tmp_path, "--json")
+    result = _upload(tmp_path, "--json", knowledge_status="failed")
     assert result.exit_code == 1
     [row] = json.loads(result.stdout)
     assert row["knowledge"]["status"] == "failed"
@@ -203,6 +230,21 @@ def test_status_lists_failures_and_names_the_retry():
 
 
 @respx.mock
+def test_status_names_incomplete_files_and_the_retry_that_resumes_them():
+    # An incomplete file is neither failed nor wholly in Knowledge; "ready" alone
+    # (with 0 failed) hid it.
+    respx.get(STATUS).mock(return_value=_status(incomplete=1))
+    lines = runner.invoke(app, ["projects", "status", "-P", PROJECT]).stdout.splitlines()
+    assert lines == [
+        "ready\tqueued=0\trunning=0\tincomplete=1",
+        f"next: beakr projects retry -P {PROJECT}",
+    ]
+    from beakr_cli.commands.project_knowledge import state_phrase
+
+    assert state_phrase({"incomplete": 1, "failed": 2}) == "ready, 2 failed, 1 incomplete"
+
+
+@respx.mock
 def test_retry_sends_the_named_files_and_exits_1_for_one_it_could_not_retry():
     route = respx.post(f"{API}/v1/projects/{PROJECT}/knowledge/retry-failed").respond(
         json={
@@ -224,3 +266,16 @@ def test_retry_sends_the_named_files_and_exits_1_for_one_it_could_not_retry():
     assert json.loads(route.calls[0].request.content) == {"artifact_ids": ["a1", "zz"]}
     assert result.exit_code == 1
     assert "zz\tnot_found" in result.stdout
+
+
+def test_status_lines_name_failures_only_when_there_are_some() -> None:
+    # A box-release script grepped "failed" in `projects status` and read
+    # "failed=0" on a building project as a failure (0.1.10 item 9, retracted).
+    from beakr_cli.commands.project_knowledge import _status_lines, progress_line
+
+    building = {"ready": False, "queued": 2, "running": 1, "failed": 0, "incomplete": 0}
+    assert "failed" not in _status_lines(building)[0]
+    assert "failed" not in progress_line(building)
+    failing = {**building, "failed": 2}
+    assert "failed=2" in _status_lines(failing)[0]
+    assert progress_line(failing).endswith("2 failed")

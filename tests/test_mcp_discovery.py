@@ -169,7 +169,24 @@ async def test_tools_the_installation_does_not_serve_are_not_listed() -> None:
     assert "conversations_search" not in listed and "import_conversation" not in listed
     # Skills are documented (GET /v1/skills), and a box's document leaves them out.
     assert "skills" not in listed
+    # The audit log belongs to organization administration, which a box's
+    # document leaves out whole (0.1.9 listed org_audit_log there anyway).
+    assert "org_audit_log" not in listed
     assert {"research", "knowledge_base", "documents"} <= listed
+
+
+@pytest.mark.real_capabilities
+async def test_a_hosted_document_with_organization_administration_lists_the_audit_log() -> None:
+    hosted = {
+        "paths": {
+            "/v1/projects": {"get": {}},
+            "/v1/organizations/{org_id}": {"get": {}, "patch": {}},
+        }
+    }
+    with respx.mock:
+        respx.get(f"{API}/v1/public/openapi.json").respond(json=hosted)
+        listed = {tool.name for tool in await mcp_server.mcp.list_tools()}
+    assert "org_audit_log" in listed
 
 
 @pytest.mark.real_capabilities

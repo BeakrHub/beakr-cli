@@ -173,3 +173,49 @@ def test_the_published_cli_has_the_agent_review_and_files_approve_commands() -> 
     ):
         result = CliRunner().invoke(published_app, argv)
         assert result.exit_code == 0, (argv, result.output)
+
+
+@respx.mock
+@pytest.mark.parametrize("mode", ["human", "compact"])
+def test_show_says_when_agent_review_is_not_available(monkeypatch, mode: str) -> None:
+    # 0.1.9 qualification: only --json carried available:false; plain show was silent.
+    monkeypatch.setenv("BEAKR_OUTPUT", mode)
+    respx.get(f"{API}/v1/knowledge/agent-review").respond(json={**_settings(), "available": False})
+
+    result = CliRunner().invoke(app, ["kb", "agent-review", "show"])
+
+    assert result.exit_code == 0, result.output
+    assert "Agent review is not available on this installation." in result.stderr
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("argv", "code"),
+    [
+        (["kb", "agent-review", "set", "--proposals", "on"], "feature_disabled"),
+        # An engine before 0.1.10 answered the organization's write a bare not_found.
+        (["kb", "agent-review", "set", "--proposals", "on"], "not_found"),
+        (["kb", "agent-review", "set", "-P", PROJECT, "--uploads", "on"], "feature_disabled"),
+    ],
+)
+def test_a_change_where_it_is_not_available_says_an_administrator_must_enable_it(
+    argv: list[str], code: str
+) -> None:
+    # The generic not_found hint ("check the id or name: list the collection
+    # first") sent a reviewer looking for a project that exists.
+    respx.put(url__regex=rf"{API}/v1/knowledge/agent-review.*").respond(
+        404,
+        json={"error": {"code": code, "message": "Not available.", "fix": "Check the id or name."}},
+    )
+
+    result = CliRunner().invoke(app, argv)
+
+    assert result.exit_code == 4, result.output
+    text = " ".join(result.stderr.split())
+    assert "Agent review is not available on this installation." in text
+    assert "administrator" in text
+    assert "Check the id or name" not in text
+
+    as_json = CliRunner().invoke(app, [*argv, "--json"])
+    error = json.loads(as_json.stdout)["error"]
+    assert (error["code"], error["exit_code"]) == ("feature_disabled", 4)
