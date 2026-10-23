@@ -94,7 +94,7 @@ asyncio_mode = "auto"
 # Pinned to a pushed commit of BeakrHub/beakr-python until beakr-sdk is on PyPI.
 # Bump with scripts/pin_sdk.sh <commit-or-tag> (see the README's "The Python SDK
 # dependency").
-beakr-sdk = { git = "https://github.com/BeakrHub/beakr-python", rev = "9148d7b8191c145fec35b32421df8f6b0b9fcb97" }
+beakr-sdk = { git = "https://github.com/BeakrHub/beakr-python", rev = "ff154fd0c41ed8be8ab7c9ddf9ca237a895d4e5e" }
 
 [dependency-groups]
 dev = [
