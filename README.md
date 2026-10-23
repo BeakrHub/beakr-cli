@@ -311,6 +311,7 @@ beakr projects status -P Research                   # ready / queued / compiling
 #   Failed (1):
 #     docs/scan.pdf  processing_failed  The file could not be read, ...  (FILE_ID)
 beakr projects retry -P Research                    # every failed file, or --file FILE_ID
+beakr projects refusals Research --window 7d        # model refusals and fallbacks, by file
 ```
 
 `--wait-knowledge` waits until nothing in the project is queued or running
