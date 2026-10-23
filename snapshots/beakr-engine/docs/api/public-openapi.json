@@ -769,6 +769,12 @@
             "description": "Checksum of the content.",
             "title": "Checksum"
           },
+          "compile_needed_fallback": {
+            "default": false,
+            "description": "Whether a request about this file needed a different model to answer.",
+            "title": "Compile Needed Fallback",
+            "type": "boolean"
+          },
           "created_at": {
             "description": "When it was created (ISO 8601, UTC).",
             "examples": [
@@ -1025,7 +1031,7 @@
                 "type": "null"
               }
             ],
-            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.",
+            "description": "Where the file's current version is in the project's Knowledge: `queued` or `running` (being added); `created` (added: Knowledge was built from it, the finished state); `incomplete` (only part of its changes were saved; a retry resumes it); `failed`; `stale` (an older version is in Knowledge, or the file changed since); `skipped` (read, with nothing to add); `waiting_for_person` (held until a person approves it). Null when it was never sent to Knowledge.",
             "title": "Knowledge Status"
           },
           "knowledge_version_id": {
@@ -1070,6 +1076,12 @@
             ],
             "description": "MIME type of the content.",
             "title": "Mime Type"
+          },
+          "model_refusal_count": {
+            "default": 0,
+            "description": "How many times a model declined a request about this file.",
+            "title": "Model Refusal Count",
+            "type": "integer"
           },
           "org_id": {
             "description": "Id of the organization it belongs to.",
@@ -1382,6 +1394,12 @@
             "description": "Optional integrity hash for the artifact.",
             "title": "Checksum"
           },
+          "compile_needed_fallback": {
+            "default": false,
+            "description": "Whether a request about this file needed a different model to answer.",
+            "title": "Compile Needed Fallback",
+            "type": "boolean"
+          },
           "created_at": {
             "description": "Timestamp of the last create propagated from the resource row.",
             "examples": [
@@ -1616,7 +1634,7 @@
                 "type": "null"
               }
             ],
-            "description": "Knowledge status: one of `queued`, `running`, `created`, `failed`, `stale`, `incomplete`, `skipped`, `waiting_for_person`.",
+            "description": "Where the file's current version is in the project's Knowledge: `queued` or `running` (being added); `created` (added: Knowledge was built from it, the finished state); `incomplete` (only part of its changes were saved; a retry resumes it); `failed`; `stale` (an older version is in Knowledge, or the file changed since); `skipped` (read, with nothing to add); `waiting_for_person` (held until a person approves it). Null when it was never sent to Knowledge.",
             "title": "Knowledge Status"
           },
           "knowledge_version_id": {
@@ -1661,6 +1679,12 @@
             ],
             "description": "Optional MIME type of the artifact payload.",
             "title": "Mime Type"
+          },
+          "model_refusal_count": {
+            "default": 0,
+            "description": "How many times a model declined a request about this file.",
+            "title": "Model Refusal Count",
+            "type": "integer"
           },
           "org_id": {
             "description": "Owning organization identifier.",
@@ -4976,6 +5000,19 @@
             "title": "Offset",
             "type": "integer"
           },
+          "project": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only open a file in this project: its id or name, as GET /v1/projects lists it. A path or name then resolves among that project's files alone, and a reference to a file elsewhere answers 404. A project you cannot read answers 404 not_found, naming the closest projects you can. Omit to read across every project you can see.",
+            "title": "Project"
+          },
           "reference": {
             "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
             "maxLength": 2048,
@@ -6922,7 +6959,7 @@
             "type": "string"
           },
           "outcome": {
-            "description": "`queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt did not fail; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it failed but cannot be retried now; see `reason`).",
+            "description": "`queued` (sent to Knowledge again), `already_queued` (already queued or running; nothing was done), `not_failed` (its latest attempt neither failed nor saved only part of its changes; nothing was done), `not_found` (no file with this id in the project that you can read) or `skipped` (it cannot be retried now; see `reason`).",
             "enum": [
               "queued",
               "already_queued",
@@ -6954,7 +6991,7 @@
         "type": "object"
       },
       "KnowledgeRetryRequest": {
-        "description": "Which failed files to send to Knowledge again.",
+        "description": "Which failed or incomplete files to send to Knowledge again.",
         "properties": {
           "artifact_ids": {
             "anyOf": [
@@ -6970,7 +7007,7 @@
                 "type": "null"
               }
             ],
-            "description": "Files to retry, up to 500. Omit to retry every failed file in the project (up to 500 per call; `has_more` says when more remain).",
+            "description": "Files to retry, up to 500. Omit to retry every failed or incomplete file in the project (up to 500 per call; `has_more` says when more remain).",
             "title": "Artifact Ids"
           }
         },
@@ -7005,7 +7042,7 @@
           },
           "not_failed": {
             "default": 0,
-            "description": "Named files whose latest attempt did not fail.",
+            "description": "Named files whose latest attempt neither failed nor was incomplete.",
             "title": "Not Failed",
             "type": "integer"
           },
@@ -7023,7 +7060,7 @@
           },
           "skipped": {
             "default": 0,
-            "description": "Failed files that could not be retried now.",
+            "description": "Failed or incomplete files that could not be retried now.",
             "title": "Skipped",
             "type": "integer"
           }
@@ -9144,6 +9181,452 @@
         "title": "MinedSkillProposalOutPage",
         "type": "object"
       },
+      "ModelRefusalEventOut": {
+        "description": "One model refusal or fallback.",
+        "properties": {
+          "artifact_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The file, when known.",
+            "examples": [
+              "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+            ],
+            "title": "Artifact Id"
+          },
+          "event_type": {
+            "description": "Event type: one of `refusal`, `fallback`.",
+            "enum": [
+              "refusal",
+              "fallback"
+            ],
+            "title": "Event Type",
+            "type": "string"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it was refused, in at most 240 characters with credentials cut: the provider's refusal category or explanation, or the model's refusal in words. Never the model's answer. Often null.",
+            "title": "Excerpt"
+          },
+          "fallback_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The model that answered instead, or the last one tried.",
+            "title": "Fallback Model"
+          },
+          "id": {
+            "description": "Unique id of this model refusal event.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "ingestion_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the ingestion event.",
+            "title": "Ingestion Event Id"
+          },
+          "occurred_at": {
+            "description": "When it was occurred (ISO 8601, UTC).",
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "outcome": {
+            "description": "How it turned out. One of `recovered`, `failed`, `skipped`.",
+            "enum": [
+              "recovered",
+              "failed",
+              "skipped"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "outcome_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it ended that way, such as `no_available_fallback` (the fallback model is not available on this deployment) or `all_tiers_refused`.",
+            "title": "Outcome Reason"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the project it belongs to, or the project to act in.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "title": "Project Id"
+          },
+          "refusal_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "stop_reason",
+                  "policy_text",
+                  "empty",
+                  "blocked"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Refusal kind: one of `stop_reason`, `policy_text`, `empty`, `blocked`.",
+            "title": "Refusal Kind"
+          },
+          "refused_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The model that declined, or that was unavailable.",
+            "title": "Refused Model"
+          },
+          "stage": {
+            "description": "Where the model call happened: `compile`, `evidence_scan`, `evidence_extract`, `chat`, or the name of another step such as `classification`.",
+            "title": "Stage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "stage",
+          "event_type",
+          "outcome"
+        ],
+        "title": "ModelRefusalEventOut",
+        "type": "object"
+      },
+      "ModelRefusalEventOutPage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/ModelRefusalEventOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ModelRefusalEventOutPage",
+        "type": "object"
+      },
+      "ModelRefusalFileCounts": {
+        "description": "One file's refusals and fallbacks over a time window.",
+        "properties": {
+          "artifact_id": {
+            "description": "Id of the artifact.",
+            "examples": [
+              "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+            ],
+            "format": "uuid",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "failed": {
+            "default": 0,
+            "description": "Events where no model answered (every model tried refused or failed).",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "fallbacks": {
+            "default": 0,
+            "description": "Events where another model was tried.",
+            "title": "Fallbacks",
+            "type": "integer"
+          },
+          "last_event_at": {
+            "description": "Time of the last event (ISO 8601, UTC).",
+            "format": "date-time",
+            "title": "Last Event At",
+            "type": "string"
+          },
+          "recovered": {
+            "default": 0,
+            "description": "Events where another model answered instead.",
+            "title": "Recovered",
+            "type": "integer"
+          },
+          "refusals": {
+            "default": 0,
+            "description": "Events where a model declined the request.",
+            "title": "Refusals",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "description": "Events where no other model was tried.",
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Title of the model refusal file counts.",
+            "title": "Title"
+          }
+        },
+        "required": [
+          "artifact_id",
+          "last_event_at"
+        ],
+        "title": "ModelRefusalFileCounts",
+        "type": "object"
+      },
+      "ModelRefusalFileCountsPage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/ModelRefusalFileCounts"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ModelRefusalFileCountsPage",
+        "type": "object"
+      },
+      "ModelRefusalOutcomes": {
+        "description": "How many events ended each way.",
+        "properties": {
+          "failed": {
+            "default": 0,
+            "description": "Events where no model answered (every model tried refused or failed).",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "recovered": {
+            "default": 0,
+            "description": "Events where another model answered instead.",
+            "title": "Recovered",
+            "type": "integer"
+          },
+          "skipped": {
+            "default": 0,
+            "description": "Events where no other model was tried.",
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "title": "ModelRefusalOutcomes",
+        "type": "object"
+      },
+      "ModelRefusalStageCounts": {
+        "description": "Refusals and fallbacks at one stage.",
+        "properties": {
+          "fallbacks": {
+            "default": 0,
+            "description": "Events where another model was tried.",
+            "title": "Fallbacks",
+            "type": "integer"
+          },
+          "refusals": {
+            "default": 0,
+            "description": "Events where a model declined the request.",
+            "title": "Refusals",
+            "type": "integer"
+          }
+        },
+        "title": "ModelRefusalStageCounts",
+        "type": "object"
+      },
+      "ModelRefusalSummary": {
+        "description": "A project's model refusals and fallbacks over a time window.",
+        "properties": {
+          "by_model": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Refusals keyed by the model that refused.",
+            "title": "By Model",
+            "type": "object"
+          },
+          "by_stage": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelRefusalStageCounts"
+            },
+            "description": "Counts keyed by where the model call happened, such as `compile`.",
+            "title": "By Stage",
+            "type": "object"
+          },
+          "fallback_ladder": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "The fallback models in force, in the order they are tried, each with whether it is available here. Empty when no fallback is configured.",
+            "title": "Fallback Ladder",
+            "type": "object"
+          },
+          "fallbacks": {
+            "description": "Events where another model was tried.",
+            "title": "Fallbacks",
+            "type": "integer"
+          },
+          "files_affected": {
+            "description": "Distinct files with at least one event.",
+            "title": "Files Affected",
+            "type": "integer"
+          },
+          "outcomes": {
+            "$ref": "#/components/schemas/ModelRefusalOutcomes",
+            "description": "How the events ended."
+          },
+          "project_id": {
+            "description": "Id of the project it belongs to, or the project to act in.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "refusals": {
+            "description": "Events where a model declined the request.",
+            "title": "Refusals",
+            "type": "integer"
+          },
+          "since": {
+            "description": "Start of the counted window.",
+            "format": "date-time",
+            "title": "Since",
+            "type": "string"
+          },
+          "until": {
+            "description": "End of the counted window (the time of the request).",
+            "format": "date-time",
+            "title": "Until",
+            "type": "string"
+          },
+          "window": {
+            "description": "Window: one of `24h`, `7d`, `30d`.",
+            "enum": [
+              "24h",
+              "7d",
+              "30d"
+            ],
+            "title": "Window",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id",
+          "window",
+          "since",
+          "until",
+          "refusals",
+          "fallbacks",
+          "outcomes",
+          "files_affected"
+        ],
+        "title": "ModelRefusalSummary",
+        "type": "object"
+      },
       "ObjectPage": {
         "properties": {
           "data": {
@@ -10346,7 +10829,7 @@
         "type": "object"
       },
       "ProjectKnowledgeStatusResponse": {
-        "description": "A project's Knowledge status: coverage counts, readiness and the files that failed.\n\nCounts cover the files the caller can read. ``queued``, ``running`` and\n``failed`` break the coverage counts down further: ``queued + running`` is\n``syncing``, and ``failed`` is part of ``eligible``.",
+        "description": "A project's Knowledge status: coverage counts, readiness and the files that failed.\n\nCounts cover the files the caller can read. ``queued``, ``running``,\n``failed`` and ``incomplete`` break the coverage counts down further:\n``queued + running`` is ``syncing``, and ``failed`` and ``incomplete`` are\nparts of ``eligible``.",
         "properties": {
           "eligible": {
             "default": 0,
@@ -10380,6 +10863,12 @@
             "description": "Pass as `cursor` to `GET /v1/projects/{project_id}/knowledge/failed-files` for the failed files after these; null when `failed_files` holds them all.",
             "title": "Failed Files Next Cursor"
           },
+          "incomplete": {
+            "default": 0,
+            "description": "Files whose latest attempt saved only part of its changes to Knowledge (their `knowledge_status` is `incomplete`; a subset of `eligible`, never counted in `failed`). A retry resumes them.",
+            "title": "Incomplete",
+            "type": "integer"
+          },
           "knowledge_skipped": {
             "default": 0,
             "description": "Files that finished processing without producing Knowledge (a subset of `synced`).",
@@ -10407,7 +10896,7 @@
           },
           "ready": {
             "default": true,
-            "description": "True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed files do not make it false; check `failed`.",
+            "description": "True when nothing is queued or running, so answers from this project's Knowledge reflect every file that will be added. Failed and incomplete files do not make it false; check `failed` and `incomplete`.",
             "title": "Ready",
             "type": "boolean"
           },
@@ -18150,6 +18639,25 @@
               ],
               "description": "Case-insensitive search across title, description, and artifact type",
               "title": "Search"
+            }
+          },
+          {
+            "description": "Only files whose `knowledge_status` is this. `waiting_for_person`: files held out of Knowledge until a person approves them (`POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen needs no scan of every file.",
+            "in": "query",
+            "name": "knowledge_status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": "waiting_for_person",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only files whose `knowledge_status` is this. `waiting_for_person`: files held out of Knowledge until a person approves them (`POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen needs no scan of every file.",
+              "title": "Knowledge Status"
             }
           },
           {
@@ -29045,7 +29553,7 @@
     },
     "/v1/projects/{project_id}/knowledge/retry-failed": {
       "post": {
-        "description": "Send the project's failed files to Knowledge again: all of them, or the ones named.\n\nSafe to repeat. A file already queued or running is left alone, and one\nwhose latest attempt did not fail is never re-sent, so calling this again\nbefore the retried files finish queues nothing new. Needs permission to add\nfiles to the project; a project you cannot read is a 404.",
+        "description": "Send the project's failed and incomplete files to Knowledge again: all of them, or the ones named.\n\nAn incomplete file (its latest attempt saved only part of its changes) is\nresumed from what was saved. Safe to repeat. A file already queued or\nrunning is left alone, and one whose latest attempt neither failed nor was\nincomplete is never re-sent, so calling this again\nbefore the retried files finish queues nothing new. Needs permission to add\nfiles to the project; a project you cannot read is a 404.",
         "operationId": "retry_failed_knowledge_route_v1_projects__project_id__knowledge_retry_failed_post",
         "parameters": [
           {
@@ -29406,6 +29914,390 @@
         ],
         "x-beakr-destructive": true,
         "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/model-refusals": {
+      "get": {
+        "description": "The project's model refusals and fallbacks, newest first.\n\nEach event names the stage, the model that refused, the model that answered\ninstead and how it ended. A project you cannot read is a 404.",
+        "operationId": "list_model_refusals_route_v1_projects__project_id__model_refusals_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this file's events.",
+            "in": "query",
+            "name": "artifact_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this file's events.",
+              "examples": [
+                "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+              ],
+              "title": "Artifact Id"
+            }
+          },
+          {
+            "description": "Only events that ended this way.",
+            "in": "query",
+            "name": "outcome",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "recovered",
+                    "failed",
+                    "skipped"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only events that ended this way.",
+              "title": "Outcome"
+            }
+          },
+          {
+            "description": "Only events at this stage.",
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 120,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only events at this stage.",
+              "title": "Stage"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRefusalEventOutPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List a project's model refusals",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/projects/{project_id}/model-refusals/files": {
+      "get": {
+        "description": "The project's files with model refusals or fallbacks in a window, most refusals first.\n\nA project you cannot read is a 404.",
+        "operationId": "list_model_refusal_files_route_v1_projects__project_id__model_refusals_files_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "How far back to count: `24h`, `7d` or `30d`.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "7d",
+              "description": "How far back to count: `24h`, `7d` or `30d`.",
+              "enum": [
+                "24h",
+                "7d",
+                "30d"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRefusalFileCountsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List files with model refusals",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/projects/{project_id}/model-refusals/summary": {
+      "get": {
+        "description": "Counts of the project's model refusals and fallbacks over a window.\n\n`refusals` counts events where a model declined; `fallbacks` counts events\nwhere another model was tried; `outcomes` says how they ended;\n`fallback_ladder` lists the fallback models in force, in order, and whether\neach is available here. A project you cannot read is a 404.",
+        "operationId": "get_model_refusal_summary_route_v1_projects__project_id__model_refusals_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "How far back to count: `24h`, `7d` or `30d`.",
+            "in": "query",
+            "name": "window",
+            "required": false,
+            "schema": {
+              "default": "7d",
+              "description": "How far back to count: `24h`, `7d` or `30d`.",
+              "enum": [
+                "24h",
+                "7d",
+                "30d"
+              ],
+              "title": "Window",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelRefusalSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a project's model refusal counts",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:read"
       }
     },
     "/v1/projects/{project_id}/pending-invitations": {

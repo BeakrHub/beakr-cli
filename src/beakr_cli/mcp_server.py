@@ -8,7 +8,7 @@ import re
 import time
 from collections.abc import Collection
 from pathlib import PurePosixPath
-from typing import Any
+from typing import Any, Literal
 
 from beakr_sdk.sources import public_source as _shared_public_source
 from mcp.types import ToolAnnotations
@@ -443,47 +443,74 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
 
 @mcp.tool(**tool_surface.tool_kwargs("get_profile"))
 async def get_profile(
-    profile_type: str = "org",
+    profile_type: Literal["org", "project"] | None = None,
     project_id: str = "",
-) -> str:
+) -> str | dict[str, Any]:
     """Get the knowledge profile for an org or project.
 
     Profiles contain goals, focus areas, core people/organizations/topics,
     and extraction guidance that shape how knowledge is organized.
 
     Args:
-        profile_type: One of 'org' or 'project'.
-        project_id: Project ID (required if profile_type is 'project').
+        profile_type: 'org' or 'project'. Omitted, a project's when project_id is
+            given, else the org's.
+        project_id: The project's id or name (list_projects), for its profile.
     """
+    project_ref = (project_id or "").strip()
+    profile_type = profile_type or ("project" if project_ref else "org")
+    if profile_type == "project" and not project_ref:
+        # Said once, in the tool's own terms. It used to read "profile_type='project'
+        # requires profile_type='org' or project_id" (Y13), and a project NAME went
+        # to the route as its id and came back as a UUID parser's dump.
+        return {
+            "status": "error",
+            "error_code": "invalid_arguments",
+            "message": "A project profile needs the project: pass project_id.",
+            "fix": "Pass project_id (a project id or name from list_projects), or "
+            "profile_type='org' for the organization's profile.",
+        }
     if profile_type == "org":
         data = await _call_api(lambda sdk: sdk.profile.org())
-    elif profile_type == "project" and project_id:
-        data = await _call_api(lambda sdk: sdk.profile.project(project_id))
     else:
-        return f"Invalid: profile_type='{profile_type}' requires profile_type='org' or project_id."
+        resolved = await _project_by_name_or_id(project_ref)
+        data = await _call_api(lambda sdk: sdk.profile.project(resolved))
 
+    return _profile_text(data, profile_type)
+
+
+def _profile_text(data: Any, profile_type: str) -> str:
+    """A profile as text, as the hosted get_profile prints it (``formatting.profile``).
+
+    Each list is one item per line: a goal is a sentence with commas of its own,
+    so goals joined with ", " read as one run-on list (Y13).
+    """
     if not data:
         return f"No {profile_type} profile found."
-
     lines = [f"# {data.get('name', 'Untitled')} ({profile_type} profile)"]
     if data.get("description"):
-        lines.append(data["description"])
-    if data.get("goals"):
-        lines.append("\nGoals: " + ", ".join(data["goals"]))
-    if data.get("focus_areas"):
-        lines.append("Focus areas: " + ", ".join(data["focus_areas"]))
-    if data.get("core_people"):
-        lines.append("\nKey people:")
-        for p in data["core_people"]:
-            lines.append(f"  - {p.get('name', '')} ({p.get('role', '')})")
-    if data.get("core_organizations"):
-        lines.append("\nKey organizations:")
-        for o in data["core_organizations"]:
-            lines.append(f"  - {o.get('name', '')} ({o.get('type', '')})")
-    if data.get("core_topics"):
-        lines.append("\nKey topics:")
-        for t in data["core_topics"]:
-            lines.append(f"  - {t.get('name', '')}")
+        lines.append(str(data["description"]))
+    if data.get("industry"):
+        lines.append(f"\nIndustry: {data['industry']}")
+    for key, label in (
+        ("goals", "Goals"),
+        ("focus_areas", "Focus areas"),
+        ("entity_types", "Entity types"),
+    ):
+        items = [str(item) for item in data.get(key) or [] if str(item).strip()]
+        if items:
+            lines.append(f"\n{label}:")
+            lines.extend(f"  - {item}" for item in items)
+    for key, label in (
+        ("core_people", "Key people"),
+        ("core_organizations", "Key organizations"),
+        ("core_topics", "Key topics"),
+    ):
+        if data.get(key):
+            lines.append(f"\n{label}:")
+            for item in data[key]:
+                if isinstance(item, dict):
+                    detail = item.get("role") or item.get("type")
+                    lines.append(f"  - {item.get('name', '')}" + (f" ({detail})" if detail else ""))
     if data.get("extraction_guidance"):
         lines.append(f"\nGuidance: {data['extraction_guidance']}")
     return "\n".join(lines)

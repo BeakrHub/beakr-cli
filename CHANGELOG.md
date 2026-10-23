@@ -4,7 +4,7 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-10-21)
+## beakr-cli 0.4.0 (2026-10-23)
 
 ### Changes
 
@@ -12,10 +12,51 @@ Each release lists the public API changes it supports, taken from the API change
   `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack`, `email`
   or `text` for one a person started by messaging Beakr there.
-  conversation started in the web app or through the API, or `slack` or `email`
-  for one a person started by messaging Beakr there.
-  conversation started in the web app or through the API, or `slack` for one a
-  person started by messaging Beakr in Slack.
+- Model refusals and fallbacks: three new reads, each needing `kb:read` and
+  answering `404 not_found` for a project you cannot read.
+  `GET /v1/projects/{project_id}/model-refusals/summary` counts the project's
+  refusals (a model declined) and fallbacks (another model was tried) over
+  `window` (`24h`, `7d` or `30d`, default `7d`), with how they ended
+  (`recovered`, `failed`, `skipped`), the number of files affected, and counts
+  by stage and by the model that refused, and `fallback_ladder`: the fallback
+  models in force, in order, each with whether it is available.
+  `GET /v1/projects/{project_id}/model-refusals` lists the events, newest
+  first, filtered by `artifact_id`, `outcome` or `stage`; each names the
+  `stage`, `event_type` (`refusal` or `fallback`), `refused_model`,
+  `refusal_kind` (`stop_reason`, `policy_text`, `empty` or `blocked`),
+  `fallback_model`, `outcome`, `outcome_reason` (for example
+  `no_available_fallback`) and an `excerpt`: the provider's refusal
+  category or explanation, or the model's refusal in words, never the model's
+  answer, and often `null`.
+  `GET /v1/projects/{project_id}/model-refusals/files` lists the files with
+  events in the window, most refusals first. Files in `GET /v1/artifacts`
+  and `GET /v1/artifacts/{artifact_id}` carry `model_refusal_count` and
+  `compile_needed_fallback`.
+- `GET /v1/artifacts` takes a new `knowledge_status` filter. `knowledge_status=waiting_for_person` lists only
+  the files held out of Knowledge until a person approves them (with
+  `POST /v1/artifacts/{artifact_id}/knowledge/approve`), so a review screen no
+  longer pages through every file. Any other value is refused with `422`.
+- `POST /v1/artifacts/read` takes `project`, a project id or name: the
+  reference then resolves among that project's files only, and a file elsewhere
+  answers `404`. `POST /v1/knowledge/documents` now refuses a `project_id` that
+  is not a project you can read, where it answered an empty listing. On both, a
+  project that names nothing you can read answers `404 not_found`, and the
+  message names the closest projects you can read.
+- `PUT /v1/knowledge/agent-review` and
+  `PUT /v1/knowledge/agent-review/projects/{project_id}` answer `404` with the
+  code `feature_disabled` (it was `not_found`) where agent review is not
+  available on the installation, as `available: false` on
+  `GET /v1/knowledge/agent-review` reports. A caller without the
+  `members:admin` scope is refused `403 insufficient_scope` before this.
+- `GET /v1/projects/{project_id}/knowledge-summary` adds `incomplete`: files
+  whose latest attempt saved only part of its changes to Knowledge
+  (`knowledge_status: incomplete`). They were counted in neither `failed` nor
+  anything else, so a project could read ready with nothing failed while one
+  of its files was incomplete.
+  `POST /v1/projects/{project_id}/knowledge/retry-failed` now also resumes
+  incomplete files, with or without `artifact_ids`. The `knowledge_status` of
+  `GET /v1/artifacts` and `GET /v1/artifacts/{artifact_id}` describes each of
+  its values; `created` is the finished state.
 - `POST /v1/runs` on a thread whose run is still working, from
   the user who started that run, no longer cancels it when the message is a
   plain follow-up (no files, workflow, pinned skills or decision). The message
