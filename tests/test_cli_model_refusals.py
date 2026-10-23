@@ -5,7 +5,7 @@ from __future__ import annotations
 import respx
 from typer.testing import CliRunner
 
-from beakr_cli.main import internal_app as app
+from beakr_cli.main import app
 
 API = "https://api.test"
 PROJECT = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
