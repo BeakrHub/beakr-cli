@@ -1,0 +1,22 @@
+{
+  "operation": "GET /v1/projects/{project_id}/model-refusals/files",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "artifact_id": "0a3d5ed6-6ab0-48c0-aa81-42f56e2fb411",
+        "title": "HX-01 stability summary.xlsx",
+        "refusals": 3,
+        "fallbacks": 2,
+        "recovered": 2,
+        "failed": 1,
+        "skipped": 0,
+        "last_event_at": "2026-10-22T14:05:00Z"
+      }
+    ],
+    "next_cursor": null,
+    "has_more": false
+  }
+}

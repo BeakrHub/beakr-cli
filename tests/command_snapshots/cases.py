@@ -90,6 +90,7 @@ CASES: list[SnapshotCase] = [
     c("projects-archive", "projects", "archive", "@GET /v1/projects#data.0.id"),
     c("projects-rm", "projects", "rm", "@GET /v1/projects#data.0.id", "--yes"),
     c("projects-status", "projects", "status", "--project", PROJECT),
+    c("projects-refusals", "projects", "refusals", PROJECT),
     c("projects-retry", "projects", "retry", "--project", PROJECT),
     c("projects-members-ls", "projects", "members", "ls", "@GET /v1/projects#data.0.id"),
     c(

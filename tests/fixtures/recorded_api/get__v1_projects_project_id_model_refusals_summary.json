@@ -1,0 +1,32 @@
+{
+  "operation": "GET /v1/projects/{project_id}/model-refusals/summary",
+  "source": "synthesized from public-openapi.json, values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "window": "7d",
+    "since": "2026-10-16T00:00:00Z",
+    "until": "2026-10-23T00:00:00Z",
+    "refusals": 3,
+    "fallbacks": 2,
+    "files_affected": 1,
+    "outcomes": {
+      "recovered": 2,
+      "failed": 1,
+      "skipped": 0
+    },
+    "by_stage": {
+      "compile": {
+        "refusals": 3,
+        "fallbacks": 2
+      }
+    },
+    "by_model": {
+      "claude-sonnet-5-5": 3
+    },
+    "fallback_ladder": {
+      "claude-haiku-5-5": true
+    }
+  }
+}
