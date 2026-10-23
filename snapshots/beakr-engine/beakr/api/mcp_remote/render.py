@@ -166,7 +166,8 @@ def sources_block(sources: list[Any]) -> str:
         if not isinstance(record, dict):
             continue
         entry = documents.setdefault(
-            _document_key(record), {"record": record, "places": [], "excerpt": None}
+            _document_key(record),
+            {"record": record, "places": [], "excerpt": None, "excerpt_authored": False},
         )
         # A full record carries one passage (``evidence``) and its place; a
         # compact one carries its document's places (``cited_places``) and some
@@ -181,12 +182,19 @@ def sources_block(sources: list[Any]) -> str:
         for place in places:
             if place and str(place) not in entry["places"]:
                 entry["places"].append(str(place))
-        for excerpt in [
-            (record.get("evidence") or {}).get("excerpt"),
-            *(excerpt.get("text") for excerpt in excerpts),
+        evidence = record.get("evidence") or {}
+        # The document's one excerpt is a passage of it where one was cited: the
+        # compiler's own analysis (authored evidence on a scientific file) is
+        # shown only when nothing else was, and labelled as what it is.
+        for excerpt, authored in [
+            (evidence.get("excerpt"), _authored(evidence)),
+            *((excerpt.get("text"), _authored(excerpt)) for excerpt in excerpts),
         ]:
-            if excerpt and entry["excerpt"] is None:
+            if excerpt and (
+                entry["excerpt"] is None or (entry["excerpt_authored"] and not authored)
+            ):
                 entry["excerpt"] = excerpt
+                entry["excerpt_authored"] = authored
     if not documents:
         return ""
     # What the text cites before the Knowledge pages it links: listed in read
@@ -306,5 +314,17 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     lines = [f"- {_line_label(record)}{head}{tail}".rstrip()]
     if entry["excerpt"]:
-        lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"')
+        label = " (paraphrase)" if entry.get("excerpt_authored") else ""
+        lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"{label}')
     return lines
+
+
+def _authored(evidence: dict[str, Any]) -> bool:
+    """Whether an excerpt is the compiler's wording rather than the document's.
+
+    The rule of ``beakr.services.evidence.is_authored_excerpt``, restated because
+    this module loads standalone and imports nothing from beakr.
+    """
+    origin = str(evidence.get("quote_origin") or "").strip().lower()
+    kind = str(evidence.get("evidence_kind") or "").strip().lower()
+    return bool(evidence.get("authored")) or origin == "authored" or kind == "description"

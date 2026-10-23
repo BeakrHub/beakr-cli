@@ -86,6 +86,8 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         # A project's Knowledge: ready yet, what failed and why, retry it.
         "projects status",
         "projects retry",
+        # When models refused the project's Knowledge work, and on which files.
+        "projects refusals",
         # A project's Knowledge profile: what Knowledge should understand about it.
         "projects profile show",
         "projects profile set",

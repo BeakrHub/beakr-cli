@@ -91,6 +91,20 @@ def test_an_unlisted_command_is_not_found_on_the_entry_point():
     assert "No such command" in result.output
 
 
+@respx.mock
+def test_projects_refusals_is_on_the_installed_entry_point():
+    # 0.1.10 shipped `beakr projects refusals` in the full tree only: the
+    # installed CLI answered "No such command 'refusals'" (its own tests used
+    # internal_app). It reads documented operations, so it is core.
+    assert "projects refusals" in _tree(app)
+    base = f"{API}/v1/projects/p1/model-refusals"
+    respx.get(f"{base}/summary").respond(json={"window": "7d", "refusals": 0, "outcomes": {}})
+    respx.get(f"{base}/files").respond(json={"data": [], "has_more": False})
+    result = runner.invoke(app, ["projects", "refusals", "p1"])
+    assert result.exit_code == 0, result.output
+    assert "No such command" not in result.output
+
+
 def test_the_full_tree_is_left_whole_by_the_cut():
     # The published tree is a copy: building it must not drop commands from the
     # shared sub-apps (kb, org, projects ...) the full tree is built from.

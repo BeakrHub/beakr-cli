@@ -98,13 +98,38 @@ async def test_research_accepts_question_and_scope_as_aliases() -> None:
 
 @pytest.mark.asyncio
 async def test_a_validation_error_is_one_line_naming_the_fix() -> None:
-    result = await _call("research", {"prompt": "How long is a lease?"})
+    result = await _call("research", {"quick": True})
     assert result.isError
     text = result.content[0].text
     assert "\n" not in text
     assert "pydantic" not in text
     assert text.startswith('research: missing `query` -- pass {"query": "..."}')
-    assert "ignored unknown `prompt`" in text
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("tool", "arguments", "unknown"),
+    [
+        ("research", {"prompt": "How long is a lease?"}, "`prompt`"),
+        ("documents", {"command": "ls", "bogus": 1}, "`bogus`"),
+        ("read_file", {"artifact_id": "memo.pdf", "folder": "deals"}, "`folder`"),
+        ("get_profile", {"profile_type": "org", "verbose": True}, "`verbose`"),
+    ],
+)
+@respx.mock
+async def test_an_argument_a_tool_does_not_take_is_refused_not_dropped(
+    tool: str, arguments: dict[str, Any], unknown: str
+) -> None:
+    # Y12: pydantic dropped an argument the signature does not name, so
+    # documents with an unknown option listed every project's files ("344 in
+    # scope"). The hosted server refuses it (additionalProperties: false).
+    route = respx.route().mock(return_value=Response(200, json={}))
+    result = await _call(tool, arguments)
+    assert result.isError
+    body = json.loads(result.content[0].text)
+    assert body["error_code"] == "invalid_arguments"
+    assert unknown in body["message"]
+    assert not route.called
 
 
 @pytest.mark.asyncio

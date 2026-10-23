@@ -12,7 +12,6 @@ an unbounded skill body or conversation list would crowd out the user's work.
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING, Any
 
 from beakr_cli import mcp_result, tool_surface
@@ -484,7 +483,6 @@ async def org_audit_log(limit: int = 25, before: str = "", cursor: str = "") -> 
     )
 
 
-_UUID_TEXT = re.compile(r"^[0-9a-fA-F-]{36}$")
 #: Characters of a file returned per read_file call.
 READ_FILE_CHARS = 20_000
 #: Candidate files an ambiguous path's error lists.
@@ -492,7 +490,11 @@ _AMBIGUOUS_LISTED = 10
 
 
 async def read_file(
-    artifact_id: str = "", path: str = "", offset: int = 0, limit: int = READ_FILE_CHARS
+    artifact_id: str = "",
+    path: str = "",
+    offset: int = 0,
+    limit: int = READ_FILE_CHARS,
+    project: str = "",
 ) -> str | dict[str, Any]:
     """A window of a document's extracted text, as the hosted read_file reads it.
 
@@ -501,7 +503,9 @@ async def read_file(
     a citation token; with `` › <unit>`` (or ``#<unit>``) after one (``memo.pdf › p. 7``)
     the window is the text around that place. One route resolves and reads all
     of them (``POST /v1/artifacts/read``), so a reference that reaches no
-    readable file is one answer whatever the reason.
+    readable file is one answer whatever the reason. ``project`` (or ``scope``)
+    keeps the read to that project's files; one that names no readable project
+    is refused with the closest names (:class:`ScopeNotFound`).
     """
     reference = str(path or artifact_id or "").strip()
     if not reference:
@@ -515,8 +519,12 @@ async def read_file(
         )
     offset = max(0, int(offset or 0))
     limit = max(1, min(int(limit or READ_FILE_CHARS), READ_FILE_CHARS))
+    # Sent only when named, so an unscoped read is the same request as before.
+    scoped = {"project": await _project_id(project)} if project.strip() else {}
     try:
-        data = await call_api(lambda sdk: sdk.files.read(reference, offset=offset, max_chars=limit))
+        data = await call_api(
+            lambda sdk: sdk.files.read(reference, offset=offset, max_chars=limit, **scoped)
+        )
     except ApiCallError as exc:
         status = exc.response.status_code
         if status == 404:
@@ -565,12 +573,41 @@ def _read_error(code: str | None, message: str, fix: str | None = None) -> dict[
 
 #: Project pages read while resolving a project by name.
 _PROJECT_LOOKUP_PAGES = 20
+#: Projects this process has resolved: a reference (id, slug or name) to its id.
+#: Only hits are kept, so a project created after a miss is found on the next call.
+_resolved_projects: dict[str, str] = {}
 
 
-async def _project_id(project: str) -> str | None:
-    if _UUID_TEXT.match(project):
-        return project
-    matches: list[dict[str, Any]] = []
+class ScopeNotFound(ValueError):
+    """A ``scope``/``project`` naming no project the caller can read, or several.
+
+    Refused as ``scope_not_found`` (or ``scope_ambiguous``) with the closest
+    names, the way the Knowledge door and ``beakr --project`` refuse one. An
+    unknown project id used to pass straight through, so documents listed
+    nothing ("0 in scope") and an agent read that as an empty project.
+    """
+
+    def __init__(self, given: str, *, suggestions: list[str], ambiguous: bool = False) -> None:
+        if ambiguous:
+            code = "scope_ambiguous"
+            message = f"More than one project you can read is named {given!r}."
+            fix = f"Pass one of these projects' ids: {'; '.join(suggestions)}."
+        else:
+            code = "scope_not_found"
+            message = f"No project you can read matches {given!r}."
+            fix = (
+                f"Did you mean: {'; '.join(suggestions)}? Pass its id or exact name."
+                if suggestions
+                else "Pass a project id or exact name from list_projects."
+            )
+        super().__init__(f"{message} {fix}")
+        #: ``{error_code, message, fix}``, for the compact error result.
+        self.fields = {"error_code": code, "message": message, "fix": fix}
+
+
+async def _readable_projects() -> list[dict[str, Any]]:
+    """Every project the caller can read, up to ``_PROJECT_LOOKUP_PAGES`` pages."""
+    projects: list[dict[str, Any]] = []
     page_cursor: str | None = None
     for _ in range(_PROJECT_LOOKUP_PAGES):
         page = await call_api(
@@ -579,10 +616,36 @@ async def _project_id(project: str) -> str | None:
             )
         )
         rows, has_more, page_cursor = _page_of(page, "data", "projects")
-        matches += [p for p in rows if str(p.get("name", "")).lower() == project.lower()]
+        projects += rows
         if not has_more:
             break
-    return str(matches[0]["id"]) if len(matches) == 1 else None
+    return projects
+
+
+async def _project_id(project: str) -> str:
+    """The id of the one readable project ``project`` names (id, slug or name).
+
+    An id is checked too: it must be a project the caller can read. Raises
+    :class:`ScopeNotFound` naming the closest projects otherwise.
+    """
+    from beakr_cli.project_ref import close_matches, find_project
+
+    given = project.strip()
+    if given in _resolved_projects:
+        return _resolved_projects[given]
+    projects = await _readable_projects()
+    named = [p for p in projects if str(p.get("name") or "").casefold() == given.casefold()]
+    if len(named) > 1 and not any(str(p.get("id")) == given for p in projects):
+        raise ScopeNotFound(
+            given,
+            suggestions=[f"{p.get('name')} ({p.get('id')})" for p in named[:5]],
+            ambiguous=True,
+        )
+    found = find_project(projects, given)
+    if found is None:
+        raise ScopeNotFound(given, suggestions=close_matches(projects, given))
+    _resolved_projects[given] = str(found["id"])
+    return _resolved_projects[given]
 
 
 def _scoped_project(project: str | None = None, project_id: str | None = None) -> str | None:
@@ -604,17 +667,14 @@ async def _project_by_name_or_id(
 
     The research, stats and graph routes take a project id; an agent passes the
     name it read from list_projects (or the ``scope`` it gives knowledge_base) and
-    was refused with "project_id must be a valid UUID".
+    was refused with "project_id must be a valid UUID". A value that names no
+    readable project is refused (:class:`ScopeNotFound`), never widened to
+    everything the caller can see.
     """
     given = (project_id or project or "").strip()
     if not given:
         return _scoped_project()
-    resolved = await _project_id(given)
-    if resolved is None:
-        raise ValueError(
-            f"No single project named {given!r}; pass its id or exact name from list_projects."
-        )
-    return resolved
+    return await _project_id(given)
 
 
 async def workboard(project: str = "", label_id: str = "") -> dict[str, Any]:
@@ -624,11 +684,6 @@ async def workboard(project: str = "", label_id: str = "") -> dict[str, Any]:
     project_id = None
     if not label_id:
         project_id = await _project_id(project)
-        if project_id is None:
-            return {
-                "content": f"No single project named {project!r}; pass a project id "
-                "(list_projects shows them)."
-            }
     board = (
         await call_api(
             lambda sdk: sdk.knowledge.work_board(project_id=project_id, label_id=label_id or None)

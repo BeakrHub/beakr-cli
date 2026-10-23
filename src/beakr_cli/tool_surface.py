@@ -298,9 +298,12 @@ class TieredFastMCP(FastMCP):
         """Run a tool with forgiving arguments, and return any error compactly.
 
         Top-level Knowledge options and common aliases are normalized first
-        (``mcp_call_shaping``). A validation failure becomes one line naming the
-        fix; an API refusal or an error outcome becomes ``{status, error_code,
-        message, fix}`` marked ``isError``.
+        (``mcp_call_shaping``). An argument the tool does not take is then
+        refused, as the hosted server's schema check refuses it, rather than
+        dropped: a dropped ``scope`` read everything the caller can see. A
+        validation failure becomes one line naming the fix; an API refusal, a
+        project that names nothing and an error outcome become ``{status,
+        error_code, message, fix}`` marked ``isError``.
         """
         from beakr_cli.sdk import MCP_CLIENT_AGENT
 
@@ -329,6 +332,7 @@ class TieredFastMCP(FastMCP):
         from beakr_cli import mcp_call_shaping
         from beakr_cli.capabilities import NOT_PROVIDED_CODE
         from beakr_cli.mcp_errors import ApiCallError
+        from beakr_cli.mcp_tools_platform import ScopeNotFound
 
         tool = self._tool_manager.get_tool(name)
         schema = tool.parameters if tool is not None else {}
@@ -338,6 +342,10 @@ class TieredFastMCP(FastMCP):
             normalized = mcp_call_shaping.normalize_arguments(name, given, declared)
         except mcp_call_shaping.ConflictingArguments as exc:
             raise ToolError(str(exc)) from exc
+        if tool is not None:
+            refusal = mcp_call_shaping.unknown_arguments(name, normalized, schema)
+            if refusal is not None:
+                return _error_result(refusal)
         try:
             # The tool's own dict (``mcp_result.finish`` shape), not FastMCP's
             # conversion of it, which would serialize the whole dict as JSON.
@@ -347,9 +355,11 @@ class TieredFastMCP(FastMCP):
         except ToolError as exc:
             cause = exc.__cause__
             if isinstance(cause, ValidationError):
-                raise ToolError(
-                    mcp_call_shaping.validation_message(name, cause, schema, given)
-                ) from cause
+                raise ToolError(mcp_call_shaping.validation_message(name, cause, schema)) from cause
+            if isinstance(cause, ScopeNotFound):
+                return _error_result(
+                    mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
+                )
             if isinstance(cause, ApiCallError):
                 if cause.fields.get("error_code") == NOT_PROVIDED_CODE:
                     await self.hide(name)

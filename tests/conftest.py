@@ -91,18 +91,30 @@ def app_url_not_reported(request, monkeypatch):
 
 @pytest.fixture(autouse=True)
 def project_refs_are_ids(request, monkeypatch):
-    """Treat every ``--project`` value as an id unless a test asks for real resolution.
+    """Treat every ``--project`` value (and an MCP tool's project id) as an id, unless a
+    test asks for real resolution.
 
     Commands resolve a project slug or name to its id with one projects request
-    (beakr_cli/project_ref.py). Tests across the suite pass placeholder ids such
+    (beakr_cli/project_ref.py), and the MCP tools check an id the same way
+    (beakr_cli/mcp_tools_platform.py). Tests across the suite pass placeholder ids such
     as ``p1``, which would otherwise be looked up; tests of resolution itself
     are marked ``@pytest.mark.real_project_refs``.
     """
     if request.node.get_closest_marker("real_project_refs"):
         return
-    from beakr_cli import project_ref
+    from beakr_cli import mcp_tools_platform, project_ref
 
     monkeypatch.setattr(project_ref, "looks_like_id", lambda value: True)
+    # The MCP tools check that a project id is one the caller reads (a projects
+    # request); tests across the suite pass ids against a mocked API without
+    # that route. A name is still resolved for real.
+    resolve = mcp_tools_platform._project_id
+
+    async def ids_pass(project: str) -> str:
+        return project if project_ref._UUID.match(project.strip()) else await resolve(project)
+
+    monkeypatch.setattr(mcp_tools_platform, "_project_id", ids_pass)
+    monkeypatch.setattr(mcp_tools_platform, "_resolved_projects", {})
 
 
 @pytest.fixture(autouse=True)
