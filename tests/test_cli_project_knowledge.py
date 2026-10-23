@@ -95,9 +95,9 @@ def test_wait_knowledge_prints_progress_and_succeeds_when_ready(tmp_path):
     progress = [line for line in result.stderr.splitlines() if line.startswith("Knowledge:")]
     # One line per change, not per poll.
     assert progress == [
-        "Knowledge: 1 queued, 0 running, 0 failed",
-        "Knowledge: 0 queued, 1 running, 0 failed",
-        "Knowledge: 0 queued, 0 running, 0 failed",
+        "Knowledge: 1 queued, 0 running",
+        "Knowledge: 0 queued, 1 running",
+        "Knowledge: 0 queued, 0 running",
     ]
     # The file's own knowledge_status, the word `beakr files ls` prints for it:
     # the wait said "ready" while ls said "created" for the same file.
@@ -223,7 +223,7 @@ def test_status_lists_failures_and_names_the_retry():
     result = runner.invoke(app, ["projects", "status", "-P", PROJECT])
     assert result.exit_code == 0, result.output
     assert result.stdout.splitlines() == [
-        "ready\tqueued=0\trunning=0\tfailed=1\tincomplete=0",
+        "ready\tqueued=0\trunning=0\tfailed=1",
         "failed\ta1\tdocs/a1\tprocessing_failed",
         f"next: beakr projects retry -P {PROJECT}",
     ]
@@ -236,7 +236,7 @@ def test_status_names_incomplete_files_and_the_retry_that_resumes_them():
     respx.get(STATUS).mock(return_value=_status(incomplete=1))
     lines = runner.invoke(app, ["projects", "status", "-P", PROJECT]).stdout.splitlines()
     assert lines == [
-        "ready\tqueued=0\trunning=0\tfailed=0\tincomplete=1",
+        "ready\tqueued=0\trunning=0\tincomplete=1",
         f"next: beakr projects retry -P {PROJECT}",
     ]
     from beakr_cli.commands.project_knowledge import state_phrase
@@ -266,3 +266,16 @@ def test_retry_sends_the_named_files_and_exits_1_for_one_it_could_not_retry():
     assert json.loads(route.calls[0].request.content) == {"artifact_ids": ["a1", "zz"]}
     assert result.exit_code == 1
     assert "zz\tnot_found" in result.stdout
+
+
+def test_status_lines_name_failures_only_when_there_are_some() -> None:
+    # A box-release script grepped "failed" in `projects status` and read
+    # "failed=0" on a building project as a failure (0.1.10 item 9, retracted).
+    from beakr_cli.commands.project_knowledge import _status_lines, progress_line
+
+    building = {"ready": False, "queued": 2, "running": 1, "failed": 0, "incomplete": 0}
+    assert "failed" not in _status_lines(building)[0]
+    assert "failed" not in progress_line(building)
+    failing = {**building, "failed": 2}
+    assert "failed=2" in _status_lines(failing)[0]
+    assert progress_line(failing).endswith("2 failed")

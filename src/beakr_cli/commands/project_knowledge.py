@@ -60,10 +60,14 @@ def state_phrase(status: dict[str, Any]) -> str:
 
 def progress_line(status: dict[str, Any]) -> str:
     """One stderr line per change while waiting: the counts that are moving."""
-    return (
+    line = (
         f"Knowledge: {int(status.get('queued') or 0)} queued, "
-        f"{int(status.get('running') or 0)} running, {int(status.get('failed') or 0)} failed"
+        f"{int(status.get('running') or 0)} running"
     )
+    failed = int(status.get("failed") or 0)
+    # Named only when there are some: a script grepping "failed" read "0 failed"
+    # on a building project as a failure.
+    return f"{line}, {failed} failed" if failed else line
 
 
 def failed_file_line(failed: dict[str, Any]) -> str:
@@ -115,18 +119,19 @@ def _render_status(project_ref: str) -> Callable[[dict[str, Any]], None]:
 
 
 def _status_lines(status: dict[str, Any]) -> list[str]:
-    """``state<TAB>queued=..<TAB>running=..<TAB>failed=..`` then one line per failed file."""
-    lines = [
-        "\t".join(
-            [
-                "ready" if status.get("ready") else "building",
-                *(
-                    f"{key}={int(status.get(key) or 0)}"
-                    for key in ("queued", "running", "failed", "incomplete")
-                ),
-            ]
-        )
+    """``state<TAB>queued=..<TAB>running=..`` (``failed=``/``incomplete=`` when above 0),
+    then one line per failed file.
+
+    ``failed`` and ``incomplete`` appear only when there are some: a script that
+    grepped "failed" read ``failed=0`` on a building project as a failure.
+    """
+    counts = [f"{key}={int(status.get(key) or 0)}" for key in ("queued", "running")]
+    counts += [
+        f"{key}={int(status.get(key) or 0)}"
+        for key in ("failed", "incomplete")
+        if int(status.get(key) or 0) > 0
     ]
+    lines = ["\t".join(["ready" if status.get("ready") else "building", *counts])]
     for row in status.get("failed_files") or []:
         lines.append(
             "\t".join(
