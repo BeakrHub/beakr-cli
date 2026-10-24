@@ -8,6 +8,10 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack`, `email`
+  or `text` for one a person started by messaging Beakr there.
 - A file a model refused now fails with its own code. In
   `GET /v1/projects/{project_id}/knowledge-summary` (`failed_files`) and
   `GET /v1/projects/{project_id}/knowledge/failed-files`, `error_code` is

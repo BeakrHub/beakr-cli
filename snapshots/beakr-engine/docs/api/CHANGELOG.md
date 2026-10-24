@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9831148edff64ea7872eeb2bac6634989094f1d44a3dc247cc42d41efd343165 changelog sha256=8894ffb1c86634d4ae53202c33d3d2b4df99c3e4b18fb22c7606b6d78ba24f32 -->
+<!-- contract-stamp: public-openapi sha256=4a6b0826593f2626c4fb6a071014ff438c9134627a93c52d13212caf7b790fb0 changelog sha256=01165fedbdce8d89e6bed34cc265bee1b0dc65aec9476921f83c7d4f0f566c6b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -26,6 +26,10 @@ The first public version.
   again by `POST /v1/projects/{project_id}/knowledge/retry-failed`. A
   `knowledge_compile` job (`GET /v1/jobs/{job_id}`) that failed this way
   answers `error.code` `model_refused`.
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack`, `email`
+  or `text` for one a person started by messaging Beakr there.
 - Model refusals and fallbacks: three new reads, each needing `kb:read` and
   answering `404 not_found` for a project you cannot read.
   `GET /v1/projects/{project_id}/model-refusals/summary` counts the project's

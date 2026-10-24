@@ -11131,7 +11131,7 @@
   },
   "/v1/outputs/{output_id}/export/{format}": {
    "get": {
-    "description": "Export canvas to PDF, DOCX, XLSX, PPTX, Markdown or HTML.\n\n``md`` is the output's text with its citations numbered and its sources\nlisted; ``html`` is a self-contained page (images inlined).\n\n``sources`` applies to template-based documents: \"appendix\" lists the\ndocument's sources after its text, \"none\" exports the text alone. ``draft``\nexports a template-based document before it is finished, opening with a\nNOT FINALIZED page.\n\nThe markdown content is converted to the requested format using\nthe document generation engine.\n\nFor PPTX exports, an optional template_id can be provided to use\na custom PowerPoint template for styling.  theme_overrides is a\nJSON-encoded dict of DeckTheme property overrides (title_color,\nbody_color, heading_font, etc.).",
+    "description": "Export canvas to PDF, DOCX, XLSX, PPTX, Markdown or HTML.\n\n``md`` is the output's text with its citations numbered and its sources\nlisted; ``html`` is a self-contained page (images inlined).\n\n``sources`` applies to template-based documents: \"appendix\" lists the\ndocument's sources after its text, \"none\" exports the text alone. ``draft``\nexports a template-based document before it is finished, opening with a\nNOT FINALIZED page. ``redline`` (Word, template-based documents) marks every\ndifference from the file the document was made from as a tracked change.\n\nThe markdown content is converted to the requested format using\nthe document generation engine.\n\nFor PPTX exports, an optional template_id can be provided to use\na custom PowerPoint template for styling.  theme_overrides is a\nJSON-encoded dict of DeckTheme property overrides (title_color,\nbody_color, heading_font, etc.).",
     "operationId": "export_canvas_route_v1_outputs__output_id__export__format__get",
     "parameters": [
      {
@@ -11215,6 +11215,16 @@
       "schema": {
        "default": false,
        "title": "Draft",
+       "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "redline",
+      "required": false,
+      "schema": {
+       "default": false,
+       "title": "Redline",
        "type": "boolean"
       }
      }
