@@ -8,6 +8,16 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A file a model refused now fails with its own code. In
+  `GET /v1/projects/{project_id}/knowledge-summary` (`failed_files`) and
+  `GET /v1/projects/{project_id}/knowledge/failed-files`, `error_code` is
+  `model_refused` when a model declined the file and no fallback model
+  answered; it was `compile_failed`. Its `reason` says a retry is refused
+  again unless the model or its fallback changes, and on a self-hosted
+  installation also names the settings to change. The file is still sent
+  again by `POST /v1/projects/{project_id}/knowledge/retry-failed`. A
+  `knowledge_compile` job (`GET /v1/jobs/{job_id}`) that failed this way
+  answers `error.code` `model_refused`.
 - Model refusals and fallbacks: three new reads, each needing `kb:read` and
   answering `404 not_found` for a project you cannot read.
   `GET /v1/projects/{project_id}/model-refusals/summary` counts the project's
