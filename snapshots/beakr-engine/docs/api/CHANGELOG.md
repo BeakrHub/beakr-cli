@@ -11,11 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=97dfd92d78283dab4c6184b565861ee30a465a8bc16b6be145a69c60994d22f1 changelog sha256=f8494ecae11a9308a5f813dbec456055e5a3010e050cbf4d2a81872933dba64d -->
+<!-- contract-stamp: public-openapi sha256=9831148edff64ea7872eeb2bac6634989094f1d44a3dc247cc42d41efd343165 changelog sha256=8894ffb1c86634d4ae53202c33d3d2b4df99c3e4b18fb22c7606b6d78ba24f32 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A file a model refused now fails with its own code. In
+  `GET /v1/projects/{project_id}/knowledge-summary` (`failed_files`) and
+  `GET /v1/projects/{project_id}/knowledge/failed-files`, `error_code` is
+  `model_refused` when a model declined the file and no fallback model
+  answered; it was `compile_failed`. Its `reason` says a retry is refused
+  again unless the model or its fallback changes, and on a self-hosted
+  installation also names the settings to change. The file is still sent
+  again by `POST /v1/projects/{project_id}/knowledge/retry-failed`. A
+  `knowledge_compile` job (`GET /v1/jobs/{job_id}`) that failed this way
+  answers `error.code` `model_refused`.
 - Model refusals and fallbacks: three new reads, each needing `kb:read` and
   answering `404 not_found` for a project you cannot read.
   `GET /v1/projects/{project_id}/model-refusals/summary` counts the project's
