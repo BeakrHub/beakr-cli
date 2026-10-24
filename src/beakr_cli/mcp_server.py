@@ -614,7 +614,7 @@ async def wiki_graph(
     on a specific page to explore its neighborhood.
 
     Args:
-        project: Project ID to scope the graph. Omit for everything you can see.
+        project: Project name or ID to scope the graph. Omit for everything you can see.
         project_id: Deprecated alias for project.
     """
     from beakr_cli.mcp_tools_platform import _capped_result
@@ -729,7 +729,7 @@ async def research(
 
     Args:
         query: The question to answer.
-        project: Optional project ID to scope the search.
+        project: Optional project name or ID to scope the search.
         project_id: Deprecated alias for project.
         quick: A short cited answer within 15 seconds from one search of
             Knowledge and documents (no connected services).
