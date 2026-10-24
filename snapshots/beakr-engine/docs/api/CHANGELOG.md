@@ -11,11 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ddec8265a9b92da119de7efeffca1449ac064cd9b2a4342e856739807ebc7eab changelog sha256=71c5511bd982baa6af03da25e5e5936679ef396d521154594c62b5618f9a36be -->
+<!-- contract-stamp: public-openapi sha256=4a6b0826593f2626c4fb6a071014ff438c9134627a93c52d13212caf7b790fb0 changelog sha256=01165fedbdce8d89e6bed34cc265bee1b0dc65aec9476921f83c7d4f0f566c6b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A file a model refused now fails with its own code. In
+  `GET /v1/projects/{project_id}/knowledge-summary` (`failed_files`) and
+  `GET /v1/projects/{project_id}/knowledge/failed-files`, `error_code` is
+  `model_refused` when a model declined the file and no fallback model
+  answered; it was `compile_failed`. Its `reason` says a retry is refused
+  again unless the model or its fallback changes, and on a self-hosted
+  installation also names the settings to change. The file is still sent
+  again by `POST /v1/projects/{project_id}/knowledge/retry-failed`. A
+  `knowledge_compile` job (`GET /v1/jobs/{job_id}`) that failed this way
+  answers `error.code` `model_refused`.
 - `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
   `GET /v1/threads/{thread_id}` return `origin`: null for a
   conversation started in the web app or through the API, or `slack`, `email`
