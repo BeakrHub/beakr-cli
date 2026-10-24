@@ -20,7 +20,7 @@ Suggested parent: "API Architecture".
 
 ### Step 3: Gather sources
 ```
-research(query="internal API architecture GraphQL REST", project="<platform project id>")
+research(query="internal API architecture GraphQL REST", project="Platform")
 knowledge_base(command="sources", arguments={"page": "API Architecture"})
 ```
 Note the readable reference each source is cited by (`api-decision.docx › p. 2`).
@@ -74,7 +74,7 @@ knowledge_base_write(
 ```
 show_proposal(proposal_id="...")
 ```
-Call `accept_proposal` only after the user explicitly says to apply it, passing the `content_hash` the write and `show_proposal` printed as `reviewed_hash`.
+Call `accept_proposal` only after the user explicitly says to apply it, passing the `content_hash` the write and `show_proposal` printed as `reviewed_hash`. If it is refused with `person_review_required`, the project needs a person to accept it: the user does that in Beakr.
 
 ## Key points
 - Use the `decision` page type; include the date (`event_start` + `date_precision`), decision maker, and alternatives
