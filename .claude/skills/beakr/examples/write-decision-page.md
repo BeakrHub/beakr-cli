@@ -20,7 +20,7 @@ Suggested parent: "API Architecture".
 
 ### Step 3: Gather sources
 ```
-research(query="internal API architecture GraphQL REST", project="Platform")
+research(query="internal API architecture GraphQL REST", project="<platform project id>")
 knowledge_base(command="sources", arguments={"page": "API Architecture"})
 ```
 Note the readable reference each source is cited by (`api-decision.docx › p. 2`).

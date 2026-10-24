@@ -1,6 +1,6 @@
 # Writing Knowledge Base Pages
 
-Use this workflow when the user wants to create or update a page. Every change goes through `knowledge_base_write`, which stages a **proposal**; nothing is written until the user asks you to `accept_proposal`, unless the write result says the user's auto-approve is on. Two actions apply at once instead: `sort_table`, which only reorders a table, and a `page_type` the verifier accepts.
+Use this workflow when the user wants to create or update a page. Every change goes through `knowledge_base_write`, which stages a **proposal**; nothing is written until the user asks you to `accept_proposal`, unless the write result says the user's auto-approve is on. Two actions apply at once instead: `sort_table`, which only reorders a table, and a project or org `page_type` the verifier accepts (a global one is refused).
 
 ## Before writing
 
