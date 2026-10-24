@@ -2,7 +2,7 @@
   "sources": {
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
-      "commit": "6d57b0b3e17f5479fa9d3ad36cd8f55c97788e68",
+      "commit": "e7204abf6604829efcb6028bf0d2d46e5b127c9b",
       "uncommitted_changes": false,
       "files": {
         "beakr/api/mcp_remote/document_listing.py": "sha256:375389207c8e84b6d0f2a45075ede6d52a50cc5cd3fae64d9a54dc0712e2486e",
