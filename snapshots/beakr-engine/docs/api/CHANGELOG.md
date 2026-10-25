@@ -11,10 +11,31 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c950b39088f2a0fb6fdf1f97f750892d931aabc5c65cf6098e4e50298ae63c60 changelog sha256=93ebbd5bad834f44068fb0bf7bfe6f47e45a244626ef7f0639a876dd9279387a -->
+<!-- contract-stamp: public-openapi sha256=5bfd47f9be43132ee3a75e39978d477800e0ee6ac35038ba26b9fa0d338cb52b changelog sha256=e76fb0342aac4d4eb996fabd4f8bdae66d5fb9f7928ceab28dbec4b03cd12b31 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `GET /v1/projects/{project_id}/model-refusals/summary`: in
+  `failed_by_reason`, an event recorded without a reason is counted under
+  `unspecified`.
+- `GET /v1/knowledge/wiki/ingestion-events`: in each event's
+  `model_refusals`, `unrecovered` now counts the refusals whose work no later
+  recovery in that run made good, rather than every refusal a fallback did not
+  answer itself. The same work is the same file and step, and a page's table
+  transcription and its plain read count as one step, so a refused table read
+  whose plain read then recovered is not unrecovered. `recovered +
+  unrecovered` can therefore be less than `refusals`. The keys are unchanged.
+- `GET /v1/artifacts/{artifact_id}/versions/{version_id}/extraction-view`:
+  for a parsed PDF, `viewer_manifest.model_reads` names the reads a model
+  other than the step's own did. `pages` lists up to 200 reads, each with
+  `page`, `purpose` (for example `ocr` or `hard_page_read`), `stage_model` (the
+  model that would have read it) and `read_by` (the model that did, or `null`
+  when every model refused and the page kept its own text). `total` counts
+  every such read, `truncated` how many `pages` leaves out, `unread` the reads
+  no model did, and `by_read_by` and `by_purpose` count them by reader and by
+  purpose. A parse whose every read was done by the step's own model has no
+  `model_reads`. Read the counts rather than the list.
 
 - `GET /v1/projects/{project_id}/model-refusals/summary` adds
   `failed_by_reason`, counting the events no model recovered by why they
