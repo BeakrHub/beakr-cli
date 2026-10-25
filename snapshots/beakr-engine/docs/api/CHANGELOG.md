@@ -11,11 +11,14 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=5bfd47f9be43132ee3a75e39978d477800e0ee6ac35038ba26b9fa0d338cb52b changelog sha256=e76fb0342aac4d4eb996fabd4f8bdae66d5fb9f7928ceab28dbec4b03cd12b31 -->
+<!-- contract-stamp: public-openapi sha256=5c4dd66e925d127fbeb4d65217ce7b0d20cca82e501c34dfcfd68f68532e9e0d changelog sha256=74ee07ede04253ad20b6a936a8e7b434a4f6c006bb36abe5b5b598d75e0b327f -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/interview/sendables` and `POST /v1/interview/sendables/{sendable_id}/links`:
+  a link's `delivery_channel` can now be `slack`, for a link sent as a Slack
+  direct message from the sender's own Slack.
 - `GET /v1/projects/{project_id}/model-refusals/summary`: in
   `failed_by_reason`, an event recorded without a reason is counted under
   `unspecified`.
