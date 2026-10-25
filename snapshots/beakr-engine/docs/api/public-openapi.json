@@ -9278,7 +9278,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why it ended that way, such as `no_available_fallback` (the fallback model is not available on this deployment) or `all_tiers_refused`.",
+            "description": "Why it ended that way, such as `no_available_fallback` (the fallback model is not available on this deployment), `no_capable_fallback` (no fallback model could do this stage's job, such as read a page image or call its tools) or `all_tiers_refused`.",
             "title": "Outcome Reason"
           },
           "project_id": {
@@ -9556,6 +9556,14 @@
             "title": "By Stage",
             "type": "object"
           },
+          "failed_by_reason": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Unrecovered events keyed by why: `all_tiers_refused`, `no_available_fallback`, `no_capable_fallback` (no fallback model could do this stage's job, such as read a page image), `no_fallback_configured`, `fallback_error`.",
+            "title": "Failed By Reason",
+            "type": "object"
+          },
           "fallback_ladder": {
             "additionalProperties": {
               "type": "boolean"
@@ -9586,6 +9594,14 @@
             "format": "uuid",
             "title": "Project Id",
             "type": "string"
+          },
+          "recovered_by_model": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Recovered events keyed by the model that answered instead.",
+            "title": "Recovered By Model",
+            "type": "object"
           },
           "refusals": {
             "description": "Events where a model declined the request.",
