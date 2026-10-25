@@ -11,11 +11,17 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=5c4dd66e925d127fbeb4d65217ce7b0d20cca82e501c34dfcfd68f68532e9e0d changelog sha256=90aeda33f89e06cd7227491ab2d870346e3ac8cb5428760cc05c3791b4932e3e -->
+<!-- contract-stamp: public-openapi sha256=1b28c92ce179921848ca778436d93174b0a241b21cd6f2c3d619d0f1e67cbab2 changelog sha256=795adf45e23a9b650515c65c74625472baa0da4ed1fbdf047cf73d40c92aee47 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/me/threads` adds `notifications`: `only` lists just the
+  conversations a notification opened (their `origin` is `notification`), and
+  `exclude` leaves them out. Omitted, both are listed, as before. Conversations
+  a person started by messaging Beakr (`origin` `slack`, `email` or `text`)
+  are never filtered by it. It combines with `q` and `project_ids`, and
+  `next_cursor` pages through the filtered list.
 - `GET /v1/interview/sendables` and `POST /v1/interview/sendables/{sendable_id}/links`:
   a link's `delivery_channel` can now be `slack`, for a link sent as a Slack
   direct message from the sender's own Slack.

@@ -6068,6 +6068,16 @@
      "type": "integer"
     },
     {
+     "description": "`only` lists just the conversations a notification opened (`origin` `notification`); `exclude` leaves them out. Omitted, both are listed.",
+     "enum": [
+      "only",
+      "exclude"
+     ],
+     "name": "notifications",
+     "required": false,
+     "type": "string"
+    },
+    {
      "description": "Filter to threads attached to specific projects",
      "multiple": true,
      "name": "project_ids",
