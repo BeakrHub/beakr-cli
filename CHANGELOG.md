@@ -4,14 +4,20 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-10-23)
+## beakr-cli 0.4.0 (2026-10-25)
 
 ### Changes
 
-- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
-  `GET /v1/threads/{thread_id}` return `origin`: null for a
-  conversation started in the web app or through the API, or `slack`, `email`
-  or `text` for one a person started by messaging Beakr there.
+- `GET /v1/projects/{project_id}/model-refusals/summary` adds
+  `failed_by_reason`, counting the events no model recovered by why they
+  ended, and `recovered_by_model`, counting the recovered events by the model
+  that answered instead. An event's `outcome_reason` (in
+  `GET /v1/projects/{project_id}/model-refusals`) may now be
+  `no_capable_fallback`: no fallback model could do that step's work, for
+  example read a page image or call its tools, so none was used. Refusals in
+  background steps (document reading, field cleanup, research and others) are
+  now retried on the fallback models and recorded as `recovered` or `failed`
+  rather than `skipped`.
 - A file a model refused now fails with its own code. In
   `GET /v1/projects/{project_id}/knowledge-summary` (`failed_files`) and
   `GET /v1/projects/{project_id}/knowledge/failed-files`, `error_code` is
@@ -22,6 +28,10 @@ Each release lists the public API changes it supports, taken from the API change
   again by `POST /v1/projects/{project_id}/knowledge/retry-failed`. A
   `knowledge_compile` job (`GET /v1/jobs/{job_id}`) that failed this way
   answers `error.code` `model_refused`.
+- `GET /v1/me/threads`, `GET /v1/projects/{project_id}/threads` and
+  `GET /v1/threads/{thread_id}` return `origin`: null for a
+  conversation started in the web app or through the API, or `slack`, `email`
+  or `text` for one a person started by messaging Beakr there.
 - Model refusals and fallbacks: three new reads, each needing `kb:read` and
   answering `404 not_found` for a project you cannot read.
   `GET /v1/projects/{project_id}/model-refusals/summary` counts the project's

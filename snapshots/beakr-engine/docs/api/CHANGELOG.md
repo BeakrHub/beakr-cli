@@ -11,11 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4a6b0826593f2626c4fb6a071014ff438c9134627a93c52d13212caf7b790fb0 changelog sha256=01165fedbdce8d89e6bed34cc265bee1b0dc65aec9476921f83c7d4f0f566c6b -->
+<!-- contract-stamp: public-openapi sha256=c950b39088f2a0fb6fdf1f97f750892d931aabc5c65cf6098e4e50298ae63c60 changelog sha256=93ebbd5bad834f44068fb0bf7bfe6f47e45a244626ef7f0639a876dd9279387a -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/projects/{project_id}/model-refusals/summary` adds
+  `failed_by_reason`, counting the events no model recovered by why they
+  ended, and `recovered_by_model`, counting the recovered events by the model
+  that answered instead. An event's `outcome_reason` (in
+  `GET /v1/projects/{project_id}/model-refusals`) may now be
+  `no_capable_fallback`: no fallback model could do that step's work, for
+  example read a page image or call its tools, so none was used. Refusals in
+  background steps (document reading, field cleanup, research and others) are
+  now retried on the fallback models and recorded as `recovered` or `failed`
+  rather than `skipped`.
 - A file a model refused now fails with its own code. In
   `GET /v1/projects/{project_id}/knowledge-summary` (`failed_files`) and
   `GET /v1/projects/{project_id}/knowledge/failed-files`, `error_code` is
