@@ -8,6 +8,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/interview/sendables` and `POST /v1/interview/sendables/{sendable_id}/links`:
+  a link's `delivery_channel` can now be `slack`, for a link sent as a Slack
+  direct message from the sender's own Slack.
 - `GET /v1/projects/{project_id}/model-refusals/summary`: in
   `failed_by_reason`, an event recorded without a reason is counted under
   `unspecified`.
