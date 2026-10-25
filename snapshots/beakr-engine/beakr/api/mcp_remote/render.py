@@ -310,7 +310,8 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         where.append(f"{passages} passages cited")
     if record.get("source_ref"):
         where.append(f"source_ref {record['source_ref']}")
-    tail = f" \u00b7 {' \u00b7 '.join(where)}" if where else ""
+    separator = " \u00b7 "
+    tail = separator + separator.join(where) if where else ""
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     lines = [f"- {_line_label(record)}{head}{tail}".rstrip()]
     if entry["excerpt"]:
