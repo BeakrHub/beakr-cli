@@ -36,6 +36,7 @@ from beakr_cli.output import (
     print_table,
     readable_snippet,
 )
+from beakr_cli.project_binding import project_is_pinned, resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
@@ -750,10 +751,23 @@ def research(
 
 
 def _proposal_scope(project: str | None, *, mine: bool = False) -> dict:
-    """Build required explicit scope for write proposals."""
+    """Build required scope for write proposals.
+
+    A write needs a project someone chose: ``--project``, ``--mine``, or a
+    pin (``BEAKR_PROJECT_ID`` or this directory's binding). The CLI's default
+    project is a read fallback, not a choice, so it never decides where a
+    write lands.
+    """
     selected = sum(bool(v) for v in (project, mine))
+    if selected == 0 and project_is_pinned():
+        pinned = resolve_project(None)
+        if pinned:
+            return {"project_id": pinned}
     if selected != 1:
-        err_console.print("Provide exactly one of --project or --mine for write proposals.")
+        err_console.print(
+            "Provide exactly one of --project or --mine for write proposals "
+            "(or run it in a directory bound with `beakr init`)."
+        )
         raise typer.Exit(1)
     if project:
         return {"project_id": project}

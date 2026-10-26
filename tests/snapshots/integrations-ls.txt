@@ -69,7 +69,7 @@ $ beakr integrations ls
 > GET /v1/integrations
 [exit 0]
 --- stdout
-a1d5e8c2-4b7f-4e39-9c60-8f2b1d3a7e95	status=active
-f4b9d2e7-1c35-4a86-b0f8-6e2d9a3c5b17	status=active
+a1d5e8c2-4b7f-4e39-9c60-8f2b1d3a7e95	Northwind shared drive	provider=google_drive	status=active
+f4b9d2e7-1c35-4a86-b0f8-6e2d9a3c5b17	northwind.slack.com	provider=slack	status=active
 --- stderr
 

@@ -19,6 +19,8 @@ Beakr ships both surfaces, and `beakr setup` installs both. They wrap the same b
 
 If you only want one, install both anyway — they don't conflict and the MCP server is a thin wrapper over the same API the CLI uses.
 
+The MCP server covers Knowledge, research, documents, files, skills and conversations. Interviews, external users, labels and end-user tokens are in the CLI (`beakr interviews`, `beakr external-users`, `beakr labels`, `beakr end-user-tokens`) and the SDKs, not in the MCP server.
+
 ## One-line install
 
 ```bash
@@ -54,10 +56,8 @@ curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh 
 If you'd rather do it step-by-step:
 
 ```bash
-# 1. Install the CLI globally (any of these works)
-uv tool install git+https://github.com/BeakrHub/beakr-cli    # recommended
-pipx install git+https://github.com/BeakrHub/beakr-cli
-pip install git+https://github.com/BeakrHub/beakr-cli        # only inside an isolated env
+# 1. Install the CLI globally with uv
+uv tool install git+https://github.com/BeakrHub/beakr-cli
 
 # 2. Authenticate
 beakr auth login
@@ -220,7 +220,10 @@ a lock, because refreshing rotates the pair. `beakr auth token --json` prints th
 access token (never the refresh token) for the current API, or the one named by
 `--api-url`, refreshing it first when it is about to expire; the TypeScript SDK
 uses it to reach a keychain sign-in and to refresh one without taking that lock
-itself.
+itself. The TypeScript SDK runs the first `beakr` on your `PATH` for that; when
+another `beakr` comes first (a self-hosted evaluation's client, an older
+install), set `BEAKR_CLI_PATH` to the one you signed in with, for example
+`BEAKR_CLI_PATH=~/.local/bin/beakr`.
 
 The API names the sign-in issuer, the CLI's OAuth client and the Beakr scopes
 to ask for (`GET /v1/auth/config`; Clerk for Beakr's hosted API). `beakr auth
@@ -581,7 +584,19 @@ disagree.
 
 Until `beakr-sdk` is on PyPI, `pyproject.toml` requires `beakr-sdk>=0.1.0,<0.2`
 and `[tool.uv.sources]` resolves it from git, pinned to a pushed commit of
-BeakrHub/beakr-python. To take a newer SDK:
+BeakrHub/beakr-python.
+
+That source is uv's own setting, so **uv is the only installer that can install
+the CLI from git** today. `pipx install git+https://github.com/BeakrHub/beakr-cli`
+and `pip install` read only the package metadata, look for `beakr-sdk` on PyPI,
+and stop with "No matching distribution found for beakr-sdk". The pin is not a
+PEP 508 direct reference (`beakr-sdk @ git+...`) on purpose: the self-hosted
+evaluation installs this wheel and the SDK wheel from local files with
+`--require-hashes`, which a git URL in the metadata would conflict with, and
+`publish.yml` refuses a wheel whose requirements do not all resolve from PyPI.
+pipx and pip work again once `beakr-sdk` is published.
+
+To take a newer SDK:
 
 ```bash
 scripts/pin_sdk.sh <commit-or-tag>   # or no argument: beakr-python's current main
