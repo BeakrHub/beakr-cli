@@ -14,6 +14,7 @@ from rich.markup import escape
 
 from beakr_cli.output import console, emit, err_console, print_markdown, print_table, short
 from beakr_cli.project_ref import project_ref_callback
+from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
 
 app = typer.Typer(help="Interview links: create one, read its result, send it to projects.")
@@ -244,9 +245,13 @@ def revoke(
     link_id: str = typer.Argument(
         ..., help="The link id to stop (or its interview id when it has one link)."
     ),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
     json_out: bool = _json_opt,
 ) -> None:
     """Stop a link working; a finished participant keeps their result."""
+    # Revoking cannot be undone (the person's link stops working), so it asks
+    # first and, run without a terminal, needs --yes like the other removals.
+    confirm_or_require_yes(f"Revoke interview link {link_id}? It stops working.", yes=yes)
     with get_sdk() as sdk:
         resolved = _resolve_link_id(sdk, link_id)
         result = sdk.interviews.revoke_link(resolved)

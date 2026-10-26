@@ -15,6 +15,7 @@ from typing import Any
 
 import typer
 
+from beakr_cli.compact import cell
 from beakr_cli.output import console, emit, err_console, is_interactive, print_table, short
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes
@@ -281,7 +282,22 @@ def tools(
             title=f"Integration tools ({len(rows)})",
         )
 
-    emit(found, json_out=json_out, render=render)
+    # Piped: a tool's name is the id `integrations call` takes, so it leads the
+    # line (the generic summary had no id key for a tool and printed "-").
+    def lines(rows: list[dict[str, Any]]) -> list[str]:
+        return [
+            "\t".join(
+                [
+                    cell(r.get("name") or "-"),
+                    f"provider={cell(r.get('provider') or '')}",
+                    f"connections={len(r.get('connections') or [])}",
+                    cell(r.get("description") or "", width=120),
+                ]
+            )
+            for r in rows
+        ]
+
+    emit(found, json_out=json_out, render=render, lines=lines)
 
 
 def _tool_arguments(pairs: list[str], raw: str | None) -> dict[str, Any]:

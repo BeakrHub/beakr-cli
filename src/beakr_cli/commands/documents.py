@@ -11,6 +11,7 @@ from __future__ import annotations
 import typer
 
 from beakr_cli.output import console, emit
+from beakr_cli.project_binding import project_is_pinned, resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.sdk import get_sdk
 
@@ -41,12 +42,25 @@ def search(
         "--project",
         "-P",
         "--scope",
-        help="Project id or name (default: everything you can read).",
+        help=(
+            "Project id or name (default: this directory's bound project, "
+            "else everything you can read)."
+        ),
         callback=project_ref_callback,
+    ),
+    all_projects: bool = typer.Option(
+        False, "--all", "-a", help="Search everything you can read, even in a bound directory."
     ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
     """Find passages by meaning when you do not know the words; a ranked selection, not a census."""
+    if project and all_projects:
+        raise typer.BadParameter("Give --project or --all, not both.", param_hint="--all")
+    # A pin (BEAKR_PROJECT_ID or this directory's binding) scopes the search the
+    # way it scopes kb reads; the CLI's default project does not, so an unbound
+    # directory still searches everything, as before.
+    if project is None and not all_projects and project_is_pinned():
+        project = resolve_project(None)
     with get_sdk() as sdk:
         data = sdk.knowledge.documents_search(
             query,
