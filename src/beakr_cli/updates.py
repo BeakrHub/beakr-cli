@@ -30,6 +30,11 @@ from packaging.version import InvalidVersion, Version
 from beakr_cli import __version__, config
 
 PACKAGE_NAME = "beakr-cli"
+#: Where the current CLI is installed from. PyPI's newest release (0.3.3) is
+#: older than this CLI (0.4.x) until 0.4 is published, so pointing anyone at
+#: ``beakr-cli`` on PyPI would downgrade them; every install and upgrade hint
+#: names the GitHub source instead. Switch back to PACKAGE_NAME once 0.4 is on PyPI.
+INSTALL_SOURCE = "git+https://github.com/BeakrHub/beakr-cli"
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE_NAME}/json"
 DISABLE_ENV = "BEAKR_NO_UPDATE_CHECK"
 DEFAULT_MAX_AGE = timedelta(hours=24)
@@ -227,16 +232,16 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
             return InstallInfo(
                 InstallMethod.uv_tool_source,
                 None,
-                "Installed with uv from a local checkout. Rebuild it with "
-                "`uv tool install --force <checkout>`, or switch to the published "
-                f"release with `uv tool install --force {PACKAGE_NAME}`.",
+                "Installed with uv from a checkout or GitHub. Rebuild it with "
+                "`uv tool install --force <checkout>`, or get the newest from GitHub "
+                f"with `uv tool install --force {INSTALL_SOURCE}`.",
             )
         if _receipt_pins_version(requirement):
             return InstallInfo(
                 InstallMethod.uv_tool_pinned,
                 None,
                 "Installed with uv pinned to one version, which `uv tool upgrade` keeps. "
-                f"Unpin it with `uv tool install --force {PACKAGE_NAME}`.",
+                f"Unpin it with `uv tool install --force {INSTALL_SOURCE}`.",
             )
         # --reinstall-package implies --refresh-package (which `uv tool upgrade` does not
         # accept directly). uv caches the package index, and without a refresh an
@@ -261,9 +266,9 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
             InstallMethod.uvx,
             None,
             "Running through uvx, which reuses a cached copy. Use "
-            f"`uvx --from {PACKAGE_NAME}@latest beakr mcp` in the MCP config to always "
-            "run the newest release, or refresh once with "
-            f"`uvx --refresh --from {PACKAGE_NAME} beakr`.",
+            f"`uvx --refresh --from {INSTALL_SOURCE} beakr mcp` in the MCP config to always "
+            "run the newest version, or refresh once with "
+            f"`uvx --refresh --from {INSTALL_SOURCE} beakr`.",
         )
 
     return InstallInfo(

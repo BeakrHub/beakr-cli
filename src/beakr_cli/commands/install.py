@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.resources
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -153,9 +154,87 @@ def _uninstall_codex(scope: Scope) -> None:
 
 
 def _beakr_command() -> str:
-    """Resolve the absolute path to the `beakr` binary so MCP clients launched
-    from GUI contexts (no shell PATH) can still find it."""
+    """The absolute path of the `beakr` that is running, for MCP clients and hooks.
+
+    Claude Code and Codex launched from a GUI have no shell PATH, so they need a
+    path. It must be this install's: ``shutil.which("beakr")`` named whichever
+    ``beakr`` came first on PATH, so on a machine with two installs (a
+    self-hosted box client ahead of the ``uv tool`` one) setup wired Claude Code
+    to the other install, which talks to another API. The running console
+    script is ``sys.argv[0]``; under ``python -m beakr_cli`` it is the script
+    installed beside the interpreter. PATH is the last resort.
+    """
+    for candidate in _running_entry_points():
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
     return shutil.which("beakr") or "beakr"
+
+
+def _running_entry_points() -> list[Path]:
+    """Where the running ``beakr`` console script can be, most specific first.
+
+    Paths are made absolute but symlinks are kept: ``uv tool`` links
+    ``~/.local/bin/beakr`` into a versioned environment, and the link is what
+    keeps working after ``beakr update``.
+    """
+    script = "beakr.exe" if os.name == "nt" else "beakr"
+    candidates: list[Path] = []
+    argv0 = sys.argv[0] if sys.argv else ""
+    if argv0 and Path(argv0).stem == "beakr":
+        running = Path(os.path.abspath(argv0))
+        candidates.append(running)
+        if running.suffix == "" and os.name == "nt":
+            candidates.append(running.with_suffix(".exe"))
+    candidates.append(Path(sys.executable).parent / script)
+    return candidates
+
+
+def _mcp_env() -> dict[str, str]:
+    """The settings an MCP server or hook needs to reach the API this CLI uses.
+
+    A GUI-launched Claude Code or Codex passes no shell environment, so a
+    sandbox or self-hosted ``BEAKR_BASE_URL`` (or saved ``api_url``) and a
+    non-default ``BEAKR_HOME`` would otherwise be lost and the server would talk
+    to production with no credential. Only non-default values are written. The
+    API key never is: it stays in the token store under ``BEAKR_HOME``, which
+    the server reads.
+    """
+    from beakr_sdk.credentials import (
+        DEFAULT_BASE_URL,
+        beakr_home,
+        normalize_origin,
+        resolve_base_url,
+    )
+
+    env: dict[str, str] = {}
+    base_url = resolve_base_url()
+    if normalize_origin(base_url) != normalize_origin(DEFAULT_BASE_URL):
+        env["BEAKR_BASE_URL"] = base_url.rstrip("/")
+    home = beakr_home()
+    if os.path.abspath(home) != os.path.abspath(Path.home() / ".beakr"):
+        env["BEAKR_HOME"] = os.path.abspath(home)
+    return env
+
+
+def _env_flags(flag: str, env: dict[str, str]) -> list[str]:
+    """``[flag, KEY=value, ...]`` for ``claude mcp add -e`` / ``codex mcp add --env``."""
+    flags: list[str] = []
+    for key, value in env.items():
+        flags += [flag, f"{key}={value}"]
+    return flags
+
+
+def _manual_claude_command(beakr: str, env: dict[str, str], *, project: bool = False) -> str:
+    scope = " --scope project" if project else ""
+    flags = "".join(f" -e {shlex.quote(f'{k}={v}')}" for k, v in env.items())
+    return f"claude mcp add beakr{scope}{flags} -- {shlex.quote(beakr)} mcp"
+
+
+def _mcp_server_entry(beakr: str, env: dict[str, str]) -> dict[str, object]:
+    entry: dict[str, object] = {"command": beakr, "args": ["mcp"]}
+    if env:
+        entry["env"] = env
+    return entry
 
 
 def _claude_cli() -> str | None:
@@ -168,6 +247,7 @@ def _codex_cli() -> str | None:
 
 def _register_claude_mcp(force: bool, scope: Scope) -> None:
     beakr = _beakr_command()
+    env = _mcp_env()
     claude = _claude_cli()
     cli_scope = scope.value  # "user" → ~/.claude.json; "project" → ./.mcp.json
     if claude:
@@ -178,7 +258,18 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
                 text=True,
             )
         result = subprocess.run(
-            [claude, "mcp", "add", "beakr", "--scope", cli_scope, "--", beakr, "mcp"],
+            [
+                claude,
+                "mcp",
+                "add",
+                "beakr",
+                "--scope",
+                cli_scope,
+                *_env_flags("-e", env),
+                "--",
+                beakr,
+                "mcp",
+            ],
             capture_output=True,
             text=True,
         )
@@ -201,7 +292,7 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
 
     # No claude CLI on PATH. Fallback paths depend on scope.
     if scope is Scope.project:
-        _write_project_mcp_json(beakr, force)
+        _write_project_mcp_json(beakr, env, force)
         return
 
     # User scope, no CLI. If the user has a custom CLAUDE_CONFIG_DIR we don't
@@ -209,7 +300,7 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
     if os.environ.get("CLAUDE_CONFIG_DIR"):
         err_console.print(
             "[yellow]Claude:[/yellow] no `claude` CLI on PATH and $CLAUDE_CONFIG_DIR is set; "
-            f"register manually:\n  claude mcp add beakr -- {escape(str(beakr))} mcp"
+            f"register manually:\n  {escape(_manual_claude_command(beakr, env))}"
         )
         return
 
@@ -223,7 +314,7 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
             err_console.print(
                 f"[red]Claude:[/red] could not parse {escape(str(config_path))}; register "
                 "manually:\n"
-                f"  claude mcp add beakr -- {escape(str(beakr))} mcp"
+                f"  {escape(_manual_claude_command(beakr, env))}"
             )
             return
     servers = data.setdefault("mcpServers", {})
@@ -233,12 +324,12 @@ def _register_claude_mcp(force: bool, scope: Scope) -> None:
             "(use --force to overwrite)"
         )
         return
-    servers["beakr"] = {"command": beakr, "args": ["mcp"]}
+    servers["beakr"] = _mcp_server_entry(beakr, env)
     config_path.write_text(json.dumps(data, indent=2) + "\n")
     console.print(f"[green]Claude:[/green] MCP registered ({escape(str(config_path))})")
 
 
-def _write_project_mcp_json(beakr: str, force: bool) -> None:
+def _write_project_mcp_json(beakr: str, env: dict[str, str], force: bool) -> None:
     """Write `.mcp.json` in cwd — the documented project-scope MCP location for Claude Code."""
     path = Path.cwd() / ".mcp.json"
     data: dict = {}
@@ -248,7 +339,7 @@ def _write_project_mcp_json(beakr: str, force: bool) -> None:
         except json.JSONDecodeError:
             err_console.print(
                 f"[red]Claude:[/red] could not parse {escape(str(path))}; register manually:\n"
-                f"  claude mcp add beakr --scope project -- {escape(str(beakr))} mcp"
+                f"  {escape(_manual_claude_command(beakr, env, project=True))}"
             )
             return
     servers = data.setdefault("mcpServers", {})
@@ -258,7 +349,7 @@ def _write_project_mcp_json(beakr: str, force: bool) -> None:
             "to overwrite)"
         )
         return
-    servers["beakr"] = {"command": beakr, "args": ["mcp"]}
+    servers["beakr"] = _mcp_server_entry(beakr, env)
     path.write_text(json.dumps(data, indent=2) + "\n")
     console.print(f"[green]Claude:[/green] MCP registered ({escape(str(path))})")
 
@@ -312,9 +403,19 @@ def _remove_toml_section(text: str, section: str) -> str:
     return "".join(out)
 
 
+def _toml_string(value: str) -> str:
+    """A TOML basic string; JSON's escaping is valid TOML for these values."""
+    return json.dumps(value)
+
+
 def _codex_block() -> str:
     beakr = _beakr_command()
-    return f'\n[mcp_servers.beakr]\ncommand = "{beakr}"\nargs = ["mcp"]\n'
+    block = f'\n[mcp_servers.beakr]\ncommand = {_toml_string(beakr)}\nargs = ["mcp"]\n'
+    env = _mcp_env()
+    if env:
+        pairs = ", ".join(f"{key} = {_toml_string(value)}" for key, value in env.items())
+        block += f"env = {{ {pairs} }}\n"
+    return block
 
 
 def _register_codex_mcp(force: bool, scope: Scope) -> None:
@@ -327,6 +428,7 @@ def _register_codex_mcp(force: bool, scope: Scope) -> None:
         )
 
     beakr = _beakr_command()
+    env = _mcp_env()
     codex = _codex_cli()
     if codex:
         if force:
@@ -336,7 +438,7 @@ def _register_codex_mcp(force: bool, scope: Scope) -> None:
                 text=True,
             )
         result = subprocess.run(
-            [codex, "mcp", "add", "beakr", "--", beakr, "mcp"],
+            [codex, "mcp", "add", "beakr", *_env_flags("--env", env), "--", beakr, "mcp"],
             capture_output=True,
             text=True,
         )
@@ -450,6 +552,29 @@ def _verified_identity() -> str | None:
         return None
 
 
+def _save_env_key(env_key: str) -> None:
+    """Save ``$BEAKR_API_KEY`` the way ``beakr auth login --with-api-key`` does.
+
+    The MCP server and hooks setup registers are started by Claude Code or
+    Codex, often from a GUI without this shell's environment, so a key that
+    lived only in the environment reached none of them: setup reported auth as
+    done while the server started signed out. The key goes to the token store
+    (keychain, else a 0600 file under ``BEAKR_HOME``), filed under the API it
+    verified against, never into the MCP registration itself.
+    """
+    from beakr_sdk.credentials import TokenStore, resolve_base_url
+
+    from beakr_cli import config as beakr_config
+
+    base_url = resolve_base_url()
+    beakr_config.save_api_key(env_key, base_url)
+    where = "the keychain" if TokenStore().backend == "keyring" else "the Beakr credentials file"
+    console.print(
+        f"Saved [bold]$BEAKR_API_KEY[/bold] to {where} for {escape(base_url)} so Claude Code "
+        "and Codex can use it."
+    )
+
+
 def _maybe_auth() -> None:
     """Keep a working sign-in (env key, browser login, saved key) or create one."""
     from beakr_sdk.credentials import TokenStore
@@ -469,6 +594,8 @@ def _maybe_auth() -> None:
             err_console.print("[red]$BEAKR_API_KEY didn't verify.[/red]")
             raise typer.Exit(3)
         console.print(f"Using [bold]$BEAKR_API_KEY[/bold] ([dim]{escape(str(identity))}[/dim])")
+        if stored is None:
+            _save_env_key(env_key)
         return
 
     # 2. A browser login or saved key -- verify, then ask whether to keep it.

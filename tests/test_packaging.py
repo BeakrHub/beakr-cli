@@ -36,6 +36,19 @@ def test_mcp_dependency_excludes_the_2x_line_the_server_cannot_import() -> None:
     assert spec.contains(Version("1.27.0"))
 
 
+def test_typer_dependency_excludes_the_line_that_vendors_its_own_click() -> None:
+    # Regression: the bound was `typer>=0.15`, and `uv tool install` ignores
+    # uv.lock, so a fresh install resolved typer 0.27. From 0.26 typer ships its
+    # own click (`typer._click`); its error handler stops recognising the real
+    # click exceptions `beakr api` raises, and every usage error -- even
+    # `beakr api --help` -- printed a traceback (found on a fresh install,
+    # 2026-10-25). 0.26.x and 0.27.x both break.
+    spec = _requirement("typer").specifier
+    assert not spec.contains(Version("0.26.0"))
+    assert not spec.contains(Version("0.27.3"))
+    assert spec.contains(Version("0.25.0"))
+
+
 def test_package_version_matches_module_version() -> None:
     from beakr_cli import __version__
 

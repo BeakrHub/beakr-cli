@@ -188,7 +188,25 @@ def test_version_pinned_uv_tool_is_reported_not_upgraded(tmp_path, monkeypatch) 
     info = updates.detect_install(_uv_tool_env(tmp_path, monkeypatch, PINNED_RECEIPT))
     assert info.method is updates.InstallMethod.uv_tool_pinned
     assert info.upgrade_command is None
-    assert "uv tool install --force beakr-cli" in info.instructions
+    assert f"uv tool install --force {updates.INSTALL_SOURCE}" in info.instructions
+
+
+GIT_RECEIPT = (
+    '[tool]\nrequirements = [{ name = "beakr-cli", git = '
+    '"https://github.com/BeakrHub/beakr-cli" }]\n' + _ENTRYPOINTS
+)
+
+
+def test_github_install_is_never_pointed_at_the_older_pypi_release(tmp_path, monkeypatch) -> None:
+    """Regression: PyPI's newest beakr-cli (0.3.3) is older than the GitHub CLI
+    (0.4.x). A GitHub install was told to "switch to the published release with
+    `uv tool install --force beakr-cli`" -- a downgrade to a CLI that talks only
+    to production (found on a fresh install, 2026-10-25)."""
+    info = updates.detect_install(_uv_tool_env(tmp_path, monkeypatch, GIT_RECEIPT))
+    assert info.method is updates.InstallMethod.uv_tool_source
+    assert info.upgrade_command is None
+    assert f"uv tool install --force {updates.INSTALL_SOURCE}" in info.instructions
+    assert "--force beakr-cli" not in info.instructions
 
 
 def test_local_checkout_uv_tool_is_never_upgraded_from_pypi(tmp_path, monkeypatch) -> None:
@@ -407,6 +425,22 @@ def test_version_says_a_build_ahead_of_pypi_is_newer() -> None:
     assert "newer than the latest release (0.0.2)" in result.output
     assert "could not be checked" not in result.output
     assert not (config.config_dir() / "update_check.json").exists()
+
+
+@respx.mock
+def test_update_check_on_a_build_ahead_of_pypi_needs_no_update() -> None:
+    """Regression: `beakr update --check` on a GitHub 0.4.0 install, with PyPI at
+    0.3.3, said "PyPI was unreachable or is still publishing" and exited 1,
+    although PyPI answered and there is nothing to update to (2026-10-25)."""
+    respx.get(updates.PYPI_JSON_URL).mock(
+        return_value=httpx.Response(200, json=_pypi("0.0.1", "0.0.2"))
+    )
+    result = CliRunner().invoke(app, ["update", "--check"])
+    assert result.exit_code == 0, result.output
+    said = " ".join(result.output.split())  # Rich wraps at the terminal width
+    assert "No update needed" in said
+    assert "newer than the latest release on PyPI (0.0.2)" in said
+    assert "unreachable" not in said
 
 
 # ---------------------------------------------------------------------------
