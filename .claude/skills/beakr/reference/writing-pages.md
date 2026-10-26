@@ -10,17 +10,49 @@ Use this workflow when the user wants to create or update a page. Every change g
 
 3. **Find the right parent.** Use `suggest_parent` with `title` (and your draft as `content`) for a page you are about to create, or `ls {parent}` to walk the hierarchy. If unsure, ask the user.
 
-4. **Choose the page type.** Run `ontology` to see the org's active types. Common ones:
+4. **Choose the page type: cards first.** Every project is a map of cards. One specific thing (a person, organization, product, system, model, study, decision, event) is a **card**. Before your first `new`, run `ontology` and pick the most specific card type the project has. If none fits, propose one with `page_type` rather than writing a topic. Name the card plainly (`AlphaFold`, not `DeepMind - AlphaFold`), give it a Description of 2 to 8 sentences (what it is, why it matters here, its status: its identity, not a list of facts), and grow it with `add_fact` / `add_connection` / `add_finding`, each with evidence. Common types:
 
 | Type | When to use |
 |------|-------------|
-| `topic` | Most common. Concepts, systems, processes. |
-| `person` | People profiles. |
-| `organization` | Companies, teams, departments. |
-| `decision` | Decisions with rationale and date. |
-| `meeting` | Meeting notes with attendees and outcomes. |
-| `overview` | Index/section pages that tie a section together. |
+| `person` | One person. |
+| `organization` | One company, team or department. |
+| `product`, `system`, ... | One product, system, model, study or other specific thing: use the most specific card type `ontology` lists. |
+| `decision` | One decision, with its rationale and date. |
+| `topic` | A theme, concept or field that ties several cards together (`Protein structure prediction`), never one specific system or product. Not a card; needs no card shape. |
+| `overview` | Index/section pages that tie a section together. Not a card. |
 | `research_note` | Ephemeral analysis, not canonical knowledge. |
+
+One-off messages and meetings are not cards: what they established goes on the cards of the things involved. An analysis across several cards is its own page, linked from each card with an `add_finding`.
+
+A card in two calls, a `new` and then a dated fact:
+
+```
+knowledge_base_write(
+  action="new",
+  scope="Research",
+  arguments={
+    "title": "AlphaFold",
+    "page_type": "system",
+    "summary": "DeepMind's protein-structure prediction model.",
+    "sections": [{"title": "Description", "body": "AlphaFold predicts a protein's 3D structure from its amino-acid sequence (alphafold-paper.pdf › p. 1)."}],
+    "rationale": "A system the team cites often.",
+  },
+)
+knowledge_base_write(
+  action="add_fact",
+  scope="Research",
+  arguments={
+    "page": "AlphaFold",
+    "attribute": "Release",
+    "value": "AlphaFold 2 code released as open source",
+    "when": "2021-07",
+    "evidence": "(alphafold-paper.pdf › p. 1)",
+    "rationale": "Release date from the paper.",
+  },
+)
+```
+
+`when` is when the value held in the world (`YYYY-MM-DD`, `YYYY-MM`, `YYYY-Qn` or `YYYY`), never when it was recorded.
 
 ## Adding to a project-map card
 

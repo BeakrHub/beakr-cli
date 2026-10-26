@@ -137,7 +137,7 @@ User wants to verify sources for a claim
   → knowledge_base provenance {page} or blame {page}
 
 User wants to create/update a page
-  → See [reference/writing-pages.md](reference/writing-pages.md)
+  → One specific thing (person, organization, product, system, model, study, decision, event) is a card: run ontology first and use the most specific card type, then add_fact / add_connection / add_finding with evidence. Topic, overview and index pages tie cards together and need no card shape. See [reference/writing-pages.md](reference/writing-pages.md)
 
 You established something the organization will want again (after a cited answer)
   → propose it: add_fact {page, attribute, value, evidence} for a sourced value (reuse the attribute names rows view: fields lists); add_connection {page, relation, to, evidence} on the more specific card; add_finding {page, date, kind, text, evidence} for your conclusion. An out-of-date value gets a newer dated row, not a deletion.
