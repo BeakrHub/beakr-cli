@@ -4253,7 +4253,7 @@
       "type": "string"
      },
      {
-      "description": "What kind of principal `principal_id` names. One of `user`, `group`, `org`, `service`, `link`.",
+      "description": "What kind of principal `principal_id` names. Use `user` for a person or a service account; `service` is also accepted for one of the organization's service accounts and is stored and listed as `user`. One of `user`, `group`, `org`, `service`, `link`.",
       "enum": [
        "user",
        "group",
@@ -5234,7 +5234,7 @@
       "type": "string"
      },
      {
-      "description": "Id of the project that holds it.",
+      "description": "Project to save a new conversation to, so the project's members see it. Saving needs member access; a caller who can only read the project gets a private conversation, and `scope` still decides what the run reads.",
       "name": "home_project_id",
       "required": false,
       "type": "string"
