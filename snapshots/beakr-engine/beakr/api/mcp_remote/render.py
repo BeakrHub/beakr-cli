@@ -135,6 +135,26 @@ def body_error_text(body: dict[str, Any]) -> str:
     )
 
 
+def organization_line(org: dict[str, Any], *, pinned_by: str | None = None) -> str:
+    """``Organization: <name> (<slug>) -- <how this connection chose it>.``
+
+    The first line of ``get_profile`` and ``list_projects`` on both MCP servers.
+    A person in several orgs could not tell which one a connection was acting
+    in: nothing an agent read named it. ``pinned_by`` says what fixed the org
+    (the hosted ``/mcp/o/{slug}`` URL, the CLI's org setting, an API key); left
+    out, the org is the person's active one, which follows the web app.
+    """
+    name = _one_line(org.get("name") or "Untitled", 120)
+    slug = _one_line(org.get("slug") or "", 120)
+    label = f"{name} ({slug})" if slug else name
+    how = (
+        f"pinned by {pinned_by}"
+        if pinned_by
+        else "your active organization, which follows the one you switch to in the Beakr web app"
+    )
+    return f"Organization: {label} -- {how}."
+
+
 def _one_line(value: Any, width: int) -> str:
     text = " ".join(str(value).split())
     return text if len(text) <= width else text[: width - 1].rstrip() + "…"

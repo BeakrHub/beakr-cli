@@ -27,6 +27,9 @@ async def test_stdio_project_pages_expose_and_consume_the_rest_cursor(monkeypatc
 
     with respx.mock as mock:
         route = mock.get(f"{api}/v1/projects").mock(side_effect=page)
+        mock.get(f"{api}/v1/me/organization").mock(
+            return_value=httpx.Response(200, json={"id": "o1", "name": "Northwind", "slug": "nw"})
+        )
         result = (
             await handler(
                 types.CallToolRequest(
