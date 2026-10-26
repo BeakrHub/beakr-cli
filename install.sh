@@ -32,21 +32,24 @@ fi
 # 2. Install (or upgrade) the beakr CLI as a uv tool. This puts a real `beakr`
 #    binary on PATH at ~/.local/bin/beakr — no `uvx` indirection at runtime.
 #
-# Three cases:
-#   a) uv-managed beakr-cli already installed -> upgrade
-#   b) a `beakr` binary exists from another install method (pipx, pip)
-#      -> install with --force so uv replaces it
-#   c) nothing installed yet -> plain install
-if uv tool list 2>/dev/null | grep -q '^beakr-cli '; then
-  log "Upgrading beakr-cli ..."
-  uv tool upgrade beakr-cli
-elif command -v beakr >/dev/null 2>&1; then
-  log "Existing 'beakr' binary detected from another install method; reinstalling via uv (--force) ..."
-  uv tool install --force beakr-cli
-else
-  log "Installing beakr-cli ..."
-  uv tool install beakr-cli
-fi
+#    It installs from GitHub: the newest release on PyPI (0.3.x) is older than
+#    this CLI and talks only to production, so `uv tool install beakr-cli` would
+#    install the wrong version. Set BEAKR_CLI_SOURCE to install from elsewhere
+#    (a checkout, a branch: git+https://github.com/BeakrHub/beakr-cli@<ref>).
+#    --force replaces a PyPI, pipx or pip install of the same `beakr`;
+#    --refresh fetches the newest commit instead of a cached one.
+BEAKR_CLI_SOURCE="${BEAKR_CLI_SOURCE:-git+https://github.com/BeakrHub/beakr-cli}"
+case "$BEAKR_CLI_SOURCE" in
+  git+*)
+    # uv clones git sources (this CLI and its Python SDK) with the git CLI.
+    if ! command -v git >/dev/null 2>&1; then
+      err "git is required to install the Beakr CLI from GitHub. Install git, then re-run."
+      exit 1
+    fi
+    ;;
+esac
+log "Installing beakr-cli from $BEAKR_CLI_SOURCE ..."
+uv tool install --force --refresh "$BEAKR_CLI_SOURCE"
 
 # 3. Make sure the freshly-installed `beakr` is on PATH for the setup step.
 export PATH="$HOME/.local/bin:$PATH"

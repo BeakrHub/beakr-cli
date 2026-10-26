@@ -273,6 +273,15 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
         err_console.print(f"{CHECK_OFF} {check_off_fix()}", markup=False)
         if check or not force:
             raise typer.Exit(1)
+    elif status.latest is None and status.published_older is not None:
+        # A GitHub or development build ahead of PyPI: there is nothing to update
+        # to, and PyPI answered, so it was not "unreachable".
+        console.print(
+            f"No update needed: installed {status.current} is newer than the latest "
+            f"release on PyPI ({status.published_older}).",
+            markup=False,
+        )
+        return {**report, "newer_than_release": status.published_older}
     elif status.latest is None:
         err_console.print(
             "[yellow]Could not determine the latest release: PyPI was unreachable or is "

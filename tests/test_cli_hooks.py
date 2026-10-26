@@ -29,6 +29,11 @@ def api_env(monkeypatch):
     monkeypatch.setattr("beakr_cli.agent_hooks._beakr_command", lambda: "/opt/bin/beakr")
 
 
+#: The fixture's API is not production, so every hook command carries it: a
+#: GUI-launched Claude Code runs hooks without the shell's BEAKR_API_URL.
+ENV = f"BEAKR_BASE_URL={API}"
+
+
 def _settings_path(home: Path) -> Path:
     return home / ".claude" / "settings.json"
 
@@ -56,14 +61,14 @@ def test_install_twice_is_idempotent_and_preserves_foreign_settings(isolated_hom
     assert settings["model"] == "opus"
     assert settings["hooks"]["PreToolUse"] == [FOREIGN_HOOK]
     assert _commands(settings, "SessionStart") == [
-        "/opt/bin/beakr context --format claude_md --project auto --hook"
+        f"{ENV} /opt/bin/beakr context --format claude_md --project auto --hook"
     ]
     assert _commands(settings, "Stop") == [
         "/usr/local/bin/audit-bash",
-        "/opt/bin/beakr compound --hook --client claude-code --background",
+        f"{ENV} /opt/bin/beakr compound --hook --client claude-code --background",
     ]
     assert _commands(settings, "SessionEnd") == [
-        "/opt/bin/beakr compound --hook --client claude-code --background --force"
+        f"{ENV} /opt/bin/beakr compound --hook --client claude-code --background --force"
     ]
     assert settings["hooks"]["SessionStart"][0]["matcher"] == ""
 
@@ -78,7 +83,7 @@ def test_reinstall_replaces_an_entry_from_an_old_binary_path(
 
     settings = json.loads(_settings_path(isolated_home).read_text())
     assert _commands(settings, "SessionStart") == [
-        "/new/bin/beakr context --format claude_md --project auto --hook"
+        f"{ENV} /new/bin/beakr context --format claude_md --project auto --hook"
     ]
 
 
