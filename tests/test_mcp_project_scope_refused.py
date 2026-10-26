@@ -139,11 +139,20 @@ async def test_get_profile_reads_a_project_by_name_with_each_goal_on_its_line() 
         )
     )
 
+    respx.get(f"{API}/v1/me/organization").mock(
+        return_value=Response(200, json={"id": "o1", "name": "Northwind", "slug": "northwind"})
+    )
+
     result = await _call("get_profile", {"project_id": "Science Ingest 018"})
 
     assert not result.isError, result.content
     assert profile.called
     text = result.content[0].text
+    # The org it was read in leads (an API key acts in the org it was issued for).
+    assert text.startswith(
+        "Organization: Northwind (northwind) -- pinned by the API key.\n\n"
+        "# Biotech lab data (project profile)"
+    )
     assert "Goals:\n  - Track sequencing runs, samples, variants and assay results\n" in text
     assert "  - Find which compounds and constructs were used where" in text
     assert "Entity types:\n  - sample\n  - compound" in text

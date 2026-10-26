@@ -18,6 +18,7 @@ from beakr_cli import __version__, tool_surface
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
 from beakr_cli.mcp_knowledge_status import knowledge_notice
+from beakr_cli.mcp_render import organization_line
 from beakr_cli.mcp_tools_platform import _project_by_name_or_id
 from beakr_cli.updates import (
     CHECK_OFF,
@@ -428,7 +429,8 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         project_type = p.get("project_type", "standard")
         desc = p.get("description", "") or ""
         lines.append(f"- {name} ({project_type}, id: {pid}){f' -- {desc}' if desc else ''}")
-    listed = "\n".join(lines) if lines else "No projects found."
+    projects = "\n".join(lines) if lines else "No projects found."
+    listed = f"{await _organization_line()}\n\n{projects}"
     # Which listed projects' Knowledge is still building or has failed files,
     # the same notice the hosted server appends.
     notice = knowledge_notice(rows[:50])
@@ -475,7 +477,41 @@ async def get_profile(
         resolved = await _project_by_name_or_id(project_ref)
         data = await _call_api(lambda sdk: sdk.profile.project(resolved))
 
-    return _profile_text(data, profile_type)
+    return f"{await _organization_line()}\n\n{_profile_text(data, profile_type)}"
+
+
+async def _organization_line() -> str:
+    """Which org this server's calls act in, and what fixed it.
+
+    The hosted server opens get_profile and list_projects with the same line
+    (``render.organization_line``): a person in several orgs could not tell
+    which one an agent's calls were acting in.
+    """
+
+    async def read(sdk: Any) -> tuple[Any, str | None]:
+        return await sdk.me.active_org(), _organization_pin(sdk)
+
+    org, pinned_by = await _call_api(read)
+    return organization_line(org if isinstance(org, dict) else {}, pinned_by=pinned_by)
+
+
+def _organization_pin(sdk: Any) -> str | None:
+    """What fixed the org these calls act in, or None for the person's active org.
+
+    An API key and a Beakr device token act in the org they were issued for,
+    whatever ``X-Org-Id`` says. A Clerk sign-in acts in the org set with
+    ``beakr auth set-org`` (or ``BEAKR_ORG_ID``), else in the person's active
+    org, which follows the web app.
+    """
+    credential = sdk.credential
+    if credential.kind == "api_key":
+        return "the API key"
+    bearer = credential.tokens.access_token if credential.tokens else credential.token
+    if str(bearer or "").startswith("bk_at_"):
+        return "this CLI sign-in"
+    if sdk.org_id:
+        return "the CLI's org setting (beakr auth set-org or BEAKR_ORG_ID)"
+    return None
 
 
 def _profile_text(data: Any, profile_type: str) -> str:
