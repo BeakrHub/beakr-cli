@@ -8,6 +8,41 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: three
+  readable references a Knowledge read prints, which were refused with
+  `citation_not_citeable`, now resolve. `Page Title › Section` resolves for a
+  section whose heading carries a date tag such as `[2026-02-26]`, whether you
+  cite the title with or without the tag. A connected file with no drive path
+  (a synced Drive or GitHub file) is cited by the name a read prints, such as
+  `KG Benchmarking Design.txt › segment 1` or
+  `GitHub: org/repo/README.md › para 2`. `Page Title › Section` is stored as a
+  citation of that section; it was stored as a citation of the whole page. When
+  the page resolves but the section does not, the refusal lists the page's
+  section titles.
+- `POST /v1/runs`: a caller who can read a project but not save conversations
+  to it (a project viewer, or an external user whose label grants the project)
+  may now pass that project as `home_project_id`. The run starts with a private
+  conversation instead of answering `403`; saving a conversation to a project
+  still needs member access.
+- `POST /v1/knowledge/documents` is now reachable with a token minted for an
+  external user. It covers the projects that user's labels and project
+  memberships reach. `coverage` adds `rows_not_searched`: documents in scope
+  whose table rows were not searched, only their profile.
+- `POST /v1/projects/{project_id}/members` and
+  `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}`:
+  `principal_type` `service` now names one of the organization's service
+  accounts. The member is stored and listed as `principal_type` `user` with
+  `principal_kind` `service_account`, and gets the project access its role
+  gives; before, it was listed but had no access. `service` with any other id
+  is refused with 422 `validation_error` on `principal_id`.
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: a
+  file you uploaded can be cited by any reference a documents read
+  (`POST /v1/knowledge/documents`) returns for it: its `source_ref`, bare or in
+  `{{...}}`, in `evidence` or in `citations[].source_ref`, and its passage key
+  (`rag:...`) in `evidence` or `citations[].key`. These were refused with
+  `citation_not_citeable`. A `source_ref` in `evidence` that names nothing you
+  may cite is now refused with `citation_not_citeable`, naming it, instead of
+  being stored as a token that cites nothing.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations

@@ -11,11 +11,22 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=e928787cfcd10f25981953d3802e84a9b91b00d42ccf9f804465d272115df4ac -->
+<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=b067606499308034b7498ea7b0a5fa0cf1e014d8c6d39de0cd58cd18a9f208f3 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: three
+  readable references a Knowledge read prints, which were refused with
+  `citation_not_citeable`, now resolve. `Page Title › Section` resolves for a
+  section whose heading carries a date tag such as `[2026-02-26]`, whether you
+  cite the title with or without the tag. A connected file with no drive path
+  (a synced Drive or GitHub file) is cited by the name a read prints, such as
+  `KG Benchmarking Design.txt › segment 1` or
+  `GitHub: org/repo/README.md › para 2`. `Page Title › Section` is stored as a
+  citation of that section; it was stored as a citation of the whole page. When
+  the page resolves but the section does not, the refusal lists the page's
+  section titles.
 - `POST /v1/runs`: a caller who can read a project but not save conversations
   to it (a project viewer, or an external user whose label grants the project)
   may now pass that project as `home_project_id`. The run starts with a private
