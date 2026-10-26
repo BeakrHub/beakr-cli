@@ -18285,6 +18285,124 @@
         "title": "WikiSectionIn",
         "type": "object"
       },
+      "WikiSourceRevertConflict": {
+        "properties": {
+          "change_id": {
+            "description": "Id of the change.",
+            "format": "uuid",
+            "title": "Change Id",
+            "type": "string"
+          },
+          "commit_id": {
+            "description": "Id of the commit.",
+            "format": "uuid",
+            "title": "Commit Id",
+            "type": "string"
+          },
+          "page_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the page.",
+            "examples": [
+              "9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14"
+            ],
+            "title": "Page Id"
+          },
+          "reason": {
+            "description": "Why, in a few words.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "commit_id",
+          "change_id",
+          "page_id",
+          "reason"
+        ],
+        "title": "WikiSourceRevertConflict",
+        "type": "object"
+      },
+      "WikiSourceRevertResult": {
+        "properties": {
+          "applied": {
+            "description": "Number of inverse changes successfully applied.",
+            "title": "Applied",
+            "type": "integer"
+          },
+          "commit_ids": {
+            "default": [],
+            "description": "Ids of the commits.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Commit Ids",
+            "type": "array"
+          },
+          "commits_processed": {
+            "description": "Number of source-associated commits considered by this undo operation.",
+            "title": "Commits Processed",
+            "type": "integer"
+          },
+          "conflict_details": {
+            "description": "Changes requiring review, with the original commit and affected page. These pages have not been reverted; page_ids lists only successfully changed pages.",
+            "items": {
+              "$ref": "#/components/schemas/WikiSourceRevertConflict"
+            },
+            "title": "Conflict Details",
+            "type": "array"
+          },
+          "conflicts": {
+            "description": "Number of source-associated commits whose undo reported conflicts; conflict_details lists the individual changes requiring review.",
+            "title": "Conflicts",
+            "type": "integer"
+          },
+          "page_ids": {
+            "default": [],
+            "description": "Ids of the pages.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Page Ids",
+            "type": "array"
+          },
+          "proposals": {
+            "description": "The proposals.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Proposals",
+            "type": "array"
+          },
+          "skipped": {
+            "default": 0,
+            "description": "How many were skipped.",
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "status": {
+            "description": "Current status of the wiki source revert.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "commits_processed",
+          "applied",
+          "conflicts",
+          "proposals"
+        ],
+        "title": "WikiSourceRevertResult",
+        "type": "object"
+      },
       "WikiToolOutcome": {
         "additionalProperties": true,
         "properties": {
@@ -24605,6 +24723,104 @@
           "knowledge"
         ],
         "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert": {
+      "post": {
+        "description": "Undo a source's compiled Knowledge contributions.\n\nFor an uploaded file use source_type `artifact` and its version UUID as\nsource_id. Undo versions newest first to remove a whole file's contribution.\nRequires `kb:write`; project-restricted credentials must supply an allowed\nproject_id. File bytes are not deleted. Later edits can prevent a complete\nundo: inspect status, skipped, conflicts and proposals before deleting files.\nIdempotency-Key retries replay the original outcome for 24 hours.\nA `blocked` result can include applied changes; HTTP 200 is not proof that\nevery contribution was removed. An unknown source returns `noop`.",
+        "operationId": "revert_wiki_source_v1_knowledge_wiki_sources__source_type___source_id__revert_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "source_type",
+            "required": true,
+            "schema": {
+              "title": "Source Type",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "title": "Source Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiSourceRevertResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Undo a source's compiled Knowledge contributions",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
       }
     },
     "/v1/knowledge/wiki/write": {

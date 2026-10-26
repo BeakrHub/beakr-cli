@@ -11,11 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1b28c92ce179921848ca778436d93174b0a241b21cd6f2c3d619d0f1e67cbab2 changelog sha256=795adf45e23a9b650515c65c74625472baa0da4ed1fbdf047cf73d40c92aee47 -->
+<!-- contract-stamp: public-openapi sha256=093e2a0bbde7143d34e9bc32342c1e94eafd5ed686894f30c99f51b63e2445d4 changelog sha256=c3de2fc596e4dd097f0806c3983072b13ddc20eda14677b6f2848ea2fb320702 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
+  source's compiled Knowledge contributions. For an uploaded file use
+  `source_type` `artifact` with the version UUID as `source_id`, and undo
+  versions newest first to remove a whole file's contribution. Requires
+  `kb:write`; a project-restricted credential must supply an allowed
+  `project_id`. File bytes are not deleted. Later edits can prevent a complete
+  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
+  deleting files: a `blocked` result can include applied changes, and HTTP 200
+  is not proof that every contribution was removed. An unknown source returns
+  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations

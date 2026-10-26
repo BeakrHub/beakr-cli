@@ -2614,6 +2614,39 @@
    "summary": "Research a question"
   },
   {
+   "action": "revert-wiki-source",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/sources/{source_type}/{source_id}/revert",
+   "path_params": [
+    {
+     "name": "source_type",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "source_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Undo a source's compiled Knowledge contributions"
+  },
+  {
    "action": "run-wiki-command",
    "anonymous": false,
    "area": "knowledge",
