@@ -274,7 +274,11 @@ def test_interviews_link_create_show_send_and_revoke():
     revoke = respx.post(f"{API}/v1/interview/sendables/links/l1/revoke").respond(
         200, json={"ok": True}
     )
-    assert runner.invoke(app, ["interviews", "link", "revoke", "l1"]).exit_code == 0
+    # Without a terminal, revoking needs --yes and calls nothing until given it.
+    refused = runner.invoke(app, ["interviews", "link", "revoke", "l1"])
+    assert refused.exit_code == 2, refused.output
+    assert not revoke.called
+    assert runner.invoke(app, ["interviews", "link", "revoke", "l1", "--yes"]).exit_code == 0
     assert revoke.called
 
 

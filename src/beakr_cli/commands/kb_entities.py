@@ -40,7 +40,12 @@ def entities(
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
     """Knowledge entities (pages) by type, with a count per type."""
-    project_id = resolve_project(project) if project else None
+    # The project resolves like every other kb read: the flag, then
+    # BEAKR_PROJECT_ID, the directory's binding and the default project. With
+    # none, list every scope the caller can read: the pages route without
+    # `all` answers only organization-root pages, so an unscoped call used to
+    # print nothing for anyone whose Knowledge lives in projects.
+    project_id = resolve_project(project)
     with get_sdk() as sdk:
         pages: list[dict[str, Any]] = list(
             islice(
@@ -48,6 +53,7 @@ def entities(
                     project_id=project_id,
                     page_type=page_type,
                     sort_by="title",
+                    all_scopes=None if project_id else True,
                     page_size=min(limit, 200),
                 ),
                 limit,

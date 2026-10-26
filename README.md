@@ -19,6 +19,8 @@ Beakr ships both surfaces, and `beakr setup` installs both. They wrap the same b
 
 If you only want one, install both anyway — they don't conflict and the MCP server is a thin wrapper over the same API the CLI uses.
 
+The MCP server covers Knowledge, research, documents, files, skills and conversations. Interviews, external users, labels and end-user tokens are in the CLI (`beakr interviews`, `beakr external-users`, `beakr labels`, `beakr end-user-tokens`) and the SDKs, not in the MCP server.
+
 ## One-line install
 
 ```bash
@@ -30,9 +32,11 @@ curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh 
 That's it. The script:
 
 1. Installs [`uv`](https://github.com/astral-sh/uv) if missing (no system Python required — `uv` ships its own).
-2. Installs the `beakr` CLI via `uv tool install beakr-cli`, putting a real `beakr` binary on PATH at `~/.local/bin/beakr`.
-3. Prompts for your Beakr API key (or reads `$BEAKR_API_KEY`) and saves it.
-4. Registers the Beakr MCP server in **Claude Code** (`claude mcp add` or `~/.claude.json`) and **Codex** (`~/.codex/config.toml`) — whichever it detects.
+2. Installs the `beakr` CLI from GitHub (`uv tool install git+https://github.com/BeakrHub/beakr-cli`), putting a real `beakr` binary on PATH at `~/.local/bin/beakr`. It needs `git`.
+   (PyPI's newest `beakr-cli` is 0.3.x, which is older than this CLI and talks only to production;
+   install from GitHub until 0.4 is published there.)
+3. Signs you in through the browser, or verifies `$BEAKR_API_KEY` and saves it to the keychain so Claude Code and Codex can use it.
+4. Registers the Beakr MCP server in **Claude Code** (`claude mcp add` or `~/.claude.json`) and **Codex** (`~/.codex/config.toml`) — whichever it detects — pointing at the `beakr` that ran setup, with your API URL and `BEAKR_HOME` when they are not the defaults.
 5. Copies the Beakr skill and `kb-*` slash commands into `~/.claude` and/or `~/.codex`.
 
 Restart Claude Code or Codex once and the `beakr` MCP server appears under `/mcp`. You can also use the CLI directly: `beakr kb search "..."`, `beakr research "..."`, etc.
@@ -52,10 +56,8 @@ curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh 
 If you'd rather do it step-by-step:
 
 ```bash
-# 1. Install the CLI globally (any of these works)
-uv tool install beakr-cli       # recommended
-pipx install beakr-cli
-pip install beakr-cli           # only inside an isolated env
+# 1. Install the CLI globally with uv
+uv tool install git+https://github.com/BeakrHub/beakr-cli
 
 # 2. Authenticate
 beakr auth login
@@ -70,7 +72,7 @@ beakr setup --client codex # only Codex
 beakr setup --uninstall    # remove everything
 ```
 
-The MCP registration uses the absolute path of the installed `beakr` binary, so it works even when Claude Code or Codex is launched from a GUI without your shell PATH.
+The MCP registration uses the absolute path of the `beakr` binary that ran setup (not whichever `beakr` is first on PATH), so it works even when Claude Code or Codex is launched from a GUI without your shell PATH. A non-default API (`BEAKR_BASE_URL`, or the URL you signed in to) and `BEAKR_HOME` are written into the registration's `env`; the API key is not — it stays in the keychain, or `credentials` under `BEAKR_HOME`.
 
 ## Manual MCP registration (no CLI)
 
@@ -83,7 +85,7 @@ If you don't want the CLI at all and just want the MCP server entry:
   "mcpServers": {
     "beakr": {
       "command": "uvx",
-      "args": ["--from", "beakr-cli", "beakr", "mcp"],
+      "args": ["--from", "git+https://github.com/BeakrHub/beakr-cli", "beakr", "mcp"],
       "env": { "BEAKR_API_KEY": "<your-key>" }
     }
   }
@@ -95,11 +97,11 @@ If you don't want the CLI at all and just want the MCP server entry:
 ```toml
 [mcp_servers.beakr]
 command = "uvx"
-args = ["--from", "beakr-cli", "beakr", "mcp"]
+args = ["--from", "git+https://github.com/BeakrHub/beakr-cli", "beakr", "mcp"]
 env = { BEAKR_API_KEY = "<your-key>" }
 ```
 
-`uvx` fetches `beakr-cli` on demand, so no global install is needed — but you also won't have the `beakr` CLI on your PATH.
+`uvx` fetches `beakr-cli` from GitHub on demand, so no global install is needed — but you also won't have the `beakr` CLI on your PATH. Add `"BEAKR_BASE_URL": "https://api-sandbox.thebeakr.com"` (or your self-hosted URL) to `env` to use an API other than production.
 
 ## Updating
 
@@ -122,8 +124,8 @@ You don't have to remember to check:
 
 Installs that cannot be upgraded safely in place are reported, not changed: a
 `uv tool` install from a local checkout, `pip` inside another environment, or `uvx`
-(which reuses a cached copy; use `uvx --from beakr-cli@latest beakr mcp` to always
-run the newest release). Set `BEAKR_NO_UPDATE_CHECK=1` to turn the check off.
+(which reuses a cached copy; use `uvx --refresh --from git+https://github.com/BeakrHub/beakr-cli beakr mcp`
+to always run the newest version). Set `BEAKR_NO_UPDATE_CHECK=1` to turn the check off.
 
 ## Shell completion
 
@@ -161,7 +163,7 @@ The scripts call `beakr` to compute matches, so `beakr` must be on your `PATH`
 Install, sign in, bind a project, upload, ask, read a card:
 
 ```bash
-uv tool install beakr-cli          # or the one-line installer above
+uv tool install git+https://github.com/BeakrHub/beakr-cli   # or the one-line installer above
 beakr auth login                   # browser sign-in; works with SSO and MFA
 beakr init --create "Research"     # bind this directory to a new project
 beakr upload docs/ notes.pdf       # folders keep their structure
@@ -218,7 +220,10 @@ a lock, because refreshing rotates the pair. `beakr auth token --json` prints th
 access token (never the refresh token) for the current API, or the one named by
 `--api-url`, refreshing it first when it is about to expire; the TypeScript SDK
 uses it to reach a keychain sign-in and to refresh one without taking that lock
-itself.
+itself. The TypeScript SDK runs the first `beakr` on your `PATH` for that; when
+another `beakr` comes first (a self-hosted evaluation's client, an older
+install), set `BEAKR_CLI_PATH` to the one you signed in with, for example
+`BEAKR_CLI_PATH=~/.local/bin/beakr`.
 
 The API names the sign-in issuer, the CLI's OAuth client and the Beakr scopes
 to ask for (`GET /v1/auth/config`; Clerk for Beakr's hosted API). `beakr auth
@@ -579,7 +584,19 @@ disagree.
 
 Until `beakr-sdk` is on PyPI, `pyproject.toml` requires `beakr-sdk>=0.1.0,<0.2`
 and `[tool.uv.sources]` resolves it from git, pinned to a pushed commit of
-BeakrHub/beakr-python. To take a newer SDK:
+BeakrHub/beakr-python.
+
+That source is uv's own setting, so **uv is the only installer that can install
+the CLI from git** today. `pipx install git+https://github.com/BeakrHub/beakr-cli`
+and `pip install` read only the package metadata, look for `beakr-sdk` on PyPI,
+and stop with "No matching distribution found for beakr-sdk". The pin is not a
+PEP 508 direct reference (`beakr-sdk @ git+...`) on purpose: the self-hosted
+evaluation installs this wheel and the SDK wheel from local files with
+`--require-hashes`, which a git URL in the metadata would conflict with, and
+`publish.yml` refuses a wheel whose requirements do not all resolve from PyPI.
+pipx and pip work again once `beakr-sdk` is published.
+
+To take a newer SDK:
 
 ```bash
 scripts/pin_sdk.sh <commit-or-tag>   # or no argument: beakr-python's current main

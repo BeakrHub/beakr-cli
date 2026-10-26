@@ -11,21 +11,35 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=093e2a0bbde7143d34e9bc32342c1e94eafd5ed686894f30c99f51b63e2445d4 changelog sha256=c3de2fc596e4dd097f0806c3983072b13ddc20eda14677b6f2848ea2fb320702 -->
+<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=e928787cfcd10f25981953d3802e84a9b91b00d42ccf9f804465d272115df4ac -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
-  source's compiled Knowledge contributions. For an uploaded file use
-  `source_type` `artifact` with the version UUID as `source_id`, and undo
-  versions newest first to remove a whole file's contribution. Requires
-  `kb:write`; a project-restricted credential must supply an allowed
-  `project_id`. File bytes are not deleted. Later edits can prevent a complete
-  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
-  deleting files: a `blocked` result can include applied changes, and HTTP 200
-  is not proof that every contribution was removed. An unknown source returns
-  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
+- `POST /v1/runs`: a caller who can read a project but not save conversations
+  to it (a project viewer, or an external user whose label grants the project)
+  may now pass that project as `home_project_id`. The run starts with a private
+  conversation instead of answering `403`; saving a conversation to a project
+  still needs member access.
+- `POST /v1/knowledge/documents` is now reachable with a token minted for an
+  external user. It covers the projects that user's labels and project
+  memberships reach. `coverage` adds `rows_not_searched`: documents in scope
+  whose table rows were not searched, only their profile.
+- `POST /v1/projects/{project_id}/members` and
+  `DELETE /v1/projects/{project_id}/members/{principal_type}/{principal_id}`:
+  `principal_type` `service` now names one of the organization's service
+  accounts. The member is stored and listed as `principal_type` `user` with
+  `principal_kind` `service_account`, and gets the project access its role
+  gives; before, it was listed but had no access. `service` with any other id
+  is refused with 422 `validation_error` on `principal_id`.
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: a
+  file you uploaded can be cited by any reference a documents read
+  (`POST /v1/knowledge/documents`) returns for it: its `source_ref`, bare or in
+  `{{...}}`, in `evidence` or in `citations[].source_ref`, and its passage key
+  (`rag:...`) in `evidence` or `citations[].key`. These were refused with
+  `citation_not_citeable`. A `source_ref` in `evidence` that names nothing you
+  may cite is now refused with `citation_not_citeable`, naming it, instead of
+  being stored as a token that cites nothing.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations

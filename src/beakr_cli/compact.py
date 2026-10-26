@@ -32,6 +32,8 @@ ID_KEYS = (
     # A project membership (``projects members ls``) names its member this way.
     "principal_id",
     "key_id",
+    # An end-user token (``end-user-tokens ls``): revoke takes this id.
+    "token_id",
     "label_id",
     "project_id",
     "artifact_id",
@@ -44,7 +46,12 @@ ID_KEYS = (
 LABEL_KEYS = (
     "name",
     "title",
+    # An integration's own label (``integrations ls``).
+    "label",
     "display_name",
+    # Whom an end-user token is for; before client_name, which every token
+    # minted by one backend shares.
+    "subject",
     "client_name",
     "email",
     "external_id",
@@ -56,6 +63,7 @@ LABEL_KEYS = (
 FIELD_KEYS = (
     ("slug", "slug"),
     ("project_type", "type"),
+    ("provider", "provider"),
     ("page_type", "type"),
     ("artifact_type", "type"),
     ("kind", "kind"),

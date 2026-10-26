@@ -22,11 +22,12 @@ context is rendered into a marked block there (with a capture notice, see
 from __future__ import annotations
 
 import json
+import os
 import shlex
 from pathlib import Path
 from typing import Any
 
-from beakr_cli.commands.install import _beakr_command, _claude_home, _codex_home
+from beakr_cli.commands.install import _beakr_command, _claude_home, _codex_home, _mcp_env
 
 HOOK_TIMEOUT_SECONDS = 30
 
@@ -61,7 +62,19 @@ def codex_agents_path() -> Path:
 
 
 def _beakr_invocation(args: str) -> str:
-    return f"{shlex.quote(_beakr_command())} {args}"
+    """The hook command: this install's binary, with the API settings it needs.
+
+    Claude Code runs hooks through a shell but, launched from a GUI, without the
+    environment ``beakr setup`` ran in; a non-default API or ``BEAKR_HOME`` is
+    therefore set on the command itself (``_mcp_env``, the same settings the MCP
+    registration carries).
+    """
+    command = f"{shlex.quote(_beakr_command())} {args}"
+    if os.name == "nt":
+        # cmd.exe has no `NAME=value command` form; Windows users set them globally.
+        return command
+    assignments = " ".join(f"{key}={shlex.quote(value)}" for key, value in _mcp_env().items())
+    return f"{assignments} {command}" if assignments else command
 
 
 def is_beakr_hook_command(command: Any) -> bool:

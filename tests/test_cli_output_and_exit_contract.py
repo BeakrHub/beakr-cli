@@ -255,7 +255,7 @@ def test_interview_link_revoke_json_says_what_was_revoked():
         return_value=httpx.Response(204)
     )
 
-    result = runner.invoke(app, ["interviews", "link", "revoke", "l1", "--json"])
+    result = runner.invoke(app, ["interviews", "link", "revoke", "l1", "--yes", "--json"])
 
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout) == {"link_id": "l1", "revoked": True}
