@@ -11,11 +11,27 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=b067606499308034b7498ea7b0a5fa0cf1e014d8c6d39de0cd58cd18a9f208f3 -->
+<!-- contract-stamp: public-openapi sha256=1ef9c9ce2bb810c5b7ac9dcf812a317816f53c62464b55c71e791f1d3f6f3d60 changelog sha256=5e46c2774f76a262020f63a062eba2b93b03292e5ebcbc2593cb858a6ce55f38 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
+  page and section write operations: an API key or token can cite a web page.
+  Send `{source_type: "web", url, source_title, meta: {excerpt}, stance}` in
+  `citations` (a section's or the change's) or a card row's `citations`, name
+  the URL in a row's `evidence`, or write `(https://...)` or
+  `(Title — https://...)` in the prose. Only `http` and `https` URLs are
+  accepted; any other is refused with `citation_not_citeable`. Beakr stores the
+  citation as you give it and never fetches the page. The fragment and tracking
+  parameters (`utm_*`, `fbclid` and similar) are dropped, and one page cited
+  several times is one citation, keyed `web:<hash>`. To cite it in the prose by
+  a name of your own, give it a `key` such as `web:company-about` and write
+  `{{web:company-about}}`; it is stored under the page's one key. The citation
+  schema adds `url`. Reads name a web citation `(Title — https://...)` in the
+  text, and its source record carries the title, `location.url` and the
+  excerpt, as for a web page Ask cited. A markdown link, `[text](https://...)`,
+  stays a link.
 - `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: three
   readable references a Knowledge read prints, which were refused with
   `citation_not_citeable`, now resolve. `Page Title › Section` resolves for a
