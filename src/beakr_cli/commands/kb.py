@@ -834,8 +834,11 @@ def _create_proposal(body: dict) -> dict:
     """Stage one of the CLI's proposal shapes (``create``, ``edit``, ``mv`` ...)."""
     fields = dict(body)
     action = fields.pop("action")
+    # Every caller builds `body` with _proposal_scope, so project_id is always the
+    # project's id; the SDK takes it as a required keyword since beakr-sdk c0765e9.
+    project_id = fields.pop("project_id")
     with get_sdk() as sdk:
-        return sdk.knowledge.proposals.create(action, **fields)
+        return sdk.knowledge.proposals.create(action, project_id=project_id, **fields)
 
 
 def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
