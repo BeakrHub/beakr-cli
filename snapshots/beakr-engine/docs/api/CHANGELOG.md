@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d9266a022cf9258cef498d608ae0289e4741dbf36e37c8d8482cd32a050fa7e1 changelog sha256=e928787cfcd10f25981953d3802e84a9b91b00d42ccf9f804465d272115df4ac -->
+<!-- contract-stamp: public-openapi sha256=6c286664fc0ffe28740add96d820d3eb26b5983298eee99e5e68a0ee7e4db6d0 changelog sha256=2d8505e423a8aa5a2f0508371219315411b91088f0128a3857fa855a0a408373 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -40,6 +40,16 @@ The first public version.
   `citation_not_citeable`. A `source_ref` in `evidence` that names nothing you
   may cite is now refused with `citation_not_citeable`, naming it, instead of
   being stored as a token that cites nothing.
+- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
+  source's compiled Knowledge contributions. For an uploaded file use
+  `source_type` `artifact` with the version UUID as `source_id`, and undo
+  versions newest first to remove a whole file's contribution. Requires
+  `kb:write`; a project-restricted credential must supply an allowed
+  `project_id`. File bytes are not deleted. Later edits can prevent a complete
+  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
+  deleting files: a `blocked` result can include applied changes, and HTTP 200
+  is not proof that every contribution was removed. An unknown source returns
+  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations
