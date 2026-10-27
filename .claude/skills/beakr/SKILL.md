@@ -157,7 +157,7 @@ User wants to audit knowledge base quality
 
 Always cite sources when presenting information from the knowledge base:
 - Cite with the readable reference a result prints, in parentheses: `(tax-memo.docx › p. 7)`, `(#deals › message 2026-03-04 14:02 UTC)`, `(ENG-12)`, `(Page Title › Section)`; to people, link it when it has a url
-- In writes, cite with that readable reference as `reference` (or a read's `source_ref`), and only this conversation (`conversation` with `meta.excerpt`), files the user uploaded, or sources Knowledge already cites; anything else is refused `citation_not_citeable`
+- In writes, cite with that readable reference as `reference` (or a read's `source_ref`), and only this conversation (`conversation` with `meta.excerpt`), files the user uploaded, a web page (its http(s) URL, title and the quoted passage), or sources Knowledge already cites; anything else is refused `citation_not_citeable`
 - Include the page title so the user can find it
 - `research` answers cite the same way, with a Sources list per document -- keep the references when you present them
 - An excerpt marked `(paraphrase)`, `(human asserted)`, or `(unverified)` is not a checked quote; open the source before relying on it

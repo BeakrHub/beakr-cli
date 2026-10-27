@@ -8,6 +8,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
+  page and section write operations: an API key or token can cite a web page.
+  Send `{source_type: "web", url, source_title, meta: {excerpt}, stance}` in
+  `citations` (a section's or the change's) or a card row's `citations`, name
+  the URL in a row's `evidence`, or write `(https://...)` or
+  `(Title — https://...)` in the prose. Only `http` and `https` URLs are
+  accepted; any other is refused with `citation_not_citeable`. Beakr stores the
+  citation as you give it and never fetches the page. The fragment and tracking
+  parameters (`utm_*`, `fbclid` and similar) are dropped, and one page cited
+  several times is one citation, keyed `web:<hash>`. To cite it in the prose by
+  a name of your own, give it a `key` such as `web:company-about` and write
+  `{{web:company-about}}`; it is stored under the page's one key. The citation
+  schema adds `url`. Reads name a web citation `(Title — https://...)` in the
+  text, and its source record carries the title, `location.url` and the
+  excerpt, as for a web page Ask cited. A markdown link, `[text](https://...)`,
+  stays a link.
 - `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: three
   readable references a Knowledge read prints, which were refused with
   `citation_not_citeable`, now resolve. `Page Title › Section` resolves for a
