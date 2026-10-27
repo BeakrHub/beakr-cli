@@ -5197,6 +5197,12 @@
    "body": {
     "fields": [
      {
+      "description": "Id of an agent to talk to. The thread remembers it, so later turns that name no agent keep talking to it.",
+      "name": "agent_id",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "The person's decision on a gated action: `{type: approve|reject, message?, tool_call_id?}`. Resumes the paused run.",
       "name": "approval_decision",
       "required": false,
@@ -5909,6 +5915,7 @@
      "description": "Only skills with these visibilities. Repeat the parameter for more than one.",
      "enum": [
       "private",
+      "project",
       "org",
       "public"
      ],
@@ -6049,6 +6056,12 @@
    "path_params": [],
    "query": [
     {
+     "description": "Only threads with this agent.",
+     "name": "agent_id",
+     "required": false,
+     "type": "string"
+    },
+    {
      "description": "Opaque cursor from a previous page's `next_cursor`.",
      "name": "cursor",
      "required": false,
@@ -6057,6 +6070,17 @@
     {
      "description": "Deprecated; use project_ids",
      "name": "group_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Only one kind of thread: `chat` (no workflow, no agent), `agent` or `workflow`.",
+     "enum": [
+      "chat",
+      "agent",
+      "workflow"
+     ],
+     "name": "kind",
      "required": false,
      "type": "string"
     },

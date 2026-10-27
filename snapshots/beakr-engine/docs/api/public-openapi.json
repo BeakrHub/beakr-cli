@@ -7991,6 +7991,31 @@
             "description": "Scripts bundled with the skill.",
             "title": "Scripts"
           },
+          "shared_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the shared project.",
+            "title": "Shared Project Id"
+          },
+          "shared_project_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the shared project.",
+            "title": "Shared Project Name"
+          },
           "slug": {
             "description": "The skill's handle, such as `scanpy`. Not unique: your own skill and a built-in can share one, so address a skill by `id` when it matters which.",
             "title": "Slug",
@@ -8026,6 +8051,7 @@
             "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization).",
             "enum": [
               "private",
+              "project",
               "org",
               "public"
             ],
@@ -8690,6 +8716,17 @@
             "description": "The sources it cites or draws on.",
             "title": "Sources"
           },
+          "started_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MessageStartedBy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set on the first message of a thread an agent's schedule or webhook started: what started the run. Nobody typed that message. Null on every other message."
+          },
           "status_messages": {
             "anyOf": [
               {
@@ -8726,6 +8763,17 @@
             ],
             "description": "The dashboard's widgets.",
             "title": "Widgets"
+          },
+          "workflow_event": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkflowChatEvent"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set on the milestone messages a workflow run posts into its thread: which run, which milestone and, for a wait, how it ended. Null on every other message."
           }
         },
         "required": [
@@ -9017,6 +9065,49 @@
           "source"
         ],
         "title": "MessageSkillEntry",
+        "type": "object"
+      },
+      "MessageStartedBy": {
+        "description": "What started a run nobody typed: an agent trigger's schedule or webhook.\n\nOn the first message of a trigger's thread. ``task`` is the trigger's own\ntext; ``payload`` is what a webhook request sent (outside data, already cut\nto the size the model saw). Clients show a \"started by\" card, not a\nmessage from the person.",
+        "properties": {
+          "kind": {
+            "description": "What started the run: the agent's schedule or a webhook request.",
+            "enum": [
+              "schedule",
+              "webhook"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "description": "The name of the schedule or webhook that started the run.",
+            "title": "Name",
+            "type": "string"
+          },
+          "payload": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a webhook request sent, cut to the size the agent read. Outside data: show it as such. Null for a schedule.",
+            "title": "Payload"
+          },
+          "task": {
+            "description": "The trigger's own task text, as its creator wrote it.",
+            "title": "Task",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "name",
+          "task"
+        ],
+        "title": "MessageStartedBy",
         "type": "object"
       },
       "MfaStatusOut": {
@@ -13671,9 +13762,10 @@
             "type": "string"
           },
           "visibility": {
-            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).",
+            "description": "Who may see it: `private` (its author), `project` (the people with access to one project in the author's organization), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).",
             "enum": [
               "private",
+              "project",
               "org",
               "public"
             ],
@@ -13820,9 +13912,10 @@
             "type": "string"
           },
           "visibility": {
-            "description": "Who may see it: `private` (its author), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).",
+            "description": "Who may see it: `private` (its author), `project` (the people with access to one project in the author's organization), `org` (the author's organization) or `public` (every Beakr organization, which can list, read and download it).",
             "enum": [
               "private",
+              "project",
               "org",
               "public"
             ],
@@ -14634,6 +14727,19 @@
           }
         ],
         "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of an agent to talk to. The thread remembers it, so later turns that name no agent keep talking to it.",
+            "title": "Agent Id"
+          },
           "approval_decision": {
             "anyOf": [
               {
@@ -15067,6 +15173,31 @@
       },
       "ThreadDetailResponse": {
         "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the agent this thread talks to, or null when it talks to none.",
+            "title": "Agent Id"
+          },
+          "agent_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the agent this thread talks to, or null.",
+            "title": "Agent Name"
+          },
           "canvases": {
             "anyOf": [
               {
@@ -15342,6 +15473,48 @@
       },
       "ThreadSummary": {
         "properties": {
+          "agent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the agent this thread talks to, or null when it talks to none.",
+            "title": "Agent Id"
+          },
+          "agent_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the agent this thread talks to, or null.",
+            "title": "Agent Name"
+          },
+          "agent_origin": {
+            "anyOf": [
+              {
+                "enum": [
+                  "chat",
+                  "task",
+                  "trigger"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How the thread with an agent started: `chat` (the person chatted with it), `task` (the person started it on a task) or `trigger` (a schedule or webhook started it). Null when the thread talks to no agent.",
+            "title": "Agent Origin"
+          },
           "created_at": {
             "description": "When it was created (ISO 8601, UTC).",
             "examples": [
@@ -18445,6 +18618,110 @@
           "outcome"
         ],
         "title": "WikiWriteResult",
+        "type": "object"
+      },
+      "WorkflowChatEvent": {
+        "description": "What a workflow run's milestone message is about, for clients that render it.\n\nWritten by the workflow executor on the plain messages it posts into a run's\nthread (\"Started\", waiting for an answer or a review, finished, stopped).\nThe message ``text`` stays readable on its own; this lets a client show the\nmilestone as part of the run instead of as an assistant answer. A waiting\nmessage is updated in place once the wait ends, so ``state`` says how it\nended. The text never says \"you\": a client compares ``reviewer_ids`` and\n``decided_by`` with the viewer.",
+        "properties": {
+          "decided_by": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who approved, rejected, edited or answered, once someone did.",
+            "title": "Decided By"
+          },
+          "flagged_steps": {
+            "default": 0,
+            "description": "How many steps finished with problems. Set only when kind is finished.",
+            "title": "Flagged Steps",
+            "type": "integer"
+          },
+          "kind": {
+            "description": "Which milestone of the run the message marks.",
+            "enum": [
+              "started",
+              "waiting_input",
+              "waiting_review",
+              "finished",
+              "stopped"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The step that is (or was) waiting. Null for run milestones.",
+            "title": "Node Id"
+          },
+          "reviewer_ids": {
+            "description": "Who is asked to review. Empty unless kind is waiting_review.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Reviewer Ids",
+            "type": "array"
+          },
+          "run_id": {
+            "description": "The workflow run this message is about.",
+            "examples": [
+              "f3b7c9e1-0a2d-4c6e-8f1b-3d5e7a9c0b24"
+            ],
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "waiting",
+                  "approved",
+                  "rejected",
+                  "edited",
+                  "answered"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For waiting_input and waiting_review: 'waiting' while the run waits, then how the wait ended. Null on a waiting message means the run stopped before anyone decided. Always null for started, finished and stopped.",
+            "title": "State"
+          },
+          "step_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "That step's title, as the workflow names it.",
+            "title": "Step Title"
+          }
+        },
+        "required": [
+          "run_id",
+          "kind"
+        ],
+        "title": "WorkflowChatEvent",
         "type": "object"
       },
       "beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate": {
@@ -27178,6 +27455,48 @@
             }
           },
           {
+            "description": "Only one kind of thread: `chat` (no workflow, no agent), `agent` or `workflow`.",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "chat",
+                    "agent",
+                    "workflow"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only one kind of thread: `chat` (no workflow, no agent), `agent` or `workflow`.",
+              "title": "Kind"
+            }
+          },
+          {
+            "description": "Only threads with this agent.",
+            "in": "query",
+            "name": "agent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only threads with this agent.",
+              "title": "Agent Id"
+            }
+          },
+          {
             "description": "`only` lists just the conversations a notification opened (`origin` `notification`); `exclude` leaves them out. Omitted, both are listed.",
             "in": "query",
             "name": "notifications",
@@ -31053,6 +31372,7 @@
                   "items": {
                     "enum": [
                       "private",
+                      "project",
                       "org",
                       "public"
                     ],
