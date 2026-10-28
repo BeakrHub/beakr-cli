@@ -13,6 +13,7 @@ an unbounded skill body or conversation list would crowd out the user's work.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from beakr_cli import mcp_result, tool_surface
 from beakr_cli.mcp_errors import ApiCallError, call_api
@@ -633,6 +634,8 @@ async def _project_id(project: str) -> str:
     given = project.strip()
     if given in _resolved_projects:
         return _resolved_projects[given]
+    if _is_project_id(given):
+        return await _checked_project_id(given)
     projects = await _readable_projects()
     named = [p for p in projects if str(p.get("name") or "").casefold() == given.casefold()]
     if len(named) > 1 and not any(str(p.get("id")) == given for p in projects):
@@ -646,6 +649,38 @@ async def _project_id(project: str) -> str:
         raise ScopeNotFound(given, suggestions=close_matches(projects, given))
     _resolved_projects[given] = str(found["id"])
     return _resolved_projects[given]
+
+
+def _is_project_id(value: str) -> bool:
+    """Whether ``value`` is a project id (a UUID in its canonical form), not a name."""
+    try:
+        return str(UUID(value)) == value.lower()
+    except ValueError:
+        return False
+
+
+async def _checked_project_id(project_id: str) -> str:
+    """A project id, checked with ``GET /v1/projects/{id}`` instead of the org listing.
+
+    A credential restricted to some projects is refused the listing ("not
+    addressed by a single project"), and one without ``projects:read`` is
+    refused both routes, so resolving an id through ``GET /v1/projects`` made
+    documents and research fail for such a credential even on its own project.
+    A 404 still refuses an id that names nothing (the Y12 "0 in scope"); a 403
+    passes the id through, and the route it is sent to applies the
+    credential's project limits itself.
+    """
+    try:
+        await call_api(lambda sdk: sdk.api.projects.get_project(project_id))
+    except ApiCallError as exc:
+        status = exc.response.status_code
+        if status == 404:
+            raise ScopeNotFound(project_id, suggestions=[]) from exc
+        if status != 403:
+            raise
+        return project_id
+    _resolved_projects[project_id] = project_id
+    return project_id
 
 
 def _scoped_project(project: str | None = None, project_id: str | None = None) -> str | None:

@@ -63,9 +63,8 @@ CUT_HINTS: dict[str, str] = {
         "question to narrow it."
     ),
     "workboard": (
-        "The board was cut at the text limit, so some agents are missing: read the whole board "
-        "untruncated with `beakr api knowledge get-wiki-work-board` (GET "
-        "/v1/knowledge/wiki/work-board) for the same label_id or project_id."
+        "The board was cut at the text limit, so some agents are missing: pass label_id to "
+        "read one label's board, or project to read one project's."
     ),
     "wiki_graph": (
         "The graph summary was cut at the text limit: pass project to narrow it, or use "

@@ -64,13 +64,20 @@ fi
 #
 # When invoked via `curl | sh`, stdin is the pipe from curl — typer prompts
 # would silently skip. Redirect stdin from /dev/tty so interactive prompts
-# (e.g. "Use existing API key? [Y/n]") reach the user's terminal. Fall back
-# to inherited stdin when /dev/tty isn't available (CI, no controlling tty).
+# (e.g. "Keep using it? [Y/n]") reach the user's terminal.
+#
+# Test that /dev/tty can be opened, not that it exists: the device node is
+# there even without a controlling terminal (an agent's or CI's shell), where
+# opening it fails with "Device not configured" and, under `set -e`, ended
+# this script before setup ran. Without a terminal, setup runs
+# non-interactively with stdin from /dev/null, so it never reads the rest of
+# this script from curl's pipe.
 log "Running 'beakr setup' ..."
-if [ -e /dev/tty ]; then
+if (exec </dev/tty) 2>/dev/null; then
   beakr setup "$@" < /dev/tty
 else
-  beakr setup "$@"
+  log "No terminal; running setup non-interactively."
+  beakr setup "$@" < /dev/null
 fi
 
 cat <<'EOF'

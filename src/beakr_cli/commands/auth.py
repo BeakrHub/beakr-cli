@@ -448,11 +448,17 @@ def logout(
 
 
 def _whoami(json_out: bool) -> None:
+    from beakr_cli.errors import exit_code_for
+
     try:
         data = _me()
     except Exception as exc:
         err_console.print(f"Failed: {exc}", markup=False)
-        raise typer.Exit(1)
+        # The CLI's usual codes: an expired, revoked or missing credential is 3
+        # (authentication), as `beakr auth status` answers it. Every failure
+        # used to exit 1, so a script could not tell "sign in again" from an
+        # outage.
+        raise typer.Exit(exit_code_for(exc)) from exc
     active_org = os.environ.get("BEAKR_ORG_ID") or config.get("org_id")
     scope_project = os.environ.get("BEAKR_PROJECT_ID") or config.get("project_id")
     if json_out:
