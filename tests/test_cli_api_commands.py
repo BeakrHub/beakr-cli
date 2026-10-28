@@ -487,3 +487,66 @@ def test_a_field_whose_type_is_a_list_of_types_is_read_not_crashed():
         "type": "integer",
         "multiple": True,
     }
+
+
+# The documents door (sandbox e2e, 2026-10-27). Root causes: object body fields
+# were left out of the generated options, so `api knowledge documents --help`
+# showed no way to give `arguments` except a whole --data body; and a 200
+# answer reporting its own failure (`is_error: true`) exited 0.
+
+
+def test_an_object_body_field_is_an_option_taking_json():
+    result = runner.invoke(app, ["api", "knowledge", "documents", "--help"])
+    assert result.exit_code == 0, result.output
+    assert "--arguments" in result.output
+
+
+@respx.mock
+def test_an_object_field_option_sends_its_json(tmp_path):
+    route = respx.post(f"{API}/v1/knowledge/documents").respond(
+        200, json={"content": "1 match", "sources": {}, "is_error": False}
+    )
+    window = tmp_path / "window.json"
+    window.write_text('{"document": "memo", "start_line": 21}')
+
+    inline = runner.invoke(
+        app,
+        ["api", "knowledge", "documents", "--command", "search", "--arguments", '{"query": "x"}'],
+    )
+    from_file = runner.invoke(
+        app, ["api", "knowledge", "documents", "--command", "read", "--arguments", f"@{window}"]
+    )
+
+    assert inline.exit_code == 0, inline.output
+    assert from_file.exit_code == 0, from_file.output
+    assert json.loads(route.calls[0].request.content) == {
+        "command": "search",
+        "arguments": {"query": "x"},
+    }
+    assert json.loads(route.calls[1].request.content) == {
+        "command": "read",
+        "arguments": {"document": "memo", "start_line": 21},
+    }
+
+
+def test_an_object_field_option_that_is_not_json_is_a_usage_error():
+    result = runner.invoke(
+        app, ["api", "knowledge", "documents", "--command", "search", "--arguments", "{query"]
+    )
+    assert result.exit_code == 2
+    assert "--arguments" in result.output
+
+
+@respx.mock
+def test_an_answer_reporting_its_own_failure_exits_1():
+    respx.post(f"{API}/v1/knowledge/documents").respond(
+        200,
+        json={
+            "content": "Unknown argument 'qury' for search.",
+            "error_code": "invalid_arguments",
+            "is_error": True,
+        },
+    )
+    result = runner.invoke(app, ["api", "knowledge", "documents", "--command", "search"])
+    assert result.exit_code == 1
+    assert json.loads(result.stdout)["error_code"] == "invalid_arguments"

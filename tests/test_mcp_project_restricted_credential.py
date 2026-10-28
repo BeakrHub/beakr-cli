@@ -100,7 +100,9 @@ async def test_research_reads_a_project_id_for_a_credential_without_projects_rea
         return_value=Response(200, json={"text": "Dana owns it.", "citations": [], "sources": {}})
     )
 
-    result = await _call("research", {"query": "Who owns ZETA-7?", "quick": True, "project": PROJECT})
+    result = await _call(
+        "research", {"query": "Who owns ZETA-7?", "quick": True, "project": PROJECT}
+    )
 
     assert not result.isError, result.content
     assert research.called
