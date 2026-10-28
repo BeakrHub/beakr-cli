@@ -13,6 +13,7 @@ an unbounded skill body or conversation list would crowd out the user's work.
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 from beakr_cli import mcp_result, tool_surface
 from beakr_cli.mcp_errors import ApiCallError, call_api
@@ -628,12 +629,12 @@ async def _project_id(project: str) -> str:
     An id is checked too: it must be a project the caller can read. Raises
     :class:`ScopeNotFound` naming the closest projects otherwise.
     """
-    from beakr_cli.project_ref import close_matches, find_project, looks_like_id
+    from beakr_cli.project_ref import close_matches, find_project
 
     given = project.strip()
     if given in _resolved_projects:
         return _resolved_projects[given]
-    if looks_like_id(given):
+    if _is_project_id(given):
         return await _checked_project_id(given)
     projects = await _readable_projects()
     named = [p for p in projects if str(p.get("name") or "").casefold() == given.casefold()]
@@ -648,6 +649,14 @@ async def _project_id(project: str) -> str:
         raise ScopeNotFound(given, suggestions=close_matches(projects, given))
     _resolved_projects[given] = str(found["id"])
     return _resolved_projects[given]
+
+
+def _is_project_id(value: str) -> bool:
+    """Whether ``value`` is a project id (a UUID in its canonical form), not a name."""
+    try:
+        return str(UUID(value)) == value.lower()
+    except ValueError:
+        return False
 
 
 async def _checked_project_id(project_id: str) -> str:
