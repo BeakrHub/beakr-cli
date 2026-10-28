@@ -8,6 +8,21 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: four
+  citation fixes for API keys and tokens. A citation named by its `source_ref`
+  or `reference` that also carries a `key` of your own, such as
+  `{key: "plan", source_ref: ...}`, is cited in the prose by that key: write
+  `{{plan}}` and it is stored under the key its source has, as a web citation's
+  own key already was. Each card row's `evidence` and `citations` resolve as the
+  call's own do, in `add_fact`, `add_connection` and `add_finding` `rows` and in
+  the new `rows` of `edit_rows`, so a row's `source_ref` or readable reference
+  cites its source instead of being refused or stored as a token that cites
+  nothing; a row that names no source still inherits only the call's. A
+  `citation_not_citeable` refusal now names the reference you sent, a
+  `{{token}}` without its braces (it read `Not citeable: ''`). Evidence that
+  names a file Knowledge cites without naming a place in it (`memo.pdf`) cites
+  the whole file, keyed `artifact:<version>`, instead of the newest passage of
+  it Knowledge cites; name the place (`memo.pdf › p. 7`) to cite that passage.
 - `POST /v1/runs` returns a `stream_url` of `GET /v1/runs/{run_id}/events`, the
   documented events path; it named a deprecated path that serves the same
   stream.
