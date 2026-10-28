@@ -5602,6 +5602,22 @@
    "WorkflowConfigCreate": {
     "description": "A workflow config to create from a template.",
     "properties": {
+     "allow_changes": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 30,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Allow changes.",
+      "title": "Allow Changes"
+     },
      "dashboard_enabled": {
       "default": false,
       "description": "Whether this config produces dashboard widget items.",
@@ -5754,6 +5770,19 @@
       "description": "Where output goes: `project`. The older value `user` (the personal library) is still accepted and resolves to the personal project; `space` is refused.",
       "title": "Output Location Type"
      },
+     "results_folder_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the results folder.",
+      "title": "Results Folder Id"
+     },
      "schedule": {
       "anyOf": [
        {
@@ -5815,6 +5844,21 @@
    "WorkflowConfigOut": {
     "description": "Serialized representation of a workflow config.\n\nConfigs can be ephemeral (is_saved=false) or saved (is_saved=true).\n\nAttributes:\n    id: Unique identifier.\n    template_id: FK to the template.\n    template_version: Version of template at creation.\n    org_id: Organization UUID.\n    created_by: UUID of user who created the config.\n    is_saved: Whether this is a saved (reusable) config.\n    name: Display name (required for saved configs).\n    inputs: Input values for runs.\n    output_location_type: Where output goes.\n    output_location_id: UUID of output destination.\n    schedule: Optional schedule configuration.\n    is_pinned: Whether this saved config is pinned in workflow lists.\n    schedule_enabled: Whether scheduling is active.\n    dashboard_enabled: Whether this config produces dashboard widget items.\n    dashboard_settings: Display settings for the dashboard widget.\n    created_at: When created.\n    updated_at: When last updated.\n    template_name: Name of the template (for display).\n    template_icon: Icon of the template (for display).\n    template_definition: Full template definition.\n    last_run_at: When the last run started.\n    last_run_status: Status of the last run.\n    last_run_id: ID of the last run.\n    run_count: Total number of runs.",
     "properties": {
+     "change_consent": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Change consent.",
+      "title": "Change Consent"
+     },
      "created_at": {
       "description": "When created.",
       "format": "date-time",
@@ -6065,6 +6109,19 @@
       "description": "Id of the persistent dashboard canvas.",
       "title": "Persistent Dashboard Canvas Id"
      },
+     "results_folder_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the results folder.",
+      "title": "Results Folder Id"
+     },
      "run_count": {
       "default": 0,
       "description": "Total number of runs.",
@@ -6225,6 +6282,22 @@
    "WorkflowConfigUpdate": {
     "description": "Fields to change on a workflow config; omitted fields are kept.",
     "properties": {
+     "allow_changes": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 30,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Allow changes.",
+      "title": "Allow Changes"
+     },
      "dashboard_enabled": {
       "anyOf": [
        {
@@ -6389,6 +6462,19 @@
       ],
       "description": "Where output goes: `project`. The older value `user` is still accepted; `space` is refused. Omit to keep the stored value.",
       "title": "Output Location Type"
+     },
+     "results_folder_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the results folder.",
+      "title": "Results Folder Id"
      },
      "schedule": {
       "anyOf": [
@@ -6596,8 +6682,24 @@
     "type": "object"
    },
    "WorkflowRunCreate": {
-    "description": "Request payload for starting a workflow run.\n\nAttributes:\n    input_overrides: Input values to override config inputs.",
+    "description": "Request payload for starting a workflow run.\n\nAttributes:\n    input_overrides: Input values to override config inputs.\n    allow_changes: Node-graph workflows: the connected tools this run may\n        make changes in. None falls back to the config's own consent.",
     "properties": {
+     "allow_changes": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "maxItems": 30,
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Node-graph workflows: the connected tools this run may make changes in. None falls back to the config's own consent.",
+      "title": "Allow Changes"
+     },
      "input_overrides": {
       "additionalProperties": true,
       "description": "Input values to override config inputs.",
@@ -6710,6 +6812,19 @@
       "description": "Error if failed.",
       "title": "Error Message"
      },
+     "graph_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the graph.",
+      "title": "Graph Id"
+     },
      "id": {
       "description": "Unique identifier.",
       "format": "uuid",
@@ -6742,6 +6857,16 @@
       "description": "UUID of the primary canvas artifact from run.",
       "title": "Output Canvas Id"
      },
+     "run_mode": {
+      "default": "normal",
+      "description": "Run mode: one of `normal`, `test`.",
+      "enum": [
+       "normal",
+       "test"
+      ],
+      "title": "Run Mode",
+      "type": "string"
+     },
      "started_at": {
       "anyOf": [
        {
@@ -6760,6 +6885,7 @@
       "enum": [
        "pending",
        "running",
+       "waiting",
        "completed",
        "failed",
        "cancelled"
@@ -6816,7 +6942,8 @@
        "user",
        "schedule",
        "api",
-       "agent"
+       "agent",
+       "workflow"
       ],
       "title": "Triggered By",
       "type": "string"
@@ -6833,6 +6960,22 @@
       ],
       "description": "User who triggered.",
       "title": "Triggered By User Id"
+     },
+     "waiting_for": {
+      "anyOf": [
+       {
+        "enum": [
+         "input",
+         "review"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Waiting for: one of `input`, `review`.",
+      "title": "Waiting For"
      }
     },
     "required": [
@@ -6965,6 +7108,19 @@
       "description": "What the workflow does.",
       "title": "Description"
      },
+     "family_latest_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the family latest.",
+      "title": "Family Latest Id"
+     },
      "generation_prompt": {
       "anyOf": [
        {
@@ -6976,6 +7132,19 @@
       ],
       "description": "Original user description if AI-generated.",
       "title": "Generation Prompt"
+     },
+     "graph_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the graph.",
+      "title": "Graph Id"
      },
      "icon": {
       "anyOf": [
@@ -6993,6 +7162,16 @@
       "description": "Unique identifier for the template.",
       "format": "uuid",
       "title": "Id",
+      "type": "string"
+     },
+     "kind": {
+      "default": "prompt",
+      "description": "What kind of workflow template this is. One of `prompt`, `graph`.",
+      "enum": [
+       "prompt",
+       "graph"
+      ],
+      "title": "Kind",
       "type": "string"
      },
      "name": {
@@ -11131,7 +11310,7 @@
   },
   "/v1/outputs/{output_id}/export/{format}": {
    "get": {
-    "description": "Export canvas to PDF, DOCX, XLSX, PPTX, Markdown or HTML.\n\n``md`` is the output's text with its citations numbered and its sources\nlisted; ``html`` is a self-contained page (images inlined).\n\n``sources`` applies to template-based documents: \"appendix\" lists the\ndocument's sources after its text, \"none\" exports the text alone. ``draft``\nexports a template-based document before it is finished, opening with a\nNOT FINALIZED page. ``redline`` (Word, template-based documents) marks every\ndifference from the file the document was made from as a tracked change.\n\nThe markdown content is converted to the requested format using\nthe document generation engine.\n\nFor PPTX exports, an optional template_id can be provided to use\na custom PowerPoint template for styling.  theme_overrides is a\nJSON-encoded dict of DeckTheme property overrides (title_color,\nbody_color, heading_font, etc.).",
+    "description": "Export canvas to PDF, DOCX, XLSX, PPTX, Markdown or HTML.\n\n``md`` is the output's text with its citations numbered and its sources\nlisted; ``html`` is a self-contained page (images inlined).\n\n``sources`` applies to template-based documents: \"appendix\" lists the\ndocument's sources after its text, \"none\" exports the text alone. ``draft``\nexports a template-based document before it is finished, opening with a\nNOT FINALIZED page. ``tz`` is the viewer's IANA timezone (e.g.\n``America/New_York``) for dashboard PDFs: datetime Gantt tasks and date-axis\npoints render in it, and an unknown name falls back to UTC.\nNOT FINALIZED page. ``redline`` (Word, template-based documents) marks every\ndifference from the file the document was made from as a tracked change.\n\nThe markdown content is converted to the requested format using\nthe document generation engine.\n\nFor PPTX exports, an optional template_id can be provided to use\na custom PowerPoint template for styling.  theme_overrides is a\nJSON-encoded dict of DeckTheme property overrides (title_color,\nbody_color, heading_font, etc.).",
     "operationId": "export_canvas_route_v1_outputs__output_id__export__format__get",
     "parameters": [
      {
@@ -11216,6 +11395,22 @@
        "default": false,
        "title": "Draft",
        "type": "boolean"
+      }
+     },
+     {
+      "in": "query",
+      "name": "tz",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "title": "Tz"
       }
      },
      {

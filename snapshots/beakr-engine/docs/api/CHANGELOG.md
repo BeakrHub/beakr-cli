@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1ef9c9ce2bb810c5b7ac9dcf812a317816f53c62464b55c71e791f1d3f6f3d60 changelog sha256=9c4e51ce32303f69c89193669d8796338be4bb50e7a16b3193d447c4225a52c2 -->
+<!-- contract-stamp: public-openapi sha256=b84f96e8591249ae7ec039ac981d2395ef6489d5c220c345fbb26c157c9145ce changelog sha256=c34678bf32b5b3cef90e4467b78453985016b45a4ca8a4c57551be6c2ed5d076 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -131,6 +131,37 @@ The first public version.
 - `GET /v1/interview/sendables` and `POST /v1/interview/sendables/{sendable_id}/links`:
   a link's `delivery_channel` can now be `slack`, for a link sent as a Slack
   direct message from the sender's own Slack.
+- `GET /v1/skills`, `GET /v1/skills/{skill_id}`, `POST /v1/skills` and
+  `POST /v1/me/skills/proposals/{proposal_id}/accept`: a skill's `visibility`
+  can be `project`, a personal skill its author shared with the people of one
+  project in their organization. `GET /v1/skills` accepts `project` in its
+  `visibility` filter. The accepted skill's library entry carries
+  `shared_project_id` and `shared_project_name` (null unless it is shared with
+  a project, and the name is null when you cannot see that project).
+- `POST /v1/runs`: `agent_id` starts the run with an agent, a named helper with
+  its own instructions, sources and capabilities, where the organization has
+  agents turned on. The thread remembers it, so later runs on the thread that
+  name no agent keep it. An agent you cannot use answers `404`.
+- `GET /v1/threads/{thread_id}` and thread lists: `agent_id` and `agent_name`
+  name the agent the thread talks to, or are null. Thread lists also carry
+  `agent_origin`: `chat`, `task` or `trigger` (a schedule or webhook started
+  it), or null for a thread with no agent.
+- `GET /v1/threads/{thread_id}` messages: `started_by` is set on the first
+  message of a thread an agent's schedule or webhook started, with `kind`
+  (`schedule` or `webhook`), the trigger's `name`, its `task` text and, for a
+  webhook, the `payload` the request sent. Show it as what started the run,
+  not as something the person wrote: nobody typed that message. It is null on
+  every other message.
+- `GET /v1/threads/{thread_id}` messages: `workflow_event` is set on the
+  messages a workflow run posts into its thread (started, waiting for an
+  answer, waiting for a review, finished, stopped), with the `run_id`, the
+  milestone `kind`, and for a wait the step (`node_id`, `step_title`), who is
+  asked (`reviewer_ids`) and how it ended (`state`: `waiting`, `approved`,
+  `rejected`, `edited` or `answered`, with `decided_by`). A waiting message is
+  updated in place when the wait ends; a null `state` on a waiting message
+  means the run stopped before anyone decided. `flagged_steps` counts the
+  steps that finished with problems on a `finished` message. The message
+  `text` stays readable without it, and it is null on every other message.
 - `GET /v1/projects/{project_id}/model-refusals/summary`: in
   `failed_by_reason`, an event recorded without a reason is counted under
   `unspecified`.
