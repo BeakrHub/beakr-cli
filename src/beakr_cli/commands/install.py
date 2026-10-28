@@ -561,12 +561,20 @@ def _save_env_key(env_key: str) -> None:
     done while the server started signed out. The key goes to the token store
     (keychain, else a 0600 file under ``BEAKR_HOME``), filed under the API it
     verified against, never into the MCP registration itself.
+
+    The API it verified against is saved as ``api_url`` too, as ``beakr auth
+    login --with-api-key`` saves it. A key filed under a sandbox or self-hosted
+    origin given only by ``$BEAKR_BASE_URL`` was otherwise unreachable from
+    anything started without that variable (a plugin's MCP server, a new
+    shell, an SDK script): they resolved production and found "No Beakr
+    credentials for https://api.thebeakr.com".
     """
     from beakr_sdk.credentials import TokenStore, resolve_base_url
 
     from beakr_cli import config as beakr_config
 
     base_url = resolve_base_url()
+    beakr_config.set_key("api_url", base_url)
     beakr_config.save_api_key(env_key, base_url)
     where = "the keychain" if TokenStore().backend == "keyring" else "the Beakr credentials file"
     console.print(
