@@ -11,11 +11,26 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1ef9c9ce2bb810c5b7ac9dcf812a317816f53c62464b55c71e791f1d3f6f3d60 changelog sha256=4c16f7b93072bdd8267666ec34baf52d2442cc3417b25eeb951a511261b149aa -->
+<!-- contract-stamp: public-openapi sha256=1ef9c9ce2bb810c5b7ac9dcf812a317816f53c62464b55c71e791f1d3f6f3d60 changelog sha256=a21faaf656a42c5007be73751c1625ea250ec4a4774727a05e86f003c564ef40 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: four
+  citation fixes for API keys and tokens. A citation named by its `source_ref`
+  or `reference` that also carries a `key` of your own, such as
+  `{key: "plan", source_ref: ...}`, is cited in the prose by that key: write
+  `{{plan}}` and it is stored under the key its source has, as a web citation's
+  own key already was. Each card row's `evidence` and `citations` resolve as the
+  call's own do, in `add_fact`, `add_connection` and `add_finding` `rows` and in
+  the new `rows` of `edit_rows`, so a row's `source_ref` or readable reference
+  cites its source instead of being refused or stored as a token that cites
+  nothing; a row that names no source still inherits only the call's. A
+  `citation_not_citeable` refusal now names the reference you sent, a
+  `{{token}}` without its braces (it read `Not citeable: ''`). Evidence that
+  names a file Knowledge cites without naming a place in it (`memo.pdf`) cites
+  the whole file, keyed `artifact:<version>`, instead of the newest passage of
+  it Knowledge cites; name the place (`memo.pdf › p. 7`) to cite that passage.
 - `POST /v1/runs` returns a `stream_url` of `GET /v1/runs/{run_id}/events`, the
   documented events path; it named a deprecated path that serves the same
   stream.
