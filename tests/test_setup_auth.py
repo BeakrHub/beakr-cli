@@ -98,3 +98,27 @@ def test_env_key_is_saved_with_the_api_it_verified_against(monkeypatch) -> None:
     monkeypatch.delenv("BEAKR_API_KEY")
     assert resolve_base_url() == "https://api-sandbox.test"
     assert resolve_credential().token == "bk_live_sandbox"
+
+
+def test_sign_in_only_setup_needs_no_client(monkeypatch) -> None:
+    # Root cause: setup refused with "No supported clients detected" before
+    # signing in, even when told to wire nothing (--no-skills --no-mcp
+    # --no-hooks), so the plugin docs' "install the CLI and sign in" step
+    # failed on a machine with only Cursor, VS Code or Gemini CLI.
+    _non_interactive(monkeypatch)
+    signed_in: list[str] = []
+    monkeypatch.setattr(install, "_sign_in_new", lambda: signed_in.append("new"))
+
+    result = install.setup_command(
+        client=install.Client.auto,
+        scope=install.Scope.user,
+        skip_auth=False,
+        skip_skills=True,
+        skip_mcp=True,
+        uninstall=False,
+        force=False,
+        hooks=False,
+    )
+
+    assert signed_in == ["new"]
+    assert result["clients"] == []

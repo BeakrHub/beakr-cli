@@ -778,7 +778,11 @@ def setup_command(
     None asks when interactive and skips otherwise.
     """
     targets = _resolve_targets(client)
-    if not targets:
+    # `--no-skills --no-mcp --no-hooks` only signs in, which needs no client: it
+    # is how the agent-plugin docs install the CLI next to a plugin (which wires
+    # the client itself), including on a machine with only Cursor or VS Code.
+    wires_a_client = uninstall or not (skip_skills and skip_mcp and hooks is False)
+    if not targets and wires_a_client:
         err_console.print(
             "No supported clients detected. Looked for [bold]~/.claude[/bold] and "
             "[bold]~/.codex[/bold]. Install Claude Code or Codex first, or pass "
@@ -834,7 +838,8 @@ def setup_command(
     install_hooks_during_setup(targets, hooks)
 
     console.print("\n[bold green]Done.[/bold green]")
-    console.print("Restart Claude Code / Codex to load the MCP server and skills.")
+    if wires_a_client:
+        console.print("Restart Claude Code / Codex to load the MCP server and skills.")
     return {
         "action": "install",
         "clients": targets,
