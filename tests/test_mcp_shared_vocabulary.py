@@ -63,6 +63,9 @@ SURFACE_OWN_TOOLS = {
     "read_file",
     "workboard",
     "discover_tools",
+    # Reads the user's connected integrations (Slack, Drive, Jira...) with the
+    # connector tools Beakr's own agent uses: not a wiki operation.
+    "integrations",
 }
 
 

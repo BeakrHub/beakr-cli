@@ -14,6 +14,7 @@
     "conversations_search",
     "import_conversation",
     "org_audit_log",
+    "integrations",
     "beakr_version",
     "update_beakr"
   ],
@@ -32,7 +33,8 @@
     "list_projects",
     "skills",
     "conversations_search",
-    "org_audit_log"
+    "org_audit_log",
+    "integrations"
   ],
   "tier_meta_key": "com.thebeakr/tier",
   "tools": [
@@ -109,7 +111,7 @@
       "tier": "eager"
     },
     {
-      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
+      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
       "name": "discover_tools",
       "surfaces": [
         "remote",
@@ -201,6 +203,15 @@
     {
       "description": "Read the organization's audit trail (sign-ins, key and policy changes), newest first. Requires an organization admin. Pass `before` (an ISO time) to start further back; a next_cursor continues the list. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "org_audit_log",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Read the user's connected integrations (Slack, Google Drive, Gmail, Jira, Notion, Benchling and any others they connected) live, as the user, with the read-only tools Beakr's own agent uses. command='list' lists the tools you can call, one line each with its options, under the accounts they read (narrow with `provider` or `connector_id`); command='describe' with `tool` gives one tool's full description and input schema; command='call' with `tool` runs it, with the tool's own options in `arguments` and `connector_id` when the user has that integration connected twice. A call answers the tool's text, which cites items as {{key}}, and Sources giving each item's url and the source_ref a Knowledge write accepts as a citation. Only reads: a tool that sends, creates or changes anything is refused. Use it for live or recent items in a connected service; for what the organization already knows, use research or knowledge_base first. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "name": "integrations",
       "surfaces": [
         "remote",
         "stdio"
