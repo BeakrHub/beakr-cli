@@ -408,9 +408,65 @@ def _toml_string(value: str) -> str:
     return json.dumps(value)
 
 
+#: Codex's per-server tool approval (``mcp_servers.<id>.default_tools_approval_mode``).
+#: Without it ``codex exec`` cannot answer an approval prompt and refuses every
+#: Beakr tool call ("blocked by the current approval policy"), so a registered
+#: server was unusable headless. ``approve`` runs the tools without asking; they
+#: act only within the signed-in credential's scopes.
+_CODEX_APPROVAL_KEY = "default_tools_approval_mode"
+_CODEX_APPROVAL_MODE = "approve"
+
+
+def _set_toml_key(text: str, section: str, key: str, literal: str) -> str:
+    """``text`` with ``key = literal`` in the ``[section]`` table, added or replaced.
+
+    The key goes directly under the heading, before any sub-table such as
+    ``[section.env]`` that ``codex mcp add`` writes after it. Returns ``text``
+    unchanged when the table is missing.
+    """
+    lines = text.splitlines(keepends=True)
+    target = f"[{section}]"
+    try:
+        start = next(i for i, line in enumerate(lines) if line.strip() == target)
+    except StopIteration:
+        return text
+    entry = f"{key} = {literal}\n"
+    for i in range(start + 1, len(lines)):
+        stripped = lines[i].strip()
+        if stripped.startswith("["):
+            break
+        if stripped.split("=", 1)[0].strip() == key:
+            lines[i] = entry
+            return "".join(lines)
+    if not lines[start].endswith("\n"):
+        lines[start] += "\n"
+    lines.insert(start + 1, entry)
+    return "".join(lines)
+
+
+def _approve_codex_tools() -> None:
+    """Set the Beakr server's tool approval in Codex's config.toml.
+
+    ``codex mcp add`` has no option for it, so it is written after the server
+    is added.
+    """
+    config_path = _codex_config()
+    if not config_path.exists():
+        return
+    existing = config_path.read_text()
+    updated = _set_toml_key(
+        existing, "mcp_servers.beakr", _CODEX_APPROVAL_KEY, _toml_string(_CODEX_APPROVAL_MODE)
+    )
+    if updated != existing:
+        config_path.write_text(updated)
+
+
 def _codex_block() -> str:
     beakr = _beakr_command()
-    block = f'\n[mcp_servers.beakr]\ncommand = {_toml_string(beakr)}\nargs = ["mcp"]\n'
+    block = (
+        f'\n[mcp_servers.beakr]\ncommand = {_toml_string(beakr)}\nargs = ["mcp"]\n'
+        f"{_CODEX_APPROVAL_KEY} = {_toml_string(_CODEX_APPROVAL_MODE)}\n"
+    )
     env = _mcp_env()
     if env:
         pairs = ", ".join(f"{key} = {_toml_string(value)}" for key, value in env.items())
@@ -443,6 +499,7 @@ def _register_codex_mcp(force: bool, scope: Scope) -> None:
             text=True,
         )
         if result.returncode == 0:
+            _approve_codex_tools()
             console.print("[green]Codex:[/green]  MCP registered (codex CLI)")
             return
         stderr = (result.stderr or "").lower()
