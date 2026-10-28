@@ -488,6 +488,18 @@ The MCP server adds `context`, `skills`, `conversations_search` and
 `rows` and `knowledge_base_write` actions `add_fact`, `add_connection`,
 `add_finding` and `edit_rows`.
 
+`integrations` is `beakr integrations tools|call` for an agent: it reads your
+connected integrations (Slack, Drive, Gmail, Jira, Notion, Benchling...) with
+the read-only tools Beakr's own agent uses, under the same rules as the API
+(the `integrations:read` scope, your own connections, a project-restricted
+key's attached integrations, each connection's default scope; tools that
+change data are refused). `command: "list"` names the tools you can call and
+their options, a page at a time; `command: "describe"` with `tool` gives one
+tool's description and input schema; `command: "call"` with `tool` runs it,
+with its options in `arguments` and `connector_id` when a service is connected
+twice. A call answers the tool's text and a Sources list whose `source_ref` a
+Knowledge write accepts as a citation. The hosted MCP server has the same tool.
+
 The MCP server lists every tool: Claude Code calls only the tools a server
 lists. For a smaller listing, set `BEAKR_MCP_TOOLS=eager` in the server's
 environment (for example `"env": {"BEAKR_MCP_TOOLS": "eager"}` in the MCP

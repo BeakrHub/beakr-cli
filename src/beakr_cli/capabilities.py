@@ -111,6 +111,10 @@ TOOL_OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     # box leaves the whole area out (no /v1/organizations route at all), and
     # 0.1.9 still listed org_audit_log there, while it hid skills.
     "org_audit_log": (("GET", "/v1/organizations/{org_id}"),),
+    "integrations": (
+        ("GET", "/v1/integrations/tools"),
+        ("POST", "/v1/integrations/tools/{tool_name}/call"),
+    ),
 }
 
 

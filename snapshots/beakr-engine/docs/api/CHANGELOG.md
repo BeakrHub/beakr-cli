@@ -11,11 +11,29 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1ef9c9ce2bb810c5b7ac9dcf812a317816f53c62464b55c71e791f1d3f6f3d60 changelog sha256=a21faaf656a42c5007be73751c1625ea250ec4a4774727a05e86f003c564ef40 -->
+<!-- contract-stamp: public-openapi sha256=1ef9c9ce2bb810c5b7ac9dcf812a317816f53c62464b55c71e791f1d3f6f3d60 changelog sha256=9c4e51ce32303f69c89193669d8796338be4bb50e7a16b3193d447c4225a52c2 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- Both MCP servers, the hosted one and the `beakr` CLI's, add an
+  `integrations` tool that reads the caller's connected integrations (Slack,
+  Google Drive, Gmail, Jira, Notion, Benchling and the others) with the
+  read-only tools of `GET /v1/integrations/tools` and
+  `POST /v1/integrations/tools/{tool_name}/call`, under the same rules: the
+  `integrations:read` scope, only the caller's own connections and the
+  organization's, only the integrations attached to a project-restricted
+  credential's projects, each connection's default scope as its limit, and no
+  tool that changes data (`tool_not_read_only`). `command: "list"` lists the
+  tools one line each, paged with `cursor` and `limit`; `command: "describe"`
+  with `tool` gives one tool's full description and input schema;
+  `command: "call"` with `tool`, the tool's own options in `arguments` and an
+  optional `connector_id` runs it and answers its text followed by a Sources
+  list giving each cited item's url and `source_ref`. A failure the tool
+  reports itself (the provider refused, the item is outside the connection's
+  scope) is an error result with `tool_reported_error`. The tool is in the
+  discovery tier: listed by default, and found with `discover_tools` on an
+  eager listing.
 - `POST /v1/knowledge/wiki/write` and `POST /v1/knowledge/wiki/proposals`: four
   citation fixes for API keys and tokens. A citation named by its `source_ref`
   or `reference` that also carries a `key` of your own, such as

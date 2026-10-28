@@ -12,10 +12,12 @@ an unbounded skill body or conversation list would crowd out the user's work.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from uuid import UUID
 
+from beakr_cli import mcp_integration_results as integration_results
 from beakr_cli import mcp_result, tool_surface
+from beakr_cli.capabilities import NOT_PROVIDED_CODE
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.scope import scope_params
 
@@ -769,6 +771,98 @@ def _work_board(board: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+#: Listing pages read while looking one integration tool up by name, as the hosted
+#: server does. A page holds up to 200 tools; Beakr offers about 150 connector reads.
+_INTEGRATION_LOOKUP_PAGES = 5
+
+
+async def integrations(
+    command: Literal["list", "describe", "call"],
+    tool: str = "",
+    arguments: dict[str, Any] | None = None,
+    connector_id: str = "",
+    provider: str = "",
+    cursor: str = "",
+    limit: int | None = None,
+) -> dict[str, Any]:
+    """Read the caller's connected integrations with Beakr's read-only connector tools.
+
+    The hosted server's ``integrations`` tool, through the same routes
+    (``GET /v1/integrations/tools``, ``POST /v1/integrations/tools/{tool_name}/call``),
+    which decide what a call may reach; the text is the engine's
+    ``integration_results`` (copied in :mod:`beakr_cli.mcp_integration_results`).
+    """
+    args = {
+        "command": command,
+        "tool": tool,
+        "arguments": arguments,
+        "connector_id": connector_id,
+        "provider": provider,
+        "cursor": cursor,
+        "limit": limit,
+    }
+    refused = integration_results.misuse(args)
+    if refused is not None:
+        return refused
+    connector = (connector_id or "").strip() or None
+    try:
+        if command == "list":
+            page = await call_api(
+                lambda sdk: sdk.api.integrations.list_integration_tools(
+                    provider=(provider or "").strip() or None,
+                    connector_id=connector,
+                    cursor=_cursor(cursor),
+                    limit=_page_size(limit),
+                )
+            )
+            rows, has_more, next_cursor = _page_of(page, "data")
+            return _page_result(
+                integration_results.tool_list(rows),
+                tool="integrations",
+                returned=len(rows),
+                has_more=has_more,
+                next_cursor=next_cursor,
+                same_args="and the same command and filters",
+            )
+        name = tool.strip()
+        if command == "describe":
+            found = await _integration_tool(name, connector)
+            if found is None:
+                return integration_results.not_listed(name)
+            return integration_results.tool_detail(found)
+        data = await call_api(
+            lambda sdk: sdk.integrations.call_tool(name, arguments or {}, connector_id=connector)
+        )
+    except ApiCallError as exc:
+        fields = exc.fields
+        if fields.get("error_code") == NOT_PROVIDED_CODE:
+            # A box without integrations: the server says so and stops listing the tool.
+            raise
+        return integration_results.refusal(
+            fields.get("error_code"),
+            str(fields.get("message") or ""),
+            fields.get("fix"),
+            fields.get("request_id"),
+        )
+    return integration_results.call_result(dict(data or {}))
+
+
+async def _integration_tool(name: str, connector_id: str | None) -> dict[str, Any] | None:
+    """The listed integration tool named ``name``, or None when no connection has it."""
+    page_cursor: str | None = None
+    for _ in range(_INTEGRATION_LOOKUP_PAGES):
+        page = await call_api(
+            lambda sdk, c=page_cursor: sdk.api.integrations.list_integration_tools(
+                connector_id=connector_id, cursor=c, limit=200
+            )
+        )
+        rows, has_more, page_cursor = _page_of(page, "data")
+        found = integration_results.find(rows, name)
+        if found is not None or not has_more:
+            return found
+    return None
+
+
 #: The server :func:`discover_tools` describes; set by :func:`register_platform_tools`.
 _SERVER: FastMCP | None = None
 
@@ -821,6 +915,7 @@ PLATFORM_TOOLS = (
     org_audit_log,
     read_file,
     workboard,
+    integrations,
     discover_tools,
 )
 
