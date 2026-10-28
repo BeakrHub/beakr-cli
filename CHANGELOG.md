@@ -8,6 +8,28 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/runs` returns a `stream_url` of `GET /v1/runs/{run_id}/events`, the
+  documented events path; it named a deprecated path that serves the same
+  stream.
+- `GET /v1/runs/{run_id}/events`: resuming a finished run with a
+  `Last-Event-ID` at or past its last event now ends the stream at once with
+  the run's final status; it waited about 30 seconds first.
+- `POST /v1/runs` and the other run operations, called with an end-user token
+  or a project-limited key, answer `403 insufficient_scope` saying runs are not
+  yet available to project-restricted credentials and pointing at
+  `POST /v1/knowledge/research`; the message said the operation was not
+  addressed by a single project.
+- `DELETE /v1/projects/{project_id}/pending-invitations/{invitation_id}`: an
+  invitation that does not exist answers `404`; it answered `400`. An invitation
+  that cannot be revoked still answers `400`.
+- `GET /v1/auth/end-user-tokens` and `DELETE /v1/auth/end-user-tokens/{token_id}`
+  called with a personal key or a CLI sign-in answer `403 minter_not_supported`
+  with a message about listing and revoking; it said only a service-account key
+  can mint.
+- `POST /v1/knowledge/documents`: a plain-text or Markdown file uploaded from
+  now on keeps its line breaks, so `read` returns its lines as written; such a
+  file uploaded earlier read back as one line until it is uploaded again.
+
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a web page.
   Send `{source_type: "web", url, source_title, meta: {excerpt}, stance}` in
