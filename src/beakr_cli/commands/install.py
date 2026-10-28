@@ -408,9 +408,65 @@ def _toml_string(value: str) -> str:
     return json.dumps(value)
 
 
+#: Codex's per-server tool approval (``mcp_servers.<id>.default_tools_approval_mode``).
+#: Without it ``codex exec`` cannot answer an approval prompt and refuses every
+#: Beakr tool call ("blocked by the current approval policy"), so a registered
+#: server was unusable headless. ``approve`` runs the tools without asking; they
+#: act only within the signed-in credential's scopes.
+_CODEX_APPROVAL_KEY = "default_tools_approval_mode"
+_CODEX_APPROVAL_MODE = "approve"
+
+
+def _set_toml_key(text: str, section: str, key: str, literal: str) -> str:
+    """``text`` with ``key = literal`` in the ``[section]`` table, added or replaced.
+
+    The key goes directly under the heading, before any sub-table such as
+    ``[section.env]`` that ``codex mcp add`` writes after it. Returns ``text``
+    unchanged when the table is missing.
+    """
+    lines = text.splitlines(keepends=True)
+    target = f"[{section}]"
+    try:
+        start = next(i for i, line in enumerate(lines) if line.strip() == target)
+    except StopIteration:
+        return text
+    entry = f"{key} = {literal}\n"
+    for i in range(start + 1, len(lines)):
+        stripped = lines[i].strip()
+        if stripped.startswith("["):
+            break
+        if stripped.split("=", 1)[0].strip() == key:
+            lines[i] = entry
+            return "".join(lines)
+    if not lines[start].endswith("\n"):
+        lines[start] += "\n"
+    lines.insert(start + 1, entry)
+    return "".join(lines)
+
+
+def _approve_codex_tools() -> None:
+    """Set the Beakr server's tool approval in Codex's config.toml.
+
+    ``codex mcp add`` has no option for it, so it is written after the server
+    is added.
+    """
+    config_path = _codex_config()
+    if not config_path.exists():
+        return
+    existing = config_path.read_text()
+    updated = _set_toml_key(
+        existing, "mcp_servers.beakr", _CODEX_APPROVAL_KEY, _toml_string(_CODEX_APPROVAL_MODE)
+    )
+    if updated != existing:
+        config_path.write_text(updated)
+
+
 def _codex_block() -> str:
     beakr = _beakr_command()
-    block = f'\n[mcp_servers.beakr]\ncommand = {_toml_string(beakr)}\nargs = ["mcp"]\n'
+    block = (
+        f'\n[mcp_servers.beakr]\ncommand = {_toml_string(beakr)}\nargs = ["mcp"]\n'
+        f"{_CODEX_APPROVAL_KEY} = {_toml_string(_CODEX_APPROVAL_MODE)}\n"
+    )
     env = _mcp_env()
     if env:
         pairs = ", ".join(f"{key} = {_toml_string(value)}" for key, value in env.items())
@@ -443,6 +499,7 @@ def _register_codex_mcp(force: bool, scope: Scope) -> None:
             text=True,
         )
         if result.returncode == 0:
+            _approve_codex_tools()
             console.print("[green]Codex:[/green]  MCP registered (codex CLI)")
             return
         stderr = (result.stderr or "").lower()
@@ -561,12 +618,20 @@ def _save_env_key(env_key: str) -> None:
     done while the server started signed out. The key goes to the token store
     (keychain, else a 0600 file under ``BEAKR_HOME``), filed under the API it
     verified against, never into the MCP registration itself.
+
+    The API it verified against is saved as ``api_url`` too, as ``beakr auth
+    login --with-api-key`` saves it. A key filed under a sandbox or self-hosted
+    origin given only by ``$BEAKR_BASE_URL`` was otherwise unreachable from
+    anything started without that variable (a plugin's MCP server, a new
+    shell, an SDK script): they resolved production and found "No Beakr
+    credentials for https://api.thebeakr.com".
     """
     from beakr_sdk.credentials import TokenStore, resolve_base_url
 
     from beakr_cli import config as beakr_config
 
     base_url = resolve_base_url()
+    beakr_config.set_key("api_url", base_url)
     beakr_config.save_api_key(env_key, base_url)
     where = "the keychain" if TokenStore().backend == "keyring" else "the Beakr credentials file"
     console.print(
@@ -713,7 +778,11 @@ def setup_command(
     None asks when interactive and skips otherwise.
     """
     targets = _resolve_targets(client)
-    if not targets:
+    # `--no-skills --no-mcp --no-hooks` only signs in, which needs no client: it
+    # is how the agent-plugin docs install the CLI next to a plugin (which wires
+    # the client itself), including on a machine with only Cursor or VS Code.
+    wires_a_client = uninstall or not (skip_skills and skip_mcp and hooks is False)
+    if not targets and wires_a_client:
         err_console.print(
             "No supported clients detected. Looked for [bold]~/.claude[/bold] and "
             "[bold]~/.codex[/bold]. Install Claude Code or Codex first, or pass "
@@ -769,7 +838,8 @@ def setup_command(
     install_hooks_during_setup(targets, hooks)
 
     console.print("\n[bold green]Done.[/bold green]")
-    console.print("Restart Claude Code / Codex to load the MCP server and skills.")
+    if wires_a_client:
+        console.print("Restart Claude Code / Codex to load the MCP server and skills.")
     return {
         "action": "install",
         "clients": targets,

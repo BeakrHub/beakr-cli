@@ -163,6 +163,7 @@ def test_codex_config_fallback_writes_the_env(tmp_path: Path, monkeypatch) -> No
     assert parsed["mcp_servers"]["beakr"] == {
         "command": "/opt/my tools/beakr",
         "args": ["mcp"],
+        "default_tools_approval_mode": "approve",
         "env": {"BEAKR_BASE_URL": SANDBOX, "BEAKR_HOME": str(profile)},
     }
 
@@ -193,6 +194,60 @@ def test_codex_cli_registration_passes_the_env(monkeypatch) -> None:
         "/opt/tools/beakr",
         "mcp",
     ]
+
+
+# Codex's tool approval. Root cause: setup registered the server with no
+# approval mode, and `codex exec` cannot answer an approval prompt, so it
+# refused every Beakr tool call ("blocked by the current approval policy").
+# `codex mcp add` has no option for it; setup writes it into config.toml.
+
+
+def test_codex_cli_registration_approves_the_beakr_tools(monkeypatch) -> None:
+    monkeypatch.setenv("BEAKR_BASE_URL", SANDBOX)
+    monkeypatch.setattr(install, "_codex_cli", lambda: "/usr/local/bin/codex")
+    config = install._codex_config()
+    config.parent.mkdir(parents=True, exist_ok=True)
+    # What `codex mcp add --env ...` writes (codex-cli 0.150), beside another server.
+    written = (
+        '[mcp_servers.other]\ncommand = "other"\n\n'
+        '[mcp_servers.beakr]\ncommand = "/opt/tools/beakr"\nargs = ["mcp"]\n\n'
+        f'[mcp_servers.beakr.env]\nBEAKR_BASE_URL = "{SANDBOX}"\n'
+    )
+
+    class Done:
+        returncode = 0
+        stderr = ""
+
+    def codex_mcp_add(args, **_):
+        config.write_text(written)
+        return Done()
+
+    monkeypatch.setattr(install.subprocess, "run", codex_mcp_add)
+
+    install._register_codex_mcp(force=False, scope=install.Scope.user)
+
+    parsed = tomllib.loads(config.read_text())
+    assert parsed["mcp_servers"]["beakr"] == {
+        "command": "/opt/tools/beakr",
+        "args": ["mcp"],
+        "default_tools_approval_mode": "approve",
+        "env": {"BEAKR_BASE_URL": SANDBOX},
+    }
+    assert parsed["mcp_servers"]["other"] == {"command": "other"}
+
+
+def test_codex_approval_replaces_a_stale_mode_once() -> None:
+    text = '[mcp_servers.beakr]\ncommand = "b"\ndefault_tools_approval_mode = "prompt"\n'
+
+    updated = install._set_toml_key(
+        text, "mcp_servers.beakr", "default_tools_approval_mode", '"approve"'
+    )
+
+    assert tomllib.loads(updated)["mcp_servers"]["beakr"] == {
+        "command": "b",
+        "default_tools_approval_mode": "approve",
+    }
+    assert updated.count("default_tools_approval_mode") == 1
 
 
 @pytest.mark.skipif(os.name == "nt", reason="hook env prefix is POSIX-only")

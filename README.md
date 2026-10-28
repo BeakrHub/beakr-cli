@@ -842,7 +842,8 @@ uv run python scripts/refresh_snapshots.py refresh --engine <engine checkout>
 After the workflow succeeds:
 
 ```bash
-beakr update                # or a fresh: uv tool install beakr-cli
+beakr update                # or a fresh install from GitHub (PyPI still has 0.3.x):
+                            # uv tool install --force git+https://github.com/BeakrHub/beakr-cli
 beakr version
 ```
 

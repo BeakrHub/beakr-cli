@@ -16,13 +16,16 @@ conflict). Arguments map onto the contract:
 - path parameters are positional arguments, in path order;
 - query parameters and the request body's top-level fields are options
   (``--field-name``; a body field whose name a query parameter already uses is
-  ``--body-field-name``); list fields repeat (``--tag a --tag b``);
+  ``--body-field-name``); list fields repeat (``--tag a --tag b``); an object
+  field (or a list of objects) takes JSON, as text or ``@file.json``;
 - ``--data/-d`` gives the whole JSON body (text, ``@file.json`` or ``-`` for
   stdin), and options override its fields;
 - a multipart upload takes each file field as a path option;
 - a paginated list takes ``--all`` to follow every page;
 - a file response needs ``--out`` (or a pipe); an event stream prints one JSON
-  event per line.
+  event per line;
+- a JSON answer that reports its own failure (``is_error: true``, as the
+  documents door and integration tools do) is printed and exits 1.
 """
 
 from __future__ import annotations
@@ -59,7 +62,8 @@ _PROJECT_ALIASES = ("-P", "--project")
 #: actions it serves but not all (``flag`` needs page, concern and reason).
 _WRITE_ACTION_FIELDS = (
     "Fields by action (? = optional; object fields such as sections, citations, rows, "
-    "old_rows, edits and patches go in --data):\n\n"
+    "old_rows, edits and patches take JSON, e.g. --rows '[...]' or --rows @rows.json, "
+    "or go in --data):\n\n"
     "new: title, page_type, summary, sections, parent?\n\n"
     "edit_section: page, section_id, new_section_body, citations?, section_title?, after?\n\n"
     "edit: page, patches or sections\n\n"
@@ -116,9 +120,19 @@ def _option(
             required=required,
             help=help_text or "File to upload.",
         )
+    if field["type"] == "object":
+        # An object or a list of objects: JSON text or @file.json, parsed when
+        # the command runs. Leaving these out left a field such as the
+        # documents door's ``arguments`` with no option at all.
+        return click.Option(
+            [flag, dest],
+            metavar="JSON",
+            required=required and not body,
+            help=f"{help_text} JSON: text or @file.json.".strip(),
+        )
     kind = click.Choice(field["enum"]) if field.get("enum") else _TYPES.get(field["type"])
-    if kind is None:  # an object field: only through --data
-        raise ValueError("object fields are given through --data")
+    if kind is None:
+        raise ValueError(f"unsupported field type {field['type']!r}")
     if field["type"] == "boolean" and not field.get("multiple"):
         stem = flag[2:]
         return click.Option(
@@ -148,10 +162,10 @@ def _project_id_callback(ctx: click.Context, param: click.Parameter, value: Any)
     return resolve_project_ref(str(value), param_hint="-P/--project")
 
 
-def _read_data(value: str | None) -> Any:
+def _read_data(value: str | None, param_hint: str = "--data", *, stdin: bool = True) -> Any:
     if value is None:
         return None
-    if value == "-":
+    if value == "-" and stdin:
         text = sys.stdin.read()
     elif value.startswith("@"):
         text = Path(value[1:]).read_text()
@@ -160,7 +174,7 @@ def _read_data(value: str | None) -> Any:
     try:
         return json.loads(text)
     except json.JSONDecodeError as exc:
-        raise click.BadParameter(f"not valid JSON: {exc}", param_hint="--data") from exc
+        raise click.BadParameter(f"not valid JSON: {exc}", param_hint=param_hint) from exc
 
 
 def _project_field(entry: dict[str, Any]) -> str | None:
@@ -216,10 +230,9 @@ def build_command(entry: dict[str, Any]) -> click.Command:
     body = entry.get("body")
     field_dests: dict[str, str] = {}
     file_dests: dict[str, str] = {}
+    json_dests: dict[str, str] = {}
     if body:
         for field in body["fields"]:
-            if field["type"] == "object":
-                continue
             option = field.get("option") or field["name"]
             if field["name"] in taken:
                 option = f"body-{field['name']}"
@@ -234,6 +247,8 @@ def build_command(entry: dict[str, Any]) -> click.Command:
                     aliases=_PROJECT_ALIASES if field["name"] == project_field else (),
                 )
             )
+            if field["type"] == "object":
+                json_dests[dest] = _flag(option)
             (file_dests if field.get("binary") else field_dests)[dest] = field["name"]
         if body["media"] == "json":
             params.append(
@@ -261,6 +276,9 @@ def build_command(entry: dict[str, Any]) -> click.Command:
     )
 
     def callback(**values: Any) -> None:
+        for dest, flag in json_dests.items():
+            # ``-`` stays literal: stdin belongs to ``--data -``.
+            values[dest] = _read_data(values.get(dest), flag, stdin=False)
         _invoke(entry, values, query_dests, field_dests, file_dests)
 
     lines = [entry["summary"] or entry["op"], "", f"{entry['op']}"]
@@ -387,6 +405,11 @@ def _invoke(
     else:
         print_json(result)
         _note_proposal(result)
+        if isinstance(result, dict) and result.get("is_error") is True:
+            # The request succeeded but the operation reports its own failure
+            # (an unknown argument, a document not found): a script must not
+            # read exit 0 as success. ``beakr integrations call`` does the same.
+            raise click.exceptions.Exit(1)
 
 
 def _note_proposal(result: Any) -> None:
@@ -418,6 +441,8 @@ def _content_type(path: Path) -> str:
 
 
 def _form_value(value: Any) -> str:
+    if isinstance(value, (dict, list)):
+        return json.dumps(value)
     if isinstance(value, bool):
         return "true" if value else "false"
     if isinstance(value, tuple):

@@ -41,6 +41,14 @@ def api(monkeypatch):
 
 
 def _projects() -> respx.Route:
+    # A project id is checked on its own route; a name is looked up in the listing.
+    for project in PROJECTS:
+        respx.get(f"{API}/v1/projects/{project['id']}").mock(
+            return_value=Response(200, json=project)
+        )
+    respx.get(f"{API}/v1/projects/{UNKNOWN}").mock(
+        return_value=Response(404, json={"error": {"code": "not_found", "message": "No."}})
+    )
     return respx.get(f"{API}/v1/projects").mock(
         return_value=Response(200, json={"data": PROJECTS, "has_more": False})
     )
