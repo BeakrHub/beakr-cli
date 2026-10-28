@@ -8,6 +8,24 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Both MCP servers, the hosted one and the `beakr` CLI's, add an
+  `integrations` tool that reads the caller's connected integrations (Slack,
+  Google Drive, Gmail, Jira, Notion, Benchling and the others) with the
+  read-only tools of `GET /v1/integrations/tools` and
+  `POST /v1/integrations/tools/{tool_name}/call`, under the same rules: the
+  `integrations:read` scope, only the caller's own connections and the
+  organization's, only the integrations attached to a project-restricted
+  credential's projects, each connection's default scope as its limit, and no
+  tool that changes data (`tool_not_read_only`). `command: "list"` lists the
+  tools one line each, paged with `cursor` and `limit`; `command: "describe"`
+  with `tool` gives one tool's full description and input schema;
+  `command: "call"` with `tool`, the tool's own options in `arguments` and an
+  optional `connector_id` runs it and answers its text followed by a Sources
+  list giving each cited item's url and `source_ref`. A failure the tool
+  reports itself (the provider refused, the item is outside the connection's
+  scope) is an error result with `tool_reported_error`. The tool is in the
+  discovery tier: listed by default, and found with `discover_tools` on an
+  eager listing.
 - `POST /v1/runs` returns a `stream_url` of `GET /v1/runs/{run_id}/events`, the
   documented events path; it named a deprecated path that serves the same
   stream.
@@ -29,7 +47,6 @@ Each release lists the public API changes it supports, taken from the API change
 - `POST /v1/knowledge/documents`: a plain-text or Markdown file uploaded from
   now on keeps its line breaks, so `read` returns its lines as written; such a
   file uploaded earlier read back as one line until it is uploaded again.
-
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a web page.
   Send `{source_type: "web", url, source_title, meta: {excerpt}, stance}` in

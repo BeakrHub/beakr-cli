@@ -162,6 +162,9 @@ SOURCES = (
             # server carries a copy (test_mcp_knowledge_status_matches_engine).
             "beakr/api/mcp_remote/knowledge_status.py",
             "beakr/api/mcp_remote/document_listing.py",
+            # The integrations tool's text: the stdio server carries a copy
+            # (test_mcp_integration_results_match_engine).
+            "beakr/api/mcp_remote/integration_results.py",
             # The compatibility rules scripts/contract_compat.py vendors.
             "beakr/api/public/compat.py",
         ),

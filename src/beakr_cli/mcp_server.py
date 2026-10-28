@@ -60,7 +60,7 @@ _INSTRUCTIONS_TEMPLATE = (
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
     "available it gives one cited answer across the wiki, documents and connected "
-    "services.{start}\n\n"
+    "services.{integrations}{start}\n\n"
     "Scope: pass 'scope' (a project name or id) to work in one project, or omit it to read "
     "everything you can see; list_projects names them, the user's personal project "
     "included (project_type='personal').\n\n"
@@ -103,7 +103,16 @@ def instructions(hidden: Collection[str] = ()) -> str:
             " 'context' once at the start of a task for the user's profiles, memories "
             "and skills; 'skills' to read a SKILL.md before following it."
         )
-    return _INSTRUCTIONS_TEMPLATE.replace("{start}", start)
+    # A self-hosted installation leaves integrations out, and with them the tool.
+    integrations = (
+        ""
+        if "integrations" in hidden
+        else (
+            " 'integrations' reads one connected service (Slack, Drive, Gmail, Jira, ...) "
+            "live: command='list' for its read tools, then command='call'."
+        )
+    )
+    return _INSTRUCTIONS_TEMPLATE.replace("{integrations}", integrations).replace("{start}", start)
 
 
 _INSTRUCTIONS = instructions()
@@ -1174,5 +1183,6 @@ import_conversation = _platform.import_conversation
 org_audit_log = _platform.org_audit_log
 read_file = _platform.read_file
 workboard = _platform.workboard
+integrations = _platform.integrations
 discover_tools = _platform.discover_tools
 _platform.register_platform_tools(mcp)

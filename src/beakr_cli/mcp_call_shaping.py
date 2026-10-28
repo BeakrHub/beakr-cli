@@ -32,6 +32,8 @@ from pydantic import ValidationError
 FOLDED_OPTIONS: dict[str, str] = {
     "knowledge_base": "arguments",
     "knowledge_base_write": "arguments",
+    # A called integration tool's options sent beside ``tool`` are its arguments.
+    "integrations": "arguments",
 }
 
 #: Names agents reach for, mapped to the parameter the tool declares.
@@ -150,7 +152,7 @@ def _usage_fix(tool: str, message: str) -> str | None:
     if not match or tool not in FOLDED_OPTIONS:
         return None
     names = re.findall(r"<([\w-]+)>", match.group("args"))
-    selector = "command" if tool == "knowledge_base" else "action"
+    selector = "action" if tool == "knowledge_base_write" else "command"
     call = {selector: match.group("command"), "arguments": {name: "..." for name in names}}
     return f"pass {json.dumps(call)}"
 
