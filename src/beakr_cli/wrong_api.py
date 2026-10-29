@@ -15,7 +15,10 @@ import re
 
 import httpx
 
-_TITLE = re.compile(r"<title[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
+#: A page's title is near its start: only this much of the body is searched,
+#: and the pattern itself is bounded, so a huge body costs no more than a small one.
+_TITLE_SEARCH_CHARS = 4096
+_TITLE = re.compile(r"<title[^>]{0,200}>(.{0,500}?)</title>", re.IGNORECASE | re.DOTALL)
 _TITLE_CHARS = 80
 
 #: Where the API URL comes from, in the order the CLI reads them.
@@ -40,21 +43,25 @@ def is_html_page(response: httpx.Response) -> bool:
 
 def _title(response: httpx.Response) -> str:
     try:
-        match = _TITLE.search(response.text)
+        match = _TITLE.search(response.text, 0, _TITLE_SEARCH_CHARS)
     except httpx.ResponseNotRead:
         return ""
     if not match:
         return ""
-    title = " ".join(html.unescape(match.group(1)).split())
+    # The server's text, printed to a terminal: no control or other
+    # non-printable characters (an ANSI escape sequence).
+    words = " ".join(html.unescape(match.group(1)).split())
+    title = "".join(char for char in words if char.isprintable())
     return title if len(title) <= _TITLE_CHARS else title[: _TITLE_CHARS - 3].rstrip() + "..."
 
 
 def _address(response: httpx.Response) -> str:
+    """Scheme, host, port and path only: never a user name, password or query."""
     try:
         url = response.request.url
     except RuntimeError:  # a response built without its request
         return "The server"
-    return str(url.copy_with(query=None, fragment=None))
+    return str(httpx.URL(scheme=url.scheme, host=url.host, port=url.port, path=url.path))
 
 
 def wrong_api_page(response: httpx.Response | None) -> tuple[str, str] | None:

@@ -18,6 +18,7 @@ from typer.testing import CliRunner
 
 from beakr_cli.main import app
 from beakr_cli.mcp_errors import error_fields
+from beakr_cli.wrong_api import wrong_api_page
 
 API = "https://wrong.test"
 runner = CliRunner()
@@ -129,3 +130,27 @@ def test_a_json_404_is_still_a_missing_record_or_route():
     response = httpx.Response(404, json={"detail": "Not Found"}, request=request)
 
     assert error_fields(response)["error_code"] == "not_provided"
+
+
+def test_the_page_is_named_without_credentials_control_characters_or_a_long_scan():
+    # Security review: the address kept userinfo (https://user:pass@host), the
+    # title reached the terminal with its control characters, and the title
+    # pattern scanned the whole body.
+    request = httpx.Request("GET", "https://ada:s3cret@wrong.test:8443/v1/me?token=abc")
+    page = "<html><title>Hi\x1b[2J &#27;[31mthere\u202e</title></html>"
+    response = httpx.Response(
+        404, text=page, headers={"content-type": "text/html"}, request=request
+    )
+
+    message, _fix = wrong_api_page(response)
+
+    assert message.startswith(
+        'https://wrong.test:8443/v1/me answered HTTP 404 with an HTML page ("Hi[2J [31mthere")'
+    )
+    assert "s3cret" not in message and "token" not in message and "\x1b" not in message
+
+    late = "<html>" + " " * 5000 + "<title>Late</title>"
+    late_response = httpx.Response(
+        404, text=late, headers={"content-type": "text/html"}, request=request
+    )
+    assert "Late" not in wrong_api_page(late_response)[0]
