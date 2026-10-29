@@ -350,12 +350,10 @@ def research(
     project_id = scope_params(project=project).get("project_id")
 
     err_console.print("[dim]Researching...[/dim]")
-    try:
-        with get_sdk() as sdk:
-            data = sdk.knowledge.research(query, project_id=project_id, quick=quick)
-    except Exception as e:
-        err_console.print(f"[red]Error: {escape(str(e))}[/red]")
-        raise typer.Exit(1)
+    # A refusal goes to the root group, like every other command's: its message
+    # (never a wrong host's HTML page), exit code and --json error.
+    with get_sdk() as sdk:
+        data = sdk.knowledge.research(query, project_id=project_id, quick=quick)
 
     if machine_output(data, json_out=json_out, lines=research_lines):
         return

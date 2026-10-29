@@ -59,6 +59,31 @@ def test_help_documents_with_api_key_and_hides_the_old_flag():
     assert " --api-key " not in result.output
 
 
+def test_bare_api_key_points_at_with_api_key_instead_of_click_requires_an_argument():
+    # Root cause: --api-key is a hidden alias that takes the key as its value,
+    # and the docs showed it bare, which Click refused with "Option '--api-key'
+    # requires an argument." Adding the key after it puts it in shell history.
+    result = CliRunner().invoke(app, ["auth", "login", "--api-key"], env={"COLUMNS": "200"})
+
+    assert result.exit_code == 2
+    assert "requires an argument" not in result.output
+    assert "use --with-api-key" in result.output
+    assert 'echo "$BEAKR_KEY" | beakr auth login --with-api-key' in result.output
+
+
+@respx.mock
+def test_a_key_given_on_the_command_line_warns_about_shell_history():
+    respx.get(f"{API}/v1/me").respond(json={"user": {}, "personal_org": {}})
+
+    result = CliRunner().invoke(
+        app, ["auth", "login", "--api-key", "bk_live_abc", "--api-url", API]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "stays in your shell history" in result.stderr
+    assert "--with-api-key" in result.stderr
+
+
 @respx.mock
 def test_with_api_key_reads_the_key_from_stdin_when_piped():
     respx.get(f"{API}/v1/me").respond(json={"user": {}, "personal_org": {}})

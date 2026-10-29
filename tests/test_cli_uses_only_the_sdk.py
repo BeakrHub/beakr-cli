@@ -27,6 +27,8 @@ HTTPX_ALLOWED = {
     # Formats an httpx response the SDK raised into the tool error text, and
     # keeps ApiCallError an httpx.HTTPStatusError for callers reading .response.
     "mcp_errors.py": "error wording over the SDK's response",
+    # Names an HTML page the SDK's error carries as its response (a wrong API URL).
+    "wrong_api.py": "error wording over the SDK's response",
 }
 
 

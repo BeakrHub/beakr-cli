@@ -200,6 +200,12 @@ are stable:
 | 5 | conflict |
 | 6 | a person must do it: the project requires a person to accept proposals, commit Knowledge or approve an agent's upload (`person_review_required`) |
 
+An API URL that answers with an HTML page instead of the Beakr API (the web
+app, a typo, a proxy) is reported by the address that answered and the page's
+title, never by printing the page, with where the API URL comes from
+(`--api-url`, `BEAKR_BASE_URL`, the URL `beakr auth login` saved); `beakr
+doctor` fails its `api` check on such a page.
+
 ## Signing in and API keys
 
 ```bash
@@ -757,7 +763,7 @@ This writes:
 | Variable | Description |
 |----------|-------------|
 | `BEAKR_API_KEY` | API key (overrides stored config) |
-| `BEAKR_BASE_URL` / `BEAKR_API_URL` | API base URL (default: `https://api.thebeakr.com`) |
+| `BEAKR_BASE_URL` | API base URL (default: `https://api.thebeakr.com`). `BEAKR_API_URL` also works, read after it; `--api-url` overrides both. |
 | `BEAKR_AGENT` | Sent as `X-Beakr-Agent` to attribute writes to an agent. The MCP server defaults to its client's name and version (`claude-code/2.1.283`); set this to tell apart several agents that share one key. The CLI at a terminal sends none. |
 | `BEAKR_RUN` | Sent as `X-Beakr-Run`: groups a script's Knowledge writes into one run that `beakr kb undo-run <run>` takes back together. The MCP server defaults to one run per server process (`stdio:<id>`). |
 | `BEAKR_SESSION` | Sent as `X-Beakr-Session`: the agent session behind the writes, shown on their provenance ("session <id>"). Unset, the CLI and MCP server use the host agent's own session id when it gives one: `CLAUDE_CODE_SESSION_ID` (Claude Code, in its MCP servers and commands), `CODEX_THREAD_ID` (Codex) and `CURSOR_CONVERSATION_ID` (Cursor), the last two only in the shell commands their agents run. Nothing is sent when none is set. |

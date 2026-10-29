@@ -154,11 +154,23 @@ def _refusal_text(exc: KnowledgeCommandError) -> str:
     return f"{text} To fix: {exc.fix}" if exc.fix else text
 
 
+def wrong_api_message(exc: BaseException) -> tuple[str, str] | None:
+    """``(message, fix)`` when ``exc`` answered an HTML page, not the Beakr API."""
+    from beakr_cli.wrong_api import wrong_api_page
+
+    return wrong_api_page(exc.response) if isinstance(exc, BeakrError) else None
+
+
 def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
     """One readable line, with the fix when there is an obvious one.
 
     ``command`` is the CLI command's words, to name what a missing route was for.
     """
+    page = wrong_api_message(exc)
+    if page:
+        # Checked before "does not provide": a wrong host's HTML 404 is not a
+        # route this installation leaves out.
+        return "\n".join(page)
     message = not_provided_message(exc, command)
     if message:
         return message
@@ -287,7 +299,8 @@ def error_object(
     one) as well as on the exit code. A route this installation does not
     have is ``not_provided`` with the sentence the plain output prints.
     """
-    absent = not_provided_message(exc, command)
+    page = wrong_api_message(exc)
+    absent = None if page else not_provided_message(exc, command)
     if absent:
         from beakr_cli.capabilities import NOT_PROVIDED_CODE
 
@@ -302,13 +315,17 @@ def error_object(
     message = getattr(exc, "message", None) or (
         exc.format_message() if isinstance(exc, click.ClickException) else str(exc)
     )
+    if page:
+        message = page[0]
     error: dict[str, Any] = {"message": str(message), "exit_code": exit_code}
     if isinstance(exc, BeakrError):
         error["code"] = exc.code or _CODE_FOR_EXIT.get(exit_code, "error")
         # A Knowledge refusal arrives in a 200 body: no HTTP status refused it.
         if exc.status is not None and not isinstance(exc, KnowledgeCommandError):
             error["status"] = exc.status
-        if exc.fix or exc.code in _CODE_HINTS:
+        if page:
+            error["fix"] = page[1]
+        elif exc.fix or exc.code in _CODE_HINTS:
             error["fix"] = exc.fix or _CODE_HINTS[str(exc.code)]
         if exc.request_id:
             error["request_id"] = exc.request_id
