@@ -114,7 +114,7 @@ def _research_details(data: dict[str, Any]) -> list[str]:
         lines.append("Coverage: " + json.dumps(data["coverage"], ensure_ascii=False))
     usage = {
         key: data[key]
-        for key in ("cost_usd", "duration_s", "engine", "lead_model", "turns", "subtasks")
+        for key in ("cost_usd", "duration_s", "engine", "turns", "subtasks")
         if key in data
     }
     if usage:

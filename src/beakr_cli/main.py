@@ -344,6 +344,7 @@ def research(
     """Ask a question and get a researched answer with citations."""
     from beakr_cli.cited_answer import print_research_result, research_lines
     from beakr_cli.output import err_console, machine_output
+    from beakr_cli.research_metadata import public_research
     from beakr_cli.scope import scope_params
     from beakr_cli.sdk import get_sdk
 
@@ -353,7 +354,7 @@ def research(
     # A refusal goes to the root group, like every other command's: its message
     # (never a wrong host's HTML page), exit code and --json error.
     with get_sdk() as sdk:
-        data = sdk.knowledge.research(query, project_id=project_id, quick=quick)
+        data = public_research(sdk.knowledge.research(query, project_id=project_id, quick=quick))
 
     if machine_output(data, json_out=json_out, lines=research_lines):
         return
