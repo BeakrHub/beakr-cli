@@ -8,6 +8,11 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/research` and the MCP `research` tool no longer name the
+  model that answered: `ResearchResult.lead_model` is deprecated and never
+  returned, and the MCP tool's `research_usage` no longer carries it. Model and
+  provider names are not part of the API. `cost_usd`, what the research cost to
+  run in US dollars, stays.
 - Both MCP servers, the hosted one and the `beakr` CLI's, add an
   `integrations` tool that reads the caller's connected integrations (Slack,
   Google Drive, Gmail, Jira, Notion, Benchling and the others) with the
@@ -62,38 +67,6 @@ Each release lists the public API changes it supports, taken from the API change
 - `POST /v1/knowledge/documents`: a plain-text or Markdown file uploaded from
   now on keeps its line breaks, so `read` returns its lines as written; such a
   file uploaded earlier read back as one line until it is uploaded again.
-
-- `GET /v1/skills`, `GET /v1/skills/{skill_id}`, `POST /v1/skills` and
-  `POST /v1/me/skills/proposals/{proposal_id}/accept`: a skill's `visibility`
-  can be `project`, a personal skill its author shared with the people of one
-  project in their organization. `GET /v1/skills` accepts `project` in its
-  `visibility` filter. The accepted skill's library entry carries
-  `shared_project_id` and `shared_project_name` (null unless it is shared with
-  a project, and the name is null when you cannot see that project).
-- `POST /v1/runs`: `agent_id` starts the run with an agent, a named helper with
-  its own instructions, sources and capabilities, where the organization has
-  agents turned on. The thread remembers it, so later runs on the thread that
-  name no agent keep it. An agent you cannot use answers `404`.
-- `GET /v1/threads/{thread_id}` and thread lists: `agent_id` and `agent_name`
-  name the agent the thread talks to, or are null. Thread lists also carry
-  `agent_origin`: `chat`, `task` or `trigger` (a schedule or webhook started
-  it), or null for a thread with no agent.
-- `GET /v1/threads/{thread_id}` messages: `started_by` is set on the first
-  message of a thread an agent's schedule or webhook started, with `kind`
-  (`schedule` or `webhook`), the trigger's `name`, its `task` text and, for a
-  webhook, the `payload` the request sent. Show it as what started the run,
-  not as something the person wrote: nobody typed that message. It is null on
-  every other message.
-- `GET /v1/threads/{thread_id}` messages: `workflow_event` is set on the
-  messages a workflow run posts into its thread (started, waiting for an
-  answer, waiting for a review, finished, stopped), with the `run_id`, the
-  milestone `kind`, and for a wait the step (`node_id`, `step_title`), who is
-  asked (`reviewer_ids`) and how it ended (`state`: `waiting`, `approved`,
-  `rejected`, `edited` or `answered`, with `decided_by`). A waiting message is
-  updated in place when the wait ends; a null `state` on a waiting message
-  means the run stopped before anyone decided. `flagged_steps` counts the
-  steps that finished with problems on a `finished` message. The message
-  `text` stays readable without it, and it is null on every other message.
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a web page.
   Send `{source_type: "web", url, source_title, meta: {excerpt}, stance}` in
@@ -154,6 +127,37 @@ Each release lists the public API changes it supports, taken from the API change
 - `GET /v1/interview/sendables` and `POST /v1/interview/sendables/{sendable_id}/links`:
   a link's `delivery_channel` can now be `slack`, for a link sent as a Slack
   direct message from the sender's own Slack.
+- `GET /v1/skills`, `GET /v1/skills/{skill_id}`, `POST /v1/skills` and
+  `POST /v1/me/skills/proposals/{proposal_id}/accept`: a skill's `visibility`
+  can be `project`, a personal skill its author shared with the people of one
+  project in their organization. `GET /v1/skills` accepts `project` in its
+  `visibility` filter. The accepted skill's library entry carries
+  `shared_project_id` and `shared_project_name` (null unless it is shared with
+  a project, and the name is null when you cannot see that project).
+- `POST /v1/runs`: `agent_id` starts the run with an agent, a named helper with
+  its own instructions, sources and capabilities, where the organization has
+  agents turned on. The thread remembers it, so later runs on the thread that
+  name no agent keep it. An agent you cannot use answers `404`.
+- `GET /v1/threads/{thread_id}` and thread lists: `agent_id` and `agent_name`
+  name the agent the thread talks to, or are null. Thread lists also carry
+  `agent_origin`: `chat`, `task` or `trigger` (a schedule or webhook started
+  it), or null for a thread with no agent.
+- `GET /v1/threads/{thread_id}` messages: `started_by` is set on the first
+  message of a thread an agent's schedule or webhook started, with `kind`
+  (`schedule` or `webhook`), the trigger's `name`, its `task` text and, for a
+  webhook, the `payload` the request sent. Show it as what started the run,
+  not as something the person wrote: nobody typed that message. It is null on
+  every other message.
+- `GET /v1/threads/{thread_id}` messages: `workflow_event` is set on the
+  messages a workflow run posts into its thread (started, waiting for an
+  answer, waiting for a review, finished, stopped), with the `run_id`, the
+  milestone `kind`, and for a wait the step (`node_id`, `step_title`), who is
+  asked (`reviewer_ids`) and how it ended (`state`: `waiting`, `approved`,
+  `rejected`, `edited` or `answered`, with `decided_by`). A waiting message is
+  updated in place when the wait ends; a null `state` on a waiting message
+  means the run stopped before anyone decided. `flagged_steps` counts the
+  steps that finished with problems on a `finished` message. The message
+  `text` stays readable without it, and it is null on every other message.
 - `GET /v1/projects/{project_id}/model-refusals/summary`: in
   `failed_by_reason`, an event recorded without a reason is counted under
   `unspecified`.

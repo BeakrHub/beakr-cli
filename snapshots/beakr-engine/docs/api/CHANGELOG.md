@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=bbf88c21585b1ae84517c0297ffd726e1b0a36dbf4fa655518a7468c853052f0 changelog sha256=2082a6b969b1b33195efd9019b707362d19ec2cbc158006b52424f106d37d0f0 -->
+<!-- contract-stamp: public-openapi sha256=bbf88c21585b1ae84517c0297ffd726e1b0a36dbf4fa655518a7468c853052f0 changelog sha256=1b9df9266384a783ae0cefed7aab2880050406985d2cca00b263a41b1e4827d2 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -912,8 +912,8 @@ The first public version.
   (`conversation:call-with-ana`) and be cited inline as `{{conversation:call-with-ana}}`.
   `POST /v1/knowledge/documents` results and `POST /v1/knowledge/wiki/write`
   results name citations the same readable way. `ResearchResult` fields `checked`, `not_checked`,
-  `sources_consulted`, `subtasks`, `stopped_early` and `engine` now say what
-  they hold.
+  `sources_consulted`, `subtasks`, `stopped_early`, `engine` and `lead_model`
+  now say what they hold.
 - `POST /v1/knowledge/wiki/command` supports continuing a chronological timeline without
   `timeline_query` using `cursor`. Timeline coverage distinguishes dated candidates
   examined (`scanned`) from results shown, reports whether an unqueried scan reached
@@ -924,15 +924,15 @@ The first public version.
   Compact/full source-sidecar Knowledge reads can report `coverage.truncated` when
   their response budget omits text; other reads may omit this field.
 - `POST /v1/knowledge/research` now documents what its coverage reports, subtask
-  count, early-stop indicator and engine fields mean. Response behavior is
-  unchanged.
+  count, early-stop indicator, engine and lead-model fields mean. Response behavior
+  is unchanged.
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
   project-restricted credential must supply one of its authorized projects.
   The feature returns 404 until enabled. Scan notices identify incomplete results.
 - `POST /v1/knowledge/research` supports an optional research engine with
-  `checked`, `not_checked`, `stopped_early`, `subtasks`, `engine` and
-  `sources_consulted` fields. Its optional stronger lead shares the same
+  `checked`, `not_checked`, `stopped_early`, `subtasks`, `engine`, `lead_model`,
+  and `sources_consulted` fields. Its optional stronger lead shares the same
   project restrictions. The caller rate limit is now 30 requests per minute;
   concurrent-run and usage limits still apply.
 
