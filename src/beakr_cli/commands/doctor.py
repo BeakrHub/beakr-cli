@@ -12,6 +12,7 @@ import typer
 from rich.markup import escape
 
 from beakr_cli.output import console, emit
+from beakr_cli.wrong_api import wrong_api_page
 
 Status = Literal["ok", "warn", "fail"]
 
@@ -44,7 +45,11 @@ def check_reachable(base_url: str) -> dict[str, Any]:
         response = httpx.get(f"{base_url}/v1/public/openapi.json", timeout=5.0)
     except httpx.HTTPError as exc:
         return _check("api", "fail", f"{base_url} unreachable: {exc}", base_url=base_url)
-    # Any HTTP answer means the host is up; the route may not exist on older servers.
+    page = wrong_api_page(response)
+    if page:
+        # An HTML page is a web app, a proxy or another server, not the Beakr API.
+        return _check("api", "fail", " ".join(page), base_url=base_url)
+    # Any other HTTP answer means the host is up; the route may not exist on older servers.
     return _check("api", "ok", f"{base_url} (HTTP {response.status_code})", base_url=base_url)
 
 
@@ -102,8 +107,10 @@ def check_auth_and_scopes(sdk: Any) -> list[dict[str, Any]]:
     try:
         me = sdk.me.get()
     except BeakrError as exc:
+        page = wrong_api_page(exc.response)
+        reason = page[0] if page else str(exc)
         return [
-            _check("auth", "fail", f"{credential.source}: {exc}", source=credential.source),
+            _check("auth", "fail", f"{credential.source}: {reason}", source=credential.source),
             _check("scopes", "warn", "unknown"),
         ]
     user = me.get("user", {}) if isinstance(me, dict) else {}

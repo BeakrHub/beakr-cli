@@ -14,7 +14,6 @@ _USAGE_FIELDS = (
     "cost_usd",
     "duration_s",
     "engine",
-    "lead_model",
     "turns",
     "subtasks",
     "stopped_early",
@@ -42,6 +41,19 @@ def record_failed_research(error: BaseException, duration_s: float) -> None:
             "client_duration_s": round(duration_s, 3),
         }
     )
+
+
+#: Fields an older engine sent that name the model behind the answer. Which
+#: model answered is internal, not part of the public answer: never shown, in
+#: any output format (the engine no longer sends them).
+INTERNAL_RESEARCH_FIELDS = frozenset({"lead_model"})
+
+
+def public_research(data: Any) -> Any:
+    """A research response without the fields that name internal models."""
+    if not isinstance(data, dict):
+        return data
+    return {key: value for key, value in data.items() if key not in INTERNAL_RESEARCH_FIELDS}
 
 
 def with_cited_labels(data: dict[str, Any]) -> dict[str, Any]:

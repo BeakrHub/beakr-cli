@@ -7,8 +7,10 @@ import sys
 import webbrowser
 from typing import Any
 
+import click
 import typer
 from rich.markup import escape
+from typer.core import TyperCommand
 
 from beakr_cli import config
 from beakr_cli.auth_status import auth_status_report
@@ -142,7 +144,9 @@ def _login_with_api_key(api_key: str, base_url: str) -> dict[str, Any]:
     try:
         data = _me()
     except Exception as exc:
-        err_console.print(f"Authentication failed: {exc}", markup=False)
+        from beakr_cli.errors import describe_error
+
+        err_console.print(f"Authentication failed: {describe_error(exc)}", markup=False)
         TokenStore().clear(base_url)
         raise typer.Exit(3) from exc
     identity, org_name = _identity_line(data)
@@ -244,7 +248,35 @@ def _login_with_oauth(base_url: str, *, open_browser: bool, device: bool) -> dic
 # ---------------------------------------------------------------------------
 
 
-@app.command()
+#: How to pass a key without putting it on the command line.
+SAFE_KEY_LOGIN = 'echo "$BEAKR_KEY" | beakr auth login --with-api-key'
+
+
+class _LoginCommand(TyperCommand):
+    """``auth login``, where a bare ``--api-key`` names the flag that reads the key safely.
+
+    ``--api-key`` is a hidden alias that takes the key as its value, and a bare
+    ``--api-key`` (the guess, or an old doc) failed with Click's "requires an
+    argument". The fix is not to add the key after it: that leaves it in shell
+    history and the process list.
+    """
+
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        try:
+            return super().parse_args(ctx, args)
+        except click.BadOptionUsage as exc:
+            if exc.option_name != "--api-key":
+                raise
+            raise click.BadOptionUsage(
+                "--api-key",
+                "To sign in with an API key, use --with-api-key: it reads the key from "
+                f"stdin ({SAFE_KEY_LOGIN}), or asks for it at a terminal without showing "
+                "it. A key typed after --api-key stays in your shell history.",
+                ctx=ctx,
+            ) from exc
+
+
+@app.command(cls=_LoginCommand)
 def login(
     api_key: str | None = typer.Option(
         None,
@@ -288,7 +320,13 @@ def login(
         config.set_key("api_url", explicit_url)
 
     with human_output_to_stderr(json_out):
-        if with_api_key and not api_key:
+        if api_key:
+            err_console.print(
+                "A key on the command line stays in your shell history and the process "
+                f"list. Next time pass it on stdin: {SAFE_KEY_LOGIN}",
+                markup=False,
+            )
+        elif with_api_key:
             api_key = _read_key_from_stdin_or_prompt()
         if api_key:
             signed_in = {"method": "api_key", **_login_with_api_key(api_key, base_url)}

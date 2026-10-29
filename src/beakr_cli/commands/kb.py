@@ -41,6 +41,7 @@ from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
 from beakr_cli.proposal_view import filed_by_line, payload_lines
+from beakr_cli.research_metadata import public_research
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
@@ -737,7 +738,7 @@ def research(
     """Ask a question and get a researched answer with citations."""
     project_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
-        data = sdk.knowledge.research(query, project_id=project_id, quick=quick)
+        data = public_research(sdk.knowledge.research(query, project_id=project_id, quick=quick))
 
     if machine_output(data, json_out=json_out, lines=research_lines):
         return

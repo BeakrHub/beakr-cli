@@ -11985,7 +11985,8 @@
               }
             ],
             "default": null,
-            "description": "The model alias used by the lead research agent.",
+            "deprecated": true,
+            "description": "Deprecated and no longer returned: the model that answers is not part of the API. Always absent.",
             "title": "Lead Model"
           },
           "next": {

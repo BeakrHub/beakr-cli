@@ -781,6 +781,7 @@ async def research(
     """
     from beakr_cli.research_metadata import (
         attach_research_metadata,
+        public_research,
         record_failed_research,
         with_cited_labels,
     )
@@ -795,7 +796,7 @@ async def research(
         record_failed_research(exc, time.monotonic() - started)
         raise
 
-    data = with_cited_labels(data)
+    data = with_cited_labels(public_research(data))
 
     citations = data.get("citations")
     if isinstance(citations, list) and isinstance(data.get("text"), str):

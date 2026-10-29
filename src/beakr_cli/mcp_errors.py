@@ -31,6 +31,7 @@ from beakr_cli.capabilities import (
     not_provided_message,
     request_of,
 )
+from beakr_cli.wrong_api import wrong_api_page
 
 if TYPE_CHECKING:
     from beakr_cli._private_api import AsyncPrivateBeakr as AsyncBeakr
@@ -67,6 +68,10 @@ def error_fields(response: httpx.Response) -> dict[str, str | None]:
         None,
     )
     correlation = {"request_id": request_id} if request_id else {}
+    page = wrong_api_page(response)
+    if page:
+        # Never the page itself: a wrong API URL, or a proxy in front of the API.
+        return {**correlation, "error_code": None, "message": page[0], "fix": page[1]}
     if is_bare_not_found(response):
         # The server has no such route: this installation leaves the feature out.
         return {
