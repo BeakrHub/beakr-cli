@@ -11,11 +11,16 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=b84f96e8591249ae7ec039ac981d2395ef6489d5c220c345fbb26c157c9145ce changelog sha256=c34678bf32b5b3cef90e4467b78453985016b45a4ca8a4c57551be6c2ed5d076 -->
+<!-- contract-stamp: public-openapi sha256=bbf88c21585b1ae84517c0297ffd726e1b0a36dbf4fa655518a7468c853052f0 changelog sha256=2082a6b969b1b33195efd9019b707362d19ec2cbc158006b52424f106d37d0f0 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/research` and the MCP `research` tool no longer name the
+  model that answered: `ResearchResult.lead_model` is deprecated and never
+  returned, and the MCP tool's `research_usage` no longer carries it. Model and
+  provider names are not part of the API. `cost_usd`, what the research cost to
+  run in US dollars, stays.
 - Both MCP servers, the hosted one and the `beakr` CLI's, add an
   `integrations` tool that reads the caller's connected integrations (Slack,
   Google Drive, Gmail, Jira, Notion, Benchling and the others) with the
@@ -907,8 +912,8 @@ The first public version.
   (`conversation:call-with-ana`) and be cited inline as `{{conversation:call-with-ana}}`.
   `POST /v1/knowledge/documents` results and `POST /v1/knowledge/wiki/write`
   results name citations the same readable way. `ResearchResult` fields `checked`, `not_checked`,
-  `sources_consulted`, `subtasks`, `stopped_early`, `engine` and `lead_model`
-  now say what they hold.
+  `sources_consulted`, `subtasks`, `stopped_early` and `engine` now say what
+  they hold.
 - `POST /v1/knowledge/wiki/command` supports continuing a chronological timeline without
   `timeline_query` using `cursor`. Timeline coverage distinguishes dated candidates
   examined (`scanned`) from results shown, reports whether an unqueried scan reached
@@ -919,15 +924,15 @@ The first public version.
   Compact/full source-sidecar Knowledge reads can report `coverage.truncated` when
   their response budget omits text; other reads may omit this field.
 - `POST /v1/knowledge/research` now documents what its coverage reports, subtask
-  count, early-stop indicator, engine and lead-model fields mean. Response behavior
-  is unchanged.
+  count, early-stop indicator and engine fields mean. Response behavior is
+  unchanged.
 - `POST /v1/knowledge/documents` searches (`grep`), reads line windows (`read`),
   and lists (`ls`) original indexed files. It requires `projects:read`; a
   project-restricted credential must supply one of its authorized projects.
   The feature returns 404 until enabled. Scan notices identify incomplete results.
 - `POST /v1/knowledge/research` supports an optional research engine with
-  `checked`, `not_checked`, `stopped_early`, `subtasks`, `engine`, `lead_model`,
-  and `sources_consulted` fields. Its optional stronger lead shares the same
+  `checked`, `not_checked`, `stopped_early`, `subtasks`, `engine` and
+  `sources_consulted` fields. Its optional stronger lead shares the same
   project restrictions. The caller rate limit is now 30 requests per minute;
   concurrent-run and usage limits still apply.
 
