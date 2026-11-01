@@ -508,7 +508,12 @@ def download_file(
         help="File id, or any reference a read hands out: a source_ref, a version id, a "
         "citation token or a path.",
     ),
-    out: Path = typer.Option(Path("."), "--out", "-o", help="Destination file or directory."),
+    # A str, not a Path: Path drops the trailing "/" that tells the SDK a
+    # directory to create is meant (``-o downloads/``), and then the file is
+    # written AS ``downloads``.
+    out: str = typer.Option(
+        ".", "--out", "-o", help="Destination file, or a directory (end a new one with /)."
+    ),
     json_out: bool = _json_opt,
 ) -> None:
     """Download a file's original bytes, by its id or a source record's source_ref."""
