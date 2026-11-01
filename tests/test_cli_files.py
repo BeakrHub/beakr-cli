@@ -213,6 +213,25 @@ def test_files_download_writes_original_bytes_into_a_directory(tmp_path):
 
 
 @respx.mock
+def test_files_download_into_a_new_directory_keeps_the_trailing_slash(tmp_path, monkeypatch):
+    # Regression (sandbox QA 2026-11-01): `beakr files download ID -o newdir/`
+    # wrote the PDF as a FILE named `newdir`. Typer turned the option into a
+    # Path, which drops the trailing "/", so the SDK could no longer tell that
+    # a directory to create was meant (beakr_sdk.resources._destination).
+    respx.post(f"{API}/v1/artifacts/download-url").respond(
+        json={"url": f"{S3}/report.pdf?sig=1", "expires_in": 120, "filename": "report.pdf"}
+    )
+    respx.get(url__startswith=f"{S3}/report.pdf").respond(content=b"%PDF-1.7")
+    monkeypatch.chdir(tmp_path)
+
+    result = CliRunner().invoke(app, ["files", "download", "a1", "--out", "newdir/"])
+
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "newdir").is_dir()
+    assert (tmp_path / "newdir" / "report.pdf").read_bytes() == b"%PDF-1.7"
+
+
+@respx.mock
 def test_files_show_not_found_exits_4():
     respx.get(f"{API}/v1/artifacts/missing").respond(404, json={"detail": "Not found"})
 

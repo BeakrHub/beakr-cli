@@ -134,8 +134,12 @@ def show_skill(skill: str = _skill_arg, json_out: bool = _json_opt) -> None:
 @app.command("download")
 def download_skill(
     skill: str = _skill_arg,
-    destination: Path = typer.Argument(
-        Path("."), help="Directory to save into (default: here), or the folder or zip to write."
+    # A str, not a Path: Path drops the trailing "/" that tells the SDK a
+    # directory to save into is meant (``exported/``).
+    destination: str = typer.Argument(
+        ".",
+        help="Directory to save into (default: here; end a new one with /), "
+        "or the folder or zip to write.",
     ),
     as_zip: bool = typer.Option(False, "--zip", help="Save a zip of the folder instead."),
     json_out: bool = _json_opt,

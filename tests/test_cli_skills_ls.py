@@ -119,3 +119,31 @@ def test_ls_refuses_an_unknown_origin():
     result = runner.invoke(app, ["skills", "ls", "--origin", "found"])
     assert result.exit_code == 2
     assert "created, mined, imported, system" in result.output
+
+
+@respx.mock
+@pytest.mark.parametrize("as_zip", [False, True])
+def test_skills_download_into_a_new_directory_keeps_the_trailing_slash(
+    tmp_path, monkeypatch, as_zip
+):
+    # Regression (sandbox QA 2026-11-01): `beakr skills download SKILL exported/`
+    # wrote the folder (or zip) AS `exported` instead of inside it: Typer's Path
+    # drops the trailing "/" the SDK reads to know a directory is meant.
+    respx.get(f"{API}/v1/skills/sk-1").respond(json={**LIBRARY_SKILL, "files": {}})
+    respx.get(f"{API}/v1/skills/sk-1/bundle").respond(
+        json={"slug": "release-notes", "files": {"SKILL.md": "# Release notes\n"}}
+    )
+    respx.get(f"{API}/v1/skills/sk-1/bundle.zip").respond(content=b"PK\x05\x06" + b"\0" * 18)
+    monkeypatch.chdir(tmp_path)
+
+    args = ["skills", "download", "sk-1", "exported/", *(["--zip"] if as_zip else [])]
+    result = runner.invoke(app, args)
+
+    assert result.exit_code == 0, result.output
+    assert (tmp_path / "exported").is_dir()
+    if as_zip:
+        assert (tmp_path / "exported" / "release-notes.zip").is_file()
+    else:
+        assert (tmp_path / "exported" / "release-notes" / "SKILL.md").read_text() == (
+            "# Release notes\n"
+        )
