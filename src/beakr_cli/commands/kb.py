@@ -35,6 +35,7 @@ from beakr_cli.output import (
     print_search_results,
     print_table,
     readable_snippet,
+    search_notes,
 )
 from beakr_cli.project_binding import project_is_pinned, resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -291,17 +292,32 @@ def search(
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Find pages by meaning and keywords, with the part of each page that matched.
+    """Find pages that contain your words, with the part of each page that matched.
 
-    For the exact section and its cited passage use `beakr kb sections`.
+    A page matches when its title or text holds every word of the query. When no
+    page does, the search ranks pages by meaning instead and says when even the
+    best match is weak. `beakr kb sections` always ranks every section by meaning
+    and warns when all of them are weak matches, so it can still answer a question
+    worded unlike the pages; use it for the exact section and its cited passage.
     """
     project_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
         data = sdk.knowledge.pages.search(query, project_id=project_id, limit=limit)
     results = page_rows(data)
+    notes = search_notes(data, query)
 
-    if not machine_output(results, json_out=json_out, lines=_search_lines):
-        print_search_results(results)
+    # A piped run used to print nothing for an empty answer (Octant pilot,
+    # 2026-11-02: an agent got 0 bytes and concluded Knowledge was empty). Compact
+    # lines end with each note as ``note: ...``, the way ``next:`` hints end them;
+    # JSON on stdout stays the plain list scripts read, with the notes on stderr.
+    def lines(rows: list[dict]) -> list[str]:
+        return [*_search_lines(rows), *(f"note: {note}" for note in notes)]
+
+    if not machine_output(results, json_out=json_out, lines=lines):
+        print_search_results(results, notes=notes)
+    elif output_mode(json_out) == "json":
+        for note in notes:
+            err_console.print(note, markup=False, highlight=False)
 
 
 def _search_lines(results: list[dict]) -> list[str]:

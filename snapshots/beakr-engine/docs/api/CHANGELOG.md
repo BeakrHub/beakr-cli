@@ -11,11 +11,18 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=bbf88c21585b1ae84517c0297ffd726e1b0a36dbf4fa655518a7468c853052f0 changelog sha256=1b9df9266384a783ae0cefed7aab2880050406985d2cca00b263a41b1e4827d2 -->
+<!-- contract-stamp: public-openapi sha256=90b8c766e1a58ee16637ea2d2e5fb92de6f8d6c7b57f62661e8ff5b4c6407734 changelog sha256=c6e8bb9d29fe18a8e4d3fd16c8b8a0bd86572346bedd64d1e2f8c3f58b45f37d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
+  every word of the query, instead of answering with no results. A meaning-ranked
+  answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
+  result's band) and, when even the best result is weak, a `note` saying the
+  knowledge base may not cover the question; each of its results carries
+  `relevance`. A keyword answer carries none of these. The operation is limited
+  to 120 requests a minute per caller.
 - `POST /v1/knowledge/research` and the MCP `research` tool no longer name the
   model that answered: `ResearchResult.lead_model` is deprecated and never
   returned, and the MCP tool's `research_usage` no longer carries it. Model and

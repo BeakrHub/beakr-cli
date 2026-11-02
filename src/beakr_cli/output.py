@@ -99,11 +99,31 @@ def readable_snippet(text: str) -> str:
     return " ".join(text.split())
 
 
-def print_search_results(results: list[dict]) -> None:
+def search_notes(page: Any, query: str) -> list[str]:
+    """What a person or agent must be told alongside a page of search results.
+
+    An empty answer says weaker matches may exist and names ``kb sections``,
+    which ranks every section by meaning; a meaning-ranked answer whose best
+    match is weak carries the engine's own WEAK warning (``note``, the wording
+    ``kb sections`` uses). Nothing for a good answer.
+    """
+    import shlex
+
+    if not page_rows(page):
+        return [
+            "No strong matches. Weaker matches may exist: try "
+            f"`beakr kb sections {shlex.quote(query)}`."
+        ]
+    note = page.get("note") if isinstance(page, dict) else None
+    return [str(note)] if note else []
+
+
+def print_search_results(results: list[dict], *, notes: list[str] | None = None) -> None:
     if machine_output(results, json_out=False):
         return
+    for note in notes or []:
+        err_console.print(note, markup=False, highlight=False)
     if not results:
-        err_console.print("No results found.")
         return
 
     for r in results:
@@ -113,7 +133,10 @@ def print_search_results(results: list[dict]) -> None:
         snippet = readable_snippet(
             str(r.get("content_snippet") or r.get("snippet") or r.get("summary") or "")
         )[:300]
-        console.print(f"[bold]{escape(str(title))}[/bold]  score={score:.2f}", highlight=False)
+        band = f"  relevance={r['relevance']}" if r.get("relevance") else ""
+        console.print(
+            f"[bold]{escape(str(title))}[/bold]  score={score:.2f}{escape(band)}", highlight=False
+        )
         if r.get("breadcrumb"):
             console.print(f"  [dim]{escape(str(r['breadcrumb']))}[/dim]", highlight=False)
         if snippet:
