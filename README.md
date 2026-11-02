@@ -32,9 +32,7 @@ curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh 
 That's it. The script:
 
 1. Installs [`uv`](https://github.com/astral-sh/uv) if missing (no system Python required — `uv` ships its own).
-2. Installs the `beakr` CLI from GitHub (`uv tool install git+https://github.com/BeakrHub/beakr-cli`), putting a real `beakr` binary on PATH at `~/.local/bin/beakr`. It needs `git`.
-   (PyPI's newest `beakr-cli` is 0.3.x, which is older than this CLI and talks only to production;
-   install from GitHub until 0.4 is published there.)
+2. Installs the `beakr` CLI from PyPI (`uv tool install beakr-cli`), putting a real `beakr` binary on PATH at `~/.local/bin/beakr`.
 3. Signs you in through the browser, or verifies `$BEAKR_API_KEY` and saves it to the keychain so Claude Code and Codex can use it.
 4. Registers the Beakr MCP server in **Claude Code** (`claude mcp add` or `~/.claude.json`) and **Codex** (`~/.codex/config.toml`) — whichever it detects — pointing at the `beakr` that ran setup, with your API URL and `BEAKR_HOME` when they are not the defaults.
 5. Copies the Beakr skill and `kb-*` slash commands into `~/.claude` and/or `~/.codex`.
@@ -56,8 +54,8 @@ curl -fsSL https://raw.githubusercontent.com/BeakrHub/beakr-cli/main/install.sh 
 If you'd rather do it step-by-step:
 
 ```bash
-# 1. Install the CLI globally with uv
-uv tool install git+https://github.com/BeakrHub/beakr-cli
+# 1. Install the CLI globally with uv (or: pipx install beakr-cli)
+uv tool install beakr-cli
 
 # 2. Authenticate
 beakr auth login
@@ -85,7 +83,7 @@ If you don't want the CLI at all and just want the MCP server entry:
   "mcpServers": {
     "beakr": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/BeakrHub/beakr-cli", "beakr", "mcp"],
+      "args": ["--from", "beakr-cli", "beakr", "mcp"],
       "env": { "BEAKR_API_KEY": "<your-key>" }
     }
   }
@@ -97,11 +95,11 @@ If you don't want the CLI at all and just want the MCP server entry:
 ```toml
 [mcp_servers.beakr]
 command = "uvx"
-args = ["--from", "git+https://github.com/BeakrHub/beakr-cli", "beakr", "mcp"]
+args = ["--from", "beakr-cli", "beakr", "mcp"]
 env = { BEAKR_API_KEY = "<your-key>" }
 ```
 
-`uvx` fetches `beakr-cli` from GitHub on demand, so no global install is needed — but you also won't have the `beakr` CLI on your PATH. Add `"BEAKR_BASE_URL": "https://api-sandbox.thebeakr.com"` (or your self-hosted URL) to `env` to use an API other than production.
+`uvx` fetches `beakr-cli` from PyPI on demand, so no global install is needed — but you also won't have the `beakr` CLI on your PATH. Add `"BEAKR_BASE_URL": "https://api-sandbox.thebeakr.com"` (or your self-hosted URL) to `env` to use an API other than production.
 
 ## Updating
 
@@ -124,7 +122,7 @@ You don't have to remember to check:
 
 Installs that cannot be upgraded safely in place are reported, not changed: a
 `uv tool` install from a local checkout, `pip` inside another environment, or `uvx`
-(which reuses a cached copy; use `uvx --refresh --from git+https://github.com/BeakrHub/beakr-cli beakr mcp`
+(which reuses a cached copy; use `uvx --refresh --from beakr-cli beakr mcp`
 to always run the newest version). Set `BEAKR_NO_UPDATE_CHECK=1` to turn the check off.
 
 ## Shell completion
@@ -163,7 +161,7 @@ The scripts call `beakr` to compute matches, so `beakr` must be on your `PATH`
 Install, sign in, bind a project, upload, ask, read a card:
 
 ```bash
-uv tool install git+https://github.com/BeakrHub/beakr-cli   # or the one-line installer above
+uv tool install beakr-cli          # or the one-line installer above
 beakr auth login                   # browser sign-in; works with SSO and MFA
 beakr init --create "Research"     # bind this directory to a new project
 beakr upload docs/ notes.pdf       # folders keep their structure
@@ -842,8 +840,7 @@ uv run python scripts/refresh_snapshots.py refresh --engine <engine checkout>
 After the workflow succeeds:
 
 ```bash
-beakr update                # or a fresh install from GitHub (PyPI still has 0.3.x):
-                            # uv tool install --force git+https://github.com/BeakrHub/beakr-cli
+beakr update                # or a fresh install: uv tool install --force beakr-cli
 beakr version
 ```
 
