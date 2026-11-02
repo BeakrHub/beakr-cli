@@ -30,11 +30,8 @@ from packaging.version import InvalidVersion, Version
 from beakr_cli import __version__, config
 
 PACKAGE_NAME = "beakr-cli"
-#: Where the current CLI is installed from. PyPI's newest release (0.3.3) is
-#: older than this CLI (0.4.x) until 0.4 is published, so pointing anyone at
-#: ``beakr-cli`` on PyPI would downgrade them; every install and upgrade hint
-#: names the GitHub source instead. Switch back to PACKAGE_NAME once 0.4 is on PyPI.
-INSTALL_SOURCE = "git+https://github.com/BeakrHub/beakr-cli"
+#: What every install and upgrade hint installs: the release on PyPI.
+INSTALL_SOURCE = PACKAGE_NAME
 PYPI_JSON_URL = f"https://pypi.org/pypi/{PACKAGE_NAME}/json"
 DISABLE_ENV = "BEAKR_NO_UPDATE_CHECK"
 DEFAULT_MAX_AGE = timedelta(hours=24)
@@ -233,7 +230,7 @@ def detect_install(prefix: Path | None = None) -> InstallInfo:
                 InstallMethod.uv_tool_source,
                 None,
                 "Installed with uv from a checkout or GitHub. Rebuild it with "
-                "`uv tool install --force <checkout>`, or get the newest from GitHub "
+                "`uv tool install --force <checkout>`, or switch to the newest release "
                 f"with `uv tool install --force {INSTALL_SOURCE}`.",
             )
         if _receipt_pins_version(requirement):
