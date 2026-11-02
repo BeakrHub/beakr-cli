@@ -600,48 +600,30 @@ disagree.
 
 ### The Python SDK dependency
 
-Until `beakr-sdk` is on PyPI, `pyproject.toml` requires `beakr-sdk>=0.1.0,<0.2`
-and `[tool.uv.sources]` resolves it from git, pinned to a pushed commit of
-BeakrHub/beakr-python.
-
-That source is uv's own setting, so **uv is the only installer that can install
-the CLI from git** today. `pipx install git+https://github.com/BeakrHub/beakr-cli`
-and `pip install` read only the package metadata, look for `beakr-sdk` on PyPI,
-and stop with "No matching distribution found for beakr-sdk". The pin is not a
-PEP 508 direct reference (`beakr-sdk @ git+...`) on purpose: the self-hosted
-evaluation installs this wheel and the SDK wheel from local files with
-`--require-hashes`, which a git URL in the metadata would conflict with, and
-`publish.yml` refuses a wheel whose requirements do not all resolve from PyPI.
-pipx and pip work again once `beakr-sdk` is published.
-
-To take a newer SDK:
+`pyproject.toml` requires `beakr-sdk>=0.1.0,<0.2` from PyPI, and `uv.lock` pins
+the release CI tests against. To take a newer SDK release:
 
 ```bash
-scripts/pin_sdk.sh <commit-or-tag>   # or no argument: beakr-python's current main
+uv lock --upgrade-package beakr-sdk
 uv sync --extra dev
 ```
 
-To install both from local checkouts (say, to try an SDK change with the CLI),
-tell uv to ignore `[tool.uv.sources]`; otherwise the git pin and the local path
-are two URLs for `beakr-sdk` and the install fails with "conflicting URLs":
+To try an unreleased SDK change with the CLI, install both from local checkouts:
 
 ```bash
-uv pip install --no-sources ./beakr-python ./beakr-cli
+uv pip install ./beakr-python ./beakr-cli
 ```
 
-To develop the CLI against a local SDK checkout, point the source at it while
-you work (do not commit this):
-`beakr-sdk = { path = "../beakr-python", editable = true }`.
+To develop the CLI against a local SDK checkout, add a source while you work
+(do not commit it):
 
-Once `beakr-sdk` is published to PyPI:
+```toml
+[tool.uv.sources]
+beakr-sdk = { path = "../beakr-python", editable = true }
+```
 
-1. delete the `beakr-sdk = { git = ... }` line from `[tool.uv.sources]`;
-2. keep (or narrow) the `beakr-sdk` range in `[project.dependencies]` so it
-   admits the published version, and run `uv lock`.
-
-Built wheels never carry `[tool.uv.sources]`: a `beakr-cli` wheel always
-declares `beakr-sdk` as a PyPI requirement. So `publish.yml` refuses to publish
-the CLI until a `beakr-sdk` version in that range is on PyPI.
+Release the SDK first when the CLI needs an SDK change: `publish.yml` refuses a
+wheel whose requirements do not all resolve from PyPI.
 
 ## Benchmarks
 
@@ -808,8 +790,8 @@ engine, so the engine decides what a release contains:
   this one (or its path as the argument), refreshes the snapshot and
   regenerates everything from it after an engine change: `scripts/regen.sh`
   (`scripts/refresh_snapshots.py diff` says whether the snapshot is stale; the
-  SDKs regenerate in their own repositories; take a new one with
-  `scripts/pin_sdk.sh`).
+  SDKs regenerate in their own repositories; take a new Python SDK release with
+  `uv lock --upgrade-package beakr-sdk`).
 - **What the engine's CI covers.** The engine's CI checks this repository out
   on the branch named like its own (else `main`) and runs the same freshness
   checks and tests against the engine itself, so an engine change that the

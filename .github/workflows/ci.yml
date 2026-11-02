@@ -14,9 +14,6 @@
 # check (scripts/prepare_release.py): versions in step, bumped as far as the
 # contract change requires, with release notes derived from the API changelog.
 # publish.yml calls this workflow and publishes only when it passes.
-#
-# beakr-sdk is a git dependency on the public BeakrHub/beakr-python, pinned in
-# pyproject.toml until it is on PyPI. No secret is needed.
 name: ci
 
 on:

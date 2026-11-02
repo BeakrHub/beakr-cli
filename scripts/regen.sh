@@ -14,7 +14,7 @@
 # generated from the refreshed snapshot, so
 # what is committed is exactly what CI checks. The SDKs regenerate in their own
 # repositories (BeakrHub/beakr-python, BeakrHub/beakr-typescript); take a new
-# Python SDK with scripts/pin_sdk.sh.
+# Python SDK release with `uv lock --upgrade-package beakr-sdk`.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

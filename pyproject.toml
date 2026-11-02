@@ -19,9 +19,8 @@ classifiers = [
     "Topic :: Software Development :: Documentation",
 ]
 dependencies = [
-    # The Python SDK (BeakrHub/beakr-python). Until it is on PyPI it resolves
-    # from the git pin in [tool.uv.sources] below; see the README's "The Python
-    # SDK dependency" for switching to the PyPI release.
+    # The Python SDK (BeakrHub/beakr-python), from PyPI; see the README's
+    # "The Python SDK dependency" for working against an unreleased SDK.
     "beakr-sdk>=0.1.0,<0.2",
     # Capped: typer 0.26 vendors its own click (typer._click), and its error
     # handler no longer catches the real click exceptions `beakr api` raises,
@@ -92,12 +91,6 @@ python_version = "3.10"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-
-[tool.uv.sources]
-# Pinned to a pushed commit of BeakrHub/beakr-python until beakr-sdk is on PyPI.
-# Bump with scripts/pin_sdk.sh <commit-or-tag> (see the README's "The Python SDK
-# dependency").
-beakr-sdk = { git = "https://github.com/BeakrHub/beakr-python", rev = "5dc1984c2dddcd9e0214207963f6f6232e668160" }
 
 [dependency-groups]
 dev = [

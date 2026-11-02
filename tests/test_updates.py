@@ -197,16 +197,15 @@ GIT_RECEIPT = (
 )
 
 
-def test_github_install_is_never_pointed_at_the_older_pypi_release(tmp_path, monkeypatch) -> None:
-    """Regression: PyPI's newest beakr-cli (0.3.3) is older than the GitHub CLI
-    (0.4.x). A GitHub install was told to "switch to the published release with
-    `uv tool install --force beakr-cli`" -- a downgrade to a CLI that talks only
-    to production (found on a fresh install, 2026-10-25)."""
+def test_github_install_is_pointed_at_the_pypi_release(tmp_path, monkeypatch) -> None:
+    """A GitHub install is reported, not upgraded in place, and told how to switch
+    to the release on PyPI. Until 0.4.0 was published, PyPI's newest (0.3.3) was
+    older than the GitHub CLI and the hint named the GitHub source instead."""
     info = updates.detect_install(_uv_tool_env(tmp_path, monkeypatch, GIT_RECEIPT))
     assert info.method is updates.InstallMethod.uv_tool_source
     assert info.upgrade_command is None
-    assert f"uv tool install --force {updates.INSTALL_SOURCE}" in info.instructions
-    assert "--force beakr-cli" not in info.instructions
+    assert "uv tool install --force beakr-cli`" in info.instructions
+    assert "git+" not in info.instructions
 
 
 def test_local_checkout_uv_tool_is_never_upgraded_from_pypi(tmp_path, monkeypatch) -> None:
