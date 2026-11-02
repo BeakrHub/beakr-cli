@@ -18196,6 +18196,19 @@
             "description": "The Knowledge page type.",
             "title": "Page Type"
           },
+          "relevance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How close this page is in meaning: strong, moderate or weak. Set only when no page matched the keywords and pages were ranked by meaning.",
+            "title": "Relevance"
+          },
           "score": {
             "anyOf": [
               {
@@ -18296,6 +18309,19 @@
             "title": "Has More",
             "type": "boolean"
           },
+          "match_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When no page matched the keywords and pages were ranked by meaning: the best result's band, strong, moderate or weak. Absent for a keyword answer.",
+            "title": "Match Strength"
+          },
           "next_cursor": {
             "anyOf": [
               {
@@ -18311,6 +18337,19 @@
               null
             ],
             "title": "Next Cursor"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Present when even the best result is a weak match: the corpus may not cover the question. The same warning knowledge_base sections gives.",
+            "title": "Note"
           }
         },
         "required": [

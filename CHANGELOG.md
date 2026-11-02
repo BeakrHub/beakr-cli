@@ -8,6 +8,13 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
+  every word of the query, instead of answering with no results. A meaning-ranked
+  answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
+  result's band) and, when even the best result is weak, a `note` saying the
+  knowledge base may not cover the question; each of its results carries
+  `relevance`. A keyword answer carries none of these. The operation is limited
+  to 120 requests a minute per caller.
 - `POST /v1/knowledge/research` and the MCP `research` tool no longer name the
   model that answered: `ResearchResult.lead_model` is deprecated and never
   returned, and the MCP tool's `research_usage` no longer carries it. Model and
