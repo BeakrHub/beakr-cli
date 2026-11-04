@@ -18500,7 +18500,7 @@
           },
           "source_type": {
             "default": "",
-            "description": "Kind of source, such as `web` (a web page, cited with `url`) or `conversation`.",
+            "description": "Kind of source, such as `web` (a web page, cited with `url`), `external_record` (a record in a system outside Beakr, cited with `url` and `meta.system`) or `conversation`.",
             "title": "Source Type",
             "type": "string"
           },
@@ -18520,7 +18520,7 @@
                 "type": "null"
               }
             ],
-            "description": "With `source_type: web`: the cited page's http or https address. Beakr stores the citation as you give it (title, url, the passage in `meta.excerpt`) and never fetches the page; the fragment and tracking parameters are dropped.",
+            "description": "With `source_type: web`: the cited page's http or https address. Beakr stores the citation as you give it (title, url, the passage in `meta.excerpt`) and never fetches the page; the fragment and tracking parameters are dropped. With `source_type: external_record`: the http or https link to a record in a system outside Beakr, with `meta.system` (the system's name), `meta.record_id` (the record's id there) and the words relied on in `meta.excerpt`. Beakr stores it as given and never opens the link.",
             "title": "Url"
           }
         },
@@ -18762,7 +18762,7 @@
               }
             ],
             "default": null,
-            "description": "Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), a web page by its http or https URL, or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.",
+            "description": "Why a call was refused. On writes, `citation_not_citeable`: a citation (or a `{{token}}` in the prose) is not the caller's own conversation, a file it uploaded (at a place the file has), a web page by its http or https URL, a record in a system outside Beakr (`external_record`, by its http or https URL, with `meta.system`), or a source Knowledge already cites that it can read; `citation_needs_excerpt`: a conversation, agent_note or user_note citation without `source_title` and `meta.excerpt`; `invalid_source_ref`: a `source_ref` that resolves to nothing the caller can read.",
             "title": "Error Code"
           },
           "protocol": {
@@ -25244,7 +25244,7 @@
             "application/json": {
               "schema": {
                 "additionalProperties": true,
-                "description": "One proposed Knowledge change: the action and its fields, flat in one object. It is staged as a proposal; nothing is written until it is accepted.\n\nCitations (in `citations`, or each section's `citations`) are resolved on the server within the caller's reach and accepted only when they name (a) the caller's own conversation: `{source_type: conversation | agent_note | user_note, source_title, meta: {excerpt}}`; (b) a file the caller uploaded, at a place the file has (a page, paragraph or line past its end is refused with the file's extent); (c) a web page: `{source_type: web, url, source_title, meta: {excerpt}}`, or `(Title \u2014 https://...)` in the prose, stored as you give it and never fetched (only http and https; the fragment and tracking parameters are dropped, and one page is one citation); or (d) a source Knowledge already cites on a page the caller can read. Name the source by `source_ref` (from a read), `key` (its `{{token}}`), or `reference` (the readable reference a read printed: `memo.pdf \u203a p. 7`, `#deals \u203a message 2026-03-04 14:02 UTC`, `OPS-12`). `{{tokens}}` in the prose are held to the same rule. Anything else is refused with `outcome.error_code` `citation_not_citeable` (or `citation_needs_excerpt`), never stored as an unrecognised source.",
+                "description": "One proposed Knowledge change: the action and its fields, flat in one object. It is staged as a proposal; nothing is written until it is accepted.\n\nCitations (in `citations`, or each section's `citations`) are resolved on the server within the caller's reach and accepted only when they name (a) the caller's own conversation: `{source_type: conversation | agent_note | user_note, source_title, meta: {excerpt}}`; (b) a file the caller uploaded, at a place the file has (a page, paragraph or line past its end is refused with the file's extent); (c) a web page: `{source_type: web, url, source_title, meta: {excerpt}}`, or `(Title \u2014 https://...)` in the prose, stored as you give it and never fetched (only http and https; the fragment and tracking parameters are dropped, and one page is one citation); (d) a record in a system outside Beakr: `{source_type: external_record, url, title, meta: {system, record_id, excerpt}}` (`title` may be sent as `source_title`), stored as you give it and never fetched, which reads name `System \u203a record_id` and cite again by that name; or (e) a source Knowledge already cites on a page the caller can read. Name the source by `source_ref` (from a read), `key` (its `{{token}}`), or `reference` (the readable reference a read printed: `memo.pdf \u203a p. 7`, `#deals \u203a message 2026-03-04 14:02 UTC`, `OPS-12`). `{{tokens}}` in the prose are held to the same rule. Anything else is refused with `outcome.error_code` `citation_not_citeable` (or `citation_needs_excerpt`), never stored as an unrecognised source.",
                 "examples": [
                   {
                     "action": "new",
