@@ -851,6 +851,17 @@
             ],
             "description": "The existing file this one duplicates, if any."
           },
+          "exported_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportedFromOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when this file is a saved PDF or Word copy of a document the caller can open: the document to edit, which is then saved again. Null otherwise."
+          },
           "home_project_id": {
             "anyOf": [
               {
@@ -1475,6 +1486,17 @@
               }
             ],
             "description": "The existing file this one duplicates, if any."
+          },
+          "exported_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExportedFromOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set when this file is a saved PDF or Word copy of a document the caller can open: the document to edit, which is then saved again. Null otherwise."
           },
           "home_project_id": {
             "anyOf": [
@@ -4431,6 +4453,53 @@
           "size_bytes"
         ],
         "title": "EvidenceFileOut",
+        "type": "object"
+      },
+      "ExportedFromOut": {
+        "description": "The editable document a saved PDF or Word file was exported from.",
+        "properties": {
+          "canvas_id": {
+            "description": "ID of the editable document the file was saved from.",
+            "format": "uuid",
+            "title": "Canvas Id",
+            "type": "string"
+          },
+          "template_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ID of the template the document was made from, if any.",
+            "title": "Template Id"
+          },
+          "template_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the template the document was made from, if any.",
+            "title": "Template Name"
+          },
+          "title": {
+            "description": "The editable document's title.",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canvas_id",
+          "title"
+        ],
+        "title": "ExportedFromOut",
         "type": "object"
       },
       "ExternalUserCreate": {
