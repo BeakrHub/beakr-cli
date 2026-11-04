@@ -4,10 +4,17 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-10-25)
+## beakr-cli 0.4.0 (2026-11-04)
 
 ### Changes
 
+- File responses (`GET /v1/artifacts/{artifact_id}`, `GET /v1/artifacts` and the
+  other operations that return a file) carry
+  `exported_from` when the file is a saved PDF or Word copy of a document the
+  caller can open: the document's `canvas_id` and `title`, and the
+  `template_id` and `template_name` it was made from, when it was. Changes
+  belong in that document, which is then saved again. It is `null` for every
+  other file, and for a saved copy whose document the caller cannot open.
 - `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
   every word of the query, instead of answering with no results. A meaning-ranked
   answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
