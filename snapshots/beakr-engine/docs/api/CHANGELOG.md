@@ -11,11 +11,18 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=90b8c766e1a58ee16637ea2d2e5fb92de6f8d6c7b57f62661e8ff5b4c6407734 changelog sha256=c6e8bb9d29fe18a8e4d3fd16c8b8a0bd86572346bedd64d1e2f8c3f58b45f37d -->
+<!-- contract-stamp: public-openapi sha256=cc4e5d1f1959f0f5ab75eb309bf645829676ab7015caa300a5c49147cc5e1ce2 changelog sha256=c092b9aa95346b755469f0bb1825409d797891a5b8297bc6ea2066698cbe0b40 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- File responses (`GET /v1/artifacts/{artifact_id}`, `GET /v1/artifacts` and the
+  other operations that return a file) carry
+  `exported_from` when the file is a saved PDF or Word copy of a document the
+  caller can open: the document's `canvas_id` and `title`, and the
+  `template_id` and `template_name` it was made from, when it was. Changes
+  belong in that document, which is then saved again. It is `null` for every
+  other file, and for a saved copy whose document the caller cannot open.
 - `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
   every word of the query, instead of answering with no results. A meaning-ranked
   answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
