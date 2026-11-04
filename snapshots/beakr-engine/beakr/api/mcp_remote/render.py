@@ -245,8 +245,11 @@ def sources_block(sources: list[Any]) -> str:
 #: one, and printed with no label, it read as a file with no place (S18-9).
 _DOCUMENT = "document"
 _PAGE = "Knowledge page"
+#: A record in a system outside Beakr, cited by its link and never opened.
+_RECORD = "record"
 _KINDS: tuple[tuple[str, str], ...] = (
     (_DOCUMENT, "documents"),
+    (_RECORD, "records"),
     ("conversation", "conversations"),
     ("agent note", "agent notes"),
     ("note", "notes"),
@@ -258,6 +261,8 @@ _KIND_BY_SOURCE_TYPE = {
     "conversation": "conversation",
     "agent_note": "agent note",
     "user_note": "note",
+    "external_record": _RECORD,
+    "record": _RECORD,
 }
 
 
@@ -309,13 +314,19 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     record = entry["record"]
     location = record.get("location") or {}
     places = entry.get("places") or []
+    outside_record = _kind(record) == _RECORD
     shown = ", ".join(places[:PLACES_PER_DOCUMENT])
     if len(places) > PLACES_PER_DOCUMENT:
         shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
     # Where the source lives: a Beakr file's drive path, a connector file's path
     # in its service, or a connector item's place there.
+    # An outside record is named as the text cites it, ``CDD Vault › MOL-1234``.
     name = str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
+        location.get("display_path")
+        or record.get("filename")
+        or (record.get("reference") if outside_record else None)
+        or record.get("name")
+        or "source"
     )
     where = []
     # ``upload`` says only that Beakr holds the file, which the read_file id says.
@@ -335,7 +346,13 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     lines = [f"- {_line_label(record)}{head}{tail}".rstrip()]
     if entry["excerpt"]:
-        label = " (paraphrase)" if entry.get("excerpt_authored") else ""
+        if entry.get("excerpt_authored"):
+            label = " (paraphrase)"
+        elif outside_record:
+            # Its writer's words for a record Beakr never opens.
+            label = " (unverified)"
+        else:
+            label = ""
         lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"{label}')
     return lines
 
