@@ -11,11 +11,25 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=cc4e5d1f1959f0f5ab75eb309bf645829676ab7015caa300a5c49147cc5e1ce2 changelog sha256=c092b9aa95346b755469f0bb1825409d797891a5b8297bc6ea2066698cbe0b40 -->
+<!-- contract-stamp: public-openapi sha256=b9cf4467afadb9641b95cfde48a7d416c3175375a601054b4c1dd5155ec68029 changelog sha256=46130d095d94e6255dc74391f5e0d72fd56b151af21569511dfe7d84d48c815a -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/write` returns `approval_state` (also in
+  `outcome.approval_state`) whenever the call staged a proposal: `pending` (it
+  waits for someone to accept it), `auto_apply_queued` (the caller's auto-approve
+  queued it; it can still end up pending, so confirm with
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}`) or `needs_person` (the
+  project requires a person to accept proposals). The text names the same state.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept` on a proposal that is
+  already accepted succeeds without applying it again: `already_accepted: true`,
+  with `reviewed_at`, `reviewed_by_name` (the person who accepted it; `null` when
+  auto-approve did) and `auto_approved`. A dismissed, superseded or resolved
+  proposal still answers `400`, now saying which and when.
+- `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` add `reviewed_at`,
+  `reviewed_by_name` and `auto_approved` to decided proposals.
 - File responses (`GET /v1/artifacts/{artifact_id}`, `GET /v1/artifacts` and the
   other operations that return a file) carry
   `exported_from` when the file is a saved PDF or Word copy of a document the
@@ -23,11 +37,38 @@ The first public version.
   `template_id` and `template_name` it was made from, when it was. Changes
   belong in that document, which is then saved again. It is `null` for every
   other file, and for a saved copy whose document the caller cannot open.
+- Match labels gain a fourth band, `tangential`: a result on a related subject
+  that is not about the query. `moderate` now means closer than any such
+  result, so fewer results carry it. The labels are `match_strength` and
+  `relevance` on `GET /v1/knowledge/wiki/search`, a passage's `match` in
+  `POST /v1/knowledge/documents` `search` results, and the `[match: ...]`
+  label in `POST /v1/knowledge/wiki/command` `sections` text. When no result
+  is a strong match, `note` (and the first line of the `sections` text) says
+  so; it used to appear only when every result was weak, and `sections` now
+  lists at most five tangential or weak sections.
+- `GET /v1/conversations/search`: each result carries `match` (`strong` when
+  the query's words appear together, `moderate` when all appear, `tangential`
+  when at least half do, `weak` otherwise) and the page carries
+  `match_strength`, the best of them, and `note` when no result is a strong
+  match. The MCP `conversations_search` tool prints each result's label and
+  the note first.
+- `POST /v1/knowledge/wiki/command` `grep` takes `target`: `prose` (the
+  default, page text; titles are not searched) or `title`, which lists the
+  pages whose title matches the query in `text` or `regex` mode. A `grep`
+  that finds no exact match and answers with pages by meaning now says so on
+  its first line in every output mode ("0 exact matches for ...; showing the
+  closest pages by meaning instead"). `sections` text no longer ends with its
+  own "Sources referenced above" list: those sources are in the response's
+  `sources`. `suggest_parent` ranks a page's likely homes by where the pages
+  most like it (title and draft `content`) are filed, prefers pages that
+  already hold children and index or overview pages, gives each candidate a
+  reason instead of a score, and answers "No confident parent" when no page
+  is close enough.
 - `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
   every word of the query, instead of answering with no results. A meaning-ranked
-  answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
-  result's band) and, when even the best result is weak, a `note` saying the
-  knowledge base may not cover the question; each of its results carries
+  answer carries `match_strength` (`strong`, `moderate`, `tangential` or `weak`,
+  the best result's band) and, when no result is a strong match, a `note` saying
+  the knowledge base may not cover the question; each of its results carries
   `relevance`. A keyword answer carries none of these. The operation is limited
   to 120 requests a minute per caller.
 - `POST /v1/knowledge/research` and the MCP `research` tool no longer name the

@@ -156,7 +156,7 @@ mcp = tool_surface.TieredFastMCP(
 def _format_proposal(data: dict) -> str:
     payload = data.get("payload") or {}
     from beakr_cli.proposal_accept import review_lines
-    from beakr_cli.proposal_view import decided_line, filed_by_line
+    from beakr_cli.proposal_view import NEEDS_A_PERSON_LINE, decided_line, filed_by_line
 
     lines = [f"Proposal {data.get('id')}"]
     # Who filed it, once, at the top: each citation used to repeat it.
@@ -177,6 +177,8 @@ def _format_proposal(data: dict) -> str:
 
     # Printed plainly: accept_proposal takes content_hash back as reviewed_hash.
     lines.extend(review_lines(data))
+    if data.get("needs_person_to_accept") and data.get("status") == "pending":
+        lines.append(NEEDS_A_PERSON_LINE)
     if data.get("proposal_type") == "find_replace":
         lines.append(
             f"Changes: {payload.get('total_matches', 0)} match(es) across "

@@ -138,6 +138,14 @@ def staged_proposal_lines(result: dict[str, Any]) -> list[str]:
     return []
 
 
+#: show_proposal's line for a proposal only a person may accept: the engine's
+#: ``proposal_text.NEEDS_A_PERSON_LINE``, which the hosted server prints too.
+NEEDS_A_PERSON_LINE = (
+    "Needs a person to accept: this project requires a person to accept proposals. "
+    "Ask the user to accept it in Beakr; an agent's accept_proposal is refused."
+)
+
+
 def decided_line(proposal: dict[str, Any]) -> str | None:
     """``Decided: accepted by Dana Reyes at <time>``, for a proposal already decided.
 

@@ -160,6 +160,18 @@ async def test_show_proposal_says_how_a_decided_proposal_was_decided(decided, li
     assert line in (await _show(_proposal(**decided))).splitlines()
 
 
+@pytest.mark.asyncio
+async def test_show_proposal_says_when_only_a_person_may_accept_it() -> None:
+    # The hosted server printed this line and the stdio server did not, so an
+    # agent on the stdio server called accept_proposal only to be refused.
+    from beakr_cli.proposal_view import NEEDS_A_PERSON_LINE
+
+    pending = {**_proposal(), "needs_person_to_accept": True}
+    assert NEEDS_A_PERSON_LINE in (await _show(pending)).splitlines()
+    assert "Needs a person" not in await _show(_proposal())
+    assert "Needs a person" not in await _show({**pending, "status": "accepted"})
+
+
 async def _accept(reply: dict[str, Any]) -> str:
     with respx.mock:
         respx.get(f"{PROPOSALS}/{PROPOSAL}").mock(return_value=Response(200, json=_proposal()))
