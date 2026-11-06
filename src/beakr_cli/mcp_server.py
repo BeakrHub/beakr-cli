@@ -669,15 +669,17 @@ async def wiki_stats(
     project: str | None = None,
     project_id: str = "",
 ) -> str:
-    """Show knowledge base statistics (page count, source count).
+    """Show knowledge base statistics: live pages, and page-to-source citations.
 
     Args:
         project: Project name or ID to scope the stats. Omit for everything you can see.
         project_id: Deprecated alias for project.
     """
+    from beakr_cli import mcp_graph
+
     scoped = await _project_by_name_or_id(project, project_id)
     data = await _call_api(lambda sdk: sdk.knowledge.pages.stats(project_id=scoped))
-    return f"Pages: {data.get('pages', 0)}\nSources: {data.get('sources', 0)}"
+    return mcp_graph.stats(data if isinstance(data, dict) else {})
 
 
 @mcp.tool(**tool_surface.tool_kwargs("wiki_graph"))
@@ -687,56 +689,29 @@ async def wiki_graph(
 ) -> dict[str, Any]:
     """Get a summary of the knowledge base graph structure.
 
-    Returns the top connected pages and basic graph stats. Use knowledge_base command='links'
-    on a specific page to explore its neighborhood.
+    The most linked-to pages (at most 30) of the scope's page count, the links
+    among them and how many source documents they cite. Use knowledge_base
+    command='links' on a specific page to explore its neighborhood.
 
     Args:
         project: Project name or ID to scope the graph. Omit for everything you can see.
         project_id: Deprecated alias for project.
     """
-    from beakr_cli.mcp_tools_platform import _capped_result
+    from beakr_cli import mcp_graph
 
     scoped = await _project_by_name_or_id(project, project_id)
     data = await _call_api(
-        lambda sdk: sdk.knowledge.pages.graph(project_id=scoped, max_nodes=_GRAPH_MAX_NODES)
+        lambda sdk: sdk.knowledge.pages.graph(
+            project_id=scoped, max_nodes=mcp_graph.GRAPH_MAX_NODES
+        )
     )
-    data = data if isinstance(data, dict) else {}
-    nodes = data.get("nodes", [])
-    edges = data.get("edges", [])
-
-    # Count connections per node
-    connections: dict[str, int] = {}
-    for e in edges:
-        for end in (e.get("from"), e.get("to")):
-            if end:
-                connections[end] = connections.get(end, 0) + 1
-
-    # Build summary
-    lines = [f"Graph: {len(nodes)} pages, {len(edges)} links\n"]
-    lines.append("Top connected pages:")
-    node_map = {n.get("id"): n for n in nodes}
-    ranked = sorted(connections.items(), key=lambda x: x[1], reverse=True)[:15]
-    for node_id, count in ranked:
-        n = node_map.get(node_id, {})
-        label = n.get("label", str(node_id)[:8])
-        ptype = n.get("page_type", "")
-        lines.append(f"  {label} ({ptype}) - {count} links")
-
-    return _capped_result(
-        "\n".join(lines),
-        tool="wiki_graph",
-        returned=len(nodes),
-        total=None,
-        complete=len(nodes) < _GRAPH_MAX_NODES,
-        hint=(
-            f"The graph summary is capped at {_GRAPH_MAX_NODES} pages: pass project to narrow "
-            "it, or use knowledge_base command='links' on one page."
-        ),
+    # The scope's page count, so the summary says how many of them it shows.
+    counts = await _call_api(lambda sdk: sdk.knowledge.pages.stats(project_id=scoped))
+    total = counts.get("pages") if isinstance(counts, dict) else None
+    return mcp_graph.graph_result(
+        data if isinstance(data, dict) else {},
+        total_pages=total if isinstance(total, int) else None,
     )
-
-
-#: Pages the graph summary asks for; a graph that returns this many may have more.
-_GRAPH_MAX_NODES = 30
 
 
 # ---------------------------------------------------------------------------
