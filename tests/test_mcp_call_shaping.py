@@ -293,4 +293,7 @@ async def test_scope_and_project_with_different_values_are_refused() -> None:
     other = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
     result = await _call("wiki_stats", {"scope": PROJECT_ID, "project": other})
     assert result.isError
-    assert "`scope` and `project` are both given" in result.content[0].text
+    error = json.loads(result.content[0].text)
+    assert error["error_code"] == "invalid_arguments"
+    assert "name different projects" in error["message"]
+    assert "`scope`" in error["message"] and "`project`" in error["message"]

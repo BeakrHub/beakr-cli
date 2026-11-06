@@ -36,24 +36,77 @@ FOLDED_OPTIONS: dict[str, str] = {
     "integrations": "arguments",
 }
 
-#: Names agents reach for, mapped to the parameter the tool declares.
+#: Names agents reach for, mapped to the parameter the tool declares. The names
+#: of a project are handled apart, by :data:`PROJECT_PARAMETER`.
 ALIASES: dict[str, dict[str, str]] = {
-    "research": {"question": "query", "q": "query", "scope": "project"},
-    "knowledge_base": {"cmd": "command", "project": "scope"},
-    "knowledge_base_write": {"project": "scope"},
-    # The Knowledge tools take the project as ``scope``, so an agent carries it
-    # across; these took only ``project`` and answered for every project when
-    # given ``scope`` (Q18-1). The hosted server's repair reads it the same way.
-    "wiki_stats": {"scope": "project"},
-    "wiki_graph": {"scope": "project"},
-    "documents": {"scope": "project"},
-    "read_file": {"scope": "project"},
-    "get_profile": {"scope": "project_id", "project": "project_id"},
+    "research": {"question": "query", "q": "query"},
+    "knowledge_base": {"cmd": "command"},
+}
+
+#: Every name a project goes by on this server's tools.
+PROJECT_NAMES = ("scope", "project", "project_id")
+
+#: Each tool that takes a project, and the parameter that holds it. The Knowledge
+#: tools take ``scope``, the others ``project`` (research and the graph tools
+#: also an older ``project_id``), so an agent carrying ``scope`` across from a
+#: Knowledge read had it dropped, and the tool answered for every project
+#: (Q18-1). Any of the three names is read as the project on every one of them.
+PROJECT_PARAMETER: dict[str, str] = {
+    "knowledge_base": "scope",
+    "knowledge_base_write": "scope",
+    "research": "project",
+    "wiki_stats": "project",
+    "wiki_graph": "project",
+    "documents": "project",
+    "read_file": "project",
+    "context": "project",
+    "conversations_search": "project",
+    "import_conversation": "project",
+    "workboard": "project",
+    "get_profile": "project_id",
 }
 
 
 class ConflictingArguments(ValueError):
-    """An alias and the parameter it names were both given, with different values."""
+    """Two names for one argument were both given, with different values."""
+
+    def __init__(self, message: str, *, fix: str) -> None:
+        super().__init__(message)
+        self.fix = fix
+
+
+def _given(value: Any) -> bool:
+    return value is not None and not (isinstance(value, str) and not value.strip())
+
+
+def _project_names_agree(tool: str, arguments: dict[str, Any]) -> None:
+    """Raise :class:`ConflictingArguments` when two names give the project different values.
+
+    Checked on the declared names too: ``research`` given ``project`` and
+    ``project_id`` used to read ``project_id`` and drop ``project`` silently.
+    """
+    given = {
+        name: arguments[name]
+        for name in PROJECT_NAMES
+        if name in arguments and _given(arguments[name])
+    }
+    values = {str(value).strip() for value in given.values()}
+    if len(values) > 1:
+        target = PROJECT_PARAMETER[tool]
+        named = " and ".join(f"`{name}` ({value!r})" for name, value in given.items())
+        raise ConflictingArguments(
+            f"{tool}: {named} name different projects; nothing was run.",
+            fix=f"Pass the project once, as `{target}`: `scope`, `project` and `project_id` "
+            "are read as the same argument.",
+        )
+
+
+def _project_aliases(tool: str, declared: set[str]) -> dict[str, str]:
+    """The project names ``tool`` does not declare, each mapped to the one that holds it."""
+    target = PROJECT_PARAMETER.get(tool)
+    if target is None:
+        return {}
+    return {name: target for name in PROJECT_NAMES if name not in declared and name != target}
 
 
 def normalize_arguments(
@@ -61,6 +114,14 @@ def normalize_arguments(
 ) -> dict[str, Any]:
     """``arguments`` with aliases renamed and undeclared Knowledge options folded in."""
     result = dict(arguments or {})
+    if tool in PROJECT_PARAMETER:
+        _project_names_agree(tool, result)
+        for alias, target in _project_aliases(tool, declared).items():
+            if alias in result:
+                value = result.pop(alias)
+                # An empty declared value (``project=""``) is no project: the alias fills it.
+                if _given(value) and not _given(result.get(target)):
+                    result[target] = value
     for alias, target in ALIASES.get(tool, {}).items():
         if alias in result and alias not in declared:
             value = result.pop(alias)
@@ -68,7 +129,8 @@ def normalize_arguments(
                 # Two readings of one argument: refused, not one kept silently.
                 raise ConflictingArguments(
                     f"{tool}: `{alias}` and `{target}` are both given, with different "
-                    f"values; this tool takes `{target}`. Pass one."
+                    "values; nothing was run.",
+                    fix=f"Pass one: this tool takes `{target}`.",
                 )
             result.setdefault(target, value)
     container = FOLDED_OPTIONS.get(tool)
