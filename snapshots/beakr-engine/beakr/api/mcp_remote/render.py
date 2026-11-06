@@ -346,13 +346,19 @@ _APPROVAL_STATES = {
 }
 
 
+def _states_it(text: str) -> bool:
+    """Whether the text already says the approval state, in either spelling."""
+    lowered = text.lower()
+    return "approval_state" in lowered or "approval state:" in lowered
+
+
 def approval_state_line(state: Any, text: str) -> str:
     """``approval_state: <state> -- <what it means>``, unless the text already says it.
 
     The engine's write reply carries ``approval_state``; a reply whose text
     already prints it gets no second copy, and one without it gets no line.
     """
-    if not isinstance(state, str) or not state.strip() or "approval_state" in text:
+    if not isinstance(state, str) or not state.strip() or _states_it(text):
         return ""
     state = state.strip()
     meaning = _APPROVAL_STATES.get(state)

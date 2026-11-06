@@ -282,3 +282,14 @@ def test_the_proposals_command_documents_every_status_it_takes() -> None:
     # O2: the docstring said ``status: pending|dismissed``; the engine also lists accepted.
     doc = mcp_server.knowledge_base.__doc__ or ""
     assert "pending (default), accepted or dismissed" in doc
+
+
+def test_the_approval_state_line_is_not_repeated_after_the_engines_own() -> None:
+    # Root cause (agent QA against a local engine, 2026-11-06): the engine says
+    # "Approval state: pending." and the check looked only for "approval_state",
+    # so every staged write read its state twice.
+    from beakr_cli.mcp_render import approval_state_line
+
+    engine_text = "Proposed.\nApproval state: pending. It waits for someone to accept it."
+    assert approval_state_line("pending", engine_text) == ""
+    assert approval_state_line("pending", "Proposed.").startswith("approval_state: pending")
