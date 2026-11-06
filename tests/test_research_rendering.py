@@ -108,7 +108,8 @@ async def test_the_stdio_tool_takes_the_public_form(monkeypatch) -> None:
     monkeypatch.setenv("BEAKR_API_URL", API)
     monkeypatch.setenv("BEAKR_API_KEY", "bk_live_test")
     respx.post(f"{API}/v1/knowledge/research").respond(200, json=_two_documents())
-    body = await mcp_server.research(query="Which lead?")
+    # sources='full' is the hosted rendering; the default brief list is pinned below.
+    body = await mcp_server.research(query="Which lead?", sources="full")
     assert mcp_result.finish(body, tool="research") == _stdio(_two_documents())
 
 

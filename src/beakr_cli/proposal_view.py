@@ -136,3 +136,115 @@ def staged_proposal_lines(result: dict[str, Any]) -> list[str]:
     if isinstance(proposal, dict) and proposal.get("content_hash"):
         return [f"content_hash: {proposal['content_hash']}"]
     return []
+
+
+def decided_line(proposal: dict[str, Any]) -> str | None:
+    """``Decided: accepted by Dana Reyes at <time>``, for a proposal already decided.
+
+    The engine's proposal read and its repeated accept name who decided it
+    (``reviewed_by_name``, a person, or None), when (``reviewed_at``) and whether
+    auto-approve applied it (``auto_approved``). An engine without these fields,
+    or a pending proposal, gives no line.
+    """
+    at = proposal.get("reviewed_at")
+    by = proposal.get("reviewed_by_name")
+    auto = proposal.get("auto_approved") is True
+    if not (at or by or auto):
+        return None
+    when = f" at {at}" if at else ""
+    if auto:
+        return f"Decided: applied by auto-approve{when}"
+    status = str(proposal.get("status") or "decided")
+    who = f" by {by}" if by else ""
+    return f"Decided: {status}{who}{when}"
+
+
+#: A citation's quoted text in a proposal summary, before it is cut.
+_QUOTE_CHARS = 160
+
+
+def _short(value: Any, width: int = _QUOTE_CHARS) -> str:
+    text = " ".join(str(value).split())
+    return text if len(text) <= width else text[: width - 3].rstrip() + "..."
+
+
+def _proposed_sections(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    """The sections a payload writes: ``sections``, or the one an edit_section names."""
+    sections = [item for item in payload.get("sections") or [] if isinstance(item, dict)]
+    if sections:
+        return sections
+    if payload.get("section_id"):
+        return [
+            {
+                "id": payload["section_id"],
+                "title": payload.get("section_title"),
+                "citations": payload.get("citations") or [],
+            }
+        ]
+    return []
+
+
+def _section_label(section: dict[str, Any]) -> str:
+    ident, title = section.get("id"), section.get("title")
+    if ident and title:
+        return f"{title} ({ident})"
+    return str(title or ident or "(untitled section)")
+
+
+def _citation_line(citation: dict[str, Any]) -> str:
+    """``- <key> · <stance> · "<quote>"``, the excerpt only when it says something else."""
+    meta = citation.get("meta") if isinstance(citation.get("meta"), dict) else {}
+    key = (
+        citation.get("key")
+        or citation.get("source_ref")
+        or citation.get("reference")
+        or meta.get("citation_key")
+        or "source"
+    )
+    parts = [str(key)]
+    if citation.get("source_title"):
+        parts.append(_short(citation["source_title"], 80))
+    if citation.get("stance"):
+        parts.append(str(citation["stance"]))
+    quote = meta.get("quote") or citation.get("quote")
+    excerpt = meta.get("excerpt") or citation.get("excerpt")
+    if quote:
+        parts.append(f'"{_short(quote)}"')
+    if excerpt and " ".join(str(excerpt).split()) != " ".join(str(quote or "").split()):
+        parts.append(f'excerpt: "{_short(excerpt)}"')
+    return "  - " + " · ".join(parts)
+
+
+def proposal_summary_lines(payload: dict[str, Any]) -> list[str]:
+    """What a proposal changes, without its payload: sections, then one line per citation.
+
+    The stdio ``show_proposal`` used to append the whole payload as indented
+    JSON: page text twice (current and proposed), and every conversation
+    citation with the same text in ``meta.quote`` and ``meta.excerpt`` plus its
+    own ``filed_by`` block. The filer is printed once, above; the payload stays
+    one ``raw=true`` away.
+    """
+    lines: list[str] = []
+    sections = _proposed_sections(payload)
+    if sections:
+        lines.append(f"Sections changed ({len(sections)}):")
+        lines.extend(f"  - {_section_label(section)}" for section in sections)
+    patches = [item for item in payload.get("patches") or [] if isinstance(item, dict)]
+    if patches:
+        lines.append(f"Patches ({len(patches)}):")
+        for patch in patches:
+            target = patch.get("section") or patch.get("find") or ""
+            shown = f" {_short(target, 80)}" if target else ""
+            lines.append(f"  - {patch.get('op') or 'patch'}{shown}")
+    citations = [
+        citation
+        for section in sections
+        for citation in section.get("citations") or []
+        if isinstance(citation, dict)
+    ]
+    if not sections:
+        citations = [item for item in payload.get("citations") or [] if isinstance(item, dict)]
+    if citations:
+        lines.append(f"Citations ({len(citations)}):")
+        lines.extend(_citation_line(citation) for citation in citations)
+    return lines
