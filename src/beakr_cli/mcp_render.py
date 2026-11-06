@@ -21,7 +21,8 @@ So a result is sent once, as text a model reads directly:
   ``source_ref`` a write cites) with one verbatim excerpt of at most
   :data:`EXCERPT_CHARS`, capped at :data:`SOURCES_CHARS` in all. No citation
   tokens: the text cites each passage by its readable reference
-  (``memo.pdf › p. 7``);
+  (``memo.pdf › p. 7``). A read chooses how much of it to show with its
+  ``sources`` argument (:data:`SOURCE_MODES`); see :func:`sources_block`;
 - the ``next`` hints when the result is incomplete or names a follow-up.
 
 No ``outputSchema`` is declared, so no client expects ``structuredContent``
@@ -32,7 +33,9 @@ one block: ``{status, error_code, message, fix}`` as compact JSON.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Annotated, Any, Literal, get_args
+
+from pydantic import Field
 
 #: Verbatim excerpt shown per cited document. 300 characters held 87-90% of
 #: the evidence answers used (excerpt-tuning.md, Q3).
@@ -54,6 +57,33 @@ _SOURCE_LISTING_TOOLS = frozenset({"knowledge_base", "knowledge_base_write"})
 
 #: The provider of a file uploaded to Beakr (the engine's ``public_sources.UPLOAD_PROVIDER``).
 UPLOAD_PROVIDER = "upload"
+
+#: How much of the Sources list a read shows, its ``sources`` argument:
+#: ``none`` leaves it out, ``brief`` is one line per document with no excerpt
+#: (Knowledge pages the text already names left out), ``full`` the whole list.
+#: Described in the input schema itself: the tool descriptions are the engine's
+#: shared text (``tool_surface``), which does not name this server's option.
+SourceMode = Annotated[
+    Literal["none", "brief", "full"],
+    Field(
+        description=(
+            "The Sources list closing the result. brief (default): one line per cited "
+            "document, its path, cited places and source_ref, leaving out Knowledge pages "
+            "the text already names. full: every source with an excerpt, url and read_file "
+            "id. none: no list."
+        )
+    ),
+]
+SOURCE_MODES: tuple[str, ...] = get_args(get_args(SourceMode)[0])
+
+#: What the read tools show when not told. The full list closed every Knowledge
+#: result with up to 8,000 characters, most of it excerpts of passages the text
+#: had already quoted and Knowledge pages a listing had already printed.
+DEFAULT_SOURCE_MODE = "brief"
+
+#: The result key a read sets to its ``sources`` argument. A result without it
+#: gets the full list, as the hosted server renders every result.
+SOURCE_MODE_KEY = "source_listing"
 
 
 def render(tool: str, body: dict[str, Any]) -> str:
@@ -78,10 +108,15 @@ def render(tool: str, body: dict[str, Any]) -> str:
     if tool == "research" and body.get("research_usage"):
         parts.append("Research usage: " + json.dumps(body["research_usage"], ensure_ascii=False))
     sources = body.get("sources")
-    if tool in _SOURCE_LISTING_TOOLS and isinstance(sources, list) and sources:
-        listing = sources_block(sources)
+    mode = body.get(SOURCE_MODE_KEY) or "full"
+    if tool in _SOURCE_LISTING_TOOLS and isinstance(sources, list) and sources and mode != "none":
+        listing = sources_block(sources, mode=mode, named_in=text)
         if listing:
             parts.append(listing)
+    if tool == "knowledge_base_write":
+        state = approval_state_line(body.get("approval_state"), text)
+        if state:
+            parts.append(state)
     hints = [str(h) for h in body.get("next") or [] if str(h) and str(h) not in text]
     if hints:
         parts.append("\n".join(f"next: {hint}" for hint in hints))
@@ -126,13 +161,19 @@ def _document_key(record: dict[str, Any]) -> str:
     )
 
 
-def sources_block(sources: list[Any]) -> str:
+def sources_block(sources: list[Any], *, mode: str = "full", named_in: str = "") -> str:
     """``Sources (N documents, M Knowledge pages):`` then one entry per cited document.
 
     No citation tokens: the text names each citation by its readable reference
     (``memo.pdf › p. 7``), and this list says, once per document, where it
     lives, every place cited in it, and how to open (``read_file``) and cite
     (``source_ref``) it.
+
+    ``mode='brief'`` lists each document on one line -- its path, the places
+    cited in it and its ``source_ref``, no excerpt -- and leaves out the
+    Knowledge pages ``named_in`` (the result's text) already names: a grep or
+    ls registers every page it prints, and repeated them all here. ``full``
+    (the default, and the hosted server's rendering) is the whole list.
     """
     documents: dict[str, dict[str, Any]] = {}
     for record in sources:
@@ -162,27 +203,115 @@ def sources_block(sources: list[Any]) -> str:
                 entry["excerpt"] = excerpt
     if not documents:
         return ""
+    brief = mode == "brief"
     # What the text cites before the Knowledge pages it links: listed in read
     # order, a page's own sections and linked pages led, and the cap cut the
     # cited sources first (S18-9).
     entries = sorted(documents.values(), key=lambda entry: _kind(entry["record"]) == _PAGE)
-    lines = [f"Sources ({_count_label(entries)}):"]
+    named = 0
+    if brief:
+        kept = [entry for entry in entries if not _page_named_in(entry["record"], named_in)]
+        named = len(entries) - len(kept)
+        entries = kept
+        if not entries:
+            return ""
+    count = _count_label(entries)
+    if named:
+        count += f"; {named} Knowledge {'page' if named == 1 else 'pages'} named above not repeated"
+    lines = [f"Sources ({count}):"]
     used = len(lines[0])
     shown = 0
     for entry in entries:
-        block = _document_lines(entry)
+        block = [_brief_line(entry)] if brief else _document_lines(entry)
         size = sum(len(line) + 1 for line in block)
         if shown and used + size > SOURCES_CHARS:
             break
         lines.extend(block)
         used += size
         shown += 1
-    if shown < len(documents):
+    if shown < len(entries):
         lines.append(
-            f"+{len(documents) - shown} more sources: knowledge_base command='sources' "
+            f"+{len(entries) - shown} more sources: knowledge_base command='sources' "
             "with the page lists every cited passage."
         )
+    if brief:
+        lines.append(_BRIEF_NOTE)
     return "\n".join(lines)
+
+
+#: Closes a brief list: what it left out and how to get it.
+_BRIEF_NOTE = "(sources='full' adds each document's excerpt, url and read_file id)"
+
+
+def _page_named_in(record: dict[str, Any], text: str) -> bool:
+    """Whether ``record`` is a Knowledge page the result's text already names.
+
+    A section's source is named ``Page › Section``; the text may print the page
+    as ``[[Page]] › Section``, so the page's own title counts too.
+    """
+    if not text or _kind(record) != _PAGE:
+        return False
+    name = str(record.get("name") or record.get("title") or "").strip()
+    if not name:
+        return False
+    page = name.split(LOCATION_SEPARATOR, 1)[0].strip()
+    return name in text or (bool(page) and page in text)
+
+
+def _brief_line(entry: dict[str, Any]) -> str:
+    """``- <path> › <places> · source_ref <ref>``: where it lives and how to cite it.
+
+    With no ``source_ref``, the handle that opens it instead (its ``read_file``
+    id, else its url), so every line still names one way to reach the document.
+    """
+    record = entry["record"]
+    location = record.get("location") or {}
+    places = entry.get("places") or []
+    shown = ", ".join(places[:PLACES_PER_DOCUMENT])
+    if len(places) > PLACES_PER_DOCUMENT:
+        shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
+    name = str(
+        location.get("display_path") or record.get("filename") or record.get("name") or "source"
+    )
+    head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
+    if record.get("source_ref"):
+        handle = f"source_ref {record['source_ref']}"
+    elif location.get("file_id"):
+        handle = f"read_file {location['file_id']}"
+    elif location.get("url"):
+        handle = str(location["url"])
+    else:
+        handle = ""
+    tail = f" · {handle}" if handle else ""
+    return f"- {_line_label(record)}{head}{tail}".rstrip()
+
+
+#: What each ``approval_state`` of a staged write means for the agent that made it.
+_APPROVAL_STATES = {
+    "pending": "waiting for review; accept_proposal applies it only when the user asks",
+    "auto_apply_queued": "auto-approve is on, so Beakr applies it itself: do not call "
+    "accept_proposal",
+    "needs_person": "a person must accept it in Beakr; an agent's accept_proposal is refused",
+}
+
+
+def _states_it(text: str) -> bool:
+    """Whether the text already says the approval state, in either spelling."""
+    lowered = text.lower()
+    return "approval_state" in lowered or "approval state:" in lowered
+
+
+def approval_state_line(state: Any, text: str) -> str:
+    """``approval_state: <state> -- <what it means>``, unless the text already says it.
+
+    The engine's write reply carries ``approval_state``; an engine that already
+    prints it in the text gets no second copy, and one without it gets no line.
+    """
+    if not isinstance(state, str) or not state.strip() or _states_it(text):
+        return ""
+    state = state.strip()
+    meaning = _APPROVAL_STATES.get(state)
+    return f"approval_state: {state}" + (f" -- {meaning}" if meaning else "")
 
 
 #: The kinds of source a list names, each with its singular and plural, in the

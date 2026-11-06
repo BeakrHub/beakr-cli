@@ -341,7 +341,15 @@ class TieredFastMCP(FastMCP):
         try:
             normalized = mcp_call_shaping.normalize_arguments(name, given, declared)
         except mcp_call_shaping.ConflictingArguments as exc:
-            raise ToolError(str(exc)) from exc
+            # Refused like any other bad call, as compact JSON naming the fix.
+            return _error_result(
+                {
+                    "status": "error",
+                    "error_code": "invalid_arguments",
+                    "message": str(exc),
+                    "fix": exc.fix,
+                }
+            )
         if tool is not None:
             refusal = mcp_call_shaping.unknown_arguments(name, normalized, schema)
             if refusal is not None:
