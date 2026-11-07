@@ -2804,6 +2804,12 @@
       "type": "boolean"
      },
      {
+      "description": "timeline with page: also the pages under it (its documents and sub-records). Default false: that page only.",
+      "name": "include_children",
+      "required": false,
+      "type": "boolean"
+     },
+     {
       "description": "If true, timeline returns each section's full markdown content. Automatically enabled when timeline_query is set.",
       "name": "include_content",
       "required": false,
@@ -3455,7 +3461,7 @@
       "type": "string"
      },
      {
-      "description": "add_fact / add_connection: when it happened or held: YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY, '~' if approximate.",
+      "description": "add_fact / add_connection: when it happened or held in the world: YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY, '~' if approximate. Every dated row is a timeline event: leave it empty for a value with no date of its own (an id, a URL, a priority), and never use the day you write it down.",
       "name": "when",
       "required": false,
       "type": "string"
