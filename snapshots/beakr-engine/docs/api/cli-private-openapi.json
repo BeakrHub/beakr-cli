@@ -3730,6 +3730,31 @@
       "title": "Created By",
       "type": "string"
      },
+     "demoted_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When it was demoted (ISO 8601, UTC), or null.",
+      "title": "Demoted At"
+     },
+     "demoted_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Demoted reason.",
+      "title": "Demoted Reason"
+     },
      "expires_at": {
       "anyOf": [
        {
