@@ -8,17 +8,23 @@ import re
 import time
 from collections.abc import Collection
 from pathlib import PurePosixPath
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from beakr_sdk.sources import public_source as _shared_public_source
 from mcp.types import ToolAnnotations
+from pydantic import Field
 
 from beakr_cli import __version__, tool_surface
 
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
 from beakr_cli.mcp_knowledge_status import knowledge_notice
-from beakr_cli.mcp_render import organization_line
+from beakr_cli.mcp_render import (
+    DEFAULT_SOURCE_MODE,
+    SOURCE_MODE_KEY,
+    SourceMode,
+    organization_line,
+)
 from beakr_cli.mcp_tools_platform import _project_by_name_or_id
 from beakr_cli.updates import (
     CHECK_OFF,
@@ -149,24 +155,30 @@ mcp = tool_surface.TieredFastMCP(
 
 def _format_proposal(data: dict) -> str:
     payload = data.get("payload") or {}
-    lines = [
-        f"Proposal {data.get('id')}",
-        f"Type: {data.get('proposal_type')}",
-        f"Status: {data.get('status')}",
-    ]
+    from beakr_cli.proposal_accept import review_lines
+    from beakr_cli.proposal_view import NEEDS_A_PERSON_LINE, decided_line, filed_by_line
+
+    lines = [f"Proposal {data.get('id')}"]
+    # Who filed it, once, at the top: each citation used to repeat it.
+    filed = filed_by_line(data)
+    if filed:
+        lines.append(filed)
+    lines.extend([f"Type: {data.get('proposal_type')}", f"Status: {data.get('status')}"])
+    decided = decided_line(data)
+    if decided:
+        lines.append(decided)
     if data.get("page_title"):
         lines.append(f"Page: {data['page_title']}")
     if data.get("summary"):
         lines.append(f"Summary: {data['summary']}")
-    from beakr_cli.proposal_accept import review_lines
-    from beakr_cli.proposal_view import filed_by_line
-
-    filed = filed_by_line(data)
-    if filed:
-        lines.append(filed)
+    rationale = payload.get("rationale") if isinstance(payload, dict) else None
+    if rationale and str(rationale).strip() != str(data.get("summary") or "").strip():
+        lines.append(f"Rationale: {rationale}")
 
     # Printed plainly: accept_proposal takes content_hash back as reviewed_hash.
     lines.extend(review_lines(data))
+    if data.get("needs_person_to_accept") and data.get("status") == "pending":
+        lines.append(NEEDS_A_PERSON_LINE)
     if data.get("proposal_type") == "find_replace":
         lines.append(
             f"Changes: {payload.get('total_matches', 0)} match(es) across "
@@ -369,9 +381,23 @@ def _wiki_result(result: dict) -> dict:
             if isinstance(result.get("proposal"), dict)
             else {}
         ),
+        # Whether a staged write waits for review, is applied by auto-approve, or
+        # needs a person (pending | auto_apply_queued | needs_person).
+        **({"approval_state": state} if (state := _approval_state(result)) else {}),
         # Older compact API responses report truncation only through next.
         "next": list(result.get("next") or []),
     }
+
+
+def _approval_state(result: dict) -> str | None:
+    """A write reply's ``approval_state``, wherever this engine puts it; None from older ones."""
+    outcome = result.get("outcome") if isinstance(result.get("outcome"), dict) else {}
+    proposal = result.get("proposal") if isinstance(result.get("proposal"), dict) else {}
+    for holder in (result, outcome, proposal):
+        state = holder.get("approval_state")
+        if isinstance(state, str) and state.strip():
+            return state.strip()
+    return None
 
 
 #: A span token's passage suffix: ``artifact:<version>-u3`` is passage 3 of the
@@ -415,8 +441,8 @@ _TOKEN_SOURCE_NOTE = (
 async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
     """List projects in the organization, including the user's personal project.
 
-    Pass a project's name or id as ``scope`` to knowledge_base and
-    knowledge_base_write, or as ``project`` to research, wiki_stats and wiki_graph.
+    Pass a project's name or id as ``scope`` to any tool that takes a project:
+    ``scope``, ``project`` and ``project_id`` are read as the same argument.
     One page at a time (SPEC-488); the hosted server answers the same shape.
 
     Args:
@@ -571,6 +597,7 @@ async def knowledge_base(
     command: str,
     arguments: dict | None = None,
     scope: str | None = None,
+    sources: SourceMode = DEFAULT_SOURCE_MODE,
 ) -> dict[str, Any]:
     """Read the knowledge base: the same commands Beakr's in-product agents use.
 
@@ -613,7 +640,8 @@ async def knowledge_base(
     History:
       log {page?}   diff {page, rev, rev2?}   show {page, rev}
     Utility:
-      diagnostics {}   completions {prefix}   proposals {status?}  status: pending|dismissed.
+      diagnostics {}   completions {prefix}   proposals {status?}
+                 status: pending (default), accepted or dismissed.
 
     ``page`` accepts a slug, title, UUID, or wiki citation key such as ``wiki:8f3a0c21``.
     Results carry structured ``sources``, each with an opaque ``source_ref`` to reuse
@@ -623,13 +651,19 @@ async def knowledge_base(
         command: One of the commands above.
         arguments: That command's options, e.g. {"query": "billing owner"}.
         scope: Optional project name or ID. Omit to read everything you can see.
+            ``project`` and ``project_id`` are read as the same argument.
+        sources: The Sources list closing the result. ``brief`` (default): one
+            line per document, its path, cited places and source_ref, leaving
+            out Knowledge pages the text already names. ``full``: every source
+            with an excerpt, url and read_file id. ``none``: no list.
     """
     # check=False: a refusal the door reports in ``outcome`` is shown to the agent.
-    return _wiki_result(
+    result = _wiki_result(
         await _call_api(
             lambda sdk: sdk.knowledge.relay_command(command, arguments, scope=scope, check=False)
         )
     )
+    return {**result, SOURCE_MODE_KEY: sources}
 
 
 @mcp.tool(**tool_surface.tool_kwargs("wiki_stats"))
@@ -637,15 +671,17 @@ async def wiki_stats(
     project: str | None = None,
     project_id: str = "",
 ) -> str:
-    """Show knowledge base statistics (page count, source count).
+    """Show knowledge base statistics: live pages, and page-to-source citations.
 
     Args:
         project: Project name or ID to scope the stats. Omit for everything you can see.
         project_id: Deprecated alias for project.
     """
+    from beakr_cli import mcp_graph
+
     scoped = await _project_by_name_or_id(project, project_id)
     data = await _call_api(lambda sdk: sdk.knowledge.pages.stats(project_id=scoped))
-    return f"Pages: {data.get('pages', 0)}\nSources: {data.get('sources', 0)}"
+    return mcp_graph.stats(data if isinstance(data, dict) else {})
 
 
 @mcp.tool(**tool_surface.tool_kwargs("wiki_graph"))
@@ -655,56 +691,29 @@ async def wiki_graph(
 ) -> dict[str, Any]:
     """Get a summary of the knowledge base graph structure.
 
-    Returns the top connected pages and basic graph stats. Use knowledge_base command='links'
-    on a specific page to explore its neighborhood.
+    The most linked-to pages (at most 30) of the scope's page count, the links
+    among them and how many source documents they cite. Use knowledge_base
+    command='links' on a specific page to explore its neighborhood.
 
     Args:
         project: Project name or ID to scope the graph. Omit for everything you can see.
         project_id: Deprecated alias for project.
     """
-    from beakr_cli.mcp_tools_platform import _capped_result
+    from beakr_cli import mcp_graph
 
     scoped = await _project_by_name_or_id(project, project_id)
     data = await _call_api(
-        lambda sdk: sdk.knowledge.pages.graph(project_id=scoped, max_nodes=_GRAPH_MAX_NODES)
+        lambda sdk: sdk.knowledge.pages.graph(
+            project_id=scoped, max_nodes=mcp_graph.GRAPH_MAX_NODES
+        )
     )
-    data = data if isinstance(data, dict) else {}
-    nodes = data.get("nodes", [])
-    edges = data.get("edges", [])
-
-    # Count connections per node
-    connections: dict[str, int] = {}
-    for e in edges:
-        for end in (e.get("from"), e.get("to")):
-            if end:
-                connections[end] = connections.get(end, 0) + 1
-
-    # Build summary
-    lines = [f"Graph: {len(nodes)} pages, {len(edges)} links\n"]
-    lines.append("Top connected pages:")
-    node_map = {n.get("id"): n for n in nodes}
-    ranked = sorted(connections.items(), key=lambda x: x[1], reverse=True)[:15]
-    for node_id, count in ranked:
-        n = node_map.get(node_id, {})
-        label = n.get("label", str(node_id)[:8])
-        ptype = n.get("page_type", "")
-        lines.append(f"  {label} ({ptype}) - {count} links")
-
-    return _capped_result(
-        "\n".join(lines),
-        tool="wiki_graph",
-        returned=len(nodes),
-        total=None,
-        complete=len(nodes) < _GRAPH_MAX_NODES,
-        hint=(
-            f"The graph summary is capped at {_GRAPH_MAX_NODES} pages: pass project to narrow "
-            "it, or use knowledge_base command='links' on one page."
-        ),
+    # The scope's page count, so the summary says how many of them it shows.
+    counts = await _call_api(lambda sdk: sdk.knowledge.pages.stats(project_id=scoped))
+    total = counts.get("pages") if isinstance(counts, dict) else None
+    return mcp_graph.graph_result(
+        data if isinstance(data, dict) else {},
+        total_pages=total if isinstance(total, int) else None,
     )
-
-
-#: Pages the graph summary asks for; a graph that returns this many may have more.
-_GRAPH_MAX_NODES = 30
 
 
 # ---------------------------------------------------------------------------
@@ -749,6 +758,7 @@ async def research(
     project: str = "",
     project_id: str = "",
     quick: bool = False,
+    sources: SourceMode = DEFAULT_SOURCE_MODE,
 ) -> dict:
     """Ask a question and get a researched answer with citations from the
     organization's knowledge base, documents, and connected services.
@@ -774,10 +784,14 @@ async def research(
 
     Args:
         query: The question to answer.
-        project: Optional project name or ID to scope the search.
+        project: Optional project name or ID to scope the search. ``scope`` is
+            read as the same argument.
         project_id: Deprecated alias for project.
         quick: A short cited answer within 15 seconds from one search of
             Knowledge and documents (no connected services).
+        sources: The Sources list under the answer: ``brief`` (default, one line
+            per document with its source_ref), ``full`` (with excerpts, urls and
+            read_file ids) or ``none``.
     """
     from beakr_cli.research_metadata import (
         attach_research_metadata,
@@ -800,7 +814,9 @@ async def research(
 
     citations = data.get("citations")
     if isinstance(citations, list) and isinstance(data.get("text"), str):
-        return attach_research_metadata(_research_from_citations(data, citations), data)
+        return attach_research_metadata(
+            _research_from_citations(data, citations, sources=sources), data
+        )
 
     # An engine without the public answer form (no `text` / `citations`).
     # Format the response: replace {{key}} tokens with [N] numbered refs, one
@@ -880,7 +896,7 @@ async def research(
     )
 
 
-def _sources_listing(citations: list[dict]) -> list[str]:
+def _sources_listing(citations: list[dict], *, mode: str = "full", named_in: str = "") -> list[str]:
     """``Sources (N documents):`` then one entry per cited document, within ``SOURCES_CHARS``.
 
     The hosted server's ``formatting._sources_listing``: the same Sources list a
@@ -888,22 +904,28 @@ def _sources_listing(citations: list[dict]) -> list[str]:
     """
     from beakr_cli import mcp_render
 
-    block = mcp_render.sources_block([_public_source(record) for record in citations])
+    block = mcp_render.sources_block(
+        [_public_source(record) for record in citations], mode=mode, named_in=named_in
+    )
     return ["\n---\n" + block] if block else []
 
 
-def _research_from_citations(data: dict, citations: list) -> dict:
+def _research_from_citations(data: dict, citations: list, *, sources: str = "full") -> dict:
     """A research answer in the engine's public form, rendered as the hosted server does.
 
     The engine already shows each citation in ``text`` as its readable reference
     (``memo.pdf › p. 7``) and keeps one record per document in ``citations``
-    (brief excerpts); ``next`` says how to read what it trimmed. Byte for byte
-    the hosted ``formatting.research`` (tests/test_research_rendering.py).
+    (brief excerpts); ``next`` says how to read what it trimmed. With
+    ``sources='full'``, byte for byte the hosted ``formatting.research``
+    (tests/test_research_rendering.py); ``brief`` lists each document on one
+    line and ``none`` lists nothing (:func:`beakr_cli.mcp_render.sources_block`).
     """
     lines = [data["text"]] if data["text"] else []
-    if citations:
-        lines.extend(_sources_listing(citations))
-        lines.append(_SOURCE_NOTE)
+    if citations and sources != "none":
+        listing = _sources_listing(citations, mode=sources, named_in=data["text"] or "")
+        if listing:
+            lines.extend(listing)
+            lines.append(_SOURCE_NOTE)
     meta = [
         f"{label}: {data[k]}"
         for k, label in (("confidence", "Confidence"), ("gaps", "Gaps"))
@@ -995,10 +1017,33 @@ async def knowledge_base_write(
 
 
 @mcp.tool(**tool_surface.tool_kwargs("show_proposal"))
-async def show_proposal(proposal_id: str) -> str:
-    """Show one wiki proposal before accepting or dismissing it."""
+async def show_proposal(
+    proposal_id: str,
+    raw: Annotated[
+        bool,
+        Field(
+            description="Also print the whole payload as JSON (page text, every citation's "
+            "meta). Off: a summary of the sections and citations it changes."
+        ),
+    ] = False,
+) -> str:
+    """Show one wiki proposal before accepting or dismissing it.
+
+    A summary by default: who filed it, its type, status and page, how it was
+    decided, its content_hash, the sections it changes and one line per
+    citation. ``raw=true`` appends the payload as JSON, as this tool used to.
+    """
+    from beakr_cli.proposal_view import proposal_summary_lines
+
     data = await _call_api(lambda sdk: sdk.knowledge.proposals.show(proposal_id))
-    return _format_proposal(data) + "\n\nPayload:\n" + json.dumps(data.get("payload", {}), indent=2)
+    text = _format_proposal(data)
+    payload = data.get("payload") if isinstance(data.get("payload"), dict) else {}
+    if raw:
+        return text + "\n\nPayload:\n" + json.dumps(data.get("payload", {}), indent=2)
+    summary = proposal_summary_lines(payload)
+    if summary:
+        text += "\n" + "\n".join(summary)
+    return text + "\n\nThe whole payload (page text, citation meta): show_proposal with raw=true."
 
 
 @mcp.tool(**tool_surface.tool_kwargs("accept_proposal"))

@@ -59,13 +59,21 @@ async def _call_tool(name: str, arguments: dict[str, Any]) -> types.CallToolResu
     return (await handler(request)).root
 
 
-async def _replay(tool: str, verb: str, path: str, name: str, case: dict[str, Any]) -> None:
+async def _replay(
+    tool: str,
+    verb: str,
+    path: str,
+    name: str,
+    case: dict[str, Any],
+    extra: dict[str, Any] | None = None,
+) -> None:
     with respx.mock:
         route = respx.post(f"{API}{path}").mock(
             return_value=Response(200, json=case["rest_response"])
         )
         result = await _call_tool(
-            tool, {verb: name, "arguments": case["arguments"], "scope": case["scope"]}
+            tool,
+            {verb: name, "arguments": case["arguments"], "scope": case["scope"], **(extra or {})},
         )
 
     assert route.call_count == 1
@@ -94,8 +102,14 @@ def test_the_fixture_covers_every_command_and_action_this_server_documents() -> 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("command", sorted(CASES["reads"]))
 async def test_read_returns_the_rest_payload_in_the_hosted_shape(command: str) -> None:
+    # sources='full' is the hosted rendering; the stdio default is the brief list.
     await _replay(
-        "knowledge_base", "command", "/v1/knowledge/wiki/command", command, CASES["reads"][command]
+        "knowledge_base",
+        "command",
+        "/v1/knowledge/wiki/command",
+        command,
+        CASES["reads"][command],
+        {"sources": "full"},
     )
 
 

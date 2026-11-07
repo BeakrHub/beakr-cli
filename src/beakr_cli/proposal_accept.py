@@ -93,8 +93,30 @@ def review_lines(proposal: dict) -> list[str]:
     return lines
 
 
+def already_accepted_text(result: dict, proposal_id: str) -> str:
+    """An accept of a proposal that was already applied: by whom and when, not an error.
+
+    The engine answers a repeated accept with 200 and ``already_accepted: true``,
+    plus ``reviewed_at``, ``reviewed_by_name`` (a person, or None) and
+    ``auto_approved``. Under auto-approve an agent's own accept met the
+    proposal Beakr had just applied, and read the old 400 as a failure.
+    """
+    ident = result.get("proposal_id", proposal_id)
+    at = result.get("reviewed_at")
+    when = f" at {at}" if at else ""
+    if result.get("auto_approved") is True:
+        head = f"Already applied (by auto-approve{when})"
+    elif result.get("reviewed_by_name"):
+        head = f"Already accepted by {result['reviewed_by_name']}{when}"
+    else:
+        head = f"Already accepted{when}"
+    return f"{head}: proposal {ident}. Nothing more was applied."
+
+
 def accepted_text(result: dict, proposal_id: str) -> str:
     """What was accepted, as the hosted MCP server words it (``formatting.accepted_proposal``)."""
+    if result.get("already_accepted") is True:
+        return already_accepted_text(result, proposal_id)
     line = f"Accepted proposal {result.get('proposal_id', proposal_id)}"
     counts = [
         f"{result[key]} page(s) {label}"

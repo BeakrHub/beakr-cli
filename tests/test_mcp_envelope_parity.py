@@ -131,7 +131,8 @@ async def test_a_knowledge_result_is_one_text_block_rendered_as_the_hosted_serve
     respx.post(f"{API}/v1/knowledge/wiki/command").mock(
         return_value=Response(200, json=_door_reply("Kd: 38 nM {{s1}}"))
     )
-    arguments = {"command": "sections", "arguments": {"query": "Kd"}}
+    # The full Sources list is the hosted rendering; the stdio default is brief.
+    arguments = {"command": "sections", "arguments": {"query": "Kd"}, "sources": "full"}
 
     stdio = await _stdio_call("knowledge_base", arguments)
     body = await _tool_body("knowledge_base", arguments)

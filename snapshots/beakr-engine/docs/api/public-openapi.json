@@ -3147,6 +3147,19 @@
             "title": "Kind",
             "type": "string"
           },
+          "match": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "How much of the query this conversation holds: strong (its words together as a phrase), moderate (every word), tangential (at least half) or weak.",
+            "title": "Match"
+          },
           "outputs": {
             "default": [],
             "description": "Outputs written in it (`artifact_id`, `title`, `type`, `generated_at`); empty for an imported session.",
@@ -3261,6 +3274,19 @@
             "title": "Has More",
             "type": "boolean"
           },
+          "match_strength": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The best match band among this page's results; absent when none is set.",
+            "title": "Match Strength"
+          },
           "next_cursor": {
             "anyOf": [
               {
@@ -3276,6 +3302,19 @@
               null
             ],
             "title": "Next Cursor"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Present when no result on this page is a strong match: these conversations may not be about the query.",
+            "title": "Note"
           },
           "query": {
             "description": "The search text.",
@@ -3812,7 +3851,7 @@
               }
             ],
             "default": null,
-            "description": "`strong`, `moderate` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.",
+            "description": "`strong`, `moderate`, `tangential` or `weak`: how close the passage's meaning is to the query, on the embedding model's calibrated scale.",
             "title": "Match"
           },
           "score": {
@@ -17810,6 +17849,19 @@
       "WikiProposalOut": {
         "additionalProperties": true,
         "properties": {
+          "auto_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Decided proposals only: true when the filer's auto-approve setting accepted it rather than a person.",
+            "title": "Auto Approved"
+          },
           "client": {
             "anyOf": [
               {
@@ -17942,6 +17994,33 @@
             "default": null,
             "description": "The kind of change proposed, such as `new` or `edit_section`.",
             "title": "Proposal Type"
+          },
+          "reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Decided proposals only: when it was accepted, dismissed or closed.",
+            "title": "Reviewed At"
+          },
+          "reviewed_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Decided proposals only: the display name of the person who accepted or dismissed it; null when auto-approve accepted it or the person has no name.",
+            "title": "Reviewed By Name"
           },
           "source": {
             "anyOf": [
@@ -18275,7 +18354,7 @@
               }
             ],
             "default": null,
-            "description": "How close this page is in meaning: strong, moderate or weak. Set only when no page matched the keywords and pages were ranked by meaning.",
+            "description": "How close this page is in meaning: strong, moderate, tangential or weak. Set only when no page matched the keywords and pages were ranked by meaning.",
             "title": "Relevance"
           },
           "score": {
@@ -18388,7 +18467,7 @@
               }
             ],
             "default": null,
-            "description": "When no page matched the keywords and pages were ranked by meaning: the best result's band, strong, moderate or weak. Absent for a keyword answer.",
+            "description": "When no page matched the keywords and pages were ranked by meaning: the best result's band, strong, moderate, tangential or weak. Absent for a keyword answer.",
             "title": "Match Strength"
           },
           "next_cursor": {
@@ -18417,7 +18496,7 @@
               }
             ],
             "default": null,
-            "description": "Present when even the best result is a weak match: the corpus may not cover the question. The same warning knowledge_base sections gives.",
+            "description": "Present when no result is a strong match: the corpus may not cover the question. The same warning knowledge_base sections gives.",
             "title": "Note"
           }
         },
@@ -18714,6 +18793,24 @@
       "WikiToolOutcome": {
         "additionalProperties": true,
         "properties": {
+          "approval_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "auto_apply_queued",
+                  "needs_person"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Writes that staged a proposal only: what happens to it next. `pending`: it waits for someone to accept it (an agent may call accept_proposal when the user asks); `auto_apply_queued`: the caller's auto-approve queued it, and it can still end up pending if the setting changed or a check fails at accept time, so confirm with the proposal read; `needs_person`: the project requires a person to accept proposals, so an accept from an API key or token is refused.",
+            "title": "Approval State"
+          },
           "auto_approve": {
             "anyOf": [
               {
@@ -18785,6 +18882,24 @@
       },
       "WikiWriteResult": {
         "properties": {
+          "approval_state": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pending",
+                  "auto_apply_queued",
+                  "needs_person"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`outcome.approval_state`, at the top level, whenever a proposal was staged: `pending`, `auto_apply_queued` or `needs_person`.",
+            "title": "Approval State"
+          },
           "content": {
             "description": "The wiki write's content.",
             "items": {
@@ -23578,6 +23693,10 @@
                     "description": "timeline: include estimated dates (default true). False keeps only day/month/year precision.",
                     "type": "boolean"
                   },
+                  "include_children": {
+                    "description": "timeline with page: also the pages under it (its documents and sub-records). Default false: that page only.",
+                    "type": "boolean"
+                  },
                   "include_content": {
                     "description": "If true, timeline returns each section's full markdown content. Automatically enabled when timeline_query is set.",
                     "type": "boolean"
@@ -24807,7 +24926,7 @@
     },
     "/v1/knowledge/wiki/proposals/{proposal_id}/accept": {
       "post": {
-        "description": "Accept a wiki proposal \u2014 apply the proposed changes.\n\nIn a project that requires a person to accept proposals\n(``GET /v1/knowledge/agent-review``), an API key or token accepting any\nproposal is refused with 403 ``person_review_required`` unless the key holds\nthe ``proposals:accept`` scope. The proposal read says so in\n``needs_person_to_accept``.",
+        "description": "Accept a wiki proposal \u2014 apply the proposed changes.\n\nIn a project that requires a person to accept proposals\n(``GET /v1/knowledge/agent-review``), an API key or token accepting any\nproposal is refused with 403 ``person_review_required`` unless the key holds\nthe ``proposals:accept`` scope. The proposal read says so in\n``needs_person_to_accept``.\n\nAccepting a proposal that is already accepted (by a person, or by the\nfiler's auto-approve) succeeds without applying anything again:\n``already_accepted: true`` with ``reviewed_at``, ``reviewed_by_name`` (the\nperson who accepted it; null when auto-approve did) and ``auto_approved``.\nA dismissed or otherwise closed proposal answers 400 saying so.",
         "operationId": "accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post",
         "parameters": [
           {
@@ -25831,7 +25950,7 @@
                     "type": "string"
                   },
                   "when": {
-                    "description": "add_fact / add_connection: when it happened or held: YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY, '~' if approximate.",
+                    "description": "add_fact / add_connection: when it happened or held in the world: YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY, '~' if approximate. Every dated row is a timeline event: leave it empty for a value with no date of its own (an id, a URL, a priority), and never use the day you write it down.",
                     "type": "string"
                   },
                   "when_not_to_use": {
