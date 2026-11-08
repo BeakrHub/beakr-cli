@@ -11,10 +11,26 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=b9cf4467afadb9641b95cfde48a7d416c3175375a601054b4c1dd5155ec68029 changelog sha256=87d7eb5ff2a3b84f4a30e5511a940e8665ad9e4f80e8fe48338d9b14cc9dd8c2 -->
+<!-- contract-stamp: public-openapi sha256=f4d1afb946094d23fd217b78339ae9a041d6ea970ffb519b22789fabb4eac4e6 changelog sha256=270a634c8fced7cf26f4a111f2367a6dfd797ad5ba6e4bdf5dcec71f275343e0 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
+  signed into the file's upload URL, so the upload must send exactly that many
+  bytes. A file without a size is answered `400`.
+- `POST /v1/bulk/complete` checks each uploaded file before it becomes a file. A
+  file that is missing, differs from its declared size, exceeds the upload limit,
+  is a program, or whose first bytes are not the type its name declares (a
+  `.pdf` that is not a PDF, binary data named as text) is refused, deleted and
+  listed under `failed` with the reason. After completion, the upload URL no
+  longer reaches the file's stored bytes.
+- `POST /v1/uploads/{upload_id}/complete` refuses an assembled file that is a
+  program or whose first bytes are not the type its `path` declares, with `422`
+  and code `content_rejected`; the upload is aborted and its data deleted.
+- The largest file `POST /v1/uploads` and `POST /v1/bulk/prepare` accept is now
+  1 GB (1,073,741,824 bytes), up from 500 MB. Files over 200 MB are stored and
+  listed, but their contents are not read into search.
 
 - `POST /v1/knowledge/wiki/write` returns `approval_state` (also in
   `outcome.approval_state`) whenever the call staged a proposal: `pending` (it

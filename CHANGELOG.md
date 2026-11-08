@@ -4,10 +4,25 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-11-06)
+## beakr-cli 0.4.0 (2026-11-08)
 
 ### Changes
 
+- `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
+  signed into the file's upload URL, so the upload must send exactly that many
+  bytes. A file without a size is answered `400`.
+- `POST /v1/bulk/complete` checks each uploaded file before it becomes a file. A
+  file that is missing, differs from its declared size, exceeds the upload limit,
+  is a program, or whose first bytes are not the type its name declares (a
+  `.pdf` that is not a PDF, binary data named as text) is refused, deleted and
+  listed under `failed` with the reason. After completion, the upload URL no
+  longer reaches the file's stored bytes.
+- `POST /v1/uploads/{upload_id}/complete` refuses an assembled file that is a
+  program or whose first bytes are not the type its `path` declares, with `422`
+  and code `content_rejected`; the upload is aborted and its data deleted.
+- The largest file `POST /v1/uploads` and `POST /v1/bulk/prepare` accept is now
+  1 GB (1,073,741,824 bytes), up from 500 MB. Files over 200 MB are stored and
+  listed, but their contents are not read into search.
 - `POST /v1/knowledge/wiki/write` returns `approval_state` (also in
   `outcome.approval_state`) whenever the call staged a proposal: `pending` (it
   waits for someone to accept it), `auto_apply_queued` (the caller's auto-approve
