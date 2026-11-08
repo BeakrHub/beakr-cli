@@ -15002,7 +15002,7 @@
             "anyOf": [
               {
                 "maxLength": 200,
-                "pattern": "^[\\w.:-]+$",
+                "pattern": "^[\\w.:/-]+$",
                 "type": "string"
               },
               {

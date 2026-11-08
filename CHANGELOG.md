@@ -8,6 +8,9 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/assistant/chat/runs`: `model` accepts `/`, so an OpenRouter model
+  is named by its vendor-qualified id, for example
+  `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a record in
   a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
