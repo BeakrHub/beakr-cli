@@ -14,7 +14,7 @@ Run `knowledge_base` command `sections` with 2-3 phrasings -- it is semantic, so
 
 ### 3. Ask the researcher (when available)
 
-If your client exposes `research`, call it with the question. It searches the wiki, documents, and connected services and returns a cited answer. Treat it as a starting map, not the final word.
+If your client exposes `research`, call it with the question. It is quick by default: one search of the wiki and documents, and a cited answer within 15 seconds. Pass `quick=false` for the full researcher (up to 150 seconds), which also searches connected services: when the question is about Slack, email, calendar or Jira, needs every matching record, or the quick answer is thin or stopped early. Treat it as a starting map, not the final word.
 
 ### 4. Deep read
 

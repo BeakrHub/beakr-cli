@@ -4,7 +4,7 @@ Follow this procedure:
 
 1. **Discover the landscape.** Call `list_projects` to understand the available projects. Use `wiki_stats` for the whole accessible knowledge base, and with `project` when a project is clearly relevant.
 
-2. **Ask the researcher.** Call `research` with the topic as `query`. It searches the wiki, documents, and connected services and returns a cited answer. Use it as a starting map.
+2. **Ask the researcher.** Call `research` with the topic as `query`. It is quick by default (the wiki and documents, within 15 seconds); pass `quick=false` when the topic lives in connected services (Slack, email, calendar, Jira) or needs every matching record. It returns a cited answer. Use it as a starting map.
 
 3. **Broad search.** Run `knowledge_base` command `sections` with `{"query": ...}` using 2-3 phrasings in parallel. Use command `grep` with `{"query": ...}` for exact names or IDs. If a literal grep misses, retry with `sections` before concluding the topic is not covered.
 
