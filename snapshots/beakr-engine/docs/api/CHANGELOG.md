@@ -11,12 +11,12 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=bc2c8d3a403a9a1b8e3d0e14c6fe39442a5a3f8773c117749fe48a183d8a1518 changelog sha256=8512876577740e94b17d5f9b478b1a6c29e03a332d1705ca1f4215f29cc574f2 -->
+<!-- contract-stamp: public-openapi sha256=bc2c8d3a403a9a1b8e3d0e14c6fe39442a5a3f8773c117749fe48a183d8a1518 changelog sha256=c1e5c851680f1fa404f7643ea119f800e363ca320bbea504cc8212a9f032fbc7 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `POST /v1/assistant/chat/runs`: `model` accepts `/`, so an OpenRouter model
+- `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
 
