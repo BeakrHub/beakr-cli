@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=95e11fa6ef3d1afb4ee82c3f95644c8a4f8ec1801558de9fbc8b97fff232c456 changelog sha256=22c00e464fdb434eb1e6654b32a2285f4a4193ea4bc9d157c95883946296266f -->
+<!-- contract-stamp: public-openapi sha256=e798af374529d7726b8316a433689fe229d10d8cd296cc8da53edc8b69fe11e6 changelog sha256=21070ab047b20cc4d10071e00a0f14ac252550c76b7362117ab1fa09985e6ab7 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -30,7 +30,7 @@ The first public version.
     (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
     answers `403 session_widen_refused`. It cannot start sessions or mint tokens.
   Every write a session token makes carries the session's `run_label`, so
-  undoing that run reverts a whole session. A token lasts an
+  undoing that run reverts the whole session. A token lasts an
   hour by default (`ttl_seconds`, up to 12 hours); mint another with
   `POST /v1/sessions/{session_id}/tokens` using the key that started the
   session. The person can also ask the client to reuse a selection for the

@@ -22,7 +22,7 @@ Each release lists the public API changes it supports, taken from the API change
     (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
     answers `403 session_widen_refused`. It cannot start sessions or mint tokens.
   Every write a session token makes carries the session's `run_label`, so
-  undoing that run reverts a whole session. A token lasts an
+  undoing that run reverts the whole session. A token lasts an
   hour by default (`ttl_seconds`, up to 12 hours); mint another with
   `POST /v1/sessions/{session_id}/tokens` using the key that started the
   session. The person can also ask the client to reuse a selection for the
