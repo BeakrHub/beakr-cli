@@ -11,11 +11,19 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=f4d1afb946094d23fd217b78339ae9a041d6ea970ffb519b22789fabb4eac4e6 changelog sha256=270a634c8fced7cf26f4a111f2367a6dfd797ad5ba6e4bdf5dcec71f275343e0 -->
+<!-- contract-stamp: public-openapi sha256=2e526aaf6c920e2ecaa32a0c6f1a650d97949d4754bf80a8bcb7aad22768ad31 changelog sha256=785d5edfcf01d63d0e47f4f580334805bcebad75484a73567c2f000d9ef48053 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- Chat run submission (`POST /v1/runs`) accepts `decision_id`
+  and `decision_version` to answer a specific pending question, rejecting stale
+  decision versions, and returns
+  `decision_state` when applicable. Message responses expose `injection_status`
+  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
+  responses also expose session and language details, a description, error,
+  last-poll time, and capacity-wait and overdue flags, with field descriptions
+  explaining how to interpret operation progress.
 - `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
   signed into the file's upload URL, so the upload must send exactly that many
   bytes. A file without a size is answered `400`.
