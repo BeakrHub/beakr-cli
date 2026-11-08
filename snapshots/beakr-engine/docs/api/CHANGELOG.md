@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=e798af374529d7726b8316a433689fe229d10d8cd296cc8da53edc8b69fe11e6 changelog sha256=21070ab047b20cc4d10071e00a0f14ac252550c76b7362117ab1fa09985e6ab7 -->
+<!-- contract-stamp: public-openapi sha256=70ffb8c069106bbb432e7687bb6424c1cb87bdb7c2682d89386be1e1a866b92a changelog sha256=b0313b6fffccf4f0127c5e545cf0911b16c3fc03f572540a2161089a638b7fff -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -60,12 +60,39 @@ The first public version.
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
+- `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
+  signed into the file's upload URL, so the upload must send exactly that many
+  bytes. A file without a size is answered `400`.
+- `POST /v1/bulk/complete` checks each uploaded file before it becomes a file. A
+  file that is missing, differs from its declared size, exceeds the upload limit,
+  is a program, or whose first bytes are not the type its name declares (a
+  `.pdf` that is not a PDF, binary data named as text) is refused, deleted and
+  listed under `failed` with the reason. After completion, the upload URL no
+  longer reaches the file's stored bytes.
+- `POST /v1/uploads/{upload_id}/complete` refuses an assembled file that is a
+  program or whose first bytes are not the type its `path` declares, with `422`
+  and code `content_rejected`; the upload is aborted and its data deleted.
+- The largest file `POST /v1/uploads` and `POST /v1/bulk/prepare` accept is now
+  1 GB (1,073,741,824 bytes), up from 500 MB. Files over 200 MB are stored and
+  listed, but their contents are not read into search.
+
 - `POST /v1/knowledge/wiki/write` returns `approval_state` (also in
   `outcome.approval_state`) whenever the call staged a proposal: `pending` (it
   waits for someone to accept it), `auto_apply_queued` (the caller's auto-approve
   queued it; it can still end up pending, so confirm with
   `GET /v1/knowledge/wiki/proposals/{proposal_id}`) or `needs_person` (the
   project requires a person to accept proposals). The text names the same state.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss` dismisses only a
+  pending proposal. On a proposal that is already dismissed it succeeds without
+  changing it: `already_dismissed: true`, with `reviewed_at` and
+  `reviewed_by_name` of the first dismissal. On an accepted proposal it answers
+  `409` with error code `already_accepted`: the change was applied and stays until
+  it is reverted, and the response names who accepted it (`reviewed_by_name`,
+  `auto_approved`) and when. On a superseded or resolved proposal it answers `409`
+  with error code `proposal_closed`. Do not retry either `409`.
+- Two accepts of the same proposal at once apply it once: the second answers as
+  for an already accepted proposal (`already_accepted: true`). An accept that
+  meets a dismissal committed first applies nothing and answers `400`.
 - `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept` on a proposal that is
   already accepted succeeds without applying it again: `already_accepted: true`,
   with `reviewed_at`, `reviewed_by_name` (the person who accepted it; `null` when

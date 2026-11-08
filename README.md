@@ -165,7 +165,7 @@ uv tool install beakr-cli          # or the one-line installer above
 beakr auth login                   # browser sign-in; works with SSO and MFA
 beakr init --create "Research"     # bind this directory to a new project
 beakr upload docs/ notes.pdf       # folders keep their structure
-beakr research "what did we decide about the launch date?"
+beakr research "what did we decide about the launch date?"   # quick; --deep for the full researcher
 beakr kb sections "launch date"    # find the card
 beakr kb cat "Launch Plan"
 ```
