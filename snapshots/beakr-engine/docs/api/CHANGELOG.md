@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=70ffb8c069106bbb432e7687bb6424c1cb87bdb7c2682d89386be1e1a866b92a changelog sha256=b0313b6fffccf4f0127c5e545cf0911b16c3fc03f572540a2161089a638b7fff -->
+<!-- contract-stamp: public-openapi sha256=70ffb8c069106bbb432e7687bb6424c1cb87bdb7c2682d89386be1e1a866b92a changelog sha256=d3d8df7b5cb85d9e34e0c2e84664038cea735f69cc80630d590dac54d41f51cd -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -28,7 +28,9 @@ The first public version.
     `403 session_write_scope`, naming the projects it may write;
   - a session token can only drop projects from its own session
     (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
-    answers `403 session_widen_refused`. It cannot start sessions or mint tokens.
+    answers `403 session_widen_refused`. It cannot start sessions or mint tokens;
+  - `GET /v1/projects` with a session token lists only the session's read
+    projects, and `POST /v1/context` without `project_id` answers within them.
   Every write a session token makes carries the session's `run_label`, so
   undoing that run reverts the whole session. A token lasts an
   hour by default (`ttl_seconds`, up to 12 hours); mint another with
