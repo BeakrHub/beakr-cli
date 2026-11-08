@@ -13672,6 +13672,434 @@
         "title": "ServiceKeyIn",
         "type": "object"
       },
+      "SessionCreate": {
+        "properties": {
+          "client_name": {
+            "default": "api",
+            "description": "The client holding the session, shown to the person (`beakr mcp`, `beakr-cli`).",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Client Name",
+            "type": "string"
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "maxLength": 1024,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The folder the client runs in, shown on the picker; never read by Beakr.",
+            "title": "Folder"
+          },
+          "issue_token": {
+            "default": false,
+            "description": "Also mint a session token and return it in `token`.",
+            "title": "Issue Token",
+            "type": "boolean"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A label the person recognizes, such as the agent and folder.",
+            "title": "Label"
+          },
+          "read_project_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projects the session may read. Omit both lists to create a pending session the person completes at `picker_url`; every Knowledge, document and research call answers `403 session_needs_selection` until they do.",
+            "title": "Read Project Ids"
+          },
+          "ttl_seconds": {
+            "default": 3600,
+            "description": "Seconds until the token expires: 3600 by default, 43200 at most.",
+            "maximum": 43200.0,
+            "minimum": 60.0,
+            "title": "Ttl Seconds",
+            "type": "integer"
+          },
+          "write_project_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Projects the session may write; each must also be a read project.",
+            "title": "Write Project Ids"
+          }
+        },
+        "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionOut": {
+        "properties": {
+          "client_name": {
+            "description": "The client holding the session.",
+            "title": "Client Name",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "When the session was created (ISO 8601, UTC).",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the session ended; null while it runs.",
+            "title": "Ended At"
+          },
+          "folder": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The folder the client runs in, as it reported it.",
+            "title": "Folder"
+          },
+          "id": {
+            "description": "Session id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The session's label.",
+            "title": "Label"
+          },
+          "last_used_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When a session token last made a request.",
+            "title": "Last Used At"
+          },
+          "picker_url": {
+            "description": "Where the person chooses and changes the projects.",
+            "title": "Picker Url",
+            "type": "string"
+          },
+          "read_projects": {
+            "description": "Projects the session may read.",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Read Projects",
+            "type": "array"
+          },
+          "remember_folder": {
+            "description": "The person asked the client to reuse this selection in `folder`.",
+            "title": "Remember Folder",
+            "type": "boolean"
+          },
+          "run_label": {
+            "description": "The run label every write made with the session's token carries; `POST /v1/knowledge/runs/{run}/undo` with it reverts the session's Knowledge writes.",
+            "title": "Run Label",
+            "type": "string"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the person first chose its projects.",
+            "title": "Selected At"
+          },
+          "status": {
+            "description": "`pending` (no projects chosen yet), `active` or `ended`.",
+            "title": "Status",
+            "type": "string"
+          },
+          "token": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionToken"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The token minted with the session, when `issue_token` was set."
+          },
+          "updated_at": {
+            "description": "When its projects or label last changed.",
+            "examples": [
+              "2026-10-03T09:15:42Z"
+            ],
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "write_projects": {
+            "description": "Projects the session may write.",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Write Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "client_name",
+          "label",
+          "folder",
+          "remember_folder",
+          "read_projects",
+          "write_projects",
+          "picker_url",
+          "run_label",
+          "created_at",
+          "updated_at",
+          "selected_at",
+          "ended_at",
+          "last_used_at"
+        ],
+        "title": "SessionOut",
+        "type": "object"
+      },
+      "SessionOutPage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/SessionOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SessionOutPage",
+        "type": "object"
+      },
+      "SessionProject": {
+        "properties": {
+          "id": {
+            "description": "Project id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Project name; null if the person can no longer see it.",
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SessionProject",
+        "type": "object"
+      },
+      "SessionToken": {
+        "properties": {
+          "expires_at": {
+            "description": "When the token expires (ISO 8601, UTC).",
+            "examples": [
+              "2026-10-03T09:30:42Z"
+            ],
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "token": {
+            "description": "The session token (`bk_st_...`), shown only in this response. Send it as `Authorization: Bearer <token>`; mint another before it expires.",
+            "title": "Token",
+            "type": "string"
+          },
+          "token_type": {
+            "default": "bearer",
+            "description": "Always `bearer`.",
+            "title": "Token Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token",
+          "expires_at"
+        ],
+        "title": "SessionToken",
+        "type": "object"
+      },
+      "SessionTokenCreate": {
+        "properties": {
+          "ttl_seconds": {
+            "default": 3600,
+            "description": "Seconds until the token expires: 3600 by default, 43200 at most.",
+            "maximum": 43200.0,
+            "minimum": 60.0,
+            "title": "Ttl Seconds",
+            "type": "integer"
+          }
+        },
+        "title": "SessionTokenCreate",
+        "type": "object"
+      },
+      "SessionUpdate": {
+        "properties": {
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A new label; empty clears it.",
+            "title": "Label"
+          },
+          "read_project_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The session's read projects, replacing the list. Dropping a read project drops it from write too.",
+            "title": "Read Project Ids"
+          },
+          "remember_folder": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ask the client to reuse this selection for sessions it starts in the same folder. The client keeps that binding; a session token cannot set this.",
+            "title": "Remember Folder"
+          },
+          "write_project_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                "maxItems": 200,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The session's write projects, replacing the list; each must be a read project.",
+            "title": "Write Project Ids"
+          }
+        },
+        "title": "SessionUpdate",
+        "type": "object"
+      },
       "SkillBundleOut": {
         "properties": {
           "file_count": {
@@ -31800,6 +32228,532 @@
         "x-beakr-scope": "agent:run"
       }
     },
+    "/v1/sessions": {
+      "get": {
+        "description": "The caller's sessions, newest first; a session token sees only its own.",
+        "operationId": "list_sessions_v1_sessions_get",
+        "parameters": [
+          {
+            "description": "Include ended sessions.",
+            "in": "query",
+            "name": "include_ended",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Include ended sessions.",
+              "title": "Include Ended",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOutPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List your sessions",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      },
+      "post": {
+        "description": "Start a session for the signed-in person, optionally with its projects and a token.",
+        "operationId": "create_session_v1_sessions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Start a session",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
+    "/v1/sessions/current": {
+      "get": {
+        "description": "The session of the token making the request (a session token only).",
+        "operationId": "current_session_v1_sessions_current_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the current session",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
+    "/v1/sessions/{session_id}": {
+      "get": {
+        "description": "One of the caller's sessions.",
+        "operationId": "get_session_v1_sessions__session_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a session",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      },
+      "patch": {
+        "description": "Choose or change the session's projects.\n\nThe person does this from the web app or with their own credential. A session\ntoken may call it only to drop projects from its own session: naming a project\nits session does not already have answers ``403 session_widen_refused``.",
+        "operationId": "update_session_v1_sessions__session_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a session's projects",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
+    "/v1/sessions/{session_id}/end": {
+      "post": {
+        "description": "End the session: its tokens stop working. A session token may end its own.",
+        "operationId": "end_session_v1_sessions__session_id__end_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "End a session",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
+    "/v1/sessions/{session_id}/tokens": {
+      "post": {
+        "description": "Mint a token for the session with the person's own credential (never a session token).",
+        "operationId": "mint_session_token_v1_sessions__session_id__tokens_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionTokenCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionToken"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Mint a session token",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
     "/v1/skills": {
       "get": {
         "description": "The skills you can use or install, by name, one page at a time: your own, your organization's, the ones built into Beakr and public skills from anywhere. Each is labelled with its `visibility`, its `owner` (`me`, `org`, `system` or `anyone`), its `origin` (`created`, `mined`, `imported` or `system`) and whether it is `installed` in your library, and each label is also a filter: `owner=me` lists your own skills, `owner=system` the built-in ones, `visibility=public` the public ones and `installed=false` the ones you could add. Repeat a filter for more than one value. `include_content=true` adds each skill's files, and then a page holds at most 25 skills. Retired skills are not listed.",
@@ -33284,6 +34238,11 @@
       "x-displayName": "API keys"
     },
     {
+      "description": "Agent sessions that read and write only the projects their person chooses.",
+      "name": "sessions",
+      "x-displayName": "Sessions"
+    },
+    {
       "description": "Organizations and their members.",
       "name": "organizations",
       "x-displayName": "Organizations"
@@ -33379,7 +34338,8 @@
       "name": "Account & access",
       "tags": [
         "account",
-        "api-keys"
+        "api-keys",
+        "sessions"
       ]
     },
     {

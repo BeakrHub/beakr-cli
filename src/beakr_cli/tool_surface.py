@@ -204,9 +204,17 @@ class TieredFastMCP(FastMCP):
         )
 
     async def run_stdio_async(self) -> None:
-        await self.fit_instructions()
-        async with stdio_server() as (read_stream, write_stream):
-            await self._mcp_server.run(read_stream, write_stream, self.initialization_options())
+        from beakr_cli import scope_session
+
+        # The session the person chooses this server's projects for
+        # (beakr_cli.scope_session); ended on a clean exit.
+        await scope_session.start_for_mcp()
+        try:
+            await self.fit_instructions()
+            async with stdio_server() as (read_stream, write_stream):
+                await self._mcp_server.run(read_stream, write_stream, self.initialization_options())
+        finally:
+            await scope_session.end_for_mcp()
 
     async def fit_instructions(self) -> None:
         """Rebuild the instructions without the tools this installation does not list."""
@@ -280,8 +288,16 @@ class TieredFastMCP(FastMCP):
         return decorator
 
     async def list_tools(self) -> list[MCPTool]:
+        from beakr_cli import scope_session
+        from beakr_cli.mcp_session import SESSION_TOOLS
+
         order = {name: index for index, name in enumerate(stdio_tools())}
         tools = sorted(await super().list_tools(), key=lambda t: order.get(t.name, len(order)))
+        # The session's own tools are listed only while the server holds a session.
+        session_tools = [t for t in tools if t.name in SESSION_TOOLS]
+        tools = [t for t in tools if t.name not in SESSION_TOOLS]
+        if scope_session.ACTIVE is None:
+            session_tools = []
         if _project_pinned():
             tools = [
                 without_project_parameters(tool) if tool.name in PINNABLE_TOOLS else tool
@@ -290,9 +306,9 @@ class TieredFastMCP(FastMCP):
         hidden = self._hidden | await self._unserved([tool.name for tool in tools])
         tools = [tool for tool in tools if tool.name not in hidden]
         if lists_every_tool():
-            return tools
+            return tools + session_tools
         listed = set(eager_tools()) | self._revealed
-        return [tool for tool in tools if tool.name in listed]
+        return [tool for tool in tools if tool.name in listed] + session_tools
 
     async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         """Run a tool with forgiving arguments, and return any error compactly.
@@ -305,12 +321,19 @@ class TieredFastMCP(FastMCP):
         project that names nothing and an error outcome become ``{status,
         error_code, message, fix}`` marked ``isError``.
         """
+        from beakr_cli import mcp_session
         from beakr_cli.sdk import MCP_CLIENT_AGENT
 
         # Writes are attributed to the agent that made them: the MCP client's
         # clientInfo, unless BEAKR_AGENT names one (sdk._agent).
-        token = MCP_CLIENT_AGENT.set(self._client_agent())
+        agent = self._client_agent()
+        token = MCP_CLIENT_AGENT.set(agent)
         try:
+            # Until the person chooses this session's projects, answer with the
+            # picker (in chat where the client can show a form) instead.
+            refusal = await mcp_session.gate(self, name, agent)
+            if refusal is not None:
+                return _error_result(refusal)
             return await self._call_tool(name, arguments)
         finally:
             MCP_CLIENT_AGENT.reset(token)
@@ -333,6 +356,7 @@ class TieredFastMCP(FastMCP):
         from beakr_cli.capabilities import NOT_PROVIDED_CODE
         from beakr_cli.mcp_errors import ApiCallError
         from beakr_cli.mcp_tools_platform import ScopeNotFound
+        from beakr_cli.scope_session import SessionScopeError
 
         tool = self._tool_manager.get_tool(name)
         schema = tool.parameters if tool is not None else {}
@@ -365,6 +389,10 @@ class TieredFastMCP(FastMCP):
             if isinstance(cause, ValidationError):
                 raise ToolError(mcp_call_shaping.validation_message(name, cause, schema)) from cause
             if isinstance(cause, ScopeNotFound):
+                return _error_result(
+                    mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
+                )
+            if isinstance(cause, SessionScopeError):
                 return _error_result(
                     mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
                 )

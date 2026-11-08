@@ -20,6 +20,7 @@ PAGE = "Project Helios"
 CARD = "Helios HX-07 Solubility Card"
 EVIDENCE = "{{artifact:6e9422f6-04ea-41a2-87c1-d41ed1f62713-document-block-1}}"
 ID = "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f"
+SESSION = "7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f"
 ID2 = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d"
 
 TRANSCRIPT = (
@@ -51,6 +52,15 @@ CASES: list[SnapshotCase] = [
         "--no-browser",
     ),
     c("doctor", "doctor"),
+    # --- sessions: a shell limited to the projects the person chose ------------------
+    c(
+        "session-start",
+        "session", "start", "--read", PROJECT, "--write", PROJECT, "--label", "helios shell",
+    ),
+    c("session-show", "session", "show", SESSION),
+    c("session-ls", "session", "ls"),
+    c("session-edit", "session", "edit", SESSION, "--read", PROJECT, "--write", PROJECT),
+    c("session-end", "session", "end", SESSION),
     # --- org, members -----------------------------------------------------------
     c("org-show", "org", "show", "--org", ORG),
     c("org-credentials-ls", "org", "credentials", "ls", "--org", ORG),
@@ -337,6 +347,10 @@ _NO_LABELS_FIXTURE = (
 
 #: Visible hand-written commands with no snapshot, each with the reason.
 EXEMPT: dict[str, str] = {
+    "session forget": (
+        "local only: edits this folder's .beakr/project.json and calls no API; "
+        "tests/test_cli_session.py"
+    ),
     "kb query": (
         "behind the engine flag wiki_card_rows_query, which the snapshot engine leaves off "
         "(it would answer feature_disabled); the request it sends is pinned in "

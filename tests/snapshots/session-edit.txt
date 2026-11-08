@@ -1,0 +1,67 @@
+$ beakr session edit 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f --read 4dd25154-0d80-44ab-b4c2-167319bfacb4 --write 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+> PATCH /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+  {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
+[exit 0]
+--- stdout
+{
+  "id": "7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+  "status": "active",
+  "client_name": "beakr-cli",
+  "label": "beakr shell in helios",
+  "folder": "/work/helios",
+  "remember_folder": false,
+  "read_projects": [
+    {
+      "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "name": "Project Helios"
+    },
+    {
+      "id": "8b2f6c10-3d4e-4f5a-9b6c-7d8e9f0a1b2c",
+      "name": "Helios Assays"
+    }
+  ],
+  "write_projects": [
+    {
+      "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+      "name": "Project Helios"
+    },
+    {
+      "id": "8b2f6c10-3d4e-4f5a-9b6c-7d8e9f0a1b2c",
+      "name": "Helios Assays"
+    }
+  ],
+  "picker_url": "https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+  "run_label": "session:7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+  "created_at": "2026-11-08T17:00:00+00:00",
+  "updated_at": "2026-11-08T17:05:00+00:00",
+  "selected_at": "2026-11-08T17:00:00+00:00",
+  "ended_at": null,
+  "last_used_at": null,
+  "token": null
+}
+--- stderr
+
+
+$ beakr session edit 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f --read 4dd25154-0d80-44ab-b4c2-167319bfacb4 --write 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+> PATCH /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+  {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
+[exit 0]
+--- stdout
+Session 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f (active)
+Reads: Project Helios, Helios Assays
+Writes: Project Helios, Helios Assays
+Change at https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+--- stderr
+
+
+$ beakr session edit 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f --read 4dd25154-0d80-44ab-b4c2-167319bfacb4 --write 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+> PATCH /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+  {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
+[exit 0]
+--- stdout
+7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f	beakr shell in helios	status=active	picker_url=https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+--- stderr
+

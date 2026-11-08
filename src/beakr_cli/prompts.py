@@ -71,6 +71,12 @@ def require_interactive(flag_hint: str) -> None:
         _refuse(f"Pass {flag_hint} when not running interactively.")
 
 
+def prompt_text(prompt: str, *, flag_hint: str) -> str:
+    """Ask for a line of text (empty allowed); without a TTY, refuse naming ``flag_hint``."""
+    require_interactive(flag_hint)
+    return str(typer.prompt(prompt, default="", show_default=False, err=True))
+
+
 def prompt_choice(prompt: str, count: int, *, flag_hint: str) -> int:
     """Ask for a number from 1 to ``count``; return the 0-based index.
 
