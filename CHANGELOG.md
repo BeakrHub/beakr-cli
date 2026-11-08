@@ -14,6 +14,17 @@ Each release lists the public API changes it supports, taken from the API change
   queued it; it can still end up pending, so confirm with
   `GET /v1/knowledge/wiki/proposals/{proposal_id}`) or `needs_person` (the
   project requires a person to accept proposals). The text names the same state.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss` dismisses only a
+  pending proposal. On a proposal that is already dismissed it succeeds without
+  changing it: `already_dismissed: true`, with `reviewed_at` and
+  `reviewed_by_name` of the first dismissal. On an accepted proposal it answers
+  `409` with error code `already_accepted`: the change was applied and stays until
+  it is reverted, and the response names who accepted it (`reviewed_by_name`,
+  `auto_approved`) and when. On a superseded or resolved proposal it answers `409`
+  with error code `proposal_closed`. Do not retry either `409`.
+- Two accepts of the same proposal at once apply it once: the second answers as
+  for an already accepted proposal (`already_accepted: true`). An accept that
+  meets a dismissal committed first applies nothing and answers `400`.
 - `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept` on a proposal that is
   already accepted succeeds without applying it again: `already_accepted: true`,
   with `reviewed_at`, `reviewed_by_name` (the person who accepted it; `null` when

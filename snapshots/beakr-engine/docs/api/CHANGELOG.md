@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=b9cf4467afadb9641b95cfde48a7d416c3175375a601054b4c1dd5155ec68029 changelog sha256=46130d095d94e6255dc74391f5e0d72fd56b151af21569511dfe7d84d48c815a -->
+<!-- contract-stamp: public-openapi sha256=b9cf4467afadb9641b95cfde48a7d416c3175375a601054b4c1dd5155ec68029 changelog sha256=87d7eb5ff2a3b84f4a30e5511a940e8665ad9e4f80e8fe48338d9b14cc9dd8c2 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -22,6 +22,17 @@ The first public version.
   queued it; it can still end up pending, so confirm with
   `GET /v1/knowledge/wiki/proposals/{proposal_id}`) or `needs_person` (the
   project requires a person to accept proposals). The text names the same state.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss` dismisses only a
+  pending proposal. On a proposal that is already dismissed it succeeds without
+  changing it: `already_dismissed: true`, with `reviewed_at` and
+  `reviewed_by_name` of the first dismissal. On an accepted proposal it answers
+  `409` with error code `already_accepted`: the change was applied and stays until
+  it is reverted, and the response names who accepted it (`reviewed_by_name`,
+  `auto_approved`) and when. On a superseded or resolved proposal it answers `409`
+  with error code `proposal_closed`. Do not retry either `409`.
+- Two accepts of the same proposal at once apply it once: the second answers as
+  for an already accepted proposal (`already_accepted: true`). An accept that
+  meets a dismissal committed first applies nothing and answers `400`.
 - `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept` on a proposal that is
   already accepted succeeds without applying it again: `already_accepted: true`,
   with `reviewed_at`, `reviewed_by_name` (the person who accepted it; `null` when
