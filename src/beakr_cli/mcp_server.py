@@ -65,8 +65,9 @@ _INSTRUCTIONS_TEMPLATE = (
     "decisive value in the file; when the file and a card disagree, the file wins. In a "
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
-    "available it gives one cited answer across the wiki, documents and connected "
-    "services.{integrations}{start}\n\n"
+    "available it gives one cited answer: quick by default (Knowledge and documents, "
+    "within 15 seconds); pass quick=false to also search connected services or for "
+    "exhaustive questions.{integrations}{start}\n\n"
     "Scope: pass 'scope' (a project name or id) to work in one project, or omit it to read "
     "everything you can see; list_projects names them, the user's personal project "
     "included (project_type='personal').\n\n"
@@ -757,16 +758,18 @@ async def research(
     query: str,
     project: str = "",
     project_id: str = "",
-    quick: bool = False,
+    quick: bool = True,
     sources: SourceMode = DEFAULT_SOURCE_MODE,
 ) -> dict:
-    """Ask a question and get a researched answer with citations from the
-    organization's knowledge base, documents, and connected services.
+    """Ask a question and get a cited answer from the organization's knowledge
+    base and documents.
 
-    This runs an agentic researcher that searches the wiki, uploaded documents,
-    and connected services (Slack, Drive, Gmail, Calendar, Jira, etc.) to
-    produce a grounded, cited answer. Use this as the primary tool for
-    answering questions about the organization.
+    Quick by default: one search of Knowledge and documents and a short cited
+    answer within 15 seconds. ``quick=False`` runs the agentic researcher (up
+    to 150 seconds), which also searches connected services (Slack, Drive,
+    Gmail, Calendar, Jira, etc.): use it for questions about those services,
+    exhaustive questions, or when a quick answer is thin or stopped early. Use
+    this as the primary tool for answering questions about the organization.
 
     Preserve the user's question and scope when delegating: pass their original
     wording, adding context only when needed. Do not silently restrict a broad
@@ -779,7 +782,7 @@ async def research(
     - "What did we decide about X?"
     - "Who is working on Y?"
     - "What's the status of project Z?"
-    - "What's on my calendar this week?"
+    - "What's on my calendar this week?" (quick=False: a connected service)
     - "Find everything related to topic W"
 
     Args:
@@ -787,8 +790,9 @@ async def research(
         project: Optional project name or ID to scope the search. ``scope`` is
             read as the same argument.
         project_id: Deprecated alias for project.
-        quick: A short cited answer within 15 seconds from one search of
-            Knowledge and documents (no connected services).
+        quick: True (default) for a short cited answer within 15 seconds from
+            one search of Knowledge and documents; False for the full
+            researcher, which also reads connected services.
         sources: The Sources list under the answer: ``brief`` (default, one line
             per document with its source_ref), ``full`` (with excerpts, urls and
             read_file ids) or ``none``.
