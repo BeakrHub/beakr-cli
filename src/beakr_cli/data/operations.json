@@ -2677,7 +2677,7 @@
       "type": "string"
      },
      {
-      "description": "rows, facts: each card's value on this date.",
+      "description": "rows: facts, each card's value per Attribute on this date; connections, the relations in effect that day. Not findings.",
       "name": "as_of",
       "required": false,
       "type": "string"
@@ -2737,7 +2737,7 @@
       "type": "integer"
      },
      {
-      "description": "rows, facts: the latest When per entity and Attribute.",
+      "description": "rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date).",
       "name": "current_only",
       "required": false,
       "type": "boolean"
@@ -5260,6 +5260,18 @@
       "type": "object"
      },
      {
+      "description": "Id of the decision.",
+      "name": "decision_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Version of the pending decision being answered; rejects stale answers.",
+      "name": "decision_version",
+      "required": false,
+      "type": "integer"
+     },
+     {
       "description": "Agent engine to run; null lets the server choose. Honored only if enabled for the organization.",
       "name": "engine",
       "required": false,
@@ -5356,6 +5368,12 @@
       "name": "profile_builder_meta",
       "required": false,
       "type": "object"
+     },
+     {
+      "description": "Id of the resume run.",
+      "name": "resume_run_id",
+      "required": false,
+      "type": "string"
      },
      {
       "description": "Unified scope selection for /ask and workflows. The scope is organized into three independent \"lanes\": 1. Artifacts lane: projects, labels, artifacts (internal documents) 2. Integrations lane: external integrations (GDrive, Dropbox, etc.) 3. Databases lane: public API databases (PubMed, OpenAlex, etc.) Each lane operates independently - selecting/deselecting items in one lane does not affect the others. The resolver handles defaults per lane based on context.",

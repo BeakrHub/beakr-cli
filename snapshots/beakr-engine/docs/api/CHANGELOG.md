@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=70ffb8c069106bbb432e7687bb6424c1cb87bdb7c2682d89386be1e1a866b92a changelog sha256=d3d8df7b5cb85d9e34e0c2e84664038cea735f69cc80630d590dac54d41f51cd -->
+<!-- contract-stamp: public-openapi sha256=9f047c824e343f261edb36d15b78e2bc2740e9911637bf708c9cffa61726c595 changelog sha256=534b6aa627437e692078a4ab0f5d727a7ba4419fdedc2d1d507e1e5d1761780a -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -62,6 +62,26 @@ The first public version.
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
+
+- `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
+  owner when the newest turn failed without an answer: `run_id`, a `reason`
+  (`server_update` when a server update interrupted the run, `failed` otherwise)
+  and a `message` to show. It is null otherwise.
+- Chat run submission (`POST /v1/runs`) accepts `decision_id`
+  and `decision_version` to answer a specific pending question, rejecting stale
+  decision versions, and returns
+  `decision_state` when applicable. Message responses expose `injection_status`
+  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
+  responses also expose session and language details, a description, error,
+  last-poll time, and capacity-wait and overdue flags, with field descriptions
+  explaining how to interpret operation progress.
+- `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
+  (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
+  relation in effect that day, with relations that ended before it left out. On
+  `findings` it is refused with an error saying to filter findings by `when`.
+  For `command: "rows"`, `current_only` on `table: "findings"` is now refused the
+  same way (it matched nothing), as `as_of` already was. The `current_only` and
+  `as_of` descriptions name Connections.
 - `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
   signed into the file's upload URL, so the upload must send exactly that many
   bytes. A file without a size is answered `400`.
