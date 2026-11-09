@@ -168,12 +168,12 @@ def version(
     from beakr_cli import __version__
     from beakr_cli.output import print_json
     from beakr_cli.updates import (
-        BOX_INSTRUCTIONS,
         CHECK_OFF,
         bundled_with_box,
         check_disabled,
         detect_install,
         get_update_status,
+        installation_instructions,
     )
 
     # The CLI a self-hosted installation bundles is upgraded with it, so PyPI's
@@ -184,7 +184,7 @@ def version(
     if json_out:
         report: dict[str, object] = {"version": __version__}
         if on_box:
-            report.update(bundled_with_box=True, instructions=BOX_INSTRUCTIONS)
+            report.update(bundled_with_box=True, instructions=installation_instructions())
         elif check_off:
             report.update(update_check="off")
         elif not offline:
@@ -204,7 +204,7 @@ def version(
     if offline:
         return
     if on_box:
-        print(f"Bundled with this Beakr installation. {BOX_INSTRUCTIONS}")
+        print(f"Bundled with this Beakr installation. {installation_instructions()}")
         return
     if check_off:
         print(CHECK_OFF)
@@ -246,22 +246,23 @@ def _update(*, check: bool, force: bool) -> dict[str, object]:
     from beakr_cli import __version__
     from beakr_cli.output import console, err_console
     from beakr_cli.updates import (
-        BOX_INSTRUCTIONS,
         CHECK_OFF,
         bundled_with_box,
         check_disabled,
         check_off_fix,
         detect_install,
         get_update_status,
+        installation_instructions,
         installed_version_on_path,
         run_upgrade,
     )
 
     if bundled_with_box(detect_install()):
-        console.print(f"Bundled with this Beakr installation. {BOX_INSTRUCTIONS}", markup=False)
+        instructions = installation_instructions()
+        console.print(f"Bundled with this Beakr installation. {instructions}", markup=False)
         if not check:
             raise typer.Exit(1)
-        return {"current": __version__, "bundled_with_box": True, "instructions": BOX_INSTRUCTIONS}
+        return {"current": __version__, "bundled_with_box": True, "instructions": instructions}
     status = get_update_status(max_age=timedelta(0))
     report: dict[str, object] = {
         "current": status.current,
