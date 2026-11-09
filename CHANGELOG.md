@@ -8,6 +8,8 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `beakr kb rows --current-only` and `--as-of` say they read Connections too: the
+  relations not ended, or in effect on the day. Their help said Facts only.
 - **Research is quick by default.** `beakr research`, `beakr kb research` and the
   MCP `research` tool answer within 15 seconds from one search of Knowledge and
   documents unless told otherwise. `--deep` (MCP: `quick=false`) runs the full
