@@ -193,10 +193,20 @@ def rows(
     start: str | None = typer.Option(None, "--start", help="Start date YYYY-MM-DD."),
     end: str | None = typer.Option(None, "--end", help="End date YYYY-MM-DD."),
     current_only: bool = typer.Option(
-        False, "--current-only", help="Keep the latest When per attribute."
+        False,
+        "--current-only",
+        help=(
+            "Facts: each card's current value per field. Connections: the relations "
+            "not ended (dated over undated)."
+        ),
     ),
     as_of: str | None = typer.Option(
-        None, "--as-of", help="Facts: each card's value on this date (YYYY-MM-DD)."
+        None,
+        "--as-of",
+        help=(
+            "Facts: each card's value on this date (YYYY-MM-DD). Connections: the "
+            "relations in effect that day."
+        ),
     ),
     to: str | None = typer.Option(
         None, "--to", help="Connections: the rows pointing at this page (its incoming links)."

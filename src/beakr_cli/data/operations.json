@@ -2677,7 +2677,7 @@
       "type": "string"
      },
      {
-      "description": "rows, facts: each card's value on this date.",
+      "description": "rows: facts, each card's value per Attribute on this date; connections, the relations in effect that day. Not findings.",
       "name": "as_of",
       "required": false,
       "type": "string"
@@ -2737,7 +2737,7 @@
       "type": "integer"
      },
      {
-      "description": "rows, facts: the latest When per entity and Attribute.",
+      "description": "rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date).",
       "name": "current_only",
       "required": false,
       "type": "boolean"
