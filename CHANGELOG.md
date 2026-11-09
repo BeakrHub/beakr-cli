@@ -20,7 +20,9 @@ Each release lists the public API changes it supports, taken from the API change
     `403 session_write_scope`, naming the projects it may write;
   - a session token can only drop projects from its own session
     (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
-    answers `403 session_widen_refused`. It cannot start sessions or mint tokens.
+    answers `403 session_widen_refused`. It cannot start sessions or mint tokens;
+  - `GET /v1/projects` with a session token lists only the session's read
+    projects, and `POST /v1/context` without `project_id` answers within them.
   Every write a session token makes carries the session's `run_label`, so
   undoing that run reverts the whole session. A token lasts an
   hour by default (`ttl_seconds`, up to 12 hours); mint another with
