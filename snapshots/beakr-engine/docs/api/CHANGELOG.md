@@ -11,11 +11,26 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=f4d1afb946094d23fd217b78339ae9a041d6ea970ffb519b22789fabb4eac4e6 changelog sha256=270a634c8fced7cf26f4a111f2367a6dfd797ad5ba6e4bdf5dcec71f275343e0 -->
+<!-- contract-stamp: public-openapi sha256=0353d2d0d6f5bbe332d0fd66e68b7acc8babc53b3e2843b8d7bfa285f1d16c75 changelog sha256=0689f423dffd838576b583d2bff3c5f2ac2445b0889823e08c3cd5b885a9f5d3 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- Chat run submission (`POST /v1/runs`) accepts `decision_id`
+  and `decision_version` to answer a specific pending question, rejecting stale
+  decision versions, and returns
+  `decision_state` when applicable. Message responses expose `injection_status`
+  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
+  responses also expose session and language details, a description, error,
+  last-poll time, and capacity-wait and overdue flags, with field descriptions
+  explaining how to interpret operation progress.
+- `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
+  (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
+  relation in effect that day, with relations that ended before it left out. On
+  `findings` it is refused with an error saying to filter findings by `when`.
+  For `command: "rows"`, `current_only` on `table: "findings"` is now refused the
+  same way (it matched nothing), as `as_of` already was. The `current_only` and
+  `as_of` descriptions name Connections.
 - `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
   signed into the file's upload URL, so the upload must send exactly that many
   bytes. A file without a size is answered `400`.
