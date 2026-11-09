@@ -67,7 +67,22 @@ class UpdateStatus:
             return False
 
 
+#: What beakr-engine's build_clients.py adds to the version of the CLI a full
+#: self-hosted deployment ships in its release (``0.4.0+selfhosted.g<commit>``).
+#: That build is upgraded with the installation's release, never from PyPI, whose
+#: beakr-cli is a different client: it lacks sessions and the self-hosted additions.
+SELF_HOSTED_MARK = "+selfhosted."
+
+
+def self_hosted_build() -> bool:
+    """True for a CLI built for a self-hosted installation's release."""
+    return SELF_HOSTED_MARK in __version__
+
+
 def check_disabled() -> bool:
+    # A self-hosted build never asks PyPI, whatever BEAKR_NO_UPDATE_CHECK says.
+    if self_hosted_build():
+        return True
     return os.environ.get(DISABLE_ENV, "").strip().lower() in {"1", "true", "yes"}
 
 
@@ -289,12 +304,26 @@ BOX_INSTRUCTIONS = (
 )
 
 
+#: How the CLI a full deployment's release ships is upgraded.
+RELEASE_INSTRUCTIONS = (
+    "It is upgraded with the installation's release: install the next release's clients "
+    "(`beakr-release.py clients` prints how), not beakr-cli from PyPI."
+)
+
+
+def installation_instructions() -> str:
+    """How the CLI an installation ships is upgraded: its release's clients, or the box."""
+    return RELEASE_INSTRUCTIONS if self_hosted_build() else BOX_INSTRUCTIONS
+
+
 def check_off_fix() -> str:
     """What to do when the update check is off and no release is known.
 
     On a self-hosted installation the fix is its upgrade, not PyPI: unsetting
     the variable there only asks an index the installation does not install from.
     """
+    if self_hosted_build():
+        return RELEASE_INSTRUCTIONS
     if server_deployment() == "self_hosted":
         return BOX_INSTRUCTIONS
     return "Unset it to look for a newer release."
@@ -303,7 +332,7 @@ def check_off_fix() -> str:
 def box_line(version: str) -> str:
     """What ``beakr_version`` says for the CLI a self-hosted installation bundles."""
     return f"Installed: beakr-cli {version}, bundled with this Beakr installation. " + (
-        BOX_INSTRUCTIONS
+        installation_instructions()
     )
 
 
@@ -316,8 +345,11 @@ def bundled_with_box(info: InstallInfo) -> bool:
     so it is the condition for asking, not the answer. A server that sends no
     ``deployment`` (a 0.1.8 box) is unknown, not a box. The installation puts
     its CLI outside uv and pipx (``other``); a copy the user installed with uv
-    or pipx is upgraded from PyPI whatever it talks to.
+    or pipx is upgraded from PyPI whatever it talks to. A self-hosted build (its
+    version says so) is always one: it came from the installation's release.
     """
+    if self_hosted_build():
+        return True
     if info.method is not InstallMethod.other or not check_disabled():
         # Without BEAKR_NO_UPDATE_CHECK (which an installation sets for its CLI)
         # the answer cannot change the wording, so the server is not asked.

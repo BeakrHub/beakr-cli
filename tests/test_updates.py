@@ -696,3 +696,61 @@ async def test_update_tool_with_the_check_off_on_a_self_hosted_server_names_its_
         "Update did not run: Update checks are off (BEAKR_NO_UPDATE_CHECK is set). "
         f"{updates.BOX_INSTRUCTIONS}"
     )
+
+
+# ---------------------------------------------------------------------------
+# The CLI a full deployment's release ships (its version says +selfhosted.g<commit>)
+# ---------------------------------------------------------------------------
+
+# beakr-engine's build_clients.py stamps it. PyPI's beakr-cli is a different client
+# (no sessions), so this build never asks PyPI and never upgrades from it, with or
+# without BEAKR_NO_UPDATE_CHECK, whatever server it talks to.
+
+_SELF_HOSTED_VERSION = "0.4.0+selfhosted.g0f97ab20ea42"
+
+
+def test_a_self_hosted_build_never_asks_pypi_or_upgrades_from_it(monkeypatch) -> None:
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setattr(updates, "__version__", _SELF_HOSTED_VERSION)
+
+    def no_upgrade(*_args, **_kwargs):
+        raise AssertionError("a self-hosted build ran an upgrade from PyPI")
+
+    monkeypatch.setattr(updates, "run_upgrade", no_upgrade)
+    assert updates.self_hosted_build() and updates.check_disabled()
+    assert updates.bundled_with_box(updates.detect_install())
+
+    version = CliRunner().invoke(app, ["version"])
+    update = CliRunner().invoke(app, ["update", "--force"])
+    report = json.loads(CliRunner().invoke(app, ["version", "--json"]).output)
+
+    assert version.exit_code == 0, version.output
+    assert "beakr-release.py clients" in version.output and "PyPI" in version.output
+    assert "install-beakr.py" not in version.output
+    assert update.exit_code == 1 and "beakr-release.py clients" in update.output
+    assert report["bundled_with_box"] is True
+    assert report["instructions"] == updates.RELEASE_INSTRUCTIONS
+
+
+async def test_the_mcp_tools_on_a_self_hosted_build_name_the_release(monkeypatch) -> None:
+    from beakr_cli import mcp_server
+
+    _pypi_must_not_be_asked(monkeypatch)
+    monkeypatch.setattr(updates, "__version__", _SELF_HOSTED_VERSION)
+
+    def no_upgrade(*_args, **_kwargs):
+        raise AssertionError("a self-hosted build ran an upgrade from PyPI")
+
+    monkeypatch.setattr(mcp_server, "run_upgrade", no_upgrade)
+
+    text = await mcp_server.beakr_version()
+    refused = await mcp_server.update_beakr()
+
+    assert updates.RELEASE_INSTRUCTIONS in text
+    assert refused.startswith("Update did not run.") and updates.RELEASE_INSTRUCTIONS in refused
+
+
+def test_a_public_build_still_checks_pypi(monkeypatch) -> None:
+    monkeypatch.setattr(updates, "__version__", "0.4.0")
+    assert not updates.self_hosted_build()
+    assert not updates.check_disabled()
