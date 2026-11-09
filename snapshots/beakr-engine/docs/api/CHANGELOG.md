@@ -11,11 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=0353d2d0d6f5bbe332d0fd66e68b7acc8babc53b3e2843b8d7bfa285f1d16c75 changelog sha256=0689f423dffd838576b583d2bff3c5f2ac2445b0889823e08c3cd5b885a9f5d3 -->
+<!-- contract-stamp: public-openapi sha256=c1a54afddaece8b2b5a051901a51808f79851cecdd2fa55a0b18249de4828b3d changelog sha256=6e4a9d1a1cbf6676e3378eda4c62943e909559b74058144aedd7fb85433fde65 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
+  owner when the newest turn failed without an answer: `run_id`, a `reason`
+  (`server_update` when a server update interrupted the run, `failed` otherwise)
+  and a `message` to show. It is null otherwise.
 - Chat run submission (`POST /v1/runs`) accepts `decision_id`
   and `decision_version` to answer a specific pending question, rejecting stale
   decision versions, and returns
