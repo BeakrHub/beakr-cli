@@ -4,7 +4,7 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-11-08)
+## beakr-cli 0.4.0 (2026-11-09)
 
 ### Changes
 
@@ -71,6 +71,17 @@ Each release lists the public API changes it supports, taken from the API change
   documents unless told otherwise. `--deep` (MCP: `quick=false`) runs the full
   researcher, which takes up to 150 seconds and also reads connected services.
   The MCP tool description and server instructions tell agents when to turn it off.
+- `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
+  owner when the newest turn failed without an answer: `run_id`, a `reason`
+  (`server_update` when a server update interrupted the run, `failed` otherwise)
+  and a `message` to show. It is null otherwise.
+- `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
+  (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
+  relation in effect that day, with relations that ended before it left out. On
+  `findings` it is refused with an error saying to filter findings by `when`.
+  For `command: "rows"`, `current_only` on `table: "findings"` is now refused the
+  same way (it matched nothing), as `as_of` already was. The `current_only` and
+  `as_of` descriptions name Connections.
 - `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
   signed into the file's upload URL, so the upload must send exactly that many
   bytes. A file without a size is answered `400`.
