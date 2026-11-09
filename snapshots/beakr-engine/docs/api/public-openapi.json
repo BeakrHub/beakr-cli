@@ -12392,6 +12392,41 @@
         "title": "RunAnswer",
         "type": "object"
       },
+      "RunFailureNotice": {
+        "description": "The newest turn of a thread ended without an answer.",
+        "properties": {
+          "message": {
+            "description": "The sentence to show the person.",
+            "title": "Message",
+            "type": "string"
+          },
+          "reason": {
+            "description": "`server_update` when a server update interrupted the run, `failed` for any other failure.",
+            "enum": [
+              "server_update",
+              "failed"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "run_id": {
+            "description": "The run that failed.",
+            "examples": [
+              "f3b7c9e1-0a2d-4c6e-8f1b-3d5e7a9c0b24"
+            ],
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "reason",
+          "message"
+        ],
+        "title": "RunFailureNotice",
+        "type": "object"
+      },
       "RunQuestion": {
         "description": "What a run paused on a question is asking the person.",
         "properties": {
@@ -15527,6 +15562,17 @@
             "description": "Whether it is owner.",
             "title": "Is Owner",
             "type": "boolean"
+          },
+          "last_run_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunFailureNotice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for the thread's owner when the newest turn failed without an answer (a server update interrupted it, or it saved no reply), so the chat can say so and offer a retry after a reload."
           },
           "messages": {
             "description": "The messages.",

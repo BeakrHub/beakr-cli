@@ -8,6 +8,10 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
+  owner when the newest turn failed without an answer: `run_id`, a `reason`
+  (`server_update` when a server update interrupted the run, `failed` otherwise)
+  and a `message` to show. It is null otherwise.
 - Chat run submission (`POST /v1/runs`) accepts `decision_id`
   and `decision_version` to answer a specific pending question, rejecting stale
   decision versions, and returns
