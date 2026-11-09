@@ -11,23 +11,11 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c1a54afddaece8b2b5a051901a51808f79851cecdd2fa55a0b18249de4828b3d changelog sha256=6e4a9d1a1cbf6676e3378eda4c62943e909559b74058144aedd7fb85433fde65 -->
+<!-- contract-stamp: public-openapi sha256=6791288f51d365b5d5b35d91e45bc018981ee26a7d0ab710cd211c62f4c9a2ac changelog sha256=1f21753b0885764e3843437884e259395837ca995b354c7178ca6e466c2a434e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
-  owner when the newest turn failed without an answer: `run_id`, a `reason`
-  (`server_update` when a server update interrupted the run, `failed` otherwise)
-  and a `message` to show. It is null otherwise.
-- Chat run submission (`POST /v1/runs`) accepts `decision_id`
-  and `decision_version` to answer a specific pending question, rejecting stale
-  decision versions, and returns
-  `decision_state` when applicable. Message responses expose `injection_status`
-  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
-  responses also expose session and language details, a description, error,
-  last-poll time, and capacity-wait and overdue flags, with field descriptions
-  explaining how to interpret operation progress.
 - `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
   (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
   relation in effect that day, with relations that ended before it left out. On
