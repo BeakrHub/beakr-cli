@@ -108,7 +108,8 @@ async def test_the_stdio_tool_takes_the_public_form(monkeypatch) -> None:
     monkeypatch.setenv("BEAKR_API_URL", API)
     monkeypatch.setenv("BEAKR_API_KEY", "bk_live_test")
     respx.post(f"{API}/v1/knowledge/research").respond(200, json=_two_documents())
-    body = await mcp_server.research(query="Which lead?")
+    # sources='full' is the hosted rendering; the default brief list is pinned below.
+    body = await mcp_server.research(query="Which lead?", sources="full")
     assert mcp_result.finish(body, tool="research") == _stdio(_two_documents())
 
 
@@ -177,10 +178,20 @@ def test_an_older_engines_answer_still_renders() -> None:
 
 @respx.mock
 @pytest.mark.parametrize("command", [["research"], ["kb", "research"]])
-def test_beakr_research_quick_sends_quick(monkeypatch, command) -> None:
+@pytest.mark.parametrize(
+    ("flags", "sent"),
+    [
+        ([], {"query": "Which lead?", "quick": True}),
+        (["--quick"], {"query": "Which lead?", "quick": True}),
+        (["--deep"], {"query": "Which lead?"}),
+    ],
+)
+def test_beakr_research_is_quick_unless_deep(monkeypatch, command, flags, sent) -> None:
+    # Decision (2026-11-08): research is quick by default; --deep runs the full
+    # researcher, which also reads connected services.
     monkeypatch.setenv("BEAKR_API_URL", API)
     monkeypatch.setenv("BEAKR_API_KEY", "bk_live_test")
     route = respx.post(f"{API}/v1/knowledge/research").respond(200, json=_two_documents())
-    result = CliRunner().invoke(app, [*command, "Which lead?", "--quick", "--json"])
+    result = CliRunner().invoke(app, [*command, "Which lead?", *flags, "--json"])
     assert result.exit_code == 0, result.output
-    assert json.loads(route.calls.last.request.content) == {"query": "Which lead?", "quick": True}
+    assert json.loads(route.calls.last.request.content) == sent

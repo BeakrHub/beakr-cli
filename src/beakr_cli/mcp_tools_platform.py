@@ -284,6 +284,39 @@ def _compound_note(status: Any) -> list[str]:
     return []
 
 
+def conversation_hits_text(hits: list[dict[str, Any]], *, note: str | None = None) -> str:
+    """Conversation index hits, as the hosted tool prints them (``formatting.conversation_hits``).
+
+    Each hit says how well it matches the query (``match``: strong, moderate,
+    tangential or weak) and ``note``, the search's warning when no hit is a
+    strong match, comes first. ``ts_rank`` has no calibrated scale, so an agent
+    read a hit sharing one word with the query as an answer. An engine without
+    the fields gets the text it got before.
+    """
+    if not hits:
+        return "No matching conversations."
+    lines = [note, ""] if note else []
+    for hit in hits:
+        title = hit.get("title") or "(untitled)"
+        when = str(hit.get("updated_at") or "")[:10]
+        kind = "imported session" if hit.get("kind") == "imported" else "Beakr chat"
+        match = f", {hit['match']} match" if hit.get("match") else ""
+        lines.append(f"- {title} ({kind}, {when}{match}, id: {hit.get('id')})")
+        lines.extend(_compound_note(hit.get("compound_status")))
+        if hit.get("summary"):
+            lines.append(f"  {' '.join(str(hit['summary']).split())[:500]}")
+        findings = hit.get("findings") or []
+        if findings:
+            titles = [f.get("page_title") for f in findings if f.get("page_title")]
+            lines.append(
+                f"  findings: {len(findings)}" + (f" ({', '.join(titles[:5])})" if titles else "")
+            )
+        outputs = hit.get("outputs") or []
+        if outputs:
+            lines.append("  outputs: " + ", ".join(str(o.get("title")) for o in outputs[:5]))
+    return "\n".join(lines)
+
+
 async def _search_index(
     query: str, *, project_id: str | None, limit: int, cursor: str
 ) -> dict[str, Any]:
@@ -297,31 +330,9 @@ async def _search_index(
         )
     )
     hits, has_more, next_cursor = _page_of(page, "data")
-    if not hits:
-        text = "No matching conversations."
-    else:
-        lines = []
-        for hit in hits:
-            title = hit.get("title") or "(untitled)"
-            when = str(hit.get("updated_at") or "")[:10]
-            kind = "imported session" if hit.get("kind") == "imported" else "Beakr chat"
-            lines.append(f"- {title} ({kind}, {when}, id: {hit.get('id')})")
-            lines.extend(_compound_note(hit.get("compound_status")))
-            if hit.get("summary"):
-                lines.append(f"  {' '.join(str(hit['summary']).split())[:500]}")
-            findings = hit.get("findings") or []
-            if findings:
-                titles = [f.get("page_title") for f in findings if f.get("page_title")]
-                lines.append(
-                    f"  findings: {len(findings)}"
-                    + (f" ({', '.join(titles[:5])})" if titles else "")
-                )
-            outputs = hit.get("outputs") or []
-            if outputs:
-                lines.append("  outputs: " + ", ".join(str(o.get("title")) for o in outputs[:5]))
-        text = "\n".join(lines)
+    note = page.get("note") if isinstance(page, dict) else None
     return _page_result(
-        text,
+        conversation_hits_text(hits, note=note if isinstance(note, str) else None),
         tool="conversations_search",
         returned=len(hits),
         has_more=has_more,

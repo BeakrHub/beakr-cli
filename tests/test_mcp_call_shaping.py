@@ -245,14 +245,18 @@ async def test_research_numbers_each_document_once() -> None:
 
 @pytest.mark.asyncio
 @respx.mock
-async def test_research_passes_quick_only_when_asked() -> None:
+async def test_research_is_quick_unless_the_agent_turns_it_off() -> None:
+    # Decision (2026-11-08): research is quick by default on every client surface;
+    # quick=false runs the full researcher, which also reads connected services.
     route = respx.post(f"{API}/v1/knowledge/research").mock(
         return_value=Response(200, json={"answer": "Five minutes.", "sources": {}})
     )
     await _call("research", {"query": "How long is a lease?", "quick": True})
     await _call("research", {"query": "How long is a lease?"})
+    await _call("research", {"query": "How long is a lease?", "quick": False})
     sent = [json.loads(call.request.content) for call in route.calls]
     assert sent == [
+        {"query": "How long is a lease?", "quick": True},
         {"query": "How long is a lease?", "quick": True},
         {"query": "How long is a lease?"},
     ]
@@ -293,4 +297,7 @@ async def test_scope_and_project_with_different_values_are_refused() -> None:
     other = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
     result = await _call("wiki_stats", {"scope": PROJECT_ID, "project": other})
     assert result.isError
-    assert "`scope` and `project` are both given" in result.content[0].text
+    error = json.loads(result.content[0].text)
+    assert error["error_code"] == "invalid_arguments"
+    assert "name different projects" in error["message"]
+    assert "`scope`" in error["message"] and "`project`" in error["message"]

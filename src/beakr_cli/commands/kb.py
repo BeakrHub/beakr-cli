@@ -746,9 +746,13 @@ def research(
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
     quick: bool = typer.Option(
-        False,
-        "--quick",
-        help="A short cited answer within 15 seconds from one search (no connected services).",
+        True,
+        "--quick/--deep",
+        help=(
+            "Quick (default): a short cited answer within 15 seconds from one search of "
+            "Knowledge and documents. --deep: the full researcher (up to 150 seconds), "
+            "which also reads connected services."
+        ),
     ),
 ) -> None:
     """Ask a question and get a researched answer with citations."""

@@ -4,10 +4,13 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-11-04)
+## beakr-cli 0.4.0 (2026-11-08)
 
 ### Changes
 
+- `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
+  is named by its vendor-qualified id, for example
+  `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a record in
   a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
@@ -27,6 +30,51 @@ Each release lists the public API changes it supports, taken from the API change
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
+- **Research is quick by default.** `beakr research`, `beakr kb research` and the
+  MCP `research` tool answer within 15 seconds from one search of Knowledge and
+  documents unless told otherwise. `--deep` (MCP: `quick=false`) runs the full
+  researcher, which takes up to 150 seconds and also reads connected services.
+  The MCP tool description and server instructions tell agents when to turn it off.
+- `POST /v1/bulk/prepare` requires `content_length` for every file. The size is
+  signed into the file's upload URL, so the upload must send exactly that many
+  bytes. A file without a size is answered `400`.
+- `POST /v1/bulk/complete` checks each uploaded file before it becomes a file. A
+  file that is missing, differs from its declared size, exceeds the upload limit,
+  is a program, or whose first bytes are not the type its name declares (a
+  `.pdf` that is not a PDF, binary data named as text) is refused, deleted and
+  listed under `failed` with the reason. After completion, the upload URL no
+  longer reaches the file's stored bytes.
+- `POST /v1/uploads/{upload_id}/complete` refuses an assembled file that is a
+  program or whose first bytes are not the type its `path` declares, with `422`
+  and code `content_rejected`; the upload is aborted and its data deleted.
+- The largest file `POST /v1/uploads` and `POST /v1/bulk/prepare` accept is now
+  1 GB (1,073,741,824 bytes), up from 500 MB. Files over 200 MB are stored and
+  listed, but their contents are not read into search.
+- `POST /v1/knowledge/wiki/write` returns `approval_state` (also in
+  `outcome.approval_state`) whenever the call staged a proposal: `pending` (it
+  waits for someone to accept it), `auto_apply_queued` (the caller's auto-approve
+  queued it; it can still end up pending, so confirm with
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}`) or `needs_person` (the
+  project requires a person to accept proposals). The text names the same state.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/dismiss` dismisses only a
+  pending proposal. On a proposal that is already dismissed it succeeds without
+  changing it: `already_dismissed: true`, with `reviewed_at` and
+  `reviewed_by_name` of the first dismissal. On an accepted proposal it answers
+  `409` with error code `already_accepted`: the change was applied and stays until
+  it is reverted, and the response names who accepted it (`reviewed_by_name`,
+  `auto_approved`) and when. On a superseded or resolved proposal it answers `409`
+  with error code `proposal_closed`. Do not retry either `409`.
+- Two accepts of the same proposal at once apply it once: the second answers as
+  for an already accepted proposal (`already_accepted: true`). An accept that
+  meets a dismissal committed first applies nothing and answers `400`.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept` on a proposal that is
+  already accepted succeeds without applying it again: `already_accepted: true`,
+  with `reviewed_at`, `reviewed_by_name` (the person who accepted it; `null` when
+  auto-approve did) and `auto_approved`. A dismissed, superseded or resolved
+  proposal still answers `400`, now saying which and when.
+- `GET /v1/knowledge/wiki/proposals` and
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}` add `reviewed_at`,
+  `reviewed_by_name` and `auto_approved` to decided proposals.
 - File responses (`GET /v1/artifacts/{artifact_id}`, `GET /v1/artifacts` and the
   other operations that return a file) carry
   `exported_from` when the file is a saved PDF or Word copy of a document the
@@ -34,11 +82,38 @@ Each release lists the public API changes it supports, taken from the API change
   `template_id` and `template_name` it was made from, when it was. Changes
   belong in that document, which is then saved again. It is `null` for every
   other file, and for a saved copy whose document the caller cannot open.
+- Match labels gain a fourth band, `tangential`: a result on a related subject
+  that is not about the query. `moderate` now means closer than any such
+  result, so fewer results carry it. The labels are `match_strength` and
+  `relevance` on `GET /v1/knowledge/wiki/search`, a passage's `match` in
+  `POST /v1/knowledge/documents` `search` results, and the `[match: ...]`
+  label in `POST /v1/knowledge/wiki/command` `sections` text. When no result
+  is a strong match, `note` (and the first line of the `sections` text) says
+  so; it used to appear only when every result was weak, and `sections` now
+  lists at most five tangential or weak sections.
+- `GET /v1/conversations/search`: each result carries `match` (`strong` when
+  the query's words appear together, `moderate` when all appear, `tangential`
+  when at least half do, `weak` otherwise) and the page carries
+  `match_strength`, the best of them, and `note` when no result is a strong
+  match. The MCP `conversations_search` tool prints each result's label and
+  the note first.
+- `POST /v1/knowledge/wiki/command` `grep` takes `target`: `prose` (the
+  default, page text; titles are not searched) or `title`, which lists the
+  pages whose title matches the query in `text` or `regex` mode. A `grep`
+  that finds no exact match and answers with pages by meaning now says so on
+  its first line in every output mode ("0 exact matches for ...; showing the
+  closest pages by meaning instead"). `sections` text no longer ends with its
+  own "Sources referenced above" list: those sources are in the response's
+  `sources`. `suggest_parent` ranks a page's likely homes by where the pages
+  most like it (title and draft `content`) are filed, prefers pages that
+  already hold children and index or overview pages, gives each candidate a
+  reason instead of a score, and answers "No confident parent" when no page
+  is close enough.
 - `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
   every word of the query, instead of answering with no results. A meaning-ranked
-  answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
-  result's band) and, when even the best result is weak, a `note` saying the
-  knowledge base may not cover the question; each of its results carries
+  answer carries `match_strength` (`strong`, `moderate`, `tangential` or `weak`,
+  the best result's band) and, when no result is a strong match, a `note` saying
+  the knowledge base may not cover the question; each of its results carries
   `relevance`. A keyword answer carries none of these. The operation is limited
   to 120 requests a minute per caller.
 - `POST /v1/knowledge/research` and the MCP `research` tool no longer name the
