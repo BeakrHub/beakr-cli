@@ -1,0 +1,585 @@
+"""Session project scopes: the projects one agent session (or shell) may read and write.
+
+A person chooses which of their projects a session may read and which it may
+write; the API confines every request made with the session's token
+(``bk_st_...``) to those lists, read again on each request, so a change the
+person makes applies to the session's next call. The agent holding the token can
+only drop projects, never add them (``403 session_widen_refused``).
+
+Two holders use it here:
+
+- **``beakr mcp``** (:class:`McpSession`): the server starts a session when it
+  starts, holds the token in memory, re-mints it before it expires with the
+  person's own credential, and ends the session on a clean exit. Until the person
+  chooses, tools answer with the picker link (or, where the client supports MCP
+  form elicitation, an in-chat form). On an installation without sessions (``404``
+  on ``POST /v1/sessions``) it runs as before, with the person's credential.
+- **A shell** (``beakr session start``): the session's token is kept in
+  ``~/.beakr/sessions/<id>.json`` (0600), and ``BEAKR_SCOPE_SESSION=<id>`` names
+  the session for the commands run in that shell. The id is not a secret, so it
+  can sit in the environment and be printed for ``eval``; the token never leaves
+  the file. ``BEAKR_SESSION`` is not used for this: it already labels the agent
+  session a request belongs to (``X-Beakr-Session``).
+
+Folder memory: when the person ticks "remember for this folder" on the picker
+(``remember_folder``), the selection is saved in the folder's binding
+(``.beakr/project.json``, ``beakr init``), and the next session started in that
+folder is created with it. It is still shown, and editable, on the picker.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import json
+import os
+import time
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from beakr_sdk.errors import BeakrError
+
+#: Names the shell session the commands in this shell use (its id, not its token).
+SESSION_ENV = "BEAKR_SCOPE_SESSION"
+#: ``off`` keeps ``beakr mcp`` on the person's own credential, without a session.
+MCP_SESSIONS_ENV = "BEAKR_MCP_SESSIONS"
+#: The binding key a remembered selection is kept under.
+BINDING_FIELD = "session_scope"
+#: Seconds a token is minted for, and how early it is renewed.
+TOKEN_TTL_SECONDS = 3600
+RENEW_MARGIN_SECONDS = 300
+
+NEEDS_SELECTION = "session_needs_selection"
+WIDEN_REFUSED = "session_widen_refused"
+WRITE_SCOPE = "session_write_scope"
+
+
+class SessionScopeError(BeakrError):
+    """A session operation refused locally, with the fix (shown like any API refusal)."""
+
+    def __init__(self, message: str, *, code: str = "session_error", fix: str | None = None):
+        super().__init__(message, code=code, fix=fix)
+
+    @property
+    def fields(self) -> dict[str, str | None]:
+        return {"error_code": self.code, "message": self.message, "fix": self.fix}
+
+
+# --- Wire helpers ---------------------------------------------------------------------
+
+
+def picker_url_of(exc: BeakrError) -> str | None:
+    """The picker link a ``session_needs_selection`` (or write) refusal carries."""
+    for source in (exc.details, _detail(exc.body)):
+        if isinstance(source, dict) and isinstance(source.get("picker_url"), str):
+            return source["picker_url"]
+    return None
+
+
+def _detail(body: Any) -> Any:
+    return body.get("detail") if isinstance(body, dict) else None
+
+
+def project_ids(projects: list[dict[str, Any]] | None) -> list[str]:
+    return [str(p.get("id")) for p in projects or [] if p.get("id")]
+
+
+def describe(session: dict[str, Any]) -> str:
+    """A short human summary of a session's scope."""
+
+    def names(key: str) -> str:
+        projects = session.get(key) or []
+        return ", ".join(f"{p.get('name') or p.get('id')}" for p in projects) or "none"
+
+    status = session.get("status", "?")
+    lines = [f"Session {session.get('id')} ({status})"]
+    if status == "pending":
+        lines.append(f"No projects chosen yet. Choose them at {session.get('picker_url')}")
+    else:
+        lines.append(f"Reads: {names('read_projects')}")
+        lines.append(f"Writes: {names('write_projects')}")
+        lines.append(f"Change at {session.get('picker_url')}")
+    return "\n".join(lines)
+
+
+def narrowed(
+    session: dict[str, Any],
+    *,
+    drop: list[str] | None = None,
+    drop_write: list[str] | None = None,
+) -> tuple[list[str], list[str]]:
+    """The session's lists with projects dropped, matched by id or name.
+
+    Never adds: every project named must already be in the session, and the
+    result is a subset of the current lists. ``drop`` removes a project from both
+    lists; ``drop_write`` keeps reading it but stops writing it.
+    """
+    read = session.get("read_projects") or []
+    write = session.get("write_projects") or []
+
+    def resolve(refs: list[str] | None, among: list[dict[str, Any]], kind: str) -> set[str]:
+        found: set[str] = set()
+        for ref in refs or []:
+            ref_text = str(ref).strip()
+            if not ref_text:
+                continue
+            matches = [
+                str(p.get("id"))
+                for p in among
+                if ref_text == str(p.get("id"))
+                or ref_text.casefold() == str(p.get("name") or "").casefold()
+            ]
+            if not matches:
+                raise SessionScopeError(
+                    f"{ref_text!r} is not one of this session's {kind} projects. A session can "
+                    "only drop projects it has; adding one is the person's choice.",
+                    code=WIDEN_REFUSED,
+                    fix="Ask the person to add it at the session's picker link.",
+                )
+            found.update(matches)
+        return found
+
+    dropped = resolve(drop, read, "read")
+    dropped_write = resolve(drop_write, write, "write") | (dropped & set(project_ids(write)))
+    new_read = [p for p in project_ids(read) if p not in dropped]
+    new_write = [p for p in project_ids(write) if p not in dropped_write and p in new_read]
+    if not (set(new_read) <= set(project_ids(read)) and set(new_write) <= set(project_ids(write))):
+        raise SessionScopeError("A session can only drop projects.", code=WIDEN_REFUSED)
+    return new_read, new_write
+
+
+# --- Folder memory ----------------------------------------------------------------------
+
+
+def remembered_selection(folder: str | Path | None) -> tuple[list[str], list[str]] | None:
+    """The selection remembered for ``folder`` by its binding, when it applies."""
+    from beakr_cli.project_binding import binding_applies, read_binding
+
+    if not folder:
+        return None
+    binding = read_binding(Path(folder))
+    scope = binding.get(BINDING_FIELD) if binding else None
+    if binding is None or not isinstance(scope, dict) or not binding_applies(binding):
+        return None
+    read = [str(p) for p in scope.get("read_project_ids") or []]
+    write = [str(p) for p in scope.get("write_project_ids") or [] if str(p) in read]
+    return (read, write) if read else None
+
+
+def remember_selection(folder: str | Path, read: list[str], write: list[str]) -> Path:
+    """Keep ``read``/``write`` in the folder's binding (creating ``.beakr/project.json``)."""
+    from beakr_sdk.credentials import resolve_base_url
+
+    from beakr_cli.project_binding import (
+        BINDING_DIR,
+        BINDING_FILE,
+        credential_org_id,
+        find_binding,
+        read_binding,
+    )
+
+    folder = Path(folder)
+    path = find_binding(folder)
+    if path is None:
+        path = folder / BINDING_DIR / BINDING_FILE
+        data: dict[str, Any] = {"base_url": resolve_base_url()}
+        org_id = credential_org_id()
+        if org_id:
+            data["org_id"] = org_id
+    else:
+        data = read_binding(folder) or {}
+    data[BINDING_FIELD] = {"read_project_ids": list(read), "write_project_ids": list(write)}
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    return path
+
+
+def forget_selection(folder: str | Path) -> Path | None:
+    from beakr_cli.project_binding import find_binding, read_binding
+
+    path = find_binding(Path(folder))
+    if path is None:
+        return None
+    data = read_binding(Path(folder)) or {}
+    if data.pop(BINDING_FIELD, None) is None:
+        return None
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    return path
+
+
+# --- Shell sessions (the CLI) -----------------------------------------------------------
+
+
+@dataclass
+class TokenState:
+    """A session's current token, as the shell's session file keeps it."""
+
+    session_id: str
+    token: str
+    expires_at: str
+    base_url: str = ""
+    extra: dict[str, Any] = field(default_factory=dict)
+
+    def expires_soon(self, margin: float = RENEW_MARGIN_SECONDS) -> bool:
+        try:
+            expires = datetime.fromisoformat(self.expires_at.replace("Z", "+00:00"))
+        except ValueError:
+            return True
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return expires.timestamp() - time.time() < margin
+
+
+def sessions_dir() -> Path:
+    from beakr_sdk.credentials import beakr_home
+
+    return beakr_home() / "sessions"
+
+
+def _state_path(session_id: str) -> Path:
+    safe = "".join(ch for ch in session_id if ch.isalnum() or ch == "-")
+    return sessions_dir() / f"{safe}.json"
+
+
+def save_state(state: TokenState) -> Path:
+    from beakr_sdk.credentials import write_private_file
+
+    from beakr_cli import config
+
+    config.ensure_dir()
+    directory = sessions_dir()
+    directory.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        os.chmod(directory, 0o700)
+    path = _state_path(state.session_id)
+    write_private_file(path, json.dumps(asdict(state)))
+    return path
+
+
+def load_state(session_id: str) -> TokenState | None:
+    try:
+        data = json.loads(_state_path(session_id).read_text())
+        return TokenState(**data)
+    except (OSError, ValueError, TypeError):
+        return None
+
+
+def delete_state(session_id: str) -> None:
+    with contextlib.suppress(OSError):
+        _state_path(session_id).unlink()
+
+
+def _token_of(minted: dict[str, Any]) -> tuple[str, str]:
+    token = minted.get("token")
+    if isinstance(token, dict):  # POST /v1/sessions nests it
+        return str(token["token"]), str(token["expires_at"])
+    return str(minted["token"]), str(minted["expires_at"])
+
+
+def create_session(
+    sdk: Any,
+    *,
+    client_name: str,
+    label: str | None = None,
+    folder: str | None = None,
+    read: list[str] | None = None,
+    write: list[str] | None = None,
+    ttl_seconds: int = TOKEN_TTL_SECONDS,
+) -> tuple[dict[str, Any], TokenState]:
+    """Start a session with the person's credential; returns it and its first token."""
+    body: dict[str, Any] = {
+        "client_name": client_name,
+        "issue_token": True,
+        "ttl_seconds": ttl_seconds,
+    }
+    if label:
+        body["label"] = label[:200]
+    if folder:
+        body["folder"] = str(folder)[:1024]
+    if read is not None or write is not None:
+        body["read_project_ids"] = list(read or [])
+        body["write_project_ids"] = list(write or [])
+    session = sdk.request("POST", "/v1/sessions", json=body)
+    token, expires_at = _token_of(session)
+    return session, TokenState(
+        session_id=str(session["id"]),
+        token=token,
+        expires_at=expires_at,
+        base_url=str(getattr(sdk, "base_url", "") or ""),
+    )
+
+
+def renew(sdk: Any, state: TokenState, *, ttl_seconds: int = TOKEN_TTL_SECONDS) -> TokenState:
+    minted = sdk.request(
+        "POST", f"/v1/sessions/{state.session_id}/tokens", json={"ttl_seconds": ttl_seconds}
+    )
+    token, expires_at = _token_of(minted)
+    return TokenState(state.session_id, token, expires_at, state.base_url, state.extra)
+
+
+def shell_session_id() -> str | None:
+    value = os.environ.get(SESSION_ENV, "").strip()
+    return value or None
+
+
+def shell_token() -> str | None:
+    """The token for this shell's session (``BEAKR_SCOPE_SESSION``), renewed when due.
+
+    None when the shell has no session. Raises :class:`SessionScopeError` when it
+    names one this machine has no token for, rather than silently falling back to
+    the person's full credential.
+    """
+    session_id = shell_session_id()
+    if session_id is None:
+        return None
+    state = load_state(session_id)
+    if state is None:
+        raise SessionScopeError(
+            f"{SESSION_ENV} names session {session_id}, but there is no token for it here.",
+            code="session_not_found",
+            fix=f"Run `beakr session start`, or `unset {SESSION_ENV}` to use your own credential.",
+        )
+    if state.expires_soon():
+        from beakr_cli.sdk import get_sdk
+
+        with get_sdk(scoped=False) as person:
+            state = renew(person, state)
+        save_state(state)
+    return state.token
+
+
+# --- The MCP server's session -----------------------------------------------------------
+
+
+class McpSession:
+    """The session ``beakr mcp`` holds for its lifetime."""
+
+    def __init__(self, folder: str | None = None) -> None:
+        self.folder = folder
+        self.state: TokenState | None = None
+        self.session: dict[str, Any] = {}
+        self._lock = asyncio.Lock()
+        self._labelled = False
+        self._remembered = False
+        #: Why the session could not be started yet; the next tool call retries.
+        self.start_error: str | None = None
+
+    # The person's own credential: starting, renewing, choosing (elicitation), ending.
+    @staticmethod
+    def _person() -> Any:
+        from beakr_cli.sdk import MCP_CLIENT_NAME, get_async_sdk
+
+        return get_async_sdk(client_name=MCP_CLIENT_NAME, scoped=False, timeout=30.0)
+
+    def _scoped(self) -> Any:
+        from beakr_cli.sdk import MCP_CLIENT_NAME, get_async_sdk
+
+        return get_async_sdk(client_name=MCP_CLIENT_NAME, timeout=30.0)
+
+    @property
+    def id(self) -> str | None:
+        return self.state.session_id if self.state else None
+
+    @property
+    def token(self) -> str | None:
+        return self.state.token if self.state else None
+
+    @property
+    def pending(self) -> bool:
+        return self.session.get("status") == "pending"
+
+    @property
+    def picker_url(self) -> str | None:
+        return self.session.get("picker_url")
+
+    async def start(self) -> bool:
+        """Start the session; False (no session, as before) where the API has none."""
+        from beakr_sdk.errors import NotFoundError
+
+        remembered = remembered_selection(self.folder)
+        body: dict[str, Any] = {
+            "client_name": "beakr mcp",
+            "issue_token": True,
+            "ttl_seconds": TOKEN_TTL_SECONDS,
+            "label": _label(None, self.folder),
+        }
+        if self.folder:
+            body["folder"] = str(self.folder)[:1024]
+        if remembered:
+            body["read_project_ids"], body["write_project_ids"] = remembered
+        async with self._person() as person:
+            try:
+                session = await person.request("POST", "/v1/sessions", json=body)
+            except NotFoundError:
+                return False
+        token, expires_at = _token_of(session)
+        self.state = TokenState(str(session["id"]), token, expires_at)
+        self.session = session
+        return True
+
+    async def ensure_started(self) -> None:
+        """Start the session now if starting it failed before; raise when it still fails."""
+        if self.state is not None:
+            return
+        async with self._lock:
+            if self.state is not None:
+                return
+            try:
+                started = await self.start()
+            except Exception as exc:  # noqa: BLE001 - reported to the agent
+                self.start_error = str(exc)
+                raise SessionScopeError(
+                    f"Beakr could not start this session: {exc}",
+                    code="session_unavailable",
+                    fix="Retry shortly. Beakr's tools stay unavailable until the session starts.",
+                ) from exc
+            if not started:
+                raise SessionScopeError(
+                    "This Beakr installation no longer offers sessions.",
+                    code="session_unavailable",
+                    fix="Restart the Beakr MCP server.",
+                )
+            self.start_error = None
+
+    async def fresh_token(self) -> str | None:
+        """The token, renewed with the person's credential when it is about to expire."""
+        if self.state is None:
+            return None
+        if self.state.expires_soon():
+            async with self._lock:
+                if self.state.expires_soon():
+                    async with self._person() as person:
+                        minted = await person.request(
+                            "POST",
+                            f"/v1/sessions/{self.state.session_id}/tokens",
+                            json={"ttl_seconds": TOKEN_TTL_SECONDS},
+                        )
+                    token, expires_at = _token_of(minted)
+                    self.state = TokenState(self.state.session_id, token, expires_at)
+        return self.state.token
+
+    async def refresh(self) -> dict[str, Any]:
+        """Read the session again (with its own token): status, lists, remember_folder."""
+        await self.fresh_token()
+        async with self._scoped() as scoped:
+            self.session = await scoped.request("GET", "/v1/sessions/current")
+        self._keep_if_remembered()
+        return self.session
+
+    async def name_client(self, agent: str | None) -> None:
+        """Label the session with the MCP client once it is known (a label is no widening)."""
+        if self._labelled or not agent or self.state is None:
+            return
+        self._labelled = True
+        with contextlib.suppress(Exception):
+            await self.fresh_token()
+            async with self._scoped() as scoped:
+                self.session = await scoped.request(
+                    "PATCH", f"/v1/sessions/{self.id}", json={"label": _label(agent, self.folder)}
+                )
+
+    async def narrow(
+        self, *, drop: list[str] | None = None, drop_write: list[str] | None = None
+    ) -> dict[str, Any]:
+        """Drop projects with the session's own token; never adds one (here, and by the API)."""
+        current = await self.refresh()
+        read, write = narrowed(current, drop=drop, drop_write=drop_write)
+        async with self._scoped() as scoped:
+            self.session = await scoped.request(
+                "PATCH",
+                f"/v1/sessions/{self.id}",
+                json={"read_project_ids": read, "write_project_ids": write},
+            )
+        return self.session
+
+    async def choose(self, read: list[str], write: list[str], *, remember: bool) -> dict[str, Any]:
+        """The person's choice from the in-chat form, applied with their own credential."""
+        body: dict[str, Any] = {"read_project_ids": read, "write_project_ids": write}
+        if remember and self.folder:
+            body["remember_folder"] = True
+        async with self._person() as person:
+            self.session = await person.request("PATCH", f"/v1/sessions/{self.id}", json=body)
+        self._keep_if_remembered()
+        return self.session
+
+    async def person_projects(self, limit: int = 200) -> list[dict[str, Any]]:
+        projects: list[dict[str, Any]] = []
+        async with self._person() as person:
+            page = await person.request("GET", "/v1/projects", params={"limit": 100})
+            projects.extend(page.get("data") or [])
+        return projects[:limit]
+
+    async def end(self) -> None:
+        if self.state is None:
+            return
+        with contextlib.suppress(Exception):
+            async with self._person() as person:
+                await person.request("POST", f"/v1/sessions/{self.id}/end")
+        self.state = None
+
+    def _keep_if_remembered(self) -> None:
+        """Save the selection to the folder's binding once the person asks for it."""
+        if self._remembered or not self.folder or not self.session.get("remember_folder"):
+            return
+        if self.session.get("status") != "active":
+            return
+        self._remembered = True
+        with contextlib.suppress(OSError):
+            remember_selection(
+                self.folder,
+                project_ids(self.session.get("read_projects")),
+                project_ids(self.session.get("write_projects")),
+            )
+
+
+def _label(agent: str | None, folder: str | None) -> str:
+    where = Path(folder).name if folder else ""
+    who = agent or "beakr mcp"
+    return f"{who} in {where}"[:200] if where else who[:200]
+
+
+#: The session this ``beakr mcp`` process holds, once started.
+ACTIVE: McpSession | None = None
+
+
+def active_token() -> str | None:
+    return ACTIVE.token if ACTIVE is not None else None
+
+
+async def start_for_mcp() -> McpSession | None:
+    """Start the server's session unless ``BEAKR_MCP_SESSIONS=off``; None without one.
+
+    Only an installation without sessions (``404``) runs as before, with the
+    person's credential. Any other failure (offline, a server error) leaves the
+    session to be started by the next tool call (:meth:`McpSession.ensure_started`),
+    so a transient error never hands the agent the person's whole reach.
+    """
+    global ACTIVE
+    if os.environ.get(MCP_SESSIONS_ENV, "").strip().lower() in {"off", "0", "false", "no"}:
+        return None
+    session = McpSession(folder=os.getcwd())
+    try:
+        if not await session.start():
+            return None
+    except Exception as exc:  # noqa: BLE001 - retried by the next tool call
+        if _no_credential(exc):
+            return None
+        session.start_error = str(exc)
+    ACTIVE = session
+    return session
+
+
+def _no_credential(exc: Exception) -> bool:
+    """No sign-in at all: the tools fail the same way with or without a session."""
+    from beakr_sdk.errors import AuthenticationError
+
+    return isinstance(exc, AuthenticationError) and getattr(exc, "response", None) is None
+
+
+async def end_for_mcp() -> None:
+    global ACTIVE
+    session, ACTIVE = ACTIVE, None
+    if session is not None:
+        await session.end()

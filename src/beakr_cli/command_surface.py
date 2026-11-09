@@ -46,6 +46,13 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "keys create",
         "keys revoke",
         "keys scopes",
+        # Sessions: limit a shell or agent to the projects you choose.
+        "session start",
+        "session show",
+        "session ls",
+        "session edit",
+        "session end",
+        "session forget",
         # Embedded mode: tokens your backend mints for its users
         "end-user-tokens mint",
         "end-user-tokens ls",

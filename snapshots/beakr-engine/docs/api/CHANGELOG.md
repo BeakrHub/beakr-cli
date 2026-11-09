@@ -11,10 +11,33 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=6ba8213ffef75d4dc932e7122c905c90fbb2e4d06d48930ee96c6fde12f3bfa6 changelog sha256=6326c487be829f3927d1c500f78202c45c574fbce0ec5a658551133d3db11c55 -->
+<!-- contract-stamp: public-openapi sha256=70ffb8c069106bbb432e7687bb6424c1cb87bdb7c2682d89386be1e1a866b92a changelog sha256=d3d8df7b5cb85d9e34e0c2e84664038cea735f69cc80630d590dac54d41f51cd -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- Sessions (`/v1/sessions`): a person chooses which projects one agent session
+  may read and which it may write, and can change them while it runs. Start a
+  session with `POST /v1/sessions` (with `issue_token: true` for its first
+  token) and send its `bk_st_` token as `Authorization: Bearer <token>`. Every
+  request with the token is confined to the session's read projects, and every
+  write to its write projects, read again on each request:
+  - a session started without projects answers `403 session_needs_selection`,
+    with the `picker_url` where the person chooses them, until they do;
+  - a write to a project the session may read but not write answers
+    `403 session_write_scope`, naming the projects it may write;
+  - a session token can only drop projects from its own session
+    (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
+    answers `403 session_widen_refused`. It cannot start sessions or mint tokens;
+  - `GET /v1/projects` with a session token lists only the session's read
+    projects, and `POST /v1/context` without `project_id` answers within them.
+  Every write a session token makes carries the session's `run_label`, so
+  undoing that run reverts the whole session. A token lasts an
+  hour by default (`ttl_seconds`, up to 12 hours); mint another with
+  `POST /v1/sessions/{session_id}/tokens` using the key that started the
+  session. The person can also ask the client to reuse a selection for the
+  folder it runs in (`remember_folder`). Available where the organization has
+  sessions enabled.
 
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example

@@ -5615,6 +5615,261 @@
    "summary": "Mint a service account key"
   },
   {
+   "action": "create-session",
+   "anonymous": false,
+   "area": "sessions",
+   "body": {
+    "fields": [
+     {
+      "default": "api",
+      "description": "The client holding the session, shown to the person (`beakr mcp`, `beakr-cli`).",
+      "name": "client_name",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The folder the client runs in, shown on the picker; never read by Beakr.",
+      "name": "folder",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Also mint a session token and return it in `token`.",
+      "name": "issue_token",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "A label the person recognizes, such as the agent and folder.",
+      "name": "label",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Projects the session may read. Omit both lists to create a pending session the person completes at `picker_url`; every Knowledge, document and research call answers `403 session_needs_selection` until they do.",
+      "multiple": true,
+      "name": "read_project_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": 3600,
+      "description": "Seconds until the token expires: 3600 by default, 43200 at most.",
+      "name": "ttl_seconds",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Projects the session may write; each must also be a read project.",
+      "multiple": true,
+      "name": "write_project_ids",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/sessions",
+   "paginated": false,
+   "path": "/v1/sessions",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Start a session"
+  },
+  {
+   "action": "current-session",
+   "anonymous": false,
+   "area": "sessions",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/sessions/current",
+   "paginated": false,
+   "path": "/v1/sessions/current",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Get the current session"
+  },
+  {
+   "action": "end-session",
+   "anonymous": false,
+   "area": "sessions",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/sessions/{session_id}/end",
+   "paginated": false,
+   "path": "/v1/sessions/{session_id}/end",
+   "path_params": [
+    {
+     "name": "session_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "End a session"
+  },
+  {
+   "action": "get-session",
+   "anonymous": false,
+   "area": "sessions",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/sessions/{session_id}",
+   "paginated": false,
+   "path": "/v1/sessions/{session_id}",
+   "path_params": [
+    {
+     "name": "session_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Get a session"
+  },
+  {
+   "action": "list-sessions",
+   "anonymous": false,
+   "area": "sessions",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/sessions",
+   "paginated": true,
+   "path": "/v1/sessions",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "Include ended sessions.",
+     "name": "include_ended",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": null,
+   "summary": "List your sessions"
+  },
+  {
+   "action": "mint-session-token",
+   "anonymous": false,
+   "area": "sessions",
+   "body": {
+    "fields": [
+     {
+      "default": 3600,
+      "description": "Seconds until the token expires: 3600 by default, 43200 at most.",
+      "name": "ttl_seconds",
+      "required": false,
+      "type": "integer"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/sessions/{session_id}/tokens",
+   "paginated": false,
+   "path": "/v1/sessions/{session_id}/tokens",
+   "path_params": [
+    {
+     "name": "session_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Mint a session token"
+  },
+  {
+   "action": "update-session",
+   "anonymous": false,
+   "area": "sessions",
+   "body": {
+    "fields": [
+     {
+      "description": "A new label; empty clears it.",
+      "name": "label",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The session's read projects, replacing the list. Dropping a read project drops it from write too.",
+      "multiple": true,
+      "name": "read_project_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Ask the client to reuse this selection for sessions it starts in the same folder. The client keeps that binding; a session token cannot set this.",
+      "name": "remember_folder",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The session's write projects, replacing the list; each must be a read project.",
+      "multiple": true,
+      "name": "write_project_ids",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/sessions/{session_id}",
+   "paginated": false,
+   "path": "/v1/sessions/{session_id}",
+   "path_params": [
+    {
+     "name": "session_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Change a session's projects"
+  },
+  {
    "action": "accept-mined-skill-proposal",
    "anonymous": false,
    "area": "skills",

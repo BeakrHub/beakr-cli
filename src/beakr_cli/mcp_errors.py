@@ -131,8 +131,14 @@ async def call_api(request: Callable[[AsyncBeakr], Awaitable[T]]) -> T:
     An error with no HTTP response (the API could not be reached, no
     credential) propagates as the SDK raised it.
     """
+    from beakr_cli import scope_session
     from beakr_cli.sdk import get_async_sdk
 
+    if scope_session.ACTIVE is not None:
+        # The session's token, renewed before it expires (SessionScopeError when
+        # the session cannot be started: never the person's full credential).
+        await scope_session.ACTIVE.ensure_started()
+        await scope_session.ACTIVE.fresh_token()
     async with get_async_sdk() as sdk:
         try:
             return await request(sdk)

@@ -450,8 +450,13 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         cursor: The next_cursor from the previous page's coverage.
         limit: Projects per page (1-50).
     """
+    from beakr_cli import scope_session
     from beakr_cli.mcp_tools_platform import _cursor, _page_of, _page_result, _page_size
 
+    if scope_session.ACTIVE is not None and scope_session.ACTIVE.state is not None:
+        # A session reaches only the projects the person chose for it; listing the
+        # organization's projects is not open to its token.
+        return await _session_projects_result()
     page = await _call_api(
         lambda sdk: sdk.api.projects.list_projects(
             cursor=_cursor(cursor), limit=_page_size(limit), include_knowledge=True
@@ -476,6 +481,28 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         returned=min(len(rows), 50),
         has_more=has_more,
         next_cursor=next_cursor,
+    )
+
+
+async def _session_projects_result() -> dict[str, Any]:
+    from beakr_cli import mcp_session, scope_session
+    from beakr_cli.mcp_tools_platform import _page_result
+
+    session = scope_session.ACTIVE
+    assert session is not None
+    await session.refresh()
+    rows = mcp_session.session_projects(session)
+    lines = [
+        f"- {p.get('name') or 'Untitled'} (id: {p.get('id')}) -- {p['session_access']}"
+        for p in rows
+    ]
+    text = (
+        "This session's projects (the person chose them; session_scope shows or narrows them):\n"
+        + ("\n".join(lines) if lines else "None yet.")
+        + f"\nTo add a project, give the person this link: {session.picker_url}"
+    )
+    return _page_result(
+        text, tool="list_projects", returned=len(rows), has_more=False, next_cursor=None
     )
 
 
@@ -1236,3 +1263,8 @@ workboard = _platform.workboard
 integrations = _platform.integrations
 discover_tools = _platform.discover_tools
 _platform.register_platform_tools(mcp)
+
+# The session's own tool (session_scope), listed only while a session is held.
+from beakr_cli import mcp_session as _session  # noqa: E402
+
+_session.register(mcp)

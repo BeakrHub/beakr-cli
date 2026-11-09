@@ -95,7 +95,11 @@ def _headers() -> dict[str, str]:
 
 
 def get_sdk(
-    *, client_name: str | None = None, timeout: float = 60.0, base_url: str | None = None
+    *,
+    client_name: str | None = None,
+    timeout: float = 60.0,
+    base_url: str | None = None,
+    scoped: bool = True,
 ) -> PrivateBeakr:
     """A client sending ``X-Beakr-Client: beakr-cli/<version>`` (or ``client_name``).
 
@@ -105,8 +109,17 @@ def get_sdk(
     ``X-Beakr-Run`` so `beakr kb undo-run <run>` can take back one run's writes,
     and the agent session (``SESSION_ENV``) as ``X-Beakr-Session``.
     ``base_url`` overrides the configured API (``BEAKR_BASE_URL``, the config).
+
+    In a shell with a session (``BEAKR_SCOPE_SESSION``, ``beakr session start``)
+    requests carry the session's token, confined to the projects the person
+    chose; ``scoped=False`` uses the person's own credential (the session
+    commands themselves, and renewing the token).
     """
+    from beakr_cli import scope_session
+
+    token = scope_session.shell_token() if scoped else None
     return PrivateBeakr(
+        api_key=token,
         base_url=base_url,
         client_name=client_name or CLI_CLIENT_NAME,
         agent=_agent(),
@@ -117,7 +130,7 @@ def get_sdk(
 
 
 def get_async_sdk(
-    *, client_name: str = MCP_CLIENT_NAME, timeout: float = 170.0
+    *, client_name: str = MCP_CLIENT_NAME, timeout: float = 170.0, scoped: bool = True
 ) -> AsyncPrivateBeakr:
     """The async client for the stdio MCP server.
 
@@ -126,9 +139,18 @@ def get_async_sdk(
     services) up to 150s; 170s outwaits it, as the SDK's research call does
     (``beakr_sdk.resources.knowledge.RESEARCH_TIMEOUT``). Writes carry
     ``BEAKR_RUN`` when a script declares one, else this process's run label.
+
+    While the server holds a session (:mod:`beakr_cli.scope_session`), requests
+    carry its token, confined to the projects the person chose; the API then
+    labels the writes with the session itself. ``scoped=False`` uses the person's
+    own credential, for starting, renewing and choosing the session.
     """
+    from beakr_cli import scope_session
+
+    token = scope_session.active_token() if scoped else None
     run = os.environ.get("BEAKR_RUN") or (MCP_RUN_LABEL if client_name == MCP_CLIENT_NAME else None)
     return AsyncPrivateBeakr(
+        api_key=token,
         client_name=client_name,
         agent=_agent(),
         run=run,

@@ -1,0 +1,44 @@
+{
+  "operation": "GET /v1/sessions",
+  "source": "synthesized from public-openapi.json (beakr-engine#2442 SessionOut), values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "data": [
+      {
+        "id": "7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+        "status": "active",
+        "client_name": "beakr-cli",
+        "label": "beakr shell in helios",
+        "folder": "/work/helios",
+        "remember_folder": false,
+        "read_projects": [
+          {
+            "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+            "name": "Project Helios"
+          },
+          {
+            "id": "8b2f6c10-3d4e-4f5a-9b6c-7d8e9f0a1b2c",
+            "name": "Helios Assays"
+          }
+        ],
+        "write_projects": [
+          {
+            "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+            "name": "Project Helios"
+          }
+        ],
+        "picker_url": "https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+        "run_label": "session:7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f",
+        "created_at": "2026-11-08T17:00:00+00:00",
+        "updated_at": "2026-11-08T17:00:00+00:00",
+        "selected_at": "2026-11-08T17:00:00+00:00",
+        "ended_at": null,
+        "last_used_at": null,
+        "token": null
+      }
+    ],
+    "next_cursor": null,
+    "has_more": false
+  }
+}

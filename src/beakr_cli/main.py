@@ -40,6 +40,7 @@ from beakr_cli.commands import (
     project_members,
     projects,
     runs,
+    session,
     skills,
     usage,
     workflows,
@@ -95,6 +96,7 @@ for _module in (
     jobs,
     usage,
     doctor,
+    session,
 ):
     _module.register(internal_app)
 

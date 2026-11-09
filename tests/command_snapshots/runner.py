@@ -125,7 +125,8 @@ def render(
             "\n".join(
                 [
                     f"$ beakr {' '.join(_shown(a) for a in args)}",
-                    *replay.log,
+                    # A request can carry the working directory (a session's folder).
+                    *(_normalize(line, work) for line in replay.log),
                     f"[exit {result.exit_code}]",
                     "--- stdout",
                     _normalize(result.stdout, work).rstrip("\n"),
