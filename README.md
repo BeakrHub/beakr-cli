@@ -447,9 +447,11 @@ session may not write is refused, naming the project, what the session may
 write and how to add it (`beakr session edit <id>` or the session's page); it
 exits 3. When the command names the project, nothing is sent first.
 
-The session hooks (`beakr compound --hook`) never ask or wait: they use the
-session that is open for the agent session or terminal, and otherwise skip the
-capture and say why in `~/.beakr/hooks.log`.
+The session hooks (`beakr compound --hook`) never ask or wait. With a session
+open (`BEAKR_SCOPE_SESSION`, or the one this terminal or agent session kept)
+they capture only into a project it may write, and otherwise skip and say why
+in `~/.beakr/hooks.log`. With no session open they capture into the folder's
+bound project as before: you chose that project with `beakr init`.
 
 Writes run with the session's token, so the API holds them to its write list.
 A few routes take no session token (conversation imports and compounding, a

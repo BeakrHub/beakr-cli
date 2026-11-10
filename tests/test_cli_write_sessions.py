@@ -504,10 +504,85 @@ def test_a_session_token_as_the_credential_never_asks(monkeypatch):
 # --- Hooks ------------------------------------------------------------------------------
 
 
-@respx.mock
-def test_a_hook_without_a_session_skips_the_write_and_never_waits(monkeypatch, tmp_path):
+def _hook(project: str | None):
+    """Run the gate as ``beakr compound --hook`` does, bound to ``project``; what the write saw."""
+    seen: list[tuple[str | None, str | None]] = []
+
+    def invoke() -> str:
+        seen.append((scope_session.shell_session_id(), scope_session.shell_token()))
+        return "compounded"
+
+    result = write_session.run_gated(
+        "compound",
+        write_session.CHECKED,
+        {"hook": True},
+        invoke,
+        targets=lambda: [project] if project else None,
+    )
+    return result, seen
+
+
+def _hooks_log() -> str:
     from beakr_cli.hook_runtime import hooks_log_path
 
+    path = hooks_log_path()
+    return path.read_text() if path.exists() else ""
+
+
+@respx.mock
+def test_a_hook_without_a_session_compounds_into_the_bound_project_as_before():
+    started = respx.post(f"{API}/v1/sessions").respond(201, json=_created())
+
+    result, seen = _hook(B)
+
+    assert result == "compounded"
+    # The person's own credential, no session: the folder's binding chose the project.
+    assert seen == [(None, None)]
+    assert not started.called
+    assert "skipped" not in _hooks_log()
+
+
+@respx.mock
+def test_a_hook_in_an_open_session_compounds_into_a_project_it_may_write():
+    _kept_session()
+    started = respx.post(f"{API}/v1/sessions").respond(201, json=_created())
+
+    result, seen = _hook(A)
+
+    assert result == "compounded"
+    # In the session (a detached child inherits it), sent with the person's credential.
+    assert seen == [(SID, None)]
+    assert not started.called
+    assert scope_session.shell_session_id() is None
+
+
+@respx.mock
+def test_a_hook_in_an_open_session_skips_a_project_it_may_not_write():
+    _kept_session()
+
+    result, seen = _hook(B)
+
+    assert result is None and seen == []
+    log = _hooks_log()
+    assert f"skipped. Session {SID} may not write Assays" in log
+    assert f"beakr session edit {SID}" in log
+
+
+@respx.mock
+def test_a_hook_never_waits_on_a_session_whose_projects_are_not_chosen(monkeypatch):
+    scope_session.save_state(TokenState(SID, "bk_st_first", _later()))
+    scope_session.remember_terminal(SID)
+    polled = respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session("pending"))
+
+    result, seen = _hook(A)
+
+    assert result is None and seen == []
+    assert polled.call_count == 1
+    assert "its projects are not chosen yet" in _hooks_log()
+
+
+@respx.mock
+def test_the_compound_hook_command_never_starts_a_session(tmp_path):
     started = respx.post(f"{API}/v1/sessions").respond(201, json=_created())
     transcript = tmp_path / "t.jsonl"
     transcript.write_text("")
@@ -520,4 +595,3 @@ def test_a_hook_without_a_session_skips_the_write_and_never_waits(monkeypatch, t
 
     assert result.exit_code == 0, result.output
     assert not started.called
-    assert "writes need a session" in hooks_log_path().read_text()

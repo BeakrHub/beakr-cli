@@ -31,7 +31,7 @@ No session is asked for where none can be held: an installation without sessions
 (``404`` on ``POST /v1/sessions``, as ``beakr mcp`` treats it), a service account
 or other non-person credential (the API refuses it a session), or a credential
 that is itself a session token. A hook (``beakr compound --hook``) never asks or
-waits: it uses an open session, or skips the write and says so in the hooks log.
+waits (:func:`_run_hook`).
 """
 
 from __future__ import annotations
@@ -187,6 +187,14 @@ class Held:
     def write_names(self) -> str:
         return _names(self.session.get("write_projects")) or "no project"
 
+    def names_of(self, ids: list[str]) -> str:
+        """The projects' names: the session's own for those it reads, else asked for."""
+        named = {
+            str(p.get("id")): str(p.get("name") or p.get("id"))
+            for p in self.session.get("read_projects") or []
+        }
+        return ", ".join(named.get(p) or _project_name(p) for p in dict.fromkeys(ids))
+
 
 def operation_mode(entry: dict[str, Any]) -> str | None:
     """How a ``beakr api`` operation runs in a session; None when it writes no project content."""
@@ -215,15 +223,13 @@ def run_gated(
     """
     if mode is None or not ENABLED or _exempt_credential():
         return invoke()
-    hook = command == "compound" and bool(params.get("hook"))
-    held = _held(command, params, hook=hook)
+    find_targets = targets or (lambda: _targets(command, params))
+    if command == "compound" and params.get("hook"):
+        return _run_hook(command, params, invoke, find_targets)
+    held = _held(command, params, hook=False)
     if held is None:
         return invoke()
-    if not held.active:
-        # Only a hook gets here: it neither asks nor waits.
-        _hook_skip(command, held)
-        return None
-    projects = (targets or (lambda: _targets(command, params)))()
+    projects = find_targets()
     if projects:
         _check_writes(held, projects)
     previous = os.environ.get(scope_session.SESSION_ENV)
@@ -287,6 +293,56 @@ def _gated_class(path: str, base: type) -> type:
     return GatedCommand
 
 
+def _run_hook(
+    command: str,
+    params: dict[str, Any],
+    invoke: Callable[[], T],
+    targets: Callable[[], list[str] | None],
+) -> T | None:
+    """A hook (``beakr compound --hook``): never asks and never waits.
+
+    With a session open (named, or kept for this terminal or agent session) it
+    compounds only into a project the session may write, and otherwise skips with
+    one line in the hooks log. With none open it compounds into the folder's bound
+    project as before: the person chose that project with ``beakr init``, so it is
+    not the cross-project mistake sessions guard against. Either way it sends the
+    person's credential (the compound routes take no session token).
+    """
+    try:
+        held = _held(command, params, hook=True)
+    except BeakrError as exc:
+        _hook_log(f"{command} hook: could not read the session ({exc}); compounding without it.")
+        held = None
+    if held is None:
+        with scope_session.person_credential():
+            return invoke()
+    if not held.active:
+        _hook_log(
+            f"{command} hook: skipped. Session {held.id} is open here but its projects are not "
+            f"chosen yet; choose them at {held.picker_url}."
+        )
+        return None
+    refused = [p for p in dict.fromkeys(targets() or []) if p not in held.writes()]
+    if refused:
+        names = held.names_of(refused)
+        _hook_log(
+            f"{command} hook: skipped. Session {held.id} may not write {names} (it may write: "
+            f"{held.write_names()}); let it with `beakr session edit {held.id}` or at "
+            f"{held.picker_url}."
+        )
+        return None
+    previous = os.environ.get(scope_session.SESSION_ENV)
+    os.environ[scope_session.SESSION_ENV] = held.id
+    try:
+        with scope_session.person_credential():
+            return invoke()
+    finally:
+        if previous is None:
+            os.environ.pop(scope_session.SESSION_ENV, None)
+        else:
+            os.environ[scope_session.SESSION_ENV] = previous
+
+
 # --- Which session ------------------------------------------------------------------------
 
 
@@ -316,7 +372,7 @@ def _held(command: str, params: dict[str, Any], *, hook: bool) -> Held | None:
             if kept is not None:
                 held = kept
             elif hook:
-                return Held({"id": "", "status": "none"})
+                return None
             else:
                 started = _start(person, command)
                 if started is None:
@@ -539,12 +595,7 @@ def _check_writes(held: Held, projects: list[str]) -> None:
 
 def _write_refusal(held: Held, refused: list[str]) -> SessionScopeError:
     """The refusal of a write outside the session, naming the projects and how to add them."""
-    named = {
-        str(p.get("id")): str(p.get("name") or p.get("id"))
-        for p in held.session.get("read_projects") or []
-    }
-    names = ", ".join(named.get(p) or _project_name(p) for p in dict.fromkeys(refused))
-    what = names or "that project"
+    what = held.names_of(refused) or "that project"
     return SessionScopeError(
         f"Session {held.id} may not write to {what}; nothing was written. It may write: "
         f"{held.write_names()}.",
@@ -580,15 +631,7 @@ def _say(text: str) -> None:
     err_console.print(text, markup=False, highlight=False, soft_wrap=True)
 
 
-def _hook_skip(command: str, held: Held) -> None:
+def _hook_log(message: str) -> None:
     from beakr_cli.hook_runtime import log_hook
 
-    where = (
-        f"session {held.id} has no projects chosen yet ({held.picker_url})"
-        if held.id
-        else "no session is open here"
-    )
-    log_hook(
-        f"{command} hook: skipped, writes need a session and {where}. Run `beakr session "
-        "start` in this folder, or run a write in this agent session to choose one."
-    )
+    log_hook(message)

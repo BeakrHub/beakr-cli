@@ -73,9 +73,10 @@ Each release lists the public API changes it supports, taken from the API change
   link and waits up to 5 minutes for the choice (exit 6 with the link and the
   session id if nobody chooses); the terminal keeps the session for its next
   writes. A project the session may not write is refused by name with how to
-  add it (exit 3). Session hooks never ask: without an open session they skip
-  the capture and log why. Service accounts and installations without sessions
-  work as before.
+  add it (exit 3). Session hooks never ask or wait: in an open session they
+  capture only into a project it may write (else they skip and log why), and
+  with none open they capture into the folder's bound project as before.
+  Service accounts and installations without sessions work as before.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
