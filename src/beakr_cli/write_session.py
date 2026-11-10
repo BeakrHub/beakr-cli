@@ -489,7 +489,7 @@ def _choose_here(person: Any, held: Held, command: str, params: dict[str, Any]) 
     )
     projects = list(person.paginate("/v1/projects", page_size=100))
     with human_output_to_stderr(True):
-        picked = pick(projects, *remembered)
+        picked = pick(projects, *remembered, picker_url=held.picker_url)
     if picked is None or not picked[0]:
         _end_quietly(person, held.id)
         raise SessionScopeError(

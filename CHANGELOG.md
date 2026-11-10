@@ -85,6 +85,15 @@ Each release lists the public API changes it supports, taken from the API change
   `beakr session start -r NAME` works there. A project name the session does not
   read, but you can, is named as outside the session with how to add it, and the
   API's `session_write_scope` refusal names projects instead of their ids.
+- Every session picker offers "all": `r all` / `w all` in the terminal picker
+  (`r none` / `w none` clear a column), `beakr session start|edit --read-all` /
+  `--write-all`, and "Read all projects" / "Write all projects (also reads them)"
+  at the top of `beakr mcp`'s in-chat form, above the per-project rows. Write all
+  also reads every project. "All" is the projects you can see when you choose,
+  sent as the lists: a project created later is not added. A session names at
+  most 200 projects; with more, the pickers say so and point to the session's
+  page. With more than 25 projects the in-chat form offers only Read all and
+  Write all, and the link for a custom choice.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
