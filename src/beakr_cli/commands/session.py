@@ -13,6 +13,11 @@ session's id is in the environment. Without a session the CLI works as before.
 
 These commands always act with your own credential, so ``edit`` can add projects
 while the shell is in the session; the agent's token can only drop them.
+
+Commands that write into a project always run in a session (see
+:mod:`beakr_cli.write_session`): outside one, the first write in a terminal
+opens the picker (or, not at a terminal, prints the picker link and waits) and
+the terminal keeps the session for its next writes.
 """
 
 from __future__ import annotations
@@ -29,7 +34,13 @@ from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import prompt_text
 from beakr_cli.sdk import get_sdk
 
-app = typer.Typer(help="Limit a shell or agent session to the projects you choose.")
+app = typer.Typer(
+    help=(
+        "Limit a shell or agent session to the projects you choose. Commands that write "
+        "into a project always run in one: outside a session, the first write in a "
+        "terminal asks which projects it may write and the terminal keeps that session."
+    )
+)
 
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 _read_opt = typer.Option(
@@ -341,17 +352,7 @@ def forget(json_out: bool = _json_opt) -> None:
 
 
 def _maybe_remember(session: dict[str, Any]) -> None:
-    """Keep the selection in the folder's binding when the person asked for it on the picker."""
-    folder = session.get("folder")
-    if not folder or not session.get("remember_folder") or session.get("status") != "active":
-        return
-    if not Path(folder).is_dir():
-        return
-    scope_session.remember_selection(
-        folder,
-        scope_session.project_ids(session.get("read_projects")),
-        scope_session.project_ids(session.get("write_projects")),
-    )
+    scope_session.keep_remembered(session)
 
 
 def register(root: typer.Typer) -> None:

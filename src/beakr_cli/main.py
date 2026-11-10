@@ -11,6 +11,7 @@ from __future__ import annotations
 import typer
 from rich.markup import escape
 
+from beakr_cli import write_session
 from beakr_cli.command_surface import core_tree
 from beakr_cli.commands import (
     activity,
@@ -99,6 +100,10 @@ for _module in (
     session,
 ):
     _module.register(internal_app)
+
+
+# Commands that write into a project run in a session the person chose.
+write_session.install(internal_app)
 
 
 #: Commands that must not print the stale-version notice: ``mcp`` owns stdio for

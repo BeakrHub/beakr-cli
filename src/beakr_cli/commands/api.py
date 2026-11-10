@@ -276,10 +276,19 @@ def build_command(entry: dict[str, Any]) -> click.Command:
     )
 
     def callback(**values: Any) -> None:
+        from beakr_cli import write_session
+
         for dest, flag in json_dests.items():
             # ``-`` stays literal: stdin belongs to ``--data -``.
             values[dest] = _read_data(values.get(dest), flag, stdin=False)
-        _invoke(entry, values, query_dests, field_dests, file_dests)
+        # A write into a project's content runs in a session, as the named commands do.
+        write_session.run_gated(
+            command_name(entry),
+            write_session.operation_mode(entry),
+            values,
+            lambda: _invoke(entry, values, query_dests, field_dests, file_dests),
+            targets=lambda: _operation_projects(entry, values),
+        )
 
     lines = [entry["summary"] or entry["op"], "", f"{entry['op']}"]
     if entry.get("scope"):
@@ -294,6 +303,23 @@ def build_command(entry: dict[str, Any]) -> click.Command:
     )
     command.beakr_operation = entry["op"]  # type: ignore[attr-defined]
     return command
+
+
+def _operation_projects(entry: dict[str, Any], values: dict[str, Any]) -> list[str] | None:
+    """The project an operation names (its path, query or body), when it names one."""
+    from beakr_cli.project_ref import resolve_project_ref
+
+    data = values.get("data")
+    body = _read_data(data) if isinstance(data, str) and data != "-" else None
+    named = [values.get(key) for key in ("p__project_id", "q__project_id", "b__project_id")]
+    if entry["op"] in _DOOR_OPS:
+        named.append(values.get("b__scope"))
+    if isinstance(body, dict):
+        named += [body.get("project_id"), body.get("scope") if entry["op"] in _DOOR_OPS else None]
+    for value in named:
+        if isinstance(value, str) and value.strip():
+            return [resolve_project_ref(value)]
+    return None
 
 
 def _invoke(

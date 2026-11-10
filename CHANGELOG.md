@@ -62,6 +62,21 @@ Each release lists the public API changes it supports, taken from the API change
   `--read`/`--write`). Commands in that shell send the session's token; the
   token stays in `~/.beakr/sessions` (0600) and only the session id is in
   `BEAKR_SCOPE_SESSION`.
+- Commands that write into a project run in a session, so one project's
+  knowledge is not filed in another by mistake: `upload`, `files upload|rm|approve`,
+  `kb add-fact|add-connection|add-finding|edit-rows`, `kb propose ...`,
+  `kb proposals accept|dismiss`, `projects profile set|edit|setup`,
+  `projects retry`, `interviews link send`, `conversations import`, `compound` and
+  the `beakr api` operations that write Knowledge or files. Reads are not
+  limited. Outside `BEAKR_SCOPE_SESSION`, the first write in a terminal (or agent
+  session) opens the checkbox picker, or, not at a terminal, prints the picker
+  link and waits up to 5 minutes for the choice (exit 6 with the link and the
+  session id if nobody chooses); the terminal keeps the session for its next
+  writes. A project the session may not write is refused by name with how to
+  add it (exit 3). Session hooks never ask or wait: in an open session they
+  capture only into a project it may write (else they skip and log why), and
+  with none open they capture into the folder's bound project as before.
+  Service accounts and installations without sessions work as before.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

@@ -193,10 +193,10 @@ are stable:
 | 0 | ok |
 | 1 | error |
 | 2 | usage (bad flags, or a confirmation needed without `--yes`) |
-| 3 | not signed in, or the credential lacks a scope |
+| 3 | not signed in, the credential lacks a scope, or the session may not write the project (`session_write_scope`) |
 | 4 | not found |
 | 5 | conflict |
-| 6 | a person must do it: the project requires a person to accept proposals, commit Knowledge or approve an agent's upload (`person_review_required`) |
+| 6 | a person must do it: the project requires a person to accept proposals, commit Knowledge or approve an agent's upload (`person_review_required`), or the person has not yet chosen the projects of the session a write waited for (`session_needs_selection`) |
 
 An API URL that answers with an HTML page instead of the Beakr API (the web
 app, a typo, a proxy) is reported by the address that answered and the page's
@@ -386,6 +386,80 @@ beakr interviews link show LINK_ID
 beakr interviews link send LINK_ID --project <id>
 beakr interviews link ls | revoke LINK_ID
 ```
+
+## Sessions: which projects a terminal writes
+
+A session limits a shell or an agent to the projects you choose: which it may
+read and which it may write. You can change them while it runs (`beakr session
+edit`, or the session's page in the web app), and an agent holding the session
+can only drop projects, never add them.
+
+```bash
+eval "$(beakr session start --env)"   # a checkbox picker, then this shell is in the session
+beakr session show                    # what it may read and write, and its page
+beakr session edit                    # change the projects (the picker, or --read/--write)
+beakr session ls                      # your open sessions, agents' included
+beakr session end                     # its token stops working at once
+```
+
+On an installation with sessions, every command that writes into a project
+runs in one, so one project's knowledge is not filed in another by mistake:
+`upload` and `files upload|rm|approve`, `kb add-fact|add-connection|add-finding|edit-rows`,
+`kb propose ...`, `kb proposals accept|dismiss`, `projects profile set|edit|setup`,
+`projects retry`, `interviews link send`, `conversations import`, `compound`, and
+the `beakr api` operations that write Knowledge or files. Reads stay
+organization-wide and never ask. Organization and project administration
+(`projects create|archive|rm`, members, labels, keys, sign-in), your own skill
+library and the session commands themselves are not limited.
+
+Which session a write runs in:
+
+- `BEAKR_SCOPE_SESSION` (set by `beakr session start`) names one: that one.
+- Else the session this terminal already chose, while it is open. "This
+  terminal" is the agent session the command runs under (Claude Code, Codex
+  and Cursor give theirs), else the terminal tab it runs in.
+- Else the first write asks. At a terminal the picker opens, ticked with the
+  choice you remembered for this folder (or the project the command names);
+  press Enter to accept. Not at a terminal (an agent running the CLI), the
+  command starts the session, prints its link for you to choose the projects
+  in the web app, and waits up to 5 minutes. Either way the terminal keeps the
+  session, so its next writes do not ask again until `beakr session end`.
+
+```text
+$ beakr kb add-fact "Compound X-17" --attribute ic50 --value "12 nM" --evidence assay-report.pdf -P Helios ...
+`beakr kb add-fact` writes to a project, so it runs in a session: choose the projects this terminal may read and write (writing one also reads it).
+(the checkbox picker)
+Session 7c1e2d3f-...: writes Helios. This terminal reuses it for writes until `beakr session end 7c1e2d3f-...`. In another shell: export BEAKR_SCOPE_SESSION=7c1e2d3f-...
+```
+
+Not at a terminal, the link is printed and the command waits:
+
+```text
+`beakr kb add-fact` writes to a Beakr project, so it runs in a session, and the person has not chosen its projects yet. Ask them to choose which projects it may read and write at:
+  https://beakr.example.com/sessions/7c1e2d3f-...
+Waiting up to 5 minute(s) for the choice (session 7c1e2d3f-...)...
+```
+
+If nobody chooses in time it writes nothing and exits 6 with the link and the
+session id; run it again once the projects are chosen (the terminal reuses the
+session) or name it with `BEAKR_SCOPE_SESSION=<id>`. A write to a project the
+session may not write is refused, naming the project, what the session may
+write and how to add it (`beakr session edit <id>` or the session's page); it
+exits 3. When the command names the project, nothing is sent first.
+
+The session hooks (`beakr compound --hook`) never ask or wait. With a session
+open (`BEAKR_SCOPE_SESSION`, or the one this terminal or agent session kept)
+they capture only into a project it may write, and otherwise skip and say why
+in `~/.beakr/hooks.log`. With no session open they capture into the folder's
+bound project as before: you chose that project with `beakr init`.
+
+Writes run with the session's token, so the API holds them to its write list.
+A few routes take no session token (conversation imports and compounding, a
+file's approval, an interview's Knowledge, the profile agent): for those the
+CLI checks the project is one the session may write, then sends your own
+credential. A service account (or any credential that is not a person),
+a session token given as the credential, and an installation without sessions
+run as before.
 
 ## Knowledge cards
 
