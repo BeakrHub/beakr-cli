@@ -15,10 +15,13 @@ Client support, checked 2026-11-08: Claude Code shows form elicitations as a
 terminal dialog; Codex CLI shows them inline, its approval reviewer able to
 decline. URL-mode elicitation is not dependable in either (Claude Code narrowed
 its capability to form-only around 2.1.108), so the picker link is given as text
-and the in-chat picker is a form: one Read and one Write checkbox per project,
-plus "remember for this folder" when the server knows its folder. The form is
-offered only for at most :data:`FORM_MAX_PROJECTS` projects; beyond that the link
-is clearer than a long form.
+and the in-chat picker is a form: "Read all projects" and "Write all projects"
+first, then one Read and one Write checkbox per project, plus "remember for this
+folder" when the server knows its folder. "All" is the projects the person can see
+when they answer, sent as the lists; a project created later is not added. The
+per-project rows are offered only for at most :data:`FORM_MAX_PROJECTS` projects
+(beyond that the link is clearer than a long form), and the form not at all for
+more than a session holds (:data:`scope_session.MAX_PROJECTS`).
 
 ``session_scope`` shows the session's projects and may only drop them: it never
 adds one (checked here, and the API refuses a session token that tries with
@@ -43,6 +46,8 @@ UNGATED_TOOLS = frozenset({SESSION_SCOPE_TOOL, "beakr_version", "update_beakr", 
 #: Tools listed only while the server holds a session.
 SESSION_TOOLS = frozenset({SESSION_SCOPE_TOOL})
 FORM_MAX_PROJECTS = 25
+READ_ALL = "read_all"
+WRITE_ALL = "write_all"
 
 SESSION_SCOPE_DESCRIPTION = (
     "Show which Beakr projects this session may read and write, or drop projects from it. "
@@ -87,15 +92,34 @@ def supports_form_elicitation(server: Any) -> bool:
 def picker_schema(
     projects: list[dict[str, Any]], *, folder: str | None
 ) -> tuple[dict[str, Any], dict[str, str]]:
-    """The form's schema (flat booleans) and each field's project id."""
-    properties: dict[str, Any] = {}
+    """The form's schema (flat booleans) and each per-project field's project id.
+
+    "Read all" and "Write all" come first; the per-project rows follow while there
+    are at most :data:`FORM_MAX_PROJECTS` projects.
+    """
+    every = f"All {len(projects)} projects you can see now; projects created later are not added."
+    properties: dict[str, Any] = {
+        READ_ALL: {
+            "type": "boolean",
+            "title": "Read all projects",
+            "description": every,
+            "default": False,
+        },
+        WRITE_ALL: {
+            "type": "boolean",
+            "title": "Write all projects (also reads them)",
+            "description": every,
+            "default": False,
+        },
+    }
     fields: dict[str, str] = {}
-    for index, project in enumerate(projects):
-        name = str(project.get("name") or project.get("id"))
-        for kind, label in (("read", "Read"), ("write", "Write")):
-            key = f"{kind}_{index}"
-            properties[key] = {"type": "boolean", "title": f"{label}: {name}", "default": False}
-            fields[key] = str(project["id"])
+    if len(projects) <= FORM_MAX_PROJECTS:
+        for index, project in enumerate(projects):
+            name = str(project.get("name") or project.get("id"))
+            for kind, label in (("read", "Read"), ("write", "Write")):
+                key = f"{kind}_{index}"
+                properties[key] = {"type": "boolean", "title": f"{label}: {name}", "default": False}
+                fields[key] = str(project["id"])
     if folder:
         properties["remember"] = {
             "type": "boolean",
@@ -105,8 +129,16 @@ def picker_schema(
     return {"type": "object", "properties": properties}, fields
 
 
-def selection_from(content: dict[str, Any], fields: dict[str, str]) -> tuple[list[str], list[str]]:
-    """Read and write lists from the form; writing a project means reading it too."""
+def selection_from(
+    content: dict[str, Any], fields: dict[str, str], every: list[str]
+) -> tuple[list[str], list[str]]:
+    """Read and write lists from the form; writing a project means reading it too.
+
+    "Write all" reads and writes ``every`` project; "Read all" reads them all and
+    keeps the per-project Write ticks.
+    """
+    if content.get(WRITE_ALL):
+        return list(every), list(every)
     read: list[str] = []
     write: list[str] = []
     for key, project_id in fields.items():
@@ -115,19 +147,30 @@ def selection_from(content: dict[str, Any], fields: dict[str, str]) -> tuple[lis
         if key.startswith("write_"):
             write.append(project_id)
         read.append(project_id)
-    read = list(dict.fromkeys(read))
-    return read, [p for p in dict.fromkeys(write)]
+    if content.get(READ_ALL):
+        read = [*every, *read]
+    return list(dict.fromkeys(read)), list(dict.fromkeys(write))
 
 
 async def elicit_choice(server: Any, session: scope_session.McpSession) -> bool:
     """Ask the person in chat; True when they chose at least one project."""
     projects = await session.person_projects()
-    if not projects or len(projects) > FORM_MAX_PROJECTS:
+    if not projects or len(projects) > scope_session.MAX_PROJECTS:
         return False
     schema, fields = picker_schema(projects, folder=session.folder)
+    if fields:
+        how = "Tick Read all or Write all, or choose per project below."
+        later = f" You can change this later at {session.picker_url}"
+    else:
+        how = (
+            f"You have {len(projects)} projects, too many to list here: tick Read all or "
+            f"Write all, or choose some of them at {session.picker_url}"
+        )
+        later = ""
     message = (
-        "Choose the Beakr projects this agent session may read and write. Writing a project "
-        f"also lets it read it. You can change this later at {session.picker_url}"
+        f"Choose the Beakr projects this agent session may read and write. {how} "
+        "All means the projects you have now; ones created later are not added. Writing a "
+        f"project also lets it read it.{later}"
     )
     try:
         result = await server.get_context().session.elicit_form(message, schema)
@@ -135,7 +178,8 @@ async def elicit_choice(server: Any, session: scope_session.McpSession) -> bool:
         return False
     if getattr(result, "action", None) != "accept" or not isinstance(result.content, dict):
         return False
-    read, write = selection_from(result.content, fields)
+    every = [str(project["id"]) for project in projects]
+    read, write = selection_from(result.content, fields, every)
     if not read:
         return False
     await session.choose(read, write, remember=bool(result.content.get("remember")))

@@ -402,6 +402,19 @@ beakr session ls                      # your open sessions, agents' included
 beakr session end                     # its token stops working at once
 ```
 
+In the terminal picker, `r 1,3` toggles reading projects 1 and 3 and `w 2`
+writing project 2 (which also reads it); `r all` / `w all` tick every project,
+`r none` / `w none` clear the column, Enter accepts and `q` cancels. Without a
+picker, `--read-all` reads every project and `--write-all` reads and writes
+every project (`beakr session start --read-all --write Helios` reads them all and
+writes one). `beakr mcp`'s in-chat form starts with "Read all projects" and
+"Write all projects (also reads them)", then a Read and a Write box per project.
+
+"All" means the projects you can see when you choose: they are saved as the
+session's lists, so a project created later is not added (`beakr session edit
+--read-all` again, or tick it on the session's page). A session names at most
+200 projects; with more, choose up to 200 on the session's page.
+
 The `beakr session` commands always use your own credential, project names
 included, so they work in a shell whose session has ended. Any other command
 there says so (exit 1) rather than asking you to sign in:

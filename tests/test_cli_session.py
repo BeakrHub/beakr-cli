@@ -306,6 +306,83 @@ def test_a_client_without_form_elicitation_gets_the_link():
     )
 
 
+def _many(count: int) -> list[dict]:
+    return [{"id": f"00000000-0000-4000-8000-{n:012d}", "name": f"P{n}"} for n in range(count)]
+
+
+def _form(projects: list[dict], content: dict):
+    """Run the gate on a pending session with ``projects``; the form answered ``content``."""
+    _active(_session("pending", read=(), write=()))
+    respx.get(f"{API}/v1/sessions/current").respond(json=_session("pending", read=(), write=()))
+    respx.get(f"{API}/v1/projects").respond(json={"data": projects})
+    chosen = respx.patch(f"{API}/v1/sessions/{SID}").mock(
+        side_effect=lambda request: httpx.Response(
+            200,
+            json=_session(read=(A,), write=())
+            if b"read_project_ids" in request.content
+            else _session("pending", read=(), write=()),
+        )
+    )
+    server = _server(
+        elicitation=SimpleNamespace(form=None, url=None),
+        answer=SimpleNamespace(action="accept", content=content),
+    )
+    refusal = asyncio.run(mcp_session.gate(server, "knowledge_base", None))
+    sent = json.loads(chosen.calls.last.request.content) if chosen.called else None
+    return refusal, server.asked, sent
+
+
+@respx.mock
+def test_the_in_chat_form_offers_read_all_and_write_all_first():
+    projects = [{"id": A, "name": "Helios"}, {"id": B, "name": "Assays"}]
+    refusal, (message, schema), sent = _form(projects, {"write_all": True})
+
+    assert refusal is None
+    fields = list(schema["properties"])
+    assert fields[:2] == ["read_all", "write_all"] and "read_0" in fields
+    assert schema["properties"]["write_all"]["title"] == "Write all projects (also reads them)"
+    assert "Tick Read all or Write all, or choose per project below" in message
+    assert "created later are not added" in message
+    # Write all reads and writes every project the person has now.
+    assert sent == {"read_project_ids": [A, B], "write_project_ids": [A, B]}
+
+
+def test_read_all_keeps_the_per_project_write_ticks():
+    fields = {"read_0": A, "write_0": A, "read_1": B, "write_1": B, "read_2": C, "write_2": C}
+    every = [A, B, C]
+    assert mcp_session.selection_from({"read_all": True, "write_1": True}, fields, every) == (
+        [A, B, C],
+        [B],
+    )
+    # Write all overrides the rows; without either, the rows decide.
+    assert mcp_session.selection_from({"write_all": True, "read_0": False}, fields, every) == (
+        every,
+        every,
+    )
+    assert mcp_session.selection_from({"read_2": True}, fields, every) == ([C], [])
+
+
+@respx.mock
+def test_past_the_row_limit_the_form_offers_only_all():
+    projects = _many(mcp_session.FORM_MAX_PROJECTS + 5)
+    refusal, (message, schema), sent = _form(projects, {"read_all": True})
+
+    assert refusal is None
+    assert list(schema["properties"]) == ["read_all", "write_all"]
+    assert f"You have {len(projects)} projects, too many to list here" in message
+    assert f"https://app.test/sessions/{SID}" in message
+    assert sent["read_project_ids"] == [p["id"] for p in projects]
+    assert sent["write_project_ids"] == []
+
+
+@respx.mock
+def test_more_projects_than_a_session_holds_gets_the_link():
+    refusal, asked, sent = _form(_many(scope_session.MAX_PROJECTS + 1), {"read_all": True})
+
+    assert asked is None and sent is None
+    assert refusal["error_code"] == "session_needs_selection"
+
+
 def test_session_scope_is_listed_only_while_a_session_is_held(monkeypatch):
     from beakr_cli.mcp_server import mcp
 
@@ -442,3 +519,96 @@ def test_the_terminal_picker_toggles_read_and_write():
 def test_the_state_file_is_private():
     path = scope_session.save_state(TokenState(SID, "bk_st_secret", _later()))
     assert oct(Path(path).stat().st_mode & 0o777) == "0o600"
+
+
+def test_the_terminal_picker_ticks_and_clears_every_project():
+    projects = [
+        {"id": A, "name": "Helios"},
+        {"id": B, "name": "Assays"},
+        {"id": C, "name": "Other"},
+    ]
+    from beakr_cli.commands.session import pick
+
+    answers = iter(["r all", "w 2", ""])
+    assert pick(projects, [], [], prompt=lambda _text: next(answers)) == ([A, B, C], [B])
+    answers = iter(["w all", ""])
+    assert pick(projects, [], [], prompt=lambda _text: next(answers)) == ([A, B, C], [A, B, C])
+    # `w none` keeps the reads; `r none` clears both (no reads means no writes).
+    answers = iter(["w none", ""])
+    assert pick(projects, [A, B], [A], prompt=lambda _text: next(answers)) == ([A, B], [])
+    answers = iter(["R NONE", "r 3", ""])
+    assert pick(projects, [A, B], [A], prompt=lambda _text: next(answers)) == ([C], [])
+    asked: list[str] = []
+    pick(projects, [], [], prompt=lambda text: asked.append(text) or "")
+    assert "`r all` / `w all` tick every current project" in asked[0]
+
+
+def test_the_terminal_picker_refuses_more_than_a_session_holds(capsys):
+    from beakr_cli.commands.session import pick
+
+    projects = [
+        {"id": f"00000000-0000-4000-8000-{n:012d}", "name": f"P{n}"}
+        for n in range(scope_session.MAX_PROJECTS + 1)
+    ]
+    answers = iter(["r all", "q"])
+    picked = pick(
+        projects, [], [], prompt=lambda _text: next(answers), picker_url="https://app.test/s"
+    )
+    assert picked is None
+    said = capsys.readouterr().err
+    assert "You can see 201 projects and a session may name at most 200" in said
+    assert "https://app.test/s" in said
+    # Ticked one by one past the limit, Enter says so instead of accepting.
+    every = [p["id"] for p in projects]
+    answers = iter(["", "q"])
+    assert pick(projects, every, [], prompt=lambda _text: next(answers)) is None
+    assert "201 projects are ticked" in capsys.readouterr().err
+
+
+@respx.mock
+def test_session_start_read_all_and_write_all(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    respx.get(f"{API}/v1/projects").respond(
+        json={"data": [{"id": A, "name": "Helios"}, {"id": B, "name": "Assays"}]}
+    )
+    created = respx.post(f"{API}/v1/sessions").respond(201, json=_created("active"))
+
+    result = runner.invoke(app, ["session", "start", "--read-all", "--write", B, "--env"])
+    assert result.exit_code == 0, result.output
+    sent = json.loads(created.calls.last.request.content)
+    assert sent["read_project_ids"] == [A, B] and sent["write_project_ids"] == [B]
+
+    result = runner.invoke(app, ["session", "start", "--write-all", "--env"])
+    assert result.exit_code == 0, result.output
+    sent = json.loads(created.calls.last.request.content)
+    assert sent["read_project_ids"] == [A, B] and sent["write_project_ids"] == [A, B]
+
+
+@respx.mock
+def test_session_edit_write_all_and_the_limit(monkeypatch):
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
+    patched = respx.patch(f"{API}/v1/sessions/{SID}").respond(json=_session())
+    projects = respx.get(f"{API}/v1/projects").respond(
+        json={"data": [{"id": A}, {"id": B}, {"id": C}]}
+    )
+
+    result = runner.invoke(app, ["session", "edit", SID, "--write-all", "--json"])
+    assert result.exit_code == 0, result.output
+    assert json.loads(patched.calls.last.request.content) == {
+        "read_project_ids": [A, B, C],
+        "write_project_ids": [A, B, C],
+    }
+
+    projects.respond(
+        json={
+            "data": [
+                {"id": f"00000000-0000-4000-8000-{n:012d}"}
+                for n in range(scope_session.MAX_PROJECTS + 1)
+            ]
+        }
+    )
+    result = runner.invoke(app, ["session", "edit", SID, "--read-all"])
+    assert result.exit_code != 0
+    assert "201 projects" in result.output and "at most 200" in result.output
+    assert f"https://app.test/sessions/{SID}" in result.output
+    assert patched.call_count == 1

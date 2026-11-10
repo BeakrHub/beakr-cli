@@ -66,6 +66,16 @@ _write_opt = typer.Option(
     help="A project the session may write (it may also read it); repeatable.",
     callback=_person_project_refs,
 )
+_read_all_opt = typer.Option(
+    False,
+    "--read-all",
+    help="Read every project you can see now (projects created later are not added).",
+)
+_write_all_opt = typer.Option(
+    False,
+    "--write-all",
+    help="Read and write every project you can see now (projects created later are not added).",
+)
 
 
 def _session_id(session_id: str | None) -> str:
@@ -89,19 +99,36 @@ def _projects(sdk: Any) -> list[dict[str, Any]]:
     return list(sdk.paginate("/v1/projects", page_size=100))
 
 
+#: Where to choose when "all" is more than a session holds, before the session exists.
+_PENDING_PAGE = "on the web page (`beakr session start --pending` prints its link)"
+
+
+def _too_many(count: int, where: str) -> str:
+    return (
+        f"You can see {count} projects and a session may name at most "
+        f"{scope_session.MAX_PROJECTS}: tick them by number, or choose {where}."
+    )
+
+
 def pick(
     projects: list[dict[str, Any]],
     read: list[str],
     write: list[str],
     *,
     prompt: Any = None,
+    picker_url: str | None = None,
 ) -> tuple[list[str], list[str]] | None:
     """A checkbox picker in the terminal: toggle Read and Write by number.
 
     ``r 1,3`` toggles reading projects 1 and 3, ``w 2`` toggles writing project 2
-    (which also reads it), Enter accepts and ``q`` cancels (None).
+    (which also reads it), ``r all`` / ``w all`` tick every project listed (the
+    projects there are now, not ones created later), ``r none`` / ``w none`` clear
+    the column (no reads means no writes), Enter accepts and ``q`` cancels (None).
     """
-    ask = prompt or (lambda text: prompt_text(text, flag_hint="--read/--write"))
+    ask = prompt or (
+        lambda text: prompt_text(text, flag_hint="--read/--write or --read-all/--write-all")
+    )
+    where = f"on the session's page ({picker_url})" if picker_url else _PENDING_PAGE
     chosen_read = set(read)
     chosen_write = set(write)
     ids = [str(p.get("id")) for p in projects]
@@ -119,21 +146,50 @@ def pick(
             ],
             title="Projects this session may use",
         )
-        answer = str(ask("Toggle with `r 1,3` or `w 2`; Enter to accept, q to cancel")).strip()
+        answer = str(
+            ask(
+                "Toggle with `r 1,3` or `w 2`; `r all` / `w all` tick every current project "
+                "(`r none` / `w none` clear); Enter to accept, q to cancel"
+            )
+        ).strip()
         if not answer:
-            return [p for p in ids if p in chosen_read], [p for p in ids if p in chosen_write]
+            picked_read = [p for p in ids if p in chosen_read]
+            if len(picked_read) > scope_session.MAX_PROJECTS:
+                err_console.print(
+                    f"{len(picked_read)} projects are ticked and a session may name at most "
+                    f"{scope_session.MAX_PROJECTS}: untick some, or choose {where}.",
+                    markup=False,
+                )
+                continue
+            return picked_read, [p for p in ids if p in chosen_write]
         if answer.lower() in {"q", "quit", "cancel"}:
             return None
-        kind, _, numbers = answer.partition(" ")
-        if kind.lower() not in {"r", "w"} or not numbers.strip():
-            err_console.print("Type `r` or `w` and project numbers, e.g. `r 1,3`.")
+        kind, _, numbers = answer.lower().partition(" ")
+        numbers = numbers.strip()
+        if kind not in {"r", "w"} or not numbers:
+            err_console.print(
+                "Type `r` or `w` and project numbers, `all` or `none`, e.g. `r 1,3` or `w all`."
+            )
+            continue
+        if numbers == "all":
+            if len(ids) > scope_session.MAX_PROJECTS:
+                err_console.print(_too_many(len(ids), where), markup=False)
+                continue
+            chosen_read.update(ids)
+            if kind == "w":
+                chosen_write.update(ids)
+            continue
+        if numbers == "none":
+            chosen_write.clear()
+            if kind == "r":
+                chosen_read.clear()
             continue
         for part in numbers.replace(",", " ").split():
             if not part.isdigit() or not 1 <= int(part) <= len(ids):
                 err_console.print(f"No project number {part}.", markup=False)
                 continue
             pid = ids[int(part) - 1]
-            if kind.lower() == "r":
+            if kind == "r":
                 if pid in chosen_read:
                     chosen_read.discard(pid)
                     chosen_write.discard(pid)
@@ -144,6 +200,29 @@ def pick(
             else:
                 chosen_write.add(pid)
                 chosen_read.add(pid)
+
+
+def _every(
+    sdk: Any,
+    read: list[str],
+    write: list[str],
+    *,
+    read_all: bool,
+    write_all: bool,
+    where: str,
+) -> tuple[list[str], list[str]]:
+    """The lists with --read-all/--write-all applied: every project the person can see
+    now, refused when that is more than a session may name."""
+    every = [str(p.get("id")) for p in _projects(sdk)]
+    if len(every) > scope_session.MAX_PROJECTS:
+        raise typer.BadParameter(
+            f"you can see {len(every)} projects and a session may name at most "
+            f"{scope_session.MAX_PROJECTS}: name them with --read/--write, or choose {where}",
+            param_hint="--read-all/--write-all",
+        )
+    if write_all:
+        write = [*every, *write]
+    return _lists([*every, *read], write)
 
 
 def _interactive() -> bool:
@@ -158,6 +237,8 @@ def _render(data: dict[str, Any]) -> None:
 def start(
     read: list[str] = _read_opt,
     write: list[str] = _write_opt,
+    read_all: bool = _read_all_opt,
+    write_all: bool = _write_all_opt,
     label: str | None = typer.Option(None, "--label", help="How the session is shown to you."),
     pending: bool = typer.Option(
         False, "--pending", help="Start without projects; choose them at the picker link."
@@ -171,14 +252,18 @@ def start(
 ) -> None:
     """Start a session limited to the projects you choose, and put this shell in it.
 
-    Without --read/--write it opens a checkbox picker (preselecting what you
-    remembered for this folder); not at a terminal, the session starts pending
-    and you choose at the link it prints.
+    Without --read/--write (or --read-all/--write-all) it opens a checkbox picker
+    (preselecting what you remembered for this folder); not at a terminal, the
+    session starts pending and you choose at the link it prints.
     """
     folder = os.getcwd()
     lists: tuple[list[str], list[str]] | None = None
     with get_sdk(scoped=False) as sdk:
-        if read or write:
+        if read_all or write_all:
+            lists = _every(
+                sdk, read, write, read_all=read_all, write_all=write_all, where=_PENDING_PAGE
+            )
+        elif read or write:
             lists = _lists(read, write)
         elif not pending:
             remembered = scope_session.remembered_selection(folder)
@@ -279,6 +364,8 @@ def edit(
     session_id: str | None = typer.Argument(None, help="Defaults to this shell's session."),
     read: list[str] = _read_opt,
     write: list[str] = _write_opt,
+    read_all: bool = _read_all_opt,
+    write_all: bool = _write_all_opt,
     remember: bool | None = typer.Option(
         None,
         "--remember/--no-remember",
@@ -288,19 +375,24 @@ def edit(
 ) -> None:
     """Change the session's projects with your own credential; it applies to its next request.
 
-    --read/--write replace the lists; without them, at a terminal, the picker opens
-    with the current choice.
+    --read/--write (or --read-all/--write-all) replace the lists; without them, at a
+    terminal, the picker opens with the current choice.
     """
     chosen = _session_id(session_id)
     with get_sdk(scoped=False) as sdk:
         current = sdk.request("GET", f"/v1/sessions/{chosen}")
-        if read or write:
-            lists: tuple[list[str], list[str]] | None = _lists(read, write)
+        where = f"on the session's page ({current.get('picker_url')})"
+        lists: tuple[list[str], list[str]] | None
+        if read_all or write_all:
+            lists = _every(sdk, read, write, read_all=read_all, write_all=write_all, where=where)
+        elif read or write:
+            lists = _lists(read, write)
         elif _interactive():
             lists = pick(
                 _projects(sdk),
                 scope_session.project_ids(current.get("read_projects")),
                 scope_session.project_ids(current.get("write_projects")),
+                picker_url=current.get("picker_url"),
             )
             if lists is None:
                 raise typer.Exit(1)
@@ -312,7 +404,9 @@ def edit(
         if remember is not None:
             body["remember_folder"] = remember
         if not body:
-            raise typer.BadParameter("give --read/--write, or --remember", param_hint="--read")
+            raise typer.BadParameter(
+                "give --read/--write, --read-all/--write-all, or --remember", param_hint="--read"
+            )
         session = sdk.request("PATCH", f"/v1/sessions/{chosen}", json=body)
     if remember is False:
         scope_session.forget_selection(Path(session.get("folder") or os.getcwd()))

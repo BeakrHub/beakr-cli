@@ -50,6 +50,8 @@ BINDING_FIELD = "session_scope"
 #: Seconds a token is minted for, and how early it is renewed.
 TOKEN_TTL_SECONDS = 3600
 RENEW_MARGIN_SECONDS = 300
+#: Most projects a session may name (the API refuses longer lists with 422).
+MAX_PROJECTS = 200
 
 NEEDS_SELECTION = "session_needs_selection"
 WIDEN_REFUSED = "session_widen_refused"
@@ -716,12 +718,16 @@ class McpSession:
         self._keep_if_remembered()
         return self.session
 
-    async def person_projects(self, limit: int = 200) -> list[dict[str, Any]]:
+    async def person_projects(self, limit: int = MAX_PROJECTS + 1) -> list[dict[str, Any]]:
+        """The projects the person can see, at most ``limit`` (one more than a session
+        holds, so a caller can tell when there are too many)."""
         projects: list[dict[str, Any]] = []
         async with self._person() as person:
-            page = await person.request("GET", "/v1/projects", params={"limit": 100})
-            projects.extend(page.get("data") or [])
-        return projects[:limit]
+            async for project in person.paginate("/v1/projects", page_size=100):
+                projects.append(project)
+                if len(projects) >= limit:
+                    break
+        return projects
 
     async def end(self) -> None:
         if self.state is None:

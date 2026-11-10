@@ -208,8 +208,9 @@ def test_at_a_terminal_the_picker_opens_and_the_terminal_keeps_the_session(monke
     monkeypatch.setattr(write_session, "_interactive", lambda: True)
     shown: list[tuple] = []
 
-    def pick(projects, read, write):
+    def pick(projects, read, write, *, picker_url=None):
         shown.append(([p["id"] for p in projects], read, write))
+        assert picker_url == f"https://app.test/sessions/{SID}"
         return [A, B], [A]
 
     monkeypatch.setattr("beakr_cli.commands.session.pick", pick)
@@ -252,7 +253,7 @@ def test_the_picker_starts_from_the_folders_remembered_choice(monkeypatch, tmp_p
     monkeypatch.setattr(write_session, "_interactive", lambda: True)
     shown: list[tuple] = []
 
-    def pick(projects, read, write):
+    def pick(projects, read, write, *, picker_url=None):
         shown.append((read, write))
         return read, write
 
@@ -271,7 +272,7 @@ def test_the_picker_starts_from_the_folders_remembered_choice(monkeypatch, tmp_p
 @respx.mock
 def test_cancelling_the_picker_ends_the_session_and_writes_nothing(monkeypatch):
     monkeypatch.setattr(write_session, "_interactive", lambda: True)
-    monkeypatch.setattr("beakr_cli.commands.session.pick", lambda *_a: None)
+    monkeypatch.setattr("beakr_cli.commands.session.pick", lambda *_a, **_k: None)
     respx.post(f"{API}/v1/sessions").respond(201, json=_created("pending"))
     respx.get(f"{API}/v1/projects").respond(json={"data": [{"id": A}]})
     ended = respx.post(f"{API}/v1/sessions/{SID}/end").respond(json=_session("ended"))
