@@ -15,7 +15,10 @@
         "docs/api/CHANGELOG.md": "sha256:86bc9f70d8e33a73f3b80d1cd79a00ca5cb59b584050dbdfe01151abc350d044",
         "docs/api/agent-tool-surface.json": "sha256:e293fb554d5802b35a6f481af2569763da8ec3498ca685b16095ebd790dc4087",
         "docs/api/cli-private-openapi.json": "sha256:eacf4d9e533ca3c2567ef8000a97bafbd649e279783a51234ca538a47258eeb1",
-        "docs/api/public-openapi.json": "sha256:c1a54afddaece8b2b5a051901a51808f79851cecdd2fa55a0b18249de4828b3d"
+        "docs/api/public-openapi.json": "sha256:c1a54afddaece8b2b5a051901a51808f79851cecdd2fa55a0b18249de4828b3d",
+        "docs/api/still-served-openapi.json": "sha256:0a7c2dbca8e8ba0ed938ad861a65b896dd4d77dcbd7f088b291454f5ff3122b9",
+        "release-base/e464bf209d200147486b6b99c9998f59a7090775/docs/api/CHANGELOG.md": "sha256:8cf9a3c23247d737f8f855cd44f80478c716f14446b32937ab81cb2c4875a4d2",
+        "release-base/e464bf209d200147486b6b99c9998f59a7090775/docs/api/public-openapi.json": "sha256:62df6eb6d684926b122000636ef3719b72a85c1ab9c5de622d2b07518e90b5bb"
       }
     }
   }
