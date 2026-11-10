@@ -138,7 +138,14 @@ def get_update_status(
     CDN serves the project JSON with ``max-age=900``, so for up to 15 minutes after
     a release it can still list the previous one; caching that answer used to make
     a freshly upgraded CLI report the version it had just replaced as the latest.
+
+    A self-hosted build reports no latest at all, cached or not. The cache in
+    ``~/.beakr`` is shared with any public CLI on the same machine, and its PyPI
+    latest is a different client the build is never upgraded to, so reading it made
+    the build print "beakr-cli 0.5.0 is available ... Run beakr update".
     """
+    if self_hosted_build():
+        return UpdateStatus(__version__, None, None)
     cached_latest, checked_at = _read_cache()
     if cached_latest is not None and _older_than_running(cached_latest):
         cached_latest, checked_at = None, None
