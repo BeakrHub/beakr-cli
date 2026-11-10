@@ -325,15 +325,32 @@ async def test_a_project_that_owes_its_profile_stops_the_upload(tmp_path: Path) 
     second = _file(tmp_path, "b.pdf")
     respx.get(f"{API}/v1/projects/{NEW}").respond(json={"id": NEW, "name": "Stability"})
     respx.get(f"{API}/v1/projects").respond(json=_projects(NEW))
+    # The engine's own 409 (beakr/main.py, project_profile_required_response): the
+    # legacy ``detail`` beside the ``error`` envelope, its fix worded for MCP callers.
+    message = (
+        "Project 'Stability' needs a Knowledge profile before files or Knowledge can be "
+        "added to it: the organization requires one on every new project."
+    )
     create = respx.post(f"{API}/v1/uploads").respond(
         409,
         json={
+            "detail": {
+                "code": "project_profile_required",
+                "message": message,
+                "project_id": NEW,
+                "project_name": "Stability",
+            },
             "error": {
                 "code": "project_profile_required",
-                "message": "Project 'Stability' needs a Knowledge profile before files or "
-                "Knowledge can be added to it.",
-                "fix": "Ask the person to set up this project's Knowledge profile first.",
-            }
+                "project_id": NEW,
+                "project_name": "Stability",
+                "message": message,
+                "fix": "Ask the person to set up this project's Knowledge profile first: in "
+                "the web app (open the project and choose Set up the profile) or with `beakr "
+                "projects profile setup --project <project>` in a terminal. Then retry.",
+                "details": {"project_id": NEW, "project_name": "Stability"},
+                "request_id": None,
+            },
         },
     )
 
