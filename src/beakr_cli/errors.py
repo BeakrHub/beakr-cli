@@ -73,9 +73,20 @@ _ARGUMENT_REFUSALS = frozenset(
 )
 
 
+#: Session refusals (:mod:`beakr_cli.scope_session`): a session whose projects the
+#: person has not chosen waits for a person (6), like ``person_review_required``;
+#: a project the session may not write is a permission refusal (3), as the API's is.
+_SESSION_NEEDS_SELECTION = "session_needs_selection"
+_SESSION_WRITE_SCOPE = "session_write_scope"
+
+
 def exit_code_for(exc: BaseException) -> int:
     if needs_a_person(exc):
         return EXIT_PERSON_REVIEW
+    if isinstance(exc, BeakrError) and exc.code == _SESSION_NEEDS_SELECTION:
+        return EXIT_PERSON_REVIEW
+    if isinstance(exc, BeakrError) and exc.code == _SESSION_WRITE_SCOPE:
+        return EXIT_AUTH
     if isinstance(exc, KnowledgeCommandError) and exc.code in _ARGUMENT_REFUSALS:
         return EXIT_USAGE
     if isinstance(exc, (AuthenticationError, PermissionDeniedError)):

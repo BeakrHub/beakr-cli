@@ -36,6 +36,8 @@ _CREDENTIAL_ENV = (
     "CLAUDE_CODE_SESSION_ID",
     "CODEX_THREAD_ID",
     "CURSOR_CONVERSATION_ID",
+    # The session project scope a shell is in (beakr_cli.scope_session.SESSION_ENV).
+    "BEAKR_SCOPE_SESSION",
 )
 
 
@@ -61,6 +63,22 @@ def isolated_home(tmp_path, monkeypatch):
     return home
 
 
+@pytest.fixture(autouse=True)
+def writes_need_no_session(request, monkeypatch):
+    """Run write commands without the session gate, unless a test asks for it.
+
+    Every command that writes into a project runs in a session the person chose
+    (beakr_cli/write_session.py), which costs a sessions request first. Tests
+    across the suite mock only the write itself; tests of the gate are marked
+    ``@pytest.mark.real_write_sessions``.
+    """
+    from beakr_cli import write_session
+
+    monkeypatch.setattr(
+        write_session, "ENABLED", bool(request.node.get_closest_marker("real_write_sessions"))
+    )
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "real_project_refs: resolve --project slugs and names through the API"
@@ -70,6 +88,9 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "real_app_url_report: ask the API for its web app URL (GET /v1/auth/config)"
+    )
+    config.addinivalue_line(
+        "markers", "real_write_sessions: run write commands through the session gate"
     )
 
 

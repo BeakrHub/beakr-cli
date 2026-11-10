@@ -324,6 +324,27 @@ def shell_session_id() -> str | None:
     return value or None
 
 
+#: Set while a command runs with the person's own credential inside a session
+#: (:func:`person_credential`).
+_PERSON_CREDENTIAL = False
+
+
+@contextlib.contextmanager
+def person_credential() -> Any:
+    """Send the person's own credential while in a session, for a route that takes no session token.
+
+    The CLI's write gate (:mod:`beakr_cli.write_session`) uses it for the few
+    writes the API refuses to any session token, after checking itself that the
+    session may write the project.
+    """
+    global _PERSON_CREDENTIAL
+    previous, _PERSON_CREDENTIAL = _PERSON_CREDENTIAL, True
+    try:
+        yield
+    finally:
+        _PERSON_CREDENTIAL = previous
+
+
 def shell_token() -> str | None:
     """The token for this shell's session (``BEAKR_SCOPE_SESSION``), renewed when due.
 
@@ -332,7 +353,7 @@ def shell_token() -> str | None:
     the person's full credential.
     """
     session_id = shell_session_id()
-    if session_id is None:
+    if session_id is None or _PERSON_CREDENTIAL:
         return None
     state = load_state(session_id)
     if state is None:
@@ -348,6 +369,84 @@ def shell_token() -> str | None:
             state = renew(person, state)
         save_state(state)
     return state.token
+
+
+def keep_remembered(session: dict[str, Any]) -> None:
+    """Keep the selection in the folder's binding when the person asked for it on the picker."""
+    folder = session.get("folder")
+    if not folder or not session.get("remember_folder") or session.get("status") != "active":
+        return
+    if not Path(folder).is_dir():
+        return
+    remember_selection(
+        folder,
+        project_ids(session.get("read_projects")),
+        project_ids(session.get("write_projects")),
+    )
+
+
+# --- This terminal's session ------------------------------------------------------------
+#
+# A write the CLI makes outside a named session (``BEAKR_SCOPE_SESSION``) opens one
+# and keeps it for the terminal it ran in, so the next write there reuses it
+# instead of asking again (:mod:`beakr_cli.write_session`). "The terminal" is the
+# agent session when the command runs under one (Claude Code, Codex, Cursor: their
+# own session id), else the controlling terminal and its process session (the
+# shell the terminal tab started), else the process session alone. Only the
+# session's id is kept, under ``~/.beakr/sessions/terminals``; its token stays in
+# the session's own file.
+
+
+def terminal_key() -> str:
+    """What identifies the terminal (or agent session) this command runs in."""
+    from beakr_cli.sdk import _session as agent_session
+
+    agent = agent_session()
+    if agent:
+        return f"agent:{agent}"
+    getsid = getattr(os, "getsid", None)
+    leader = getsid(0) if getsid is not None else os.getppid()
+    for fd in (0, 1, 2):
+        try:
+            return f"tty:{os.ttyname(fd)}:{leader}"
+        except OSError:
+            continue
+    return f"process:{leader}"
+
+
+def _terminal_path(key: str) -> Path:
+    import hashlib
+
+    return sessions_dir() / "terminals" / f"{hashlib.sha256(key.encode()).hexdigest()[:32]}.json"
+
+
+def terminal_session_id(key: str | None = None) -> str | None:
+    """The session this terminal kept, when its token is still here."""
+    try:
+        data = json.loads(_terminal_path(key or terminal_key()).read_text())
+    except (OSError, ValueError):
+        return None
+    session_id = data.get("session_id") if isinstance(data, dict) else None
+    if not isinstance(session_id, str) or load_state(session_id) is None:
+        return None
+    return session_id
+
+
+def remember_terminal(session_id: str, key: str | None = None) -> Path:
+    from beakr_sdk.credentials import write_private_file
+
+    key = key or terminal_key()
+    path = _terminal_path(key)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with contextlib.suppress(OSError):
+        os.chmod(path.parent, 0o700)
+    write_private_file(path, json.dumps({"session_id": session_id, "terminal": key}))
+    return path
+
+
+def forget_terminal(key: str | None = None) -> None:
+    with contextlib.suppress(OSError):
+        _terminal_path(key or terminal_key()).unlink()
 
 
 # --- The MCP server's session -----------------------------------------------------------
