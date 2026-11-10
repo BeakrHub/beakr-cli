@@ -1,12 +1,19 @@
-"""``beakr projects profile show|set|edit``: a project's Knowledge profile.
+"""``beakr projects profile show|set|edit|setup``: a project's Knowledge profile.
 
-The profile tells Knowledge what a project is about (what it is for, the
-people, organizations and topics that matter, the kinds of things to build
-pages for, how to read its documents) and steers how its files are compiled.
-``show`` reads it; ``set`` replaces it from a JSON or YAML file, or changes the
-fields given as flags (creating the profile when the project has none); ``edit``
-opens it as YAML in your editor and saves what you leave. Only a project's
-owners may change it.
+The profile tells Knowledge what a project is about and steers how its files
+are compiled. Its most important part is the entity types: the kinds of things
+to build pages for (lots, deviations, compounds, assays). It also holds what the
+project is for, the people, organizations and topics that matter, and how to
+read its documents. ``show`` reads it; ``set`` replaces it from a JSON or YAML
+file, or changes the fields given as flags (creating the profile when the
+project has none); ``edit`` opens it as YAML in your editor and saves what you
+leave; ``setup`` sets it up in a conversation with Beakr's agent, here in the
+terminal. Only a project's owners may change it.
+
+An organization can require a profile on every new project. Until the profile
+has content, such a project takes no files, connector sources or Knowledge: the
+API answers 409 ``project_profile_required`` and ``setup`` or ``set`` is the way
+out.
 """
 
 from __future__ import annotations
@@ -32,11 +39,11 @@ _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 #: The fields a profile write takes, in the order they are shown and edited.
 FIELDS = (
     "name",
+    "entity_types",
     "description",
     "industry",
     "goals",
     "focus_areas",
-    "entity_types",
     "core_people",
     "core_organizations",
     "core_topics",
@@ -47,8 +54,10 @@ _SAVED = "Saved the Knowledge profile; Knowledge reads it when it next compiles 
 
 _TEMPLATE_HELP = """\
 # This project's Knowledge profile. Save to apply it; leave the file unchanged to
-# cancel. Lists are YAML lists; people are {name, role, relevance}, organizations
-# {name, type, relevance}, topics {name, relevance}. Only project owners may save.
+# cancel. entity_types come first: the kinds of things Knowledge builds pages for
+# (lot, deviation, compound), singular snake_case. Lists are YAML lists; people
+# are {name, role, relevance}, organizations {name, type, relevance}, topics
+# {name, relevance}. Only project owners may save.
 """
 
 
@@ -68,13 +77,17 @@ def _read(sdk: Any, project_id: str) -> dict[str, Any] | None:
 def _render(profile: dict[str, Any]) -> None:
     if profile.get("name"):
         console.print(f"[bold]{escape(str(profile['name']))}[/bold]", highlight=False)
+    # First: the kinds of things Knowledge builds pages for.
+    if profile.get("entity_types"):
+        console.print(
+            f"Entity types: {', '.join(profile['entity_types'])}", highlight=False, markup=False
+        )
     for label, key in (("Description", "description"), ("Industry", "industry")):
         if profile.get(key):
             console.print(f"{label}: {profile[key]}", highlight=False, markup=False)
     for label, key in (
         ("Goals", "goals"),
         ("Focus areas", "focus_areas"),
-        ("Entity types", "entity_types"),
     ):
         if profile.get(key):
             console.print(f"{label}: {', '.join(profile[key])}", highlight=False, markup=False)
@@ -283,9 +296,221 @@ def edit_command(
     emit(result, json_out=json_out, render=_render, lines=_lines)
 
 
+#: What starts a setup conversation when the person does not.
+_OPENING = "Help me set up this project's Knowledge profile, starting with its entity types."
+#: Lines that end the conversation.
+_DONE = {"", "/done", "/quit", "/exit"}
+_FAILED = {"error", "failed", "cancelled"}
+
+
+def _setup_body(
+    project_id: str, message: str, *, thread_id: str | None, answer: bool, required: bool
+) -> dict[str, Any]:
+    """The run ``projects.start_profile_setup`` (beakr-sdk) starts.
+
+    Built here and sent with ``request`` so the CLI also works with a released
+    SDK that predates that method.
+    """
+    import uuid
+
+    body: dict[str, Any] = {
+        "idempotency_key": uuid.uuid4().hex,
+        "message": message,
+        "home_project_id": project_id,
+        "scope": {"knowledge_graph": True, "projects": [{"id": project_id}]},
+        # A client with no profile panel, held to the profile.
+        "profile_builder_meta": {
+            "profile_scope": "project",
+            "project_id": project_id,
+            "required": required,
+            "setup_only": True,
+            "surface": "terminal",
+        },
+    }
+    if thread_id:
+        body["thread_id"] = thread_id
+    if answer:
+        body["is_ask_user_response"] = True
+    return body
+
+
+def _saved_summary(profile: dict[str, Any]) -> str:
+    """One line for a ``profile_update`` event: the entity types, then what else is set."""
+    parts = []
+    if profile.get("entity_types"):
+        parts.append(f"entity types: {', '.join(map(str, profile['entity_types']))}")
+    for label, key in (
+        ("description", "description"),
+        ("industry", "industry"),
+        ("goals", "goals"),
+        ("focus areas", "focus_areas"),
+        ("people", "core_people"),
+        ("organizations", "core_organizations"),
+        ("topics", "core_topics"),
+        ("extraction guidance", "extraction_guidance"),
+    ):
+        value = profile.get(key)
+        if isinstance(value, list) and value:
+            parts.append(f"{label} ({len(value)})")
+        elif isinstance(value, str) and value.strip():
+            parts.append(label)
+    return "; ".join(parts)
+
+
+def _turn(sdk: Any, run_id: str) -> str:
+    """Stream one reply of the agent to stdout; return how the run ended."""
+    from beakr_cli.cited_answer import print_cited_sources
+    from beakr_cli.commands.runs import _CitationStream
+
+    order: list[str] = []
+    sources: dict[str, dict[str, Any]] = {}
+    citations = _CitationStream(order)
+    status = "completed"
+    wrote = ""
+    for event in sdk.runs.stream(run_id):
+        kind = event.get("type")
+        data = event.get("data") or {}
+        if kind == "content_delta" and not data.get("is_thinking"):
+            chunk = citations.feed(str(data.get("delta") or ""))
+            if chunk:
+                wrote = chunk
+                sys.stdout.write(chunk)
+                sys.stdout.flush()
+        elif kind == "profile_update":
+            summary = _saved_summary(data)
+            if summary:
+                err_console.print(f"[green]Saved[/green] {escape(summary)}", soft_wrap=True)
+        elif kind == "sources":
+            for source in data.get("sources") or []:
+                if source.get("key"):
+                    sources[str(source["key"])] = source
+        elif kind == "error":
+            err_console.print(f"[red]{escape(str(data.get('message') or data))}[/red]")
+        elif kind == "stream_complete":
+            status = str(data.get("status") or status)
+    rest = citations.finish()
+    if rest:
+        wrote = rest
+        sys.stdout.write(rest)
+    if wrote and not wrote.endswith("\n"):
+        sys.stdout.write("\n")
+    print_cited_sources(order, sources)
+    return status
+
+
+def _question(run: dict[str, Any]) -> dict[str, Any] | None:
+    question = run.get("question")
+    if run.get("status") == "interrupted" and isinstance(question, dict):
+        return question
+    return None
+
+
+def setup_command(
+    project: str | None = _project_opt,
+    message: str | None = typer.Option(
+        None, "--message", "-m", help="Your first message (default: ask the agent to begin)."
+    ),
+    thread: str | None = typer.Option(
+        None, "--thread", help="Continue an earlier setup conversation."
+    ),
+    answer: bool = typer.Option(
+        False, "--answer", help="--message answers the question the agent asked (with --thread)."
+    ),
+) -> None:
+    """Set up the Knowledge profile with Beakr's agent, in a conversation here.
+
+    The agent asks about the project, starting with its entity types (the kinds
+    of things Knowledge keeps pages for, with examples, attributes and how they
+    relate), then what it is for and who and what matters, and saves the profile
+    as it goes. Type your answers; an empty line or /done ends the conversation.
+    Without a terminal it runs one turn and exits: continue with --thread and
+    --message (and --answer for the agent's question). Only project owners may
+    save a profile.
+    """
+    from beakr_cli.output import is_interactive
+    from beakr_cli.prompts import prompt_text
+
+    project_id = _require_project(project)
+    with get_sdk(timeout=300.0) as sdk:
+        details = dict(sdk.projects.get(project_id))
+        required = bool(details.get("requires_knowledge_profile"))
+        name = str(details.get("name") or project_id)
+        err_console.print(
+            f"Setting up the Knowledge profile for [bold]{escape(name)}[/bold] with Beakr's "
+            "agent, starting with its entity types: the kinds of things Knowledge keeps pages "
+            "for. Answer its questions; an empty line or /done ends the conversation.",
+            soft_wrap=True,
+        )
+        if required:
+            err_console.print(
+                "Your organization requires this profile: files and Knowledge cannot be "
+                "added to the project until it has content.",
+                soft_wrap=True,
+            )
+        text = message or _OPENING
+        interactive = is_interactive()
+        while True:
+            run = sdk.request(
+                "POST",
+                "/v1/runs",
+                json=_setup_body(
+                    project_id, text, thread_id=thread, answer=answer, required=required
+                ),
+            )
+            run_id = str(run.get("run_id") or run.get("id"))
+            thread = str(run.get("thread_id") or thread)
+            status = _turn(sdk, run_id)
+            if status in _FAILED:
+                err_console.print(f"[red]The agent's run ended {escape(status)}.[/red]")
+                raise typer.Exit(1)
+            question = _question(dict(sdk.runs.get(run_id)))
+            options = [str(option) for option in (question or {}).get("options") or []]
+            if question:
+                console.print(str(question.get("text") or ""), markup=False, highlight=False)
+                for number, option in enumerate(options, 1):
+                    console.print(f"  {number}. {option}", markup=False, highlight=False)
+            if not interactive:
+                # One turn per call: a script continues the thread itself.
+                flag = " --answer" if question else ""
+                err_console.print(
+                    f"Reply with `beakr projects profile setup -P {project_id} --thread "
+                    f'{thread}{flag} -m "..."`.',
+                    markup=False,
+                    soft_wrap=True,
+                )
+                break
+            line = prompt_text("> ", flag_hint="--thread and --message")
+            if line.strip().lower() in _DONE:
+                break
+            choice = line.strip()
+            if options and choice.isdigit() and 1 <= int(choice) <= len(options):
+                choice = options[int(choice) - 1]
+            text, answer = choice, question is not None
+        current = _read(sdk, project_id)
+        still_required = bool(dict(sdk.projects.get(project_id)).get("requires_knowledge_profile"))
+    console.print()
+    if current:
+        _render(current)
+    else:
+        err_console.print("No profile was saved yet.")
+    if still_required:
+        err_console.print(
+            "[yellow]The project still needs a profile with content before files or "
+            "Knowledge can be added.[/yellow]",
+            soft_wrap=True,
+        )
+    if thread:
+        err_console.print(
+            f"Continue with `beakr projects profile setup -P {project_id} --thread {thread}`.",
+            markup=False,
+            soft_wrap=True,
+        )
+
+
 app.command("show")(show_command)
 app.command("set")(set_command)
 app.command("edit")(edit_command)
+app.command("setup")(setup_command)
 
 
 def register(projects_app: typer.Typer) -> None:

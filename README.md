@@ -269,7 +269,7 @@ key can carry). A call outside a key's scopes exits 3 and names the missing scop
 ```bash
 beakr projects ls | create NAME | show ID | archive ID | rm ID
 beakr projects status -P ID | retry -P ID [--file FILE_ID]   # Knowledge: ready? what failed?
-beakr projects profile show -P ID | set -P ID ... | edit -P ID # what Knowledge should understand
+beakr projects profile setup -P ID | show -P ID | set -P ID ... | edit -P ID # what Knowledge should understand
 beakr projects members ls ID | add ID USER_ID | invite ID EMAIL | rm ID TYPE PRINCIPAL_ID
 beakr members ls | role USER_ID admin | rm USER_ID
 beakr upload report.pdf data/ --project <id> --folder <folder-id>
@@ -283,15 +283,30 @@ beakr doctor                                        # auth, scopes, API, MCP, ho
 
 ### Tell Knowledge what a project is about
 
-A project's Knowledge profile steers how its files are compiled: what the
-project is for, the people, organizations and topics that matter, and the kinds
-of things to build pages for. Set it before or after uploading; Knowledge reads
-it when it next compiles files. Only the project's owners may change it.
+A project's Knowledge profile steers how its files are compiled. Its most
+important part is the entity types: the kinds of things Knowledge builds pages
+for (batches, deviations, CAPAs, suppliers). It also holds what the project is
+for and the people, organizations and topics that matter. Knowledge reads it
+when it next compiles files. Only the project's owners may change it.
+
+Set it up with Beakr's agent, in a conversation in your terminal. The agent
+settles the entity types first (what one instance is, examples, key attributes,
+how they relate), then the rest, and saves the profile as it goes:
+
+```bash
+beakr projects profile setup -P Basel
+```
+
+An empty line or `/done` ends it. Without a terminal (a script or an agent) it
+runs one turn and prints how to reply: `--thread THREAD -m "..."`, with
+`--answer` when the agent asked a question.
+
+Or write it yourself:
 
 ```bash
 beakr projects profile set -P Basel \
-  --description "Batch records, deviations and CAPAs for the Basel site" \
   -t batch -t deviation -t capa -t supplier \
+  --description "Batch records, deviations and CAPAs for the Basel site" \
   --person "Priya Natarajan:Batch owner" --goal "Track deviations to closure"
 beakr projects profile set -P Basel --file profile.yaml   # the whole profile (JSON or YAML)
 beakr projects profile edit -P Basel                      # as YAML in $EDITOR
@@ -301,6 +316,11 @@ beakr projects profile show -P Basel
 Flags change only the fields they name (a repeated flag replaces that list) and
 create the profile when the project has none; `--file` replaces the whole
 profile and refuses unknown fields.
+
+An organization can require a profile on every new project. Until it has one, the
+project takes no files, connector sources or Knowledge: those commands exit 5
+(`project_profile_required`) and print the `setup` and `set` commands for that
+project.
 
 ### Know when Knowledge is ready
 

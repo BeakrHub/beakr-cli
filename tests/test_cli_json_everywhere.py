@@ -31,6 +31,9 @@ JSON_EXEMPT_COMMANDS = {
     # Passes every argument through to `codex` unchanged; `codex exec --json`
     # is Codex's own flag, so taking --json here would steal it.
     "codex": "arguments pass through to the codex binary, which has its own --json",
+    # A conversation typed at a terminal; `projects profile show --json` reads
+    # what it saved.
+    "projects profile setup": "an interactive conversation with the setup agent",
 }
 
 
