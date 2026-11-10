@@ -11,10 +11,24 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4592397044ee7b42e34cdd54665067654ddea10d127e7b3915fc7f876fff574f changelog sha256=4ef85442bf790092752002da5faeb11ce2bb281ce4203a531d3cc038788dd4fa -->
+<!-- contract-stamp: public-openapi sha256=9386e622c4edc3f566d0e83751b04a8827fb3b4d19d5b3358bd570b230888100 changelog sha256=55611def246d211d992b0199937514f66432e0b3510f9dbd6b88e2c4f0142c40 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- Attribution on Knowledge changes: `GET /v1/knowledge/wiki/ingestion-events`,
+  `GET /v1/knowledge/wiki/pages/{page_id}/revisions` and
+  `GET /v1/knowledge/wiki/pages/{page_id}/blame` return `attribution`: who and
+  what wrote the change. `kind` is `beakr` (a model or maintenance process
+  Beakr ran, named in `model` or `process`), `agent` (a person's own agent
+  through MCP, the CLI, an SDK or the API, with the `client`, `agent` and
+  `session` it declared in `X-Beakr-Client`, `X-Beakr-Agent` and
+  `X-Beakr-Session`, or the session its session token belongs to), `person`
+  or `system`. `person` names the person behind it and `accepted_by` who
+  accepted a proposal. A file a client uploads records that client, agent and
+  session, so the event that compiles it names them too. Each source in
+  `GET /v1/knowledge/wiki/pages/{page_id}/section-provenance` that records the
+  revision which added it carries the same record as `added_by`.
 
 - Sessions (`/v1/sessions`): a person chooses which projects one agent session
   may read and which it may write, and can change them while it runs. Start a
