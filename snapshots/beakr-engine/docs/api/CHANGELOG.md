@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c1a54afddaece8b2b5a051901a51808f79851cecdd2fa55a0b18249de4828b3d changelog sha256=6e4a9d1a1cbf6676e3378eda4c62943e909559b74058144aedd7fb85433fde65 -->
+<!-- contract-stamp: public-openapi sha256=62df6eb6d684926b122000636ef3719b72a85c1ab9c5de622d2b07518e90b5bb changelog sha256=6b99288dae5d439d85473d08f962a82ac0289b9fdd9e171bc0316a74d2034b08 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -20,14 +20,6 @@ The first public version.
   owner when the newest turn failed without an answer: `run_id`, a `reason`
   (`server_update` when a server update interrupted the run, `failed` otherwise)
   and a `message` to show. It is null otherwise.
-- Chat run submission (`POST /v1/runs`) accepts `decision_id`
-  and `decision_version` to answer a specific pending question, rejecting stale
-  decision versions, and returns
-  `decision_state` when applicable. Message responses expose `injection_status`
-  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
-  responses also expose session and language details, a description, error,
-  last-poll time, and capacity-wait and overdue flags, with field descriptions
-  explaining how to interpret operation progress.
 - `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
   (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
   relation in effect that day, with relations that ended before it left out. On

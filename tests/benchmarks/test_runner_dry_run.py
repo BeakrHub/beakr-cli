@@ -143,9 +143,11 @@ def test_research_asks_send_the_question_scoped_to_the_case_project():
     )
     record = CaseRunner(client, RunOptions(sleep=lambda _s: None)).run(case)
     assert record.passed
+    # beakr-sdk 0.2.0 sends research quick by default, as the CLI now does.
     assert json.loads(research.calls.last.request.content) == {
         "query": "Who maintains MS-2?",
         "project_id": "p-1",
+        "quick": True,
     }
 
 

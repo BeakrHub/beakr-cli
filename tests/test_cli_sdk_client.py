@@ -95,12 +95,14 @@ async def test_research_outwaits_the_engines_route_timeout(monkeypatch) -> None:
     monkeypatch.setenv("BEAKR_API_KEY", "key")
     with respx.mock:
         route = respx.post(f"{API}/v1/knowledge/research").respond(json={"text": "ok"})
+        # Deep research (quick=False) is the one that runs up to 150s; quick
+        # research is the default since beakr-sdk 0.2.0.
         async with get_async_sdk() as sdk:
             assert sdk.timeout == 170.0
-            await sdk.knowledge.research("What changed?")
+            await sdk.knowledge.research("What changed?", quick=False)
         assert route.calls.last.request.extensions["timeout"]["read"] == 170.0
         with get_sdk() as sdk:
-            sdk.knowledge.research("What changed?")
+            sdk.knowledge.research("What changed?", quick=False)
         assert route.calls.last.request.extensions["timeout"]["read"] == 170.0
 
 

@@ -8681,22 +8681,6 @@
             "title": "Injected",
             "type": "boolean"
           },
-          "injection_status": {
-            "anyOf": [
-              {
-                "enum": [
-                  "sent",
-                  "seen"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Injection status: one of `sent`, `seen`.",
-            "title": "Injection Status"
-          },
           "is_ask_user_response": {
             "default": false,
             "description": "Whether it is ask user response.",
@@ -10350,15 +10334,9 @@
         "properties": {
           "attempt_count": {
             "default": 0,
-            "description": "Number of execution attempts recorded for this operation.",
+            "description": "Number of attempt.",
             "title": "Attempt Count",
             "type": "integer"
-          },
-          "capacity_wait": {
-            "default": false,
-            "description": "Whether execution is waiting for available compute capacity.",
-            "title": "Capacity Wait",
-            "type": "boolean"
           },
           "deadline_at": {
             "anyOf": [
@@ -10370,49 +10348,13 @@
                 "type": "null"
               }
             ],
-            "description": "The expected deadline used to determine whether the operation is overdue.",
+            "description": "Time of the deadline (ISO 8601, UTC).",
             "title": "Deadline At"
           },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "A short explanation of the work currently being performed.",
-            "title": "Description"
-          },
-          "error": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "A user-visible explanation of an operation failure, when available.",
-            "title": "Error"
-          },
           "kind": {
-            "description": "The type of background work, such as sandbox execution or a remote job.",
+            "description": "What kind of pending operation this is.",
             "title": "Kind",
             "type": "string"
-          },
-          "language": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The interpreter used to execute the submitted code, when applicable.",
-            "title": "Language"
           },
           "last_heartbeat_at": {
             "anyOf": [
@@ -10424,44 +10366,13 @@
                 "type": "null"
               }
             ],
-            "description": "When the operation most recently reported that it was still alive.",
+            "description": "Time of the last heartbeat (ISO 8601, UTC).",
             "title": "Last Heartbeat At"
           },
-          "last_polled_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "When the service most recently checked the external operation.",
-            "title": "Last Polled At"
-          },
           "operation_id": {
-            "description": "Stable identifier used to track this background operation across polls.",
+            "description": "Id of the operation.",
             "title": "Operation Id",
             "type": "string"
-          },
-          "overdue": {
-            "default": false,
-            "description": "Whether execution has passed its expected completion deadline.",
-            "title": "Overdue",
-            "type": "boolean"
-          },
-          "session_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The managed execution session that owns this operation, when available.",
-            "title": "Session Id"
           },
           "started_at": {
             "anyOf": [
@@ -10473,11 +10384,11 @@
                 "type": "null"
               }
             ],
-            "description": "When the background operation began execution.",
+            "description": "When it started, or null if it has not.",
             "title": "Started At"
           },
           "status": {
-            "description": "The current lifecycle state of the background operation.",
+            "description": "Current status of the pending operation.",
             "title": "Status",
             "type": "string"
           },
@@ -10490,7 +10401,7 @@
                 "type": "null"
               }
             ],
-            "description": "A bounded excerpt of the most recent standard error output.",
+            "description": "Last lines of the operation's error output.",
             "title": "Stderr Tail"
           },
           "stdout_tail": {
@@ -10502,7 +10413,7 @@
                 "type": "null"
               }
             ],
-            "description": "A bounded excerpt of the most recent standard output.",
+            "description": "Last lines of the operation's output.",
             "title": "Stdout Tail"
           }
         },
@@ -15015,32 +14926,6 @@
             "description": "Context from the client, such as the page the person is on.",
             "title": "Client Context"
           },
-          "decision_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Id of the decision.",
-            "title": "Decision Id"
-          },
-          "decision_version": {
-            "anyOf": [
-              {
-                "minimum": 1.0,
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Version of the pending decision being answered; rejects stale answers.",
-            "title": "Decision Version"
-          },
           "engine": {
             "anyOf": [
               {
@@ -15214,19 +15099,6 @@
             "description": "Marks a run that sets up a knowledge profile.",
             "title": "Profile Builder Meta"
           },
-          "resume_run_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Id of the resume run.",
-            "title": "Resume Run Id"
-          },
           "scope": {
             "anyOf": [
               {
@@ -15329,19 +15201,6 @@
           }
         ],
         "properties": {
-          "decision_state": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Authoritative pending question and its ordered revision, used to recover the current decision after reconnecting.",
-            "title": "Decision State"
-          },
           "injected_into_run": {
             "default": false,
             "description": "True when no new run was started because the thread's run was still working: the message was delivered to that run as a follow-up. run_id and stream_url are that run's, and user_message_id is the delivered message.",

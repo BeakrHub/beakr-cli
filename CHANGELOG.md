@@ -4,7 +4,33 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-11-09)
+## beakr-cli 0.5.0 (2026-11-10)
+
+### Client changes
+
+- **Research is quick by default.** `beakr research`, `beakr kb research` and the
+  MCP `research` tool answer within 15 seconds from one search of Knowledge and
+  documents unless told otherwise. `--deep` (MCP: `quick=false`) runs the full
+  researcher, which takes up to 150 seconds and also reads connected services.
+  The MCP tool description and server instructions tell agents when to turn it off.
+- Built on `beakr-sdk` 0.2.0.
+- Every MCP tool that takes a project reads `scope`, `project` and `project_id` as
+  the same argument. Before, the name differed by tool, and `context`,
+  `conversations_search`, `import_conversation` and `workboard` refused `scope`.
+- `knowledge_base` and `research` results end with a brief Sources list by
+  default: one line per document with the places cited, leaving out Knowledge
+  pages the text already names. `sources="full"` gives the previous full list
+  with excerpts, urls and file ids; `sources="none"` leaves it out.
+- `show_proposal` gives a summary, decided proposals say who decided them and
+  when, and a proposal only a person may accept says "Needs a person to accept".
+- `conversations_search` says how well each hit matches (strong, moderate,
+  tangential or weak) and warns first when none is a strong match.
+- `wiki_graph` counts pages as pages and source documents as documents ("the N
+  most linked-to pages of <total>, L links among them, citing M source
+  documents") and lists every page it shows; `wiki_stats` labels what it counts.
+- `beakr kb rows --current-only` and `--as-of` say they read Connections too.
+- Exports accept numbered sources: a Sources appendix plus a superscript number
+  after each cited claim.
 
 ### Changes
 
@@ -12,14 +38,6 @@ Each release lists the public API changes it supports, taken from the API change
   owner when the newest turn failed without an answer: `run_id`, a `reason`
   (`server_update` when a server update interrupted the run, `failed` otherwise)
   and a `message` to show. It is null otherwise.
-- Chat run submission (`POST /v1/runs`) accepts `decision_id`
-  and `decision_version` to answer a specific pending question, rejecting stale
-  decision versions, and returns
-  `decision_state` when applicable. Message responses expose `injection_status`
-  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
-  responses also expose session and language details, a description, error,
-  last-poll time, and capacity-wait and overdue flags, with field descriptions
-  explaining how to interpret operation progress.
 - `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
   (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
   relation in effect that day, with relations that ended before it left out. On
@@ -106,6 +124,18 @@ Each release lists the public API changes it supports, taken from the API change
   answer carries `match_strength` (`strong`, `moderate`, `tangential` or `weak`,
   the best result's band) and, when no result is a strong match, a `note` saying
   the knowledge base may not cover the question; each of its results carries
+  `relevance`. A keyword answer carries none of these. The operation is limited
+  to 120 requests a minute per caller.
+
+## beakr-cli 0.4.0 (2026-10-25)
+
+### Changes
+
+- `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
+  every word of the query, instead of answering with no results. A meaning-ranked
+  answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
+  result's band) and, when even the best result is weak, a `note` saying the
+  knowledge base may not cover the question; each of its results carries
   `relevance`. A keyword answer carries none of these. The operation is limited
   to 120 requests a minute per caller.
 - `POST /v1/knowledge/research` and the MCP `research` tool no longer name the
