@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4592397044ee7b42e34cdd54665067654ddea10d127e7b3915fc7f876fff574f changelog sha256=f89cf2f1f3ef83a79de9662d5937f89400e5960da8e1df1202aa17aad18ac85b -->
+<!-- contract-stamp: public-openapi sha256=4592397044ee7b42e34cdd54665067654ddea10d127e7b3915fc7f876fff574f changelog sha256=4ef85442bf790092752002da5faeb11ce2bb281ce4203a531d3cc038788dd4fa -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -30,7 +30,15 @@ The first public version.
     (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
     answers `403 session_widen_refused`. It cannot start sessions or mint tokens;
   - `GET /v1/projects` with a session token lists only the session's read
-    projects, and `POST /v1/context` without `project_id` answers within them.
+    projects, and `POST /v1/context` without `project_id` answers within them;
+  - `POST /v1/projects` with a session token that may write creates the project
+    and adds it to the session's read and write projects, so the agent can set
+    it up and upload to it. A session that may write nothing answers
+    `403 session_write_scope`, and one started with a project-restricted key
+    answers `403 insufficient_scope`;
+  - `GET /v1/organizations/{org_id}/members` is readable with a session token,
+    so an agent can name a colleague by email when adding them to one of the
+    session's projects (`POST /v1/projects/{project_id}/members`).
   Every write a session token makes carries the session's `run_label`, so
   undoing that run reverts the whole session. A token lasts an
   hour by default (`ttl_seconds`, up to 12 hours); mint another with

@@ -22,7 +22,15 @@ Each release lists the public API changes it supports, taken from the API change
     (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
     answers `403 session_widen_refused`. It cannot start sessions or mint tokens;
   - `GET /v1/projects` with a session token lists only the session's read
-    projects, and `POST /v1/context` without `project_id` answers within them.
+    projects, and `POST /v1/context` without `project_id` answers within them;
+  - `POST /v1/projects` with a session token that may write creates the project
+    and adds it to the session's read and write projects, so the agent can set
+    it up and upload to it. A session that may write nothing answers
+    `403 session_write_scope`, and one started with a project-restricted key
+    answers `403 insufficient_scope`;
+  - `GET /v1/organizations/{org_id}/members` is readable with a session token,
+    so an agent can name a colleague by email when adding them to one of the
+    session's projects (`POST /v1/projects/{project_id}/members`).
   Every write a session token makes carries the session's `run_label`, so
   undoing that run reverts the whole session. A token lasts an
   hour by default (`ttl_seconds`, up to 12 hours); mint another with
