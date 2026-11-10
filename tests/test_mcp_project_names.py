@@ -58,6 +58,9 @@ _CALLS: dict[str, dict[str, Any]] = {
     "conversations_search": {"query": "billing"},
     "import_conversation": {"client": "generic", "session_id": "s-1", "summary": "Decided X."},
     "workboard": {},
+    "set_project_profile": {"entity_types": ["lot"]},
+    "upload_files": {"paths": [__file__]},
+    "add_project_member": {"person": "jane@example.com"},
 }
 
 

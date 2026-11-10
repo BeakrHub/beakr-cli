@@ -115,6 +115,11 @@ TOOL_OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
         ("GET", "/v1/integrations/tools"),
         ("POST", "/v1/integrations/tools/{tool_name}/call"),
     ),
+    "create_project": (("POST", "/v1/projects"),),
+    "set_project_profile": (("PUT", "/v1/projects/{project_id}/knowledge-profile"),),
+    "upload_files": (("POST", "/v1/uploads"),),
+    "upload_status": (("POST", "/v1/uploads"),),
+    "add_project_member": (("POST", "/v1/projects/{project_id}/members"),),
 }
 
 
