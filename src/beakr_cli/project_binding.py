@@ -232,7 +232,8 @@ def _fetch_active_org_id() -> str | None:
     from beakr_cli.sdk import get_sdk
 
     try:
-        with get_sdk(timeout=10.0) as sdk:
+        # The person's own credential, the one fingerprinted above (not a shell's session).
+        with get_sdk(timeout=10.0, scoped=False) as sdk:
             org = sdk.me.active_org()
     except BeakrError:
         return None

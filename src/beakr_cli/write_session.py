@@ -243,7 +243,12 @@ def run_gated(
         return invoke()
     except BeakrError as exc:
         if exc.code == scope_session.WRITE_SCOPE and not isinstance(exc, SessionScopeError):
-            raise _write_refusal(held, _UUID.findall(exc.message or "")) from exc
+            raise _write_refusal(held, _refused_ids(held, exc)) from exc
+        if exc.status == 401:
+            # Said while the session is still named here (restored below).
+            explained = scope_session.explain_refusal(exc)
+            if explained is not exc:
+                raise explained from exc
         if isinstance(exc, PermissionDeniedError) and exc.code == "insufficient_scope":
             _say(
                 f"This ran in session {held.id}, which may write: {held.write_names()}. "
@@ -402,14 +407,14 @@ def _named(person: Any, session_id: str) -> dict[str, Any]:
             code="session_not_found",
             fix=f"Run `beakr session start`, or `unset {scope_session.SESSION_ENV}`.",
         )
-    session = person.request("GET", f"/v1/sessions/{session_id}")
+    try:
+        session = person.request("GET", f"/v1/sessions/{session_id}")
+    except NotFoundError:
+        session = {"status": "ended"}
     if session.get("status") == "ended":
-        raise SessionScopeError(
-            f"Session {session_id} ({scope_session.SESSION_ENV}) has ended; nothing was written.",
-            code="session_ended",
-            fix=f'Start another with `eval "$(beakr session start --env)"`, or '
-            f"`unset {scope_session.SESSION_ENV}` and run the command again to choose one.",
-        )
+        # Refused, not replaced by another session: the shell chose this one, and
+        # every read there would still be refused until it leaves it.
+        raise scope_session.ended(session_id, nothing_written=True)
     return session
 
 
@@ -606,6 +611,35 @@ def _write_refusal(held: Held, refused: list[str]) -> SessionScopeError:
             f"`beakr session end {held.id}` and run the command again."
         ),
     )
+
+
+def _refused_ids(held: Held, exc: BeakrError) -> list[str]:
+    """The projects a ``session_write_scope`` refusal names, less those the session may write.
+
+    The API's message names, all by id, the refused projects, the session's write
+    list, and the picker link (which holds the session's id).
+    """
+    named = dict.fromkeys(p.lower() for p in _UUID.findall(exc.message or ""))
+    return [p for p in named if p not in held.writes() and p != held.id.lower()]
+
+
+def explain_write_refusal(exc: BeakrError, session_id: str | None) -> BeakrError:
+    """The API's ``session_write_scope`` refusal outside the gate, with names for its ids.
+
+    The session is read with the person's own credential; when it cannot be, the
+    API's refusal is returned as it is.
+    """
+    from beakr_cli.sdk import get_sdk
+
+    chosen = str((exc.details or {}).get("session_id") or session_id or "")
+    if not chosen:
+        return exc
+    try:
+        with get_sdk(scoped=False) as person:
+            held = Held(person.request("GET", f"/v1/sessions/{chosen}"))
+    except BeakrError:
+        return exc
+    return _write_refusal(held, _refused_ids(held, exc))
 
 
 def _project_name(project_id: str) -> str:
