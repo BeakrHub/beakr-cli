@@ -52,14 +52,28 @@ def _tools() -> dict[str, dict[str, Any]]:
     return {tool["name"]: tool for tool in document()["tools"]}
 
 
+def local_tools() -> dict[str, str]:
+    """Tools only this server has, with their descriptions, in the discovery tier.
+
+    The project set-up tools (:mod:`beakr_cli.mcp_tools_projects`): ``upload_files``
+    reads the person's own disk, which only a local server can, and the self-hosted
+    installations they are for have no hosted MCP server, so the engine's surface does
+    not describe them.
+    """
+    from beakr_cli.mcp_tools_projects import DESCRIPTIONS
+
+    return DESCRIPTIONS
+
+
 def description(name: str) -> str:
     """The canonical description of ``name``."""
-    return _tools()[name]["description"]
+    local = local_tools()
+    return local[name] if name in local else _tools()[name]["description"]
 
 
 def tier(name: str) -> str:
     """``eager`` or ``discovery``."""
-    return _tools()[name]["tier"]
+    return "discovery" if name in local_tools() else _tools()[name]["tier"]
 
 
 def meta(name: str) -> dict[str, str]:
@@ -68,8 +82,10 @@ def meta(name: str) -> dict[str, str]:
 
 
 def stdio_tools() -> list[str]:
-    """Every tool this server should expose, in the surface's order (eager first)."""
-    return [tool["name"] for tool in document()["tools"] if "stdio" in tool["surfaces"]]
+    """Every tool this server should expose, in the surface's order (eager first), then
+    this server's own (:func:`local_tools`)."""
+    shared = [tool["name"] for tool in document()["tools"] if "stdio" in tool["surfaces"]]
+    return shared + list(local_tools())
 
 
 def tool_kwargs(name: str) -> dict[str, Any]:
