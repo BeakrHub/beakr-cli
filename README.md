@@ -415,6 +415,12 @@ session's lists, so a project created later is not added (`beakr session edit
 --read-all` again, or tick it on the session's page). A session names at most
 200 projects; with more, choose up to 200 on the session's page.
 
+If you end `beakr mcp`'s session (on its page in the web app), the server starts
+a new one with no projects and asks again on the agent's next tool call, saying
+"The previous Beakr session was ended; choose projects for a new one." Until
+you choose, the new session reaches nothing; your remembered folder choice is
+not reused for it. A session whose token only expired is renewed instead.
+
 The `beakr session` commands always use your own credential, project names
 included, so they work in a shell whose session has ended. Any other command
 there says so (exit 1) rather than asking you to sign in:

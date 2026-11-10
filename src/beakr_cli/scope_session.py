@@ -57,6 +57,11 @@ NEEDS_SELECTION = "session_needs_selection"
 WIDEN_REFUSED = "session_widen_refused"
 WRITE_SCOPE = "session_write_scope"
 SESSION_ENDED = "session_ended"
+#: What :meth:`McpSession.recover` did after the API refused the session's token.
+RENEWED = "renewed"
+REPLACED = "replaced"
+#: Said with the picker (form or link) when ``beakr mcp`` replaced an ended session.
+REPLACED_MESSAGE = "The previous Beakr session was ended; choose projects for a new one."
 #: What every session token starts with.
 SESSION_TOKEN_PREFIX = "bk_st_"
 
@@ -433,7 +438,7 @@ def explain_refusal(exc: BaseException) -> BaseException:
     """
     if not isinstance(exc, BeakrError) or isinstance(exc, SessionScopeError):
         return exc
-    if exc.status == 401 and _sent_session_token(exc):
+    if exc.status == 401 and sent_session_token(exc):
         session_id = shell_session_id()
         return _token_refused(session_id) if session_id else exc
     if exc.code == WRITE_SCOPE:
@@ -443,7 +448,8 @@ def explain_refusal(exc: BaseException) -> BaseException:
     return exc
 
 
-def _sent_session_token(exc: BeakrError) -> bool:
+def sent_session_token(exc: BeakrError) -> bool:
+    """Whether the refused request carried a session token (``bk_st_``)."""
     try:
         request = exc.response.request if exc.response is not None else None
     except RuntimeError:  # a response built without its request
@@ -579,6 +585,11 @@ class McpSession:
         self._remembered = False
         #: Why the session could not be started yet; the next tool call retries.
         self.start_error: str | None = None
+        #: The ended session this one replaced, until the picker has said so.
+        self.replaced_from: str | None = None
+        #: Start with the folder's remembered projects. Off once the person ended a
+        #: session: its replacement reaches nothing until they choose again.
+        self.reuse_remembered = True
 
     # The person's own credential: starting, renewing, choosing (elicitation), ending.
     @staticmethod
@@ -612,7 +623,7 @@ class McpSession:
         """Start the session; False (no session, as before) where the API has none."""
         from beakr_sdk.errors import NotFoundError
 
-        remembered = remembered_selection(self.folder)
+        remembered = remembered_selection(self.folder) if self.reuse_remembered else None
         body: dict[str, Any] = {
             "client_name": "beakr mcp",
             "issue_token": True,
@@ -675,12 +686,141 @@ class McpSession:
         return self.state.token
 
     async def refresh(self) -> dict[str, Any]:
-        """Read the session again (with its own token): status, lists, remember_folder."""
-        await self.fresh_token()
-        async with self._scoped() as scoped:
-            self.session = await scoped.request("GET", "/v1/sessions/current")
+        """Read the session again (with its own token): status, lists, remember_folder.
+
+        A refused token is recovered (:meth:`recover`): renewed and read again, or,
+        when the person ended the session, its pending replacement is the answer.
+        """
+        try:
+            self.session = await self._current()
+        except BeakrError as exc:
+            outcome = await self.recover(exc)
+            if outcome is None:
+                raise
+            if outcome == RENEWED:
+                try:
+                    self.session = await self._current()
+                except BeakrError as again:
+                    if again.status == 401 and sent_session_token(again):
+                        raise self.token_refused() from again
+                    raise
         self._keep_if_remembered()
         return self.session
+
+    async def _current(self) -> dict[str, Any]:
+        await self.fresh_token()
+        async with self._scoped() as scoped:
+            return await scoped.request("GET", "/v1/sessions/current")
+
+    async def recover(self, exc: BaseException) -> str | None:
+        """After the API refused this session's token (``401``): find out why, with the
+        person's own credential, and act.
+
+        - The session is still open (its token alone expired): a new token is
+          minted, and :data:`RENEWED` tells the caller to retry once.
+        - The person ended it (or it is gone): a new session is started without
+          projects (pending), so it reaches nothing until the person chooses, and
+          :data:`REPLACED` is returned; the next picker says why it is asking.
+
+        None for any other refusal. Never the sign-in hint: a refused session token
+        says nothing about the person's own credential.
+        """
+        from beakr_sdk.errors import NotFoundError
+
+        if not (
+            isinstance(exc, BeakrError)
+            and exc.status == 401
+            and sent_session_token(exc)
+            and self.state is not None
+        ):
+            return None
+        refused = self.state
+        async with self._lock:
+            if self.state is not refused:
+                # Another tool call recovered first.
+                if self.state is None or self.state.session_id != refused.session_id:
+                    return REPLACED
+                return RENEWED
+            try:
+                async with self._person() as person:
+                    try:
+                        current: dict[str, Any] | None = await person.request(
+                            "GET", f"/v1/sessions/{refused.session_id}"
+                        )
+                    except NotFoundError:
+                        current = None
+                    if current is not None and current.get("status") != "ended":
+                        try:
+                            minted = await person.request(
+                                "POST",
+                                f"/v1/sessions/{refused.session_id}/tokens",
+                                json={"ttl_seconds": TOKEN_TTL_SECONDS},
+                            )
+                        except BeakrError as renewal:
+                            if not (
+                                isinstance(renewal, NotFoundError) or renewal.code == SESSION_ENDED
+                            ):
+                                raise
+                            # Ended between the two requests: replaced below.
+                        else:
+                            token, expires_at = _token_of(minted)
+                            self.state = TokenState(refused.session_id, token, expires_at)
+                            return RENEWED
+            except BeakrError as check:
+                raise SessionScopeError(
+                    "Beakr refused this session's token, and checking the session with your "
+                    f"own credential failed too: {check.message}",
+                    code=SESSION_ENDED,
+                    fix=check.fix
+                    or "Retry shortly; if it keeps failing, restart the Beakr MCP server.",
+                ) from check
+            await self._replace(refused.session_id)
+            return REPLACED
+
+    async def _replace(self, ended_id: str) -> None:
+        """Start a pending session in place of ``ended_id``, which the person ended."""
+        self.state = None
+        self.session = {}
+        self._labelled = False
+        self._remembered = False
+        self.reuse_remembered = False
+        self.replaced_from = ended_id
+        try:
+            started = await self.start()
+        except Exception as exc:  # noqa: BLE001 - reported to the agent
+            # ensure_started retries on the next tool call; never the person's reach.
+            self.start_error = str(exc)
+            raise SessionScopeError(
+                f"{REPLACED_MESSAGE} Beakr could not start the new session yet: {exc}",
+                code=SESSION_ENDED,
+                fix="Retry shortly. Beakr's tools stay unavailable until the session starts.",
+            ) from exc
+        if not started:
+            raise SessionScopeError(
+                "This Beakr installation no longer offers sessions.",
+                code="session_unavailable",
+                fix="Restart the Beakr MCP server.",
+            )
+
+    def take_replaced(self) -> bool:
+        """True once after the session was replaced, for the picker to say why it asks."""
+        replaced, self.replaced_from = self.replaced_from is not None, None
+        return replaced
+
+    def token_refused(self) -> SessionScopeError:
+        """The session's token was refused again after :meth:`recover`."""
+        if self.replaced_from is not None:
+            return SessionScopeError(
+                REPLACED_MESSAGE,
+                code=NEEDS_SELECTION,
+                fix=f"Show the user this link and ask them to choose the projects, then retry: "
+                f"{self.picker_url or ''}",
+            )
+        return SessionScopeError(
+            "Beakr refused this session's token even after renewing it.",
+            code=SESSION_ENDED,
+            fix="Retry; if it keeps failing, restart the Beakr MCP server.",
+        )
 
     async def name_client(self, agent: str | None) -> None:
         """Label the session with the MCP client once it is known (a label is no widening)."""

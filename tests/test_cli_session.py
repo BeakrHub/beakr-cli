@@ -233,6 +233,199 @@ def test_the_token_is_renewed_with_the_persons_credential_before_it_expires():
     assert _bearer(route) == "Bearer bk_st_second"
 
 
+# --- a session the person ended -------------------------------------------------------
+
+SID2 = "2f3e4d5c-6b7a-4c8d-9e0f-1a2b3c4d5e6f"
+#: What the API says to a refused session token: the sign-in hint the CLI must not pass on.
+_TOKEN_REFUSED = {
+    "error": {
+        "code": "invalid_token",
+        "message": "Invalid, expired or ended session token",
+        "fix": "Reconnect the client, or run `beakr auth login`.",
+    }
+}
+
+
+def _replacement() -> dict:
+    return {
+        **_session("pending", read=(), write=()),
+        "id": SID2,
+        "picker_url": f"https://app.test/sessions/{SID2}",
+        "token": {"token": "bk_st_new", "token_type": "bearer", "expires_at": _later()},
+    }
+
+
+def _ended_on_the_web(*, lookup: httpx.Response | None = None):
+    """The person ended SID on the web: its token is refused; the person's credential
+    sees it ended (or ``lookup``), and a new session can be started."""
+    looked = respx.get(f"{API}/v1/sessions/{SID}").mock(
+        return_value=lookup or httpx.Response(200, json=_session("ended"))
+    )
+    started = respx.post(f"{API}/v1/sessions").respond(201, json=_replacement())
+    current = respx.get(f"{API}/v1/sessions/current").respond(
+        json={k: v for k, v in _replacement().items() if k != "token"}
+    )
+    return looked, started, current
+
+
+@respx.mock
+def test_an_ended_session_is_replaced_by_a_pending_one(tmp_path):
+    from beakr_cli.mcp_errors import call_api
+
+    # A remembered choice is not reused: the person just ended a session here.
+    respx.get(f"{API}/v1/me/organization").respond(json={"id": "org-1"})
+    scope_session.remember_selection(tmp_path, [A], [A])
+    assert scope_session.remembered_selection(tmp_path) == ([A], [A])
+    held = _active(_session())
+    held.folder = str(tmp_path)
+    looked, started, _current = _ended_on_the_web()
+    me = respx.get(f"{API}/v1/me").respond(401, json=_TOKEN_REFUSED)
+
+    with pytest.raises(SessionScopeError) as refused:
+        asyncio.run(call_api(lambda sdk: sdk.me.get()))
+
+    assert str(refused.value.message) == scope_session.REPLACED_MESSAGE
+    assert refused.value.code == scope_session.NEEDS_SELECTION
+    assert f"https://app.test/sessions/{SID2}" in refused.value.fix
+    assert "auth login" not in f"{refused.value.message} {refused.value.fix}"
+    assert _bearer(looked) == f"Bearer {PERSON_KEY}" and _bearer(started) == f"Bearer {PERSON_KEY}"
+    body = json.loads(started.calls.last.request.content)
+    assert "read_project_ids" not in body and "write_project_ids" not in body
+    assert held.id == SID2 and held.token == "bk_st_new" and held.pending
+    assert held.replaced_from == SID
+    # The refused call is not made again with the new session: it reaches nothing yet.
+    assert me.call_count == 1
+
+
+@respx.mock
+def test_a_deleted_session_is_replaced_too():
+    from beakr_cli.mcp_errors import call_api
+
+    held = _active(_session())
+    _ended_on_the_web(lookup=httpx.Response(404, json={"detail": "Session not found."}))
+    respx.get(f"{API}/v1/me").respond(401, json=_TOKEN_REFUSED)
+
+    with pytest.raises(SessionScopeError):
+        asyncio.run(call_api(lambda sdk: sdk.me.get()))
+    assert held.id == SID2 and held.pending
+
+
+@respx.mock
+def test_after_replacing_it_the_tool_call_answers_with_the_picker():
+    from beakr_cli.mcp_server import mcp
+
+    _active(_session())
+    _ended_on_the_web()
+    respx.route(url__startswith=API).respond(401, json=_TOKEN_REFUSED)
+
+    result = asyncio.run(mcp.call_tool("knowledge_base", {"command": "ls"}))
+
+    assert result.isError
+    answer = json.loads(result.content[0].text)
+    assert answer["error_code"] == scope_session.NEEDS_SELECTION
+    assert answer["message"].startswith(scope_session.REPLACED_MESSAGE)
+    assert answer["picker_url"] == f"https://app.test/sessions/{SID2}"
+    assert "auth login" not in result.content[0].text
+    # Said once: the next call asks as any pending session does.
+    again = json.loads(
+        asyncio.run(mcp.call_tool("knowledge_base", {"command": "ls"})).content[0].text
+    )
+    assert again["error_code"] == scope_session.NEEDS_SELECTION
+    assert not again["message"].startswith(scope_session.REPLACED_MESSAGE)
+
+
+@respx.mock
+def test_after_replacing_it_the_in_chat_form_says_why_and_the_choice_applies():
+    from beakr_cli.mcp_errors import call_api
+
+    held = _active(_session())
+    _ended_on_the_web()
+    respx.get(f"{API}/v1/me").respond(401, json=_TOKEN_REFUSED)
+    with pytest.raises(SessionScopeError):
+        asyncio.run(call_api(lambda sdk: sdk.me.get()))
+    respx.get(f"{API}/v1/projects").respond(json={"data": [{"id": A, "name": "Helios"}]})
+    chosen = respx.patch(f"{API}/v1/sessions/{SID2}").mock(
+        side_effect=lambda request: httpx.Response(
+            200,
+            json={**_session(read=(A,), write=()), "id": SID2}
+            if b"read_project_ids" in request.content
+            else _replacement(),
+        )
+    )
+    server = _server(
+        elicitation=SimpleNamespace(form=None, url=None),
+        answer=SimpleNamespace(action="accept", content={"read_all": True}),
+    )
+
+    refusal = asyncio.run(mcp_session.gate(server, "knowledge_base", None))
+
+    assert refusal is None and not held.pending
+    assert server.asked[0].startswith(scope_session.REPLACED_MESSAGE)
+    assert json.loads(chosen.calls.last.request.content)["read_project_ids"] == [A]
+    assert _bearer(chosen) == f"Bearer {PERSON_KEY}"
+
+
+@respx.mock
+def test_a_pending_session_ended_on_the_web_is_replaced_at_the_gate():
+    held = _active(_session("pending", read=(), write=()))
+    looked = respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session("ended"))
+    respx.post(f"{API}/v1/sessions").respond(201, json=_replacement())
+    respx.get(f"{API}/v1/sessions/current").mock(
+        side_effect=lambda request: (
+            httpx.Response(401, json=_TOKEN_REFUSED)
+            if request.headers["authorization"] == "Bearer bk_st_first"
+            else httpx.Response(200, json=_replacement())
+        )
+    )
+    respx.patch(f"{API}/v1/sessions/{SID}").respond(401, json=_TOKEN_REFUSED)
+
+    refusal = asyncio.run(mcp_session.gate(_server(), "knowledge_base", "claude-code/2"))
+
+    assert looked.called and held.id == SID2
+    assert refusal["message"].startswith(scope_session.REPLACED_MESSAGE)
+    assert refusal["picker_url"] == f"https://app.test/sessions/{SID2}"
+
+
+@respx.mock
+def test_an_open_session_whose_token_expired_is_renewed_and_the_call_retried_once():
+    from beakr_cli.mcp_errors import call_api
+
+    held = _active(_session())
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
+    renewed = respx.post(f"{API}/v1/sessions/{SID}/tokens").respond(
+        201, json={"token": "bk_st_second", "token_type": "bearer", "expires_at": _later()}
+    )
+    started = respx.post(f"{API}/v1/sessions").respond(201, json=_replacement())
+    me = respx.get(f"{API}/v1/me").mock(
+        side_effect=[httpx.Response(401, json=_TOKEN_REFUSED), httpx.Response(200, json={})]
+    )
+
+    asyncio.run(call_api(lambda sdk: sdk.me.get()))
+
+    assert me.call_count == 2 and _bearer(me) == "Bearer bk_st_second"
+    assert _bearer(renewed) == f"Bearer {PERSON_KEY}"
+    assert held.id == SID and held.replaced_from is None and not started.called
+
+
+@respx.mock
+def test_a_token_refused_again_after_renewal_never_says_sign_in():
+    from beakr_cli.mcp_errors import call_api
+
+    _active(_session())
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
+    respx.post(f"{API}/v1/sessions/{SID}/tokens").respond(
+        201, json={"token": "bk_st_second", "token_type": "bearer", "expires_at": _later()}
+    )
+    me = respx.get(f"{API}/v1/me").respond(401, json=_TOKEN_REFUSED)
+
+    with pytest.raises(SessionScopeError) as refused:
+        asyncio.run(call_api(lambda sdk: sdk.me.get()))
+
+    assert me.call_count == 2
+    assert refused.value.code == scope_session.SESSION_ENDED
+    assert "auth login" not in f"{refused.value.message} {refused.value.fix}"
+
+
 # --- until the person chooses ---------------------------------------------------------
 
 
