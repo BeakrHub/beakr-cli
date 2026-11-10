@@ -402,6 +402,17 @@ beakr session ls                      # your open sessions, agents' included
 beakr session end                     # its token stops working at once
 ```
 
+The `beakr session` commands always use your own credential, project names
+included, so they work in a shell whose session has ended. Any other command
+there says so (exit 1) rather than asking you to sign in:
+
+```text
+Error: This shell's session 7c1e2d3f-... has ended. To fix: Run `unset BEAKR_SCOPE_SESSION` to leave it, or `beakr session start` to begin a new one.
+```
+
+A project you can see that the session does not read is named as outside it,
+with how to add it (`beakr session edit <id>` or the session's page).
+
 On an installation with sessions, every command that writes into a project
 runs in one, so one project's knowledge is not filed in another by mistake:
 `upload` and `files upload|rm|approve`, `kb add-fact|add-connection|add-finding|edit-rows`,

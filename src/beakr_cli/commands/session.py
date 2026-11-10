@@ -43,19 +43,28 @@ app = typer.Typer(
 )
 
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
+
+
+def _person_project_refs(value: Any) -> Any:
+    """Resolve --read/--write names with the person's own credential, never the shell's
+    session token: the session may not read the project yet, or may have ended."""
+    with scope_session.person_credential():
+        return project_ref_callback(value)
+
+
 _read_opt = typer.Option(
     [],
     "--read",
     "-r",
     help="A project the session may read (id, slug or name); repeatable.",
-    callback=project_ref_callback,
+    callback=_person_project_refs,
 )
 _write_opt = typer.Option(
     [],
     "--write",
     "-w",
     help="A project the session may write (it may also read it); repeatable.",
-    callback=project_ref_callback,
+    callback=_person_project_refs,
 )
 
 

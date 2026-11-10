@@ -77,6 +77,14 @@ Each release lists the public API changes it supports, taken from the API change
   capture only into a project it may write (else they skip and log why), and
   with none open they capture into the folder's bound project as before.
   Service accounts and installations without sessions work as before.
+- In a shell whose session has ended (`BEAKR_SCOPE_SESSION`), commands say so and
+  how to leave it (`unset BEAKR_SCOPE_SESSION`, or `beakr session start`) instead
+  of suggesting `beakr auth login`; a write there is refused the same way. A
+  session whose token alone expired is renewed for the next command. The
+  `beakr session` commands resolve project names with your own credential, so
+  `beakr session start -r NAME` works there. A project name the session does not
+  read, but you can, is named as outside the session with how to add it, and the
+  API's `session_write_scope` refusal names projects instead of their ids.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

@@ -24,7 +24,8 @@ _UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4
 #: Values that are not references: ``auto`` means "the bound or default project".
 _PASS_THROUGH = frozenset({"auto"})
 
-_resolved: dict[str, str] = {}
+#: Resolved ids, by the session whose token resolved them (None: the person's own) and ref.
+_resolved: dict[tuple[str | None, str], str] = {}
 
 
 def looks_like_id(value: str) -> bool:
@@ -74,14 +75,21 @@ def resolve_project_ref(ref: str, *, param_hint: str = "--project") -> str:
     ref = ref.strip()
     if not ref or ref in _PASS_THROUGH or looks_like_id(ref):
         return ref
-    if ref in _resolved:
-        return _resolved[ref]
+    from beakr_cli import scope_session
+
+    session_id = scope_session.token_session_id()
+    if (session_id, ref) in _resolved:
+        return _resolved[(session_id, ref)]
     from beakr_cli.sdk import get_sdk
 
     with get_sdk() as sdk:
         projects = list(sdk.projects.list() or [])
     found = find_project(projects, ref)
     if found is None:
+        if session_id is not None:
+            outside = _outside_session(session_id, ref)
+            if outside:
+                raise typer.BadParameter(outside, param_hint=param_hint)
         suggestions = close_matches(projects, ref)
         hint = (
             f" Did you mean: {'; '.join(suggestions)}?"
@@ -91,8 +99,33 @@ def resolve_project_ref(ref: str, *, param_hint: str = "--project") -> str:
         raise typer.BadParameter(
             f"No project with id, slug or name {ref!r}.{hint}", param_hint=param_hint
         )
-    _resolved[ref] = str(found["id"])
-    return _resolved[ref]
+    _resolved[(session_id, ref)] = str(found["id"])
+    return _resolved[(session_id, ref)]
+
+
+def _outside_session(session_id: str, ref: str) -> str | None:
+    """Why ``ref`` did not resolve in this shell's session, when it is a project the person
+    can see that the session does not read; None when it is not (or that cannot be told).
+
+    Only the name is resolved with the person's own credential; the command still
+    runs with the session's token.
+    """
+    from beakr_sdk.errors import BeakrError
+
+    from beakr_cli.sdk import get_sdk
+
+    try:
+        with get_sdk(scoped=False) as person:
+            if find_project(list(person.projects.list() or []), ref) is None:
+                return None
+            session = person.request("GET", f"/v1/sessions/{session_id}")
+    except BeakrError:
+        return None
+    reads = ", ".join(str(p.get("name") or p.get("id")) for p in session.get("read_projects") or [])
+    return (
+        f"{ref!r} isn't one of this session's projects (it reads: {reads or 'none'}). "
+        f"Add it with `beakr session edit {session_id}` or at {session.get('picker_url')}."
+    )
 
 
 def project_ref_callback(value: Any) -> Any:

@@ -54,6 +54,9 @@ RENEW_MARGIN_SECONDS = 300
 NEEDS_SELECTION = "session_needs_selection"
 WIDEN_REFUSED = "session_widen_refused"
 WRITE_SCOPE = "session_write_scope"
+SESSION_ENDED = "session_ended"
+#: What every session token starts with.
+SESSION_TOKEN_PREFIX = "bk_st_"
 
 
 class SessionScopeError(BeakrError):
@@ -345,15 +348,21 @@ def person_credential() -> Any:
         _PERSON_CREDENTIAL = previous
 
 
+def token_session_id() -> str | None:
+    """The session whose token this shell's requests carry now; None when they carry the
+    person's own credential (no session, or inside :func:`person_credential`)."""
+    return None if _PERSON_CREDENTIAL else shell_session_id()
+
+
 def shell_token() -> str | None:
     """The token for this shell's session (``BEAKR_SCOPE_SESSION``), renewed when due.
 
     None when the shell has no session. Raises :class:`SessionScopeError` when it
-    names one this machine has no token for, rather than silently falling back to
-    the person's full credential.
+    names one this machine has no token for, or one that has ended, rather than
+    silently falling back to the person's full credential.
     """
-    session_id = shell_session_id()
-    if session_id is None or _PERSON_CREDENTIAL:
+    session_id = token_session_id()
+    if session_id is None:
         return None
     state = load_state(session_id)
     if state is None:
@@ -366,9 +375,113 @@ def shell_token() -> str | None:
         from beakr_cli.sdk import get_sdk
 
         with get_sdk(scoped=False) as person:
-            state = renew(person, state)
+            state = _renew_shell(person, state)
         save_state(state)
     return state.token
+
+
+#: How to get out of a shell session that cannot be used any more.
+LEAVE_FIX = f"Run `unset {SESSION_ENV}` to leave it, or `beakr session start` to begin a new one."
+
+
+def ended(session_id: str, *, nothing_written: bool = False) -> SessionScopeError:
+    """This shell's session has ended (or cannot be renewed): how to leave it or start another.
+
+    Never the sign-in hint: the person's own credential is fine, and on a
+    self-hosted installation ``beakr auth login`` has no browser sign-in anyway.
+    """
+    return SessionScopeError(
+        f"This shell's session {session_id} has ended"
+        + ("; nothing was written." if nothing_written else "."),
+        code=SESSION_ENDED,
+        fix=LEAVE_FIX,
+    )
+
+
+def _renew_shell(person: Any, state: TokenState) -> TokenState:
+    """Renew the shell's token; an ended (or deleted) session is said so, not as a sign-in."""
+    from beakr_sdk.errors import NotFoundError
+
+    try:
+        return renew(person, state)
+    except BeakrError as exc:
+        if isinstance(exc, NotFoundError) or exc.code == SESSION_ENDED:
+            raise ended(state.session_id) from exc
+        if exc.code == "insufficient_scope":
+            # Only the API key that started a session mints its tokens.
+            raise SessionScopeError(
+                f"This shell's session {state.session_id} has expired, and only the API key "
+                "that started it can renew it.",
+                code=SESSION_ENDED,
+                fix=LEAVE_FIX,
+            ) from exc
+        raise
+
+
+def explain_refusal(exc: BaseException) -> BaseException:
+    """An API refusal of this shell's session, said in terms of the session.
+
+    - ``401`` for a request that carried a session token (``bk_st_``): the session
+      ended, or its token expired; never the sign-in hint the API gives a person's
+      credential. When the session is still open the token is renewed for the next
+      command.
+    - ``403 session_write_scope``: the projects by name, not id, and how to add them.
+
+    Anything else is returned as it is.
+    """
+    if not isinstance(exc, BeakrError) or isinstance(exc, SessionScopeError):
+        return exc
+    if exc.status == 401 and _sent_session_token(exc):
+        session_id = shell_session_id()
+        return _token_refused(session_id) if session_id else exc
+    if exc.code == WRITE_SCOPE:
+        from beakr_cli.write_session import explain_write_refusal
+
+        return explain_write_refusal(exc, shell_session_id())
+    return exc
+
+
+def _sent_session_token(exc: BeakrError) -> bool:
+    try:
+        request = exc.response.request if exc.response is not None else None
+    except RuntimeError:  # a response built without its request
+        return False
+    sent = request.headers.get("authorization", "") if request is not None else ""
+    return sent.startswith(f"Bearer {SESSION_TOKEN_PREFIX}")
+
+
+def _token_refused(session_id: str) -> SessionScopeError:
+    """Why this shell's session token was refused, asked with the person's own credential."""
+    from beakr_sdk.errors import NotFoundError
+
+    from beakr_cli.sdk import get_sdk
+
+    try:
+        with get_sdk(scoped=False) as person:
+            try:
+                session = person.request("GET", f"/v1/sessions/{session_id}")
+            except NotFoundError:
+                return ended(session_id)
+            if session.get("status") == "ended":
+                return ended(session_id)
+            state = load_state(session_id)
+            if state is None:
+                return ended(session_id)
+            save_state(_renew_shell(person, state))
+    except SessionScopeError as refusal:
+        return refusal
+    except BeakrError:
+        # The person's credential could not say either; still not a sign-in problem.
+        return SessionScopeError(
+            f"This shell's session {session_id} has ended or its token expired.",
+            code=SESSION_ENDED,
+            fix=LEAVE_FIX,
+        )
+    return SessionScopeError(
+        f"The token of this shell's session {session_id} had expired; it has been renewed.",
+        code="session_token_renewed",
+        fix="Run the command again.",
+    )
 
 
 def keep_remembered(session: dict[str, Any]) -> None:

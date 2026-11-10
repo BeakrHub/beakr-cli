@@ -251,9 +251,13 @@ class BeakrGroup(TyperGroup):
         args = [*(getattr(ctx, "_protected_args", None) or []), *ctx.args]
         try:
             return super().invoke(ctx)
-        except HANDLED_EXCEPTIONS as exc:
+        except HANDLED_EXCEPTIONS as raised:
             from beakr_cli.output import err_console
+            from beakr_cli.scope_session import explain_refusal
 
+            # A refusal of this shell's session (``BEAKR_SCOPE_SESSION``) is said
+            # in its terms: ended, or which projects by name; never "sign in".
+            exc = explain_refusal(raised)
             code = exit_code_for(exc)
             command = self._command_words(ctx, args)
             if json_requested:
@@ -261,7 +265,7 @@ class BeakrGroup(TyperGroup):
             err_console.print(
                 f"[red]Error:[/red] {escape(str(describe_error(exc, command)))}", highlight=False
             )
-            raise typer.Exit(code) from exc
+            raise typer.Exit(code) from raised
         except ValueError as exc:
             if not _is_path_value_refusal(exc):
                 raise
