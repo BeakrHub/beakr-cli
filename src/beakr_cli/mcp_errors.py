@@ -130,22 +130,39 @@ async def call_api(request: Callable[[AsyncBeakr], Awaitable[T]]) -> T:
 
     An error with no HTTP response (the API could not be reached, no
     credential) propagates as the SDK raised it.
+
+    A ``401`` to the session's token is recovered (``McpSession.recover``): a
+    token that only expired is renewed and the call made once more; a session
+    the person ended is replaced by a pending one, and the call refused with
+    :class:`~beakr_cli.scope_session.SessionScopeError` (the tool surface then
+    offers the picker). Never the sign-in hint the API gives for it.
     """
     from beakr_cli import scope_session
     from beakr_cli.sdk import get_async_sdk
 
-    if scope_session.ACTIVE is not None:
-        # The session's token, renewed before it expires (SessionScopeError when
-        # the session cannot be started: never the person's full credential).
-        await scope_session.ACTIVE.ensure_started()
-        await scope_session.ACTIVE.fresh_token()
-    async with get_async_sdk() as sdk:
-        try:
-            return await request(sdk)
-        except BeakrError as exc:
-            response = exc.response
-            if response is None:
-                raise
-            raise ApiCallError(
-                describe_error(response), request=response.request, response=response
-            ) from exc
+    session = scope_session.ACTIVE
+    for attempt in range(2):
+        if session is not None:
+            # The session's token, renewed before it expires (SessionScopeError when
+            # the session cannot be started: never the person's full credential).
+            await session.ensure_started()
+            await session.fresh_token()
+        async with get_async_sdk() as sdk:
+            try:
+                return await request(sdk)
+            except BeakrError as exc:
+                if (
+                    session is not None
+                    and exc.status == 401
+                    and scope_session.sent_session_token(exc)
+                ):
+                    if attempt == 0 and await session.recover(exc) == scope_session.RENEWED:
+                        continue
+                    raise session.token_refused() from exc
+                response = exc.response
+                if response is None:
+                    raise
+                raise ApiCallError(
+                    describe_error(response), request=response.request, response=response
+                ) from exc
+    raise AssertionError("unreachable")  # pragma: no cover

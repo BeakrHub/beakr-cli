@@ -11,6 +11,12 @@ runs, :func:`gate`:
   the client supports MCP form elicitation (``clientCapabilities.elicitation``),
   and otherwise answers with the picker link and a short instruction to show it.
 
+When the person ends the session (on its web page), the next request with its
+token is refused (``401``). The server then starts a new pending session in its
+place (``McpSession.recover``) and asks again the same way, saying the previous
+session was ended; the new session reaches nothing until the person chooses. A
+token that merely expired is renewed and the call made once more.
+
 Client support, checked 2026-11-08: Claude Code shows form elicitations as a
 terminal dialog; Codex CLI shows them inline, its approval reviewer able to
 decline. URL-mode elicitation is not dependable in either (Claude Code narrowed
@@ -62,11 +68,13 @@ def _error(code: str, message: str, fix: str | None, **extra: Any) -> dict[str, 
     return {"status": "error", "error_code": code, "message": message, "fix": fix, **extra}
 
 
-def needs_selection(session: scope_session.McpSession) -> dict[str, Any]:
+def needs_selection(session: scope_session.McpSession, *, replaced: bool = False) -> dict[str, Any]:
     url = session.picker_url or ""
     return _error(
         scope_session.NEEDS_SELECTION,
-        "This Beakr session has no projects yet: the person has not chosen which projects "
+        f"{scope_session.REPLACED_MESSAGE} It has no projects until the person chooses them."
+        if replaced
+        else "This Beakr session has no projects yet: the person has not chosen which projects "
         "it may read and write.",
         f"Show the user this link and ask them to choose the projects, then retry: {url}",
         picker_url=url,
@@ -152,7 +160,9 @@ def selection_from(
     return list(dict.fromkeys(read)), list(dict.fromkeys(write))
 
 
-async def elicit_choice(server: Any, session: scope_session.McpSession) -> bool:
+async def elicit_choice(
+    server: Any, session: scope_session.McpSession, *, replaced: bool = False
+) -> bool:
     """Ask the person in chat; True when they chose at least one project."""
     projects = await session.person_projects()
     if not projects or len(projects) > scope_session.MAX_PROJECTS:
@@ -168,7 +178,8 @@ async def elicit_choice(server: Any, session: scope_session.McpSession) -> bool:
         )
         later = ""
     message = (
-        f"Choose the Beakr projects this agent session may read and write. {how} "
+        (f"{scope_session.REPLACED_MESSAGE} " if replaced else "")
+        + f"Choose the Beakr projects this agent session may read and write. {how} "
         "All means the projects you have now; ones created later are not added. Writing a "
         f"project also lets it read it.{later}"
     )
@@ -199,11 +210,20 @@ async def gate(server: Any, tool: str, agent: str | None) -> dict[str, Any] | No
         await session.refresh()
     except BeakrError as exc:
         return _refused(exc)
+    replaced = session.take_replaced()
     if not session.pending:
         return None
-    if supports_form_elicitation(server) and await elicit_choice(server, session):
+    if supports_form_elicitation(server) and await elicit_choice(
+        server, session, replaced=replaced
+    ):
         return None
-    return needs_selection(session)
+    return needs_selection(session, replaced=replaced)
+
+
+def was_replaced() -> bool:
+    """Whether the server replaced its ended session and has not yet asked about it."""
+    session = scope_session.ACTIVE
+    return session is not None and session.replaced_from is not None
 
 
 async def session_scope(

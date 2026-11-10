@@ -94,6 +94,15 @@ Each release lists the public API changes it supports, taken from the API change
   most 200 projects; with more, the pickers say so and point to the session's
   page. With more than 25 projects the in-chat form offers only Read all and
   Write all, and the link for a custom choice.
+- `beakr mcp` recovers when you end its session on the web page. Every tool call
+  used to fail with `401` and the `beakr auth login` hint until the server was
+  restarted. Now the server checks with your own credential: an ended (or
+  deleted) session is replaced by a new one without projects, and the tool call
+  answers with the in-chat form or the picker link, saying "The previous Beakr
+  session was ended; choose projects for a new one." The folder's remembered
+  choice is not reused for it. A session whose token only expired is renewed and
+  the call made once more. A refused session token never suggests
+  `beakr auth login`.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

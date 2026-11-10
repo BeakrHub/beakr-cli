@@ -350,6 +350,14 @@ class TieredFastMCP(FastMCP):
             refusal = await mcp_session.gate(self, name, agent)
             if refusal is not None:
                 return _error_result(refusal)
+            result = await self._call_tool(name, arguments)
+            if not mcp_session.was_replaced():
+                return result
+            # The person ended the session while this call ran: the server started a
+            # pending one in its place. Ask again, as at startup, then run it once more.
+            refusal = await mcp_session.gate(self, name, agent)
+            if refusal is not None:
+                return _error_result(refusal)
             return await self._call_tool(name, arguments)
         finally:
             MCP_CLIENT_AGENT.reset(token)
