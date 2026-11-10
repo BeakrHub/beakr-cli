@@ -750,6 +750,56 @@ async def test_the_mcp_tools_on_a_self_hosted_build_name_the_release(monkeypatch
     assert refused.startswith("Update did not run.") and updates.RELEASE_INSTRUCTIONS in refused
 
 
+def _stale_notice(monkeypatch, subcommand: str = "ask") -> str:
+    """What the CLI's startup callback tells an interactive user before a command."""
+    import io
+    import sys
+    from types import SimpleNamespace
+
+    from rich.console import Console
+
+    from beakr_cli import main, output
+
+    class _Tty(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    captured = io.StringIO()
+    monkeypatch.setattr(sys, "stderr", _Tty())
+    monkeypatch.setattr(output, "err_console", Console(file=captured, width=200))
+    main._main(SimpleNamespace(invoked_subcommand=subcommand), show_version=False)
+    return captured.getvalue()
+
+
+def test_a_self_hosted_build_ignores_a_pypi_latest_a_public_cli_cached(monkeypatch) -> None:
+    # Max hit it: a public CLI on the same machine cached PyPI's 0.5.0 in ~/.beakr,
+    # and the self-hosted build printed "beakr-cli 0.5.0 is available ... Run
+    # beakr update". PyPI's beakr-cli is a different client it is never upgraded to.
+    _pypi_must_not_be_asked(monkeypatch)
+    _write_cache("0.5.0", timedelta(minutes=5))
+    monkeypatch.setattr(updates, "__version__", _SELF_HOSTED_VERSION)
+
+    for status in (
+        updates.get_update_status(),
+        updates.get_update_status(allow_network=False),
+        updates.get_update_status(max_age=timedelta(0)),
+    ):
+        assert status.latest is None and not status.update_available
+
+    from beakr_cli import mcp_server
+    from beakr_cli.commands.doctor import check_version
+
+    assert _stale_notice(monkeypatch) == ""
+    assert mcp_server._update_notice() == ""
+    assert check_version()["status"] == "ok"
+    version = CliRunner().invoke(app, ["version"])
+    assert "0.5.0" not in version.output and "beakr update" not in version.output
+
+    # The same cache still tells a public build it is behind.
+    monkeypatch.setattr(updates, "__version__", "0.4.0")
+    assert "0.5.0 is available" in _stale_notice(monkeypatch)
+
+
 def test_a_public_build_still_checks_pypi(monkeypatch) -> None:
     monkeypatch.setattr(updates, "__version__", "0.4.0")
     assert not updates.self_hosted_build()
