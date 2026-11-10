@@ -99,6 +99,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "projects profile show",
         "projects profile set",
         "projects profile edit",
+        "projects profile setup",
         "projects members ls",
         "projects members add",
         "projects members rm",

@@ -42,6 +42,23 @@ EXIT_PERSON_REVIEW = 6
 PERSON_REVIEW_REQUIRED = "person_review_required"
 
 
+#: A project whose organization requires a Knowledge profile, without one yet,
+#: takes no files, connector sources or Knowledge (409).
+PROJECT_PROFILE_REQUIRED = "project_profile_required"
+
+
+def profile_required_hint(exc: BaseException) -> str:
+    """How to set up the profile the refusal names, with its project when it said."""
+    details = getattr(exc, "details", None)
+    project = details.get("project_id") if isinstance(details, dict) else None
+    ref = f"-P {project}" if project else "-P PROJECT"
+    return (
+        f"Set up the project's Knowledge profile first: `beakr projects profile setup {ref}` "
+        "(Beakr's agent asks about the project, starting with its entity types, and saves "
+        f"it), or `beakr projects profile set {ref} --file profile.yaml`. Then retry."
+    )
+
+
 def needs_a_person(exc: BaseException) -> bool:
     """Whether ``exc`` is the refusal of work only a person may do."""
     return isinstance(exc, PersonReviewRequiredError) or (
@@ -179,6 +196,8 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
         return f"{text}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}" if needs_a_person(exc) else text
     if isinstance(exc, PersonReviewRequiredError):
         return f"{exc}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}"
+    if isinstance(exc, BeakrError) and exc.code == PROJECT_PROFILE_REQUIRED:
+        return f"{exc}\n{profile_required_hint(exc)}"
     if isinstance(exc, BeakrError) and exc.code in _CODE_HINTS:
         return f"{exc}\n{_CODE_HINTS[exc.code]}"
     if isinstance(exc, PermissionDeniedError) and exc.required_scope:
@@ -325,6 +344,9 @@ def error_object(
             error["status"] = exc.status
         if page:
             error["fix"] = page[1]
+        elif exc.code == PROJECT_PROFILE_REQUIRED:
+            # The project's own id in the commands, where the API's fix has a placeholder.
+            error["fix"] = profile_required_hint(exc)
         elif exc.fix or exc.code in _CODE_HINTS:
             error["fix"] = exc.fix or _CODE_HINTS[str(exc.code)]
         if exc.request_id:

@@ -347,6 +347,10 @@ _NO_LABELS_FIXTURE = (
 
 #: Visible hand-written commands with no snapshot, each with the reason.
 EXEMPT: dict[str, str] = {
+    "projects profile setup": (
+        "a conversation with the setup agent, which the snapshot engine cannot run (no model); "
+        "the runs it starts and how it answers are pinned in tests/test_cli_profile_setup.py"
+    ),
     "session forget": (
         "local only: edits this folder's .beakr/project.json and calls no API; "
         "tests/test_cli_session.py"
