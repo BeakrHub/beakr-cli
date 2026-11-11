@@ -215,6 +215,17 @@ Each release lists the public API changes it supports, taken from the API change
   files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
+- Shell sessions work where the installation has agent sessions. Every CLI
+  client now names its `X-Beakr-Session` itself: the agent conversation's id
+  (`BEAKR_SESSION`, `CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`,
+  `CURSOR_CONVERSATION_ID`) or none, never the Python SDK's own per-client
+  `sdk-python-<random>` id. With that id the API joined each command to a
+  throwaway session, so after `beakr session start --env`, `beakr session show`
+  answered `404` and an upload said the shell's session had ended. The person's
+  own credential (the session commands, starting, renewing and checking a
+  session) sends no session header even in an agent conversation. "This shell's
+  session has ended" is said only when the person's own credential, sent with no
+  session header, finds the session gone; any other `404` is shown as it is.
 - Read trails: `beakr session trail [SESSION_ID]` prints a session's reads, newest
   first (op, projects, summary, the items each returned; `--limit`, `--cursor`,
   `--json`), and finds this shell's, terminal's or agent conversation's session

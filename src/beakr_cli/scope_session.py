@@ -604,12 +604,10 @@ def ended(session_id: str, *, nothing_written: bool = False) -> SessionScopeErro
 
 def _renew_shell(person: Any, state: TokenState) -> TokenState:
     """Renew the shell's token; an ended (or deleted) session is said so, not as a sign-in."""
-    from beakr_sdk.errors import NotFoundError
-
     try:
         return renew(person, state)
     except BeakrError as exc:
-        if isinstance(exc, NotFoundError) or exc.code == SESSION_ENDED:
+        if gone(exc) or exc.code == SESSION_ENDED:
             raise ended(state.session_id) from exc
         if exc.code == "insufficient_scope":
             # Only the API key that started a session mints its tokens.
@@ -720,6 +718,29 @@ def _conversation_token_refused(agent: str) -> BaseException:
     )
 
 
+def gone(exc: BaseException) -> bool:
+    """Whether a ``404`` says the session itself is gone (deleted, or never this person's).
+
+    Only a refusal of the person's own credential sent without ``X-Beakr-Session``
+    says so: a request joined to some agent conversation's session (or carrying a
+    session token) is answered within that session, where another session is not
+    found although it is open. Such a 404 is passed on as it is, never "ended".
+    """
+    from beakr_sdk.errors import NotFoundError
+
+    if not isinstance(exc, NotFoundError):
+        return False
+    try:
+        request = exc.response.request if exc.response is not None else None
+    except RuntimeError:  # a response built without its request
+        request = None
+    if request is None:
+        return True
+    return "x-beakr-session" not in request.headers and not request.headers.get(
+        "authorization", ""
+    ).startswith(f"Bearer {SESSION_TOKEN_PREFIX}")
+
+
 def sent_session_token(exc: BeakrError) -> bool:
     """Whether the refused request carried a session token (``bk_st_``)."""
     try:
@@ -740,7 +761,9 @@ def _token_refused(session_id: str) -> SessionScopeError:
         with get_sdk(scoped=False) as person:
             try:
                 session = person.request("GET", f"/v1/sessions/{session_id}")
-            except NotFoundError:
+            except NotFoundError as missing:
+                if not gone(missing):
+                    raise
                 return ended(session_id)
             if session.get("status") == "ended":
                 return ended(session_id)
@@ -941,12 +964,10 @@ def _join_conversation(agent: str, key: str) -> TokenState | None:
 
 def _renew_conversation(person: Any, state: TokenState, agent: str, key: str) -> TokenState:
     """Renew the conversation session's token; an ended one is final for the conversation."""
-    from beakr_sdk.errors import NotFoundError
-
     try:
         return renew(person, state)
     except BeakrError as exc:
-        if isinstance(exc, NotFoundError) or exc.code == SESSION_ENDED:
+        if gone(exc) or exc.code == SESSION_ENDED:
             forget_terminal(key)
             delete_state(state.session_id)
             raise conversation_ended_error(agent) from exc
@@ -1156,7 +1177,9 @@ class McpSession:
                         current: dict[str, Any] | None = await person.request(
                             "GET", f"/v1/sessions/{refused.session_id}"
                         )
-                    except NotFoundError:
+                    except NotFoundError as missing:
+                        if not gone(missing):
+                            raise
                         current = None
                     if current is not None and current.get("status") != "ended":
                         try:
@@ -1166,9 +1189,7 @@ class McpSession:
                                 json={"ttl_seconds": TOKEN_TTL_SECONDS},
                             )
                         except BeakrError as renewal:
-                            if not (
-                                isinstance(renewal, NotFoundError) or renewal.code == SESSION_ENDED
-                            ):
+                            if not (gone(renewal) or renewal.code == SESSION_ENDED):
                                 raise
                             # Ended between the two requests: replaced below.
                         else:

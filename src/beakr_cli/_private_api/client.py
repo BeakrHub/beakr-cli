@@ -54,6 +54,9 @@ class PrivateBeakr(Beakr):
     workflows: Workflows[Sync]
 
     def __init__(self, **kwargs: Any) -> None:
+        # Never the SDK's own per-client session id: ``get_sdk`` names the agent
+        # conversation (beakr_cli.sdk.session_header); any other client sends none.
+        kwargs.setdefault("session", "")
         super().__init__(**kwargs)
         attach_private_resources(self)
         self.private_api = BeakrApi(self)
@@ -82,6 +85,7 @@ class AsyncPrivateBeakr(AsyncBeakr):
     workflows: Workflows[Async]
 
     def __init__(self, **kwargs: Any) -> None:
+        kwargs.setdefault("session", "")  # as PrivateBeakr
         super().__init__(**kwargs)
         attach_private_resources(self)
         self.private_api = AsyncBeakrApi(self)

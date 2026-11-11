@@ -473,7 +473,9 @@ def _named(person: Any, session_id: str) -> dict[str, Any]:
         )
     try:
         session = person.request("GET", f"/v1/sessions/{session_id}")
-    except NotFoundError:
+    except NotFoundError as missing:
+        if not scope_session.gone(missing):
+            raise
         session = {"status": "ended"}
     if session.get("status") == "ended":
         # Refused, not replaced by another session: the shell chose this one, and
@@ -489,7 +491,9 @@ def _kept(person: Any) -> Held | None:
         return None
     try:
         session = person.request("GET", f"/v1/sessions/{session_id}")
-    except NotFoundError:
+    except NotFoundError as missing:
+        if not scope_session.gone(missing):
+            raise
         session = {"status": "ended"}
     if session.get("status") == "ended":
         scope_session.forget_terminal()

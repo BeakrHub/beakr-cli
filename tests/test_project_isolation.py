@@ -178,7 +178,9 @@ def test_beakr_mcp_joins_the_conversations_session(conversation, tmp_path, monke
 
     assert held is not None and held.agent == CONVERSATION and held.token == "bk_st_first"
     assert _body(created)["agent_session"] == CONVERSATION
-    assert created.calls.last.request.headers["x-beakr-session"] == CONVERSATION
+    # Joined by the body: the person's own credential carries no X-Beakr-Session, so
+    # the API does not answer it from inside some conversation's session.
+    assert "x-beakr-session" not in created.calls.last.request.headers
 
 
 @respx.mock
