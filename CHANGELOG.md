@@ -218,6 +218,11 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
+- Where the deployment turned Ask off, `beakr ask` says "Ask is turned off on
+  this deployment." (exit 3; `--json` keeps the API's `ask_disabled` code)
+  instead of the API's refusal. `session_required` is told apart by its message:
+  project isolation's "write inside a session" gets the session fix, and the
+  web app's "do it in a signed-in browser" keeps its own hint, no longer both.
 - Shell sessions work where the installation has agent sessions. Every CLI
   client now names its `X-Beakr-Session` itself: the agent conversation's id
   (`BEAKR_SESSION`, `CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`,
