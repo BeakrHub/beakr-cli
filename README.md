@@ -780,7 +780,13 @@ Agent hooks are not available on self-hosted: a self-hosted build of the CLI
 exit 1), and `beakr setup` never offers them. `beakr context --hook` and
 `beakr compound --hook`, which a separately installed Beakr Claude Code plugin's
 hooks call, exit 0 at once and send nothing, so no hook opens a session or
-captures one. `beakr hooks uninstall` still removes hooks installed before.
+captures one. `beakr codex` (the Codex wrapper that refreshes AGENTS.md and
+captures the session) is refused too ("`beakr codex` is not available on this
+deployment.", exit 1) before it touches AGENTS.md or starts Codex, and so are the
+capture opt-ins `beakr hooks capture on` and `beakr init --capture`, which would
+do nothing (`capture off` and `status` still work). Importing Codex sessions by
+hand (`beakr compound --from-codex-sessions`) works as before.
+`beakr hooks uninstall` still removes hooks installed before.
 Sessions work without them: `beakr mcp` opens or joins the Claude Code
 conversation's session (keyed by `CLAUDE_CODE_SESSION_ID`), so one conversation
 has one session.

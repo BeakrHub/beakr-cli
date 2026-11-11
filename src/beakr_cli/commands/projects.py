@@ -209,6 +209,12 @@ def init_command(
     """Bind the current directory to a Beakr project (.beakr/project.json)."""
     # -p was this option's short flag before -P everywhere; still accepted.
     project = project or project_p
+    if capture:
+        from beakr_cli import agent_hooks
+
+        if not agent_hooks.available():
+            # The same opt-in as `beakr hooks capture on`: nothing captures here.
+            agent_hooks.refuse()
 
     if project and create:
         err_console.print("Pass either --project or --create, not both.")

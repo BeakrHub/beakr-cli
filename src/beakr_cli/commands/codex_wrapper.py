@@ -105,7 +105,14 @@ def codex_command(ctx: typer.Context) -> None:
     """Run Codex with fresh Beakr context; capture the session if this project allows it.
 
     Every argument is passed to `codex` unchanged (`beakr codex exec "..."`).
+    Not on a self-hosted build, which runs no agent hooks: refused before AGENTS.md
+    is touched or Codex started (`beakr compound --from-codex-sessions` still imports
+    sessions by hand).
     """
+    from beakr_cli import agent_hooks
+
+    if not agent_hooks.available():
+        agent_hooks.refuse(agent_hooks.CODEX_UNAVAILABLE)
     binary = _codex_binary()
     if binary is None:
         err_console.print("Codex is not on PATH. Install Codex first.")
