@@ -178,6 +178,9 @@ def capture(
     if state not in ("on", "off", "status"):
         err_console.print("Use `beakr hooks capture on`, `off` or `status`.")
         raise typer.Exit(2)
+    if state == "on" and not agent_hooks.available():
+        # No hook captures here, so an opt-in would do nothing; off and status still work.
+        agent_hooks.refuse()
     cwd = Path.cwd()
     if state != "status":
         try:

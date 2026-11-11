@@ -225,6 +225,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   Beakr Claude Code plugin's hooks run) exit 0 at once and send no request, so no
   hook opens or captures a session. `beakr hooks uninstall` still works. Sessions
   need no hooks: `beakr mcp` keys the conversation's session itself.
+- On a self-hosted build `beakr codex` is refused too ("`beakr codex` is not
+  available on this deployment.", exit 1), before it touches AGENTS.md or starts
+  Codex, and so are the capture opt-ins that would do nothing there,
+  `beakr hooks capture on` and `beakr init --capture` (`capture off` and `status`
+  still work). `beakr compound --from-codex-sessions` still imports Codex sessions
+  by hand.
 - `session_status` and `beakr session show` still answer for a session the person
   ended: that it ended and when, what it touched, its read trail (`trail=true`),
   and to start a new Claude Code conversation for a new session. Reads and writes

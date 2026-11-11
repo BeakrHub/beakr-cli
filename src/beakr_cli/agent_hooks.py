@@ -33,6 +33,8 @@ HOOK_TIMEOUT_SECONDS = 30
 
 #: Said when a self-hosted build is asked to install hooks (:func:`available`).
 UNAVAILABLE = "Agent hooks are not available on this deployment."
+#: Said when a self-hosted build is asked to run Codex through ``beakr codex``.
+CODEX_UNAVAILABLE = "`beakr codex` is not available on this deployment."
 
 
 def available() -> bool:
@@ -50,13 +52,15 @@ def available() -> bool:
     return not self_hosted_build()
 
 
-def refuse() -> None:
-    """Refuse a hooks install on a build without hooks: the line, then exit 1."""
+def refuse(message: str = UNAVAILABLE) -> None:
+    """Refuse on a build without hooks (an install, ``beakr codex``, a capture opt-in):
+    the line, then exit 1."""
     import typer
+    from rich.markup import escape
 
     from beakr_cli.output import err_console
 
-    err_console.print(f"[red]Error:[/red] {UNAVAILABLE}", highlight=False)
+    err_console.print(f"[red]Error:[/red] {escape(message)}", highlight=False)
     raise typer.Exit(1)
 
 

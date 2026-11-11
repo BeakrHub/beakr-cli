@@ -133,3 +133,104 @@ def test_a_public_build_keeps_its_hooks(isolated_home: Path, monkeypatch):
     result = runner.invoke(app, ["hooks", "install"])
     assert result.exit_code == 0, result.output
     assert agent_hooks.claude_hooks_installed() == ["SessionStart", "Stop", "SessionEnd"]
+
+
+# --- beakr codex and the capture opt-ins (Max, rc.9) -------------------------------------
+
+
+def _fake_codex(monkeypatch, tmp_path: Path) -> list[list[str]]:
+    """``codex`` on PATH, recording each run instead of starting it."""
+    import subprocess
+
+    from beakr_cli.commands import codex_wrapper
+
+    runs: list[list[str]] = []
+    monkeypatch.setattr(codex_wrapper, "_codex_binary", lambda: str(tmp_path / "codex"))
+    monkeypatch.setattr(
+        codex_wrapper.subprocess,
+        "run",
+        lambda args, **_: runs.append(list(args)) or subprocess.CompletedProcess(args, 0),
+    )
+    return runs
+
+
+@respx.mock
+def test_beakr_codex_is_refused_before_touching_anything(
+    isolated_home: Path, tmp_path, monkeypatch
+):
+    runs = _fake_codex(monkeypatch, tmp_path)
+    api = respx.route(host="api.test").respond(200, json={"content": "context"})
+
+    result = runner.invoke(app, ["codex", "exec", "hello"])
+
+    assert result.exit_code == 1, result.output
+    assert " ".join(result.output.split()) == (
+        "Error: `beakr codex` is not available on this deployment."
+    )
+    assert runs == []
+    assert not api.called
+    assert not agent_hooks.agents_block_installed()
+
+
+def _bound(tmp_path: Path, monkeypatch) -> None:
+    from beakr_cli.project_binding import write_binding
+
+    monkeypatch.chdir(tmp_path)
+    write_binding(tmp_path, {"project_id": "p1", "name": "Helios"})
+
+
+def test_capture_on_is_refused_but_off_and_status_work(tmp_path, monkeypatch):
+    _bound(tmp_path, monkeypatch)
+
+    refused = runner.invoke(app, ["hooks", "capture", "on"])
+    assert refused.exit_code == 1, refused.output
+    assert UNAVAILABLE in refused.output
+
+    from beakr_cli.project_binding import capture_enabled
+
+    assert not capture_enabled(tmp_path)
+    assert runner.invoke(app, ["hooks", "capture", "off"]).exit_code == 0
+    status = runner.invoke(app, ["hooks", "capture", "status", "--json"])
+    assert status.exit_code == 0 and json.loads(status.stdout)["capture"] is False
+
+
+@respx.mock
+def test_init_capture_is_refused(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    api = respx.route(host="api.test").respond(200, json={"id": "p1", "name": "Helios"})
+
+    result = runner.invoke(app, ["init", "--project", "p1", "--capture"])
+
+    assert result.exit_code == 1, result.output
+    assert UNAVAILABLE in result.output
+    assert not (tmp_path / ".beakr").exists()
+    assert not api.called
+
+
+@respx.mock
+def test_importing_codex_sessions_by_hand_still_works(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex-home"))
+
+    result = runner.invoke(app, ["compound", "--from-codex-sessions"])
+
+    assert UNAVAILABLE not in result.output and "not available" not in result.output
+
+
+def test_a_public_build_still_runs_codex_and_takes_capture(
+    isolated_home: Path, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(updates, "__version__", "0.5.0")
+    runs = _fake_codex(monkeypatch, tmp_path)
+    from beakr_cli.commands import codex_wrapper
+
+    monkeypatch.setattr(codex_wrapper, "refresh_codex_context", lambda cwd: True)
+    monkeypatch.setattr(codex_wrapper, "capture_codex_sessions", lambda cwd, started: 0)
+
+    result = runner.invoke(app, ["codex", "exec", "hello"])
+    assert result.exit_code == 0, result.output
+    assert runs and runs[0][1:] == ["exec", "hello"]
+
+    _bound(tmp_path, monkeypatch)
+    captured = runner.invoke(app, ["hooks", "capture", "on"])
+    assert captured.exit_code == 0, captured.output
