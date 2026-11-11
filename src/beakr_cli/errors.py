@@ -78,6 +78,19 @@ _ARGUMENT_REFUSALS = frozenset(
 #: a project the session may not write is a permission refusal (3), as the API's is.
 _SESSION_NEEDS_SELECTION = "session_needs_selection"
 _SESSION_WRITE_SCOPE = "session_write_scope"
+#: Project isolation's refusals of a write (said again by the CLI, so not always a
+#: PermissionDeniedError any more): a session locked to another project or
+#: read-only, a write outside a session, the other project's guard.
+_ISOLATION_REFUSALS = frozenset(
+    {
+        _SESSION_WRITE_SCOPE,
+        "session_locked_to_project",
+        "session_read_only",
+        "session_required",
+        "cross_project_write_refused",
+        "cross_project_owner_required",
+    }
+)
 
 
 def exit_code_for(exc: BaseException) -> int:
@@ -85,7 +98,7 @@ def exit_code_for(exc: BaseException) -> int:
         return EXIT_PERSON_REVIEW
     if isinstance(exc, BeakrError) and exc.code == _SESSION_NEEDS_SELECTION:
         return EXIT_PERSON_REVIEW
-    if isinstance(exc, BeakrError) and exc.code == _SESSION_WRITE_SCOPE:
+    if isinstance(exc, BeakrError) and exc.code in _ISOLATION_REFUSALS:
         return EXIT_AUTH
     if isinstance(exc, KnowledgeCommandError) and exc.code in _ARGUMENT_REFUSALS:
         return EXIT_USAGE

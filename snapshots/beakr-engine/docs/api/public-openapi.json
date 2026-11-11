@@ -3595,6 +3595,222 @@
         "title": "CreatedLinkOut",
         "type": "object"
       },
+      "CrossProjectGuardOut": {
+        "properties": {
+          "available": {
+            "description": "Whether the cross-project guard is turned on.",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "can_change": {
+            "description": "Whether the caller may change it: an owner or admin of the project acting as a person.",
+            "title": "Can Change",
+            "type": "boolean"
+          },
+          "effective": {
+            "description": "The guard that applies: the project's, else the org's.",
+            "enum": [
+              "allow",
+              "hold",
+              "refuse"
+            ],
+            "title": "Effective",
+            "type": "string"
+          },
+          "org_default": {
+            "description": "The organization's guard.",
+            "enum": [
+              "allow",
+              "hold",
+              "refuse"
+            ],
+            "title": "Org Default",
+            "type": "string"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allow",
+                  "hold",
+                  "refuse"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project's own guard; null follows the organization's.",
+            "title": "Override"
+          },
+          "project_id": {
+            "description": "The project this guard applies to.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "project_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "That project's name, as its members see it.",
+            "title": "Project Name"
+          }
+        },
+        "required": [
+          "project_id",
+          "project_name",
+          "override",
+          "org_default",
+          "effective",
+          "available",
+          "can_change"
+        ],
+        "title": "CrossProjectGuardOut",
+        "type": "object"
+      },
+      "CrossProjectGuardUpdate": {
+        "properties": {
+          "override": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allow",
+                  "hold",
+                  "refuse"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`allow`, `hold` or `refuse`; null clears it, so the project follows the organization.",
+            "title": "Override"
+          }
+        },
+        "required": [
+          "override"
+        ],
+        "title": "CrossProjectGuardUpdate",
+        "type": "object"
+      },
+      "CrossProjectHold": {
+        "additionalProperties": true,
+        "properties": {
+          "approver": {
+            "default": "owner_or_admin",
+            "description": "Who may accept it: an owner or admin of `project`.",
+            "title": "Approver",
+            "type": "string"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrossProjectHoldTarget"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The project it writes into, whose owner or admin may accept it."
+          },
+          "projects": {
+            "description": "The other projects whose content it brings in.",
+            "items": {
+              "$ref": "#/components/schemas/CrossProjectHoldProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "reason": {
+            "description": "Why it is held, naming the projects: `Content from Pharma A (cited).`",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "CrossProjectHold",
+        "type": "object"
+      },
+      "CrossProjectHoldProject": {
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "description": "Unique id of this cross project hold project.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Name of the cross project hold project.",
+            "title": "Name"
+          },
+          "via": {
+            "description": "How its content came in: `cited` (a source of it is cited), `moved` (moved or copied in) or `read_in_session` (the session that wrote this had read it).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Via",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "CrossProjectHoldProject",
+        "type": "object"
+      },
+      "CrossProjectHoldTarget": {
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "description": "Unique id of this cross project hold target.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Name of the cross project hold target.",
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "CrossProjectHoldTarget",
+        "type": "object"
+      },
       "DocumentsCoverage": {
         "properties": {
           "complete": {
@@ -10770,6 +10986,153 @@
         "title": "ProjectCreate",
         "type": "object"
       },
+      "ProjectIsolationAvailable": {
+        "properties": {
+          "agent_writes_require_session": {
+            "description": "`agent_writes_require_session` may be set.",
+            "title": "Agent Writes Require Session",
+            "type": "boolean"
+          },
+          "cross_project_guard": {
+            "description": "`cross_project_guard` and project overrides may be set.",
+            "title": "Cross Project Guard",
+            "type": "boolean"
+          },
+          "server_agent_sessions": {
+            "description": "Agent sessions joined by X-Beakr-Session or agent_session_id.",
+            "title": "Server Agent Sessions",
+            "type": "boolean"
+          },
+          "session_auto_lock": {
+            "description": "`session_mode` may be set.",
+            "title": "Session Auto Lock",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "server_agent_sessions",
+          "session_auto_lock",
+          "agent_writes_require_session",
+          "cross_project_guard"
+        ],
+        "title": "ProjectIsolationAvailable",
+        "type": "object"
+      },
+      "ProjectIsolationOut": {
+        "properties": {
+          "agent_writes_require_session": {
+            "description": "Refuse Knowledge and file writes made with a person's API key or token outside a session (403 session_required). The web app and service accounts are exempt.",
+            "title": "Agent Writes Require Session",
+            "type": "boolean"
+          },
+          "auto_lock_counts_search_results": {
+            "description": "In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).",
+            "title": "Auto Lock Counts Search Results",
+            "type": "boolean"
+          },
+          "available": {
+            "$ref": "#/components/schemas/ProjectIsolationAvailable",
+            "description": "Which of these features are turned on for the organization."
+          },
+          "can_change": {
+            "description": "Whether the caller may change these: an org admin acting as a person.",
+            "title": "Can Change",
+            "type": "boolean"
+          },
+          "cross_project_guard": {
+            "description": "The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.",
+            "enum": [
+              "allow",
+              "hold",
+              "refuse"
+            ],
+            "title": "Cross Project Guard",
+            "type": "string"
+          },
+          "session_mode": {
+            "description": "`picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.",
+            "enum": [
+              "picker",
+              "auto_lock"
+            ],
+            "title": "Session Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "session_mode",
+          "auto_lock_counts_search_results",
+          "agent_writes_require_session",
+          "cross_project_guard",
+          "available",
+          "can_change"
+        ],
+        "title": "ProjectIsolationOut",
+        "type": "object"
+      },
+      "ProjectIsolationUpdate": {
+        "properties": {
+          "agent_writes_require_session": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Refuse Knowledge and file writes made with a person's API key or token outside a session (403 session_required). The web app and service accounts are exempt.",
+            "title": "Agent Writes Require Session"
+          },
+          "auto_lock_counts_search_results": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).",
+            "title": "Auto Lock Counts Search Results"
+          },
+          "cross_project_guard": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allow",
+                  "hold",
+                  "refuse"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.",
+            "title": "Cross Project Guard"
+          },
+          "session_mode": {
+            "anyOf": [
+              {
+                "enum": [
+                  "picker",
+                  "auto_lock"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.",
+            "title": "Session Mode"
+          }
+        },
+        "title": "ProjectIsolationUpdate",
+        "type": "object"
+      },
       "ProjectKnowledgeActivity": {
         "description": "Whether a project's Knowledge is still being built, and how many files failed.\n\nCounted over the caller's readable files, with the same per-file status as\n``GET /v1/projects/{project_id}/knowledge-summary``, which has the full\npicture (coverage, and the failed files with their reasons).",
         "properties": {
@@ -11556,6 +11919,40 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "cross_project_guard": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allow",
+                  "hold",
+                  "refuse"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cross project guard: one of `allow`, `hold`, `refuse`.",
+            "title": "Cross Project Guard"
+          },
+          "cross_project_guard_override": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allow",
+                  "hold",
+                  "refuse"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Cross project guard override: one of `allow`, `hold`, `refuse`.",
+            "title": "Cross Project Guard Override"
           },
           "description": {
             "anyOf": [
@@ -13816,6 +14213,21 @@
       },
       "SessionCreate": {
         "properties": {
+          "agent_session": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Needs `server_agent_sessions`.",
+            "title": "Agent Session"
+          },
           "client_name": {
             "default": "api",
             "description": "The client holding the session, shown to the person (`beakr mcp`, `beakr-cli`).",
@@ -13904,6 +14316,18 @@
       },
       "SessionOut": {
         "properties": {
+          "agent_session": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent conversation id (`X-Beakr-Session`) it was started for.",
+            "title": "Agent Session"
+          },
           "client_name": {
             "description": "The client holding the session.",
             "title": "Client Name",
@@ -13974,10 +14398,53 @@
             "description": "When a session token last made a request.",
             "title": "Last Used At"
           },
+          "lock_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`auto_lock` only: `open` (no project yet), `locked` (reads and writes `write_project`) or `read_only` (read two projects; writes are refused). Null in picker mode.",
+            "title": "Lock State"
+          },
+          "mode": {
+            "default": "picker",
+            "description": "`picker` (the person chooses the projects) or `auto_lock` (the first project the session reads or writes becomes its project; reading a second makes it read-only).",
+            "title": "Mode",
+            "type": "string"
+          },
           "picker_url": {
             "description": "Where the person chooses and changes the projects.",
             "title": "Picker Url",
             "type": "string"
+          },
+          "read_only_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it became read-only.",
+            "title": "Read Only At"
+          },
+          "read_only_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it is read-only, naming the projects it read.",
+            "title": "Read Only Reason"
           },
           "read_projects": {
             "description": "Projects the session may read.",
@@ -14026,6 +14493,14 @@
             ],
             "description": "The token minted with the session, when `issue_token` was set."
           },
+          "touched_projects": {
+            "description": "Every project the session has read or written, in order (tracked under auto-lock or the cross-project guard).",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Touched Projects",
+            "type": "array"
+          },
           "updated_at": {
             "description": "When its projects or label last changed.",
             "examples": [
@@ -14034,6 +14509,17 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "write_project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionProject"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`auto_lock` only: the project it reads and writes, while locked."
           },
           "write_projects": {
             "description": "Projects the session may write.",
@@ -18478,6 +18964,18 @@
             "title": "Created At",
             "type": "string"
           },
+          "cross_project_hold": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrossProjectHold"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Set when the project's cross-project guard holds this proposal: it brings in content from another project, so only an owner or admin of its project, acting as a person, may accept it (anyone else: 403 cross_project_owner_required). It is never auto-approved."
+          },
           "filed_by": {
             "anyOf": [
               {
@@ -18500,6 +18998,12 @@
             "default": false,
             "description": "True when this proposal's project requires a person to accept proposals: an accept from an API key or token is refused (403 person_review_required) unless the key holds the proposals:accept scope.",
             "title": "Needs Person To Accept",
+            "type": "boolean"
+          },
+          "needs_project_admin_to_accept": {
+            "default": false,
+            "description": "True when `cross_project_hold` is set.",
+            "title": "Needs Project Admin To Accept",
             "type": "boolean"
           },
           "page_id": {
@@ -29627,6 +30131,162 @@
         "x-beakr-scope": "members:admin"
       }
     },
+    "/v1/organizations/{org_id}/project-isolation": {
+      "get": {
+        "description": "Get the project isolation settings.\n\nThe organization's settings, and which of the features are turned on for it.",
+        "operationId": "get_project_isolation_v1_organizations__org_id__project_isolation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "4b1d0c7e-2f3a-4c55-9e1b-7a6d2c8f0e31"
+              ],
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectIsolationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the project isolation settings",
+        "tags": [
+          "public",
+          "organizations"
+        ],
+        "x-beakr-scope": "kb:read"
+      },
+      "put": {
+        "description": "Change the project isolation settings.\n\nOnly the fields sent change.",
+        "operationId": "set_project_isolation_v1_organizations__org_id__project_isolation_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "4b1d0c7e-2f3a-4c55-9e1b-7a6d2c8f0e31"
+              ],
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectIsolationUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectIsolationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change the project isolation settings",
+        "tags": [
+          "public",
+          "organizations"
+        ],
+        "x-beakr-scope": "members:admin"
+      }
+    },
     "/v1/organizations/{org_id}/service-accounts": {
       "get": {
         "description": "The organization's service accounts: non-human members for automation. Organization admins only.",
@@ -30438,6 +31098,162 @@
           }
         ],
         "summary": "Update a project",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/cross-project-guard": {
+      "get": {
+        "description": "Get a project's cross-project guard.\n\nIts own setting, the organization's, and the one that applies.",
+        "operationId": "get_cross_project_guard_v1_projects__project_id__cross_project_guard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrossProjectGuardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a project's cross-project guard",
+        "tags": [
+          "public",
+          "projects"
+        ],
+        "x-beakr-scope": "kb:read"
+      },
+      "put": {
+        "description": "Set a project's cross-project guard.\n\nIts own guard, or null to follow the organization's.",
+        "operationId": "set_cross_project_guard_v1_projects__project_id__cross_project_guard_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrossProjectGuardUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrossProjectGuardOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Set a project's cross-project guard",
         "tags": [
           "public",
           "projects"
@@ -32497,7 +33313,7 @@
         ]
       },
       "post": {
-        "description": "Start a session for the signed-in person, optionally with its projects and a token.",
+        "description": "Start a session for the signed-in person, optionally with its projects and a token.\n\nWith ``agent_session``, the person's active session for that agent\nconversation is returned (and a token minted for it if asked), or started.",
         "operationId": "create_session_v1_sessions_post",
         "requestBody": {
           "content": {

@@ -79,7 +79,14 @@ _write_all_opt = typer.Option(
 
 
 def _session_id(session_id: str | None) -> str:
-    chosen = session_id or scope_session.shell_session_id()
+    """The session named, else this shell's, else the one this terminal kept, else this
+    agent conversation's (``beakr mcp``'s, found among the person's open sessions)."""
+    chosen = (
+        session_id
+        or scope_session.shell_session_id()
+        or scope_session.terminal_session_id()
+        or _conversation_session_id()
+    )
     if not chosen:
         raise typer.BadParameter(
             f"name a session, or run this in a shell with {scope_session.SESSION_ENV} set "
@@ -87,6 +94,18 @@ def _session_id(session_id: str | None) -> str:
             param_hint="SESSION_ID",
         )
     return chosen
+
+
+def _conversation_session_id() -> str | None:
+    """The open session of the agent conversation this command runs in, if it has one."""
+    agent = scope_session.agent_session_id()
+    if not agent:
+        return None
+    with get_sdk(scoped=False) as sdk:
+        for row in sdk.paginate("/v1/sessions"):
+            if row.get("agent_session") == agent and row.get("status") != "ended":
+                return str(row.get("id"))
+    return None
 
 
 def _lists(read: list[str], write: list[str]) -> tuple[list[str], list[str]]:
@@ -319,7 +338,12 @@ def show(
     with get_sdk(scoped=False) as sdk:
         session = sdk.request("GET", f"/v1/sessions/{chosen}")
     _maybe_remember(session)
-    emit(session, json_out=json_out, render=_render)
+    emit(session, json_out=json_out, render=_render, lines=_describe_lines)
+
+
+def _describe_lines(session: dict[str, Any]) -> list[str]:
+    """Piped (an agent reading it): the same lines a person sees, mode and lock included."""
+    return scope_session.describe(session).splitlines()
 
 
 @app.command("ls")
@@ -427,6 +451,13 @@ def end(
 
     def render(data: dict[str, Any]) -> None:
         err_console.print(f"Ended session {data.get('id')}.", markup=False)
+        if data.get("agent_session"):
+            err_console.print(
+                "It was an agent conversation's session, which is never started again: "
+                "Beakr refuses that conversation's requests from now on. "
+                + scope_session.NEW_CONVERSATION_FIX,
+                markup=False,
+            )
         if scope_session.shell_session_id() == chosen:
             err_console.print(
                 f"Leave it in this shell with: unset {scope_session.SESSION_ENV}", markup=False

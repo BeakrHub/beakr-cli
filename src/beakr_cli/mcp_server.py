@@ -26,6 +26,8 @@ from beakr_cli.mcp_render import (
     organization_line,
 )
 from beakr_cli.mcp_tools_platform import _project_by_name_or_id
+from beakr_cli.proposal_view import held_line
+from beakr_cli.session_trail import render_write_trail, write_trail
 from beakr_cli.updates import (
     CHECK_OFF,
     box_line,
@@ -179,6 +181,9 @@ def _format_proposal(data: dict) -> str:
     filed = filed_by_line(data)
     if filed:
         lines.append(filed)
+    held = held_line(data)
+    if held:
+        lines.append(held)
     lines.extend([f"Type: {data.get('proposal_type')}", f"Status: {data.get('status')}"])
     decided = decided_line(data)
     if decided:
@@ -400,6 +405,8 @@ def _wiki_result(result: dict) -> dict:
         # Whether a staged write waits for review, is applied by auto-approve, or
         # needs a person (pending | auto_apply_queued | needs_person).
         **({"approval_state": state} if (state := _approval_state(result)) else {}),
+        # Held by the project's cross-project guard: a normal outcome, not an error.
+        **({"held_for_approval": held} if (held := held_line(result)) else {}),
         # Older compact API responses report truncation only through next.
         "next": list(result.get("next") or []),
     }
@@ -468,7 +475,9 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
     from beakr_cli import scope_session
     from beakr_cli.mcp_tools_platform import _cursor, _page_of, _page_result, _page_size
 
-    if scope_session.ACTIVE is not None and scope_session.ACTIVE.state is not None:
+    session = scope_session.ACTIVE
+    held = session is not None and session.state is not None
+    if held and not scope_session.auto_locked(session.session):
         # A session reaches only the projects the person chose for it; listing the
         # organization's projects is not open to its token.
         return await _session_projects_result()
@@ -487,6 +496,9 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         lines.append(f"- {name} ({project_type}, id: {pid}){f' -- {desc}' if desc else ''}")
     projects = "\n".join(lines) if lines else "No projects found."
     listed = f"{await _organization_line()}\n\n{projects}"
+    if held and session is not None:
+        # auto_lock: every project is listed until the session locks to one.
+        listed += "\n\nThis session: " + " ".join(scope_session.lock_lines(session.session))
     # Which listed projects' Knowledge is still building or has failed files,
     # the same notice the hosted server appends.
     notice = knowledge_notice(rows[:50])
@@ -1089,6 +1101,8 @@ async def show_proposal(
     summary = proposal_summary_lines(payload)
     if summary:
         text += "\n" + "\n".join(summary)
+    if write_trail(data) is not None:
+        text += "\n" + render_write_trail(data)
     return text + "\n\nThe whole payload (page text, citation meta): show_proposal with raw=true."
 
 

@@ -52,6 +52,9 @@ $ beakr session show 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
 > GET /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
 [exit 0]
 --- stdout
-7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f	beakr shell in helios	status=active	picker_url=https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+Session 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f (active)
+Reads: Project Helios, Helios Assays
+Writes: Project Helios
+Change at https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
 --- stderr
 

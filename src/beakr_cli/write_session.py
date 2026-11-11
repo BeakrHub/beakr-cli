@@ -133,7 +133,8 @@ NOT_GATED: frozenset[str] = frozenset(
         "init", "install", "setup", "update", "mcp", "codex", "hooks install",
         "hooks uninstall", "hooks capture", "hooks learning",
         # The sessions themselves (always the person's own credential)
-        "session start", "session show", "session ls", "session edit", "session end",
+        "session start", "session show", "session ls", "session edit",
+        "session end",
         "session forget",
     }
 )  # fmt: skip
@@ -181,10 +182,32 @@ class Held:
     def active(self) -> bool:
         return self.session.get("status") == "active"
 
+    @property
+    def auto_locked(self) -> bool:
+        return scope_session.auto_locked(self.session)
+
     def writes(self) -> list[str]:
         return scope_session.project_ids(self.session.get("write_projects"))
 
+    def may_write(self, project: str) -> bool:
+        """Whether the session may write ``project`` now, as the API will decide it.
+
+        An auto_lock session may write any project while open (the first one it
+        touches becomes its project), only its project once locked, and none once
+        read-only.
+        """
+        if not self.auto_locked:
+            return project in self.writes()
+        state = self.session.get("lock_state")
+        if state == "read_only":
+            return False
+        if state == "locked":
+            return project in self.writes()
+        return True
+
     def write_names(self) -> str:
+        if self.auto_locked and self.session.get("lock_state") in {None, "open"}:
+            return "the first project it touches"
         return _names(self.session.get("write_projects")) or "no project"
 
     def names_of(self, ids: list[str]) -> str:
@@ -244,6 +267,13 @@ def run_gated(
     except BeakrError as exc:
         if exc.code == scope_session.WRITE_SCOPE and not isinstance(exc, SessionScopeError):
             raise _write_refusal(held, _refused_ids(held, exc)) from exc
+        if exc.code in {scope_session.READ_ONLY, scope_session.LOCKED_TO_PROJECT} and not (
+            isinstance(exc, SessionScopeError)
+        ):
+            # The API's words (it names the projects), with the fix that works here.
+            raise scope_session.explain_lock_refusal(
+                exc, held.session, shell=previous == held.id
+            ) from exc
         if exc.status == 401:
             # Said while the session is still named here (restored below).
             explained = scope_session.explain_refusal(exc)
@@ -327,7 +357,7 @@ def _run_hook(
             f"chosen yet; choose them at {held.picker_url}."
         )
         return None
-    refused = [p for p in dict.fromkeys(targets() or []) if p not in held.writes()]
+    refused = [p for p in dict.fromkeys(targets() or []) if not held.may_write(p)]
     if refused:
         names = held.names_of(refused)
         _hook_log(
@@ -389,13 +419,27 @@ def _held(command: str, params: dict[str, Any], *, hook: bool) -> Held | None:
             else:
                 _wait_for_choice(person, held, command)
     scope_session.keep_remembered(held.session)
-    if held.new:
+    if held.new and held.auto_locked:
+        _say(
+            f"Session {held.id}: Beakr locks it to the first project it touches, and a second "
+            f"project read makes it read-only. {_reuse_line(held)}"
+        )
+    elif held.new:
         _say(
             f"Session {held.id}: writes {held.write_names()}. This terminal reuses it for "
             f"writes until `beakr session end {held.id}`. In another shell: "
             f"export {scope_session.SESSION_ENV}={held.id}"
         )
     return held
+
+
+def _reuse_line(held: Held) -> str:
+    if held.session.get("agent_session"):
+        return "This agent conversation's commands and beakr mcp all run in it."
+    return (
+        f"This terminal reuses it until `beakr session end {held.id}`. In another shell: "
+        f"export {scope_session.SESSION_ENV}={held.id}"
+    )
 
 
 def _named(person: Any, session_id: str) -> dict[str, Any]:
@@ -441,6 +485,7 @@ def _start(person: Any, command: str) -> Held | None:
     # At a terminal the picker shows the remembered choice; elsewhere it is used as is.
     lists = remembered if remembered and not _interactive() else None
     try:
+        # In an agent conversation: its session (beakr mcp's), joined or started.
         session, state = scope_session.create_session(
             person,
             client_name="beakr-cli",
@@ -448,6 +493,7 @@ def _start(person: Any, command: str) -> Held | None:
             folder=folder,
             read=lists[0] if lists else None,
             write=lists[1] if lists else None,
+            agent=scope_session.agent_session_id(),
         )
     except NotFoundError:
         return None  # an installation without sessions: as before
@@ -462,7 +508,7 @@ def _start(person: Any, command: str) -> Held | None:
             return None
         raise
     scope_session.save_state(state)
-    scope_session.remember_terminal(state.session_id)
+    scope_session.remember_terminal(state.session_id, mode=session.get("mode"))
     return Held({k: v for k, v in session.items() if k != "token"}, new=True)
 
 
@@ -593,13 +639,35 @@ def _targets(command: str, params: dict[str, Any]) -> list[str] | None:
 
 
 def _check_writes(held: Held, projects: list[str]) -> None:
-    refused = [p for p in dict.fromkeys(projects) if p not in held.writes()]
+    refused = [p for p in dict.fromkeys(projects) if not held.may_write(p)]
     if refused:
         raise _write_refusal(held, refused)
 
 
+def _lock_refusal(held: Held, refused: list[str]) -> SessionScopeError:
+    """An auto_lock session's refusal, said before anything is sent, as the API words it."""
+    what = held.names_of(refused) or "that project"
+    fix = scope_session.restart_fix(held.session)
+    if held.session.get("lock_state") == "read_only":
+        touched = _names(held.session.get("touched_projects")) or "two projects"
+        return SessionScopeError(
+            f"Session {held.id} read {touched}, so it is read-only: it cannot write {what}; "
+            "nothing was written.",
+            code=scope_session.READ_ONLY,
+            fix=fix,
+        )
+    return SessionScopeError(
+        f"Session {held.id} reads and writes {held.write_names()}, so it cannot write {what}; "
+        "nothing was written.",
+        code=scope_session.LOCKED_TO_PROJECT,
+        fix=f"To write {what}: {fix}",
+    )
+
+
 def _write_refusal(held: Held, refused: list[str]) -> SessionScopeError:
     """The refusal of a write outside the session, naming the projects and how to add them."""
+    if held.auto_locked:
+        return _lock_refusal(held, refused)
     what = held.names_of(refused) or "that project"
     return SessionScopeError(
         f"Session {held.id} may not write to {what}; nothing was written. It may write: "

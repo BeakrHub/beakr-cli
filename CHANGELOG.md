@@ -8,6 +8,49 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Project isolation, for organizations whose projects must not write into one
+  another (each part is available where the organization has it turned on;
+  `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
+  - Settings: `GET /v1/organizations/{org_id}/project-isolation` returns the organization's
+    `session_mode` (`picker` or `auto_lock`), `auto_lock_counts_search_results`,
+    `agent_writes_require_session` and `cross_project_guard` (`allow`, `hold` or
+    `refuse`). `PUT /v1/organizations/{org_id}/project-isolation` changes them; it needs an
+    organization admin signed in, or their key with `proposals:accept`, and
+    answers `404 feature_not_enabled` for a part that is not turned on.
+    `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set
+    one project's own guard (`override`; `null` follows the organization), with
+    the organization's (`org_default`) and the one that applies (`effective`);
+    setting it needs an owner or admin of the project. Project responses
+    (`GET /v1/projects`, `GET /v1/projects/{project_id}`) carry
+    `cross_project_guard` and `cross_project_guard_override`.
+  - One session per agent conversation: a request with a person's API key and
+    `X-Beakr-Session: <conversation id>`, and no session token, runs inside that
+    person's session for the conversation, started on its first request, so an
+    MCP server, its subagents and CLI calls in one conversation share it.
+    `POST /v1/sessions` with `agent_session` returns that session, or starts it.
+    A conversation id whose session has ended answers `409 session_ended`.
+  - Auto-lock: in `auto_lock` the first project a session reads or writes
+    becomes its project. Writing another project answers
+    `403 session_locked_to_project`; once it reads a second project the session
+    is read-only, and every write answers `403 session_read_only`, naming the
+    projects it read. Reads keep working. An unscoped search counts the
+    projects its results come from while `auto_lock_counts_search_results` is
+    true. Choosing an auto-lock session's projects answers
+    `session_mode_auto_lock`. Session responses carry `mode`, `agent_session`,
+    `lock_state` (`open`, `locked` or `read_only`), `write_project`,
+    `touched_projects`, `read_only_at` and `read_only_reason`.
+  - With `agent_writes_require_session`, a Knowledge or file write made with a
+    person's API key or token outside a session answers `403 session_required`,
+    with a `fix` saying how to start one. Service-account keys are exempt.
+  - Cross-project guard: a write into a project that cites a source from another
+    project, moves or copies content from one, or comes from a session that read
+    one, answers `403 cross_project_write_refused` under `refuse`. Under `hold`
+    the proposal is staged with `cross_project_hold` (its `reason` names the
+    projects) and `needs_project_admin_to_accept: true`: only an owner or admin
+    of the project, signed in or with a `proposals:accept` key, may accept it,
+    anyone else gets `403 cross_project_owner_required`, and it is never
+    auto-approved. A write that commits without a proposal is allowed under
+    `hold` only for an owner or admin of the project.
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
   who and what wrote it. `kind` is `beakr` (a model or maintenance process
@@ -103,6 +146,28 @@ Each release lists the public API changes it supports, taken from the API change
   choice is not reused for it. A session whose token only expired is renewed and
   the call made once more. A refused session token never suggests
   `beakr auth login`.
+- Project isolation in `beakr mcp` and the CLI. Where the installation has agent
+  sessions, `beakr mcp`, its subagents and the `beakr` commands an agent runs in
+  one Claude Code or Codex conversation share one session (`agent_session`, the
+  conversation's id), so a Bash call or subagent cannot step outside it; without
+  them each starts its own session as before. Where the organization is in
+  `auto_lock` mode nothing asks: `beakr mcp` answers at once, the write gate
+  writes without the picker or the wait, a remembered folder choice is not sent,
+  and the CLI's reads in an agent conversation run in the session too. Picker
+  mode is unchanged. A write a locked or read-only session may not make is
+  refused by name before it is sent (exit 3), with the fix that works there: a
+  new agent conversation (a conversation's session is never started again once
+  it ends), or `beakr session end <id>` for a terminal's. `session_required` and
+  the cross-project guard's refusals exit 3 with what to do; a write the guard
+  held is a normal result, "Held for approval by an owner or admin of Pharma B",
+  in `knowledge_base_write`, `show_proposal`, `kb propose ...` and
+  `kb proposals show`. `beakr session show` prints the mode, the locked project,
+  read-only and the touched projects (also when piped), and finds the agent
+  conversation's session without an id; `beakr session end` says when the session
+  was a conversation's. The new read-only `session_status` tool shows the same to
+  the agent; `session_scope` does not narrow an auto_lock session. When the person
+  ends an agent conversation's session, `beakr mcp` no longer replaces it: the
+  agent is told to start a new conversation.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

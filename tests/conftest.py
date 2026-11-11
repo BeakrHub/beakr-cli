@@ -79,6 +79,24 @@ def writes_need_no_session(request, monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def conversations_need_no_session(request, monkeypatch):
+    """Commands in an agent conversation run as before, unless a test asks for its session.
+
+    In an agent conversation (a test that sets ``CLAUDE_CODE_SESSION_ID``) the CLI
+    asks the API once whether the organization locks sessions (auto_lock) and, if
+    so, joins the conversation's session (beakr_cli/scope_session.py). Tests of it
+    are marked ``@pytest.mark.real_conversation_sessions``.
+    """
+    from beakr_cli import scope_session
+
+    monkeypatch.setattr(
+        scope_session,
+        "CONVERSATION_SESSIONS",
+        bool(request.node.get_closest_marker("real_conversation_sessions")),
+    )
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "real_project_refs: resolve --project slugs and names through the API"
@@ -91,6 +109,10 @@ def pytest_configure(config):
     )
     config.addinivalue_line(
         "markers", "real_write_sessions: run write commands through the session gate"
+    )
+    config.addinivalue_line(
+        "markers",
+        "real_conversation_sessions: join an agent conversation's session (auto_lock)",
     )
 
 
