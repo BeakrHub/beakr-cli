@@ -18,8 +18,9 @@ Each release lists the public API changes it supports, taken from the API change
     organization admin signed in, or their key with `proposals:accept`, and
     answers `404 feature_not_enabled` for a part that is not turned on.
     `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set
-    one project's own guard (`override`; `null` follows the organization), which
-    needs an owner or admin of the project. Project responses
+    one project's own guard (`override`; `null` follows the organization), with
+    the organization's (`org_default`) and the one that applies (`effective`);
+    setting it needs an owner or admin of the project. Project responses
     (`GET /v1/projects`, `GET /v1/projects/{project_id}`) carry
     `cross_project_guard` and `cross_project_guard_override`.
   - One session per agent conversation: a request with a person's API key and

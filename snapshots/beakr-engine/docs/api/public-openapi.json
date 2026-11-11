@@ -3645,7 +3645,7 @@
             "title": "Override"
           },
           "project_id": {
-            "description": "Project id.",
+            "description": "The project this guard applies to.",
             "examples": [
               "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
             ],
@@ -3662,7 +3662,7 @@
                 "type": "null"
               }
             ],
-            "description": "Project name.",
+            "description": "That project's name, as its members see it.",
             "title": "Project Name"
           }
         },
