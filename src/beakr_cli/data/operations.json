@@ -2440,7 +2440,7 @@
    "query": [],
    "response": "json",
    "scope": "kb:read",
-   "summary": "Get what was read before an ingestion event"
+   "summary": "Get an ingestion event's read trail"
   },
   {
    "action": "list-proposals",
@@ -2614,7 +2614,7 @@
    "query": [],
    "response": "json",
    "scope": "kb:read",
-   "summary": "Get what was read before a proposal"
+   "summary": "Get a proposal's read trail"
   },
   {
    "action": "research",
@@ -2715,7 +2715,7 @@
    "query": [],
    "response": "json",
    "scope": "kb:read",
-   "summary": "Get what was read before a page revision"
+   "summary": "Get a revision's read trail"
   },
   {
    "action": "run-wiki-command",
@@ -4447,7 +4447,7 @@
    "query": [],
    "response": "json",
    "scope": "members:admin",
-   "summary": "Change how long a session's reads are kept"
+   "summary": "Change read trail retention"
   },
   {
    "action": "update-member-role",

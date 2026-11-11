@@ -67,9 +67,11 @@ Each release lists the public API changes it supports, taken from the API change
   - `GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
     `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail` and
     `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail` return
-    the reads the session made before that write, in `groups` by project: the
+    the read trail of that write: the reads its session made before it (at
+    most the newest 500, with `truncated`), in `groups` by project: the
     write's project first, then other projects (`cross_project: true`), then
-    reads outside Beakr projects (`external: true`). `recorded: false` means
+    reads outside Beakr projects (`external: true`), beside the `write` itself
+    (its kind, project and time). `recorded: false` means
     the write was not made in a session with the read trail on. The person
     whose session made it, an owner or admin of its project and organization
     admins may read it; anyone else gets `403 read_trail_forbidden`. A read of

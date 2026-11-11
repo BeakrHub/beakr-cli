@@ -20587,7 +20587,7 @@
           },
           "write": {
             "$ref": "#/components/schemas/TrailWrite",
-            "description": "Write."
+            "description": "The write: a proposal, ingestion event or page revision, its project and when it was made."
           }
         },
         "required": [
@@ -25467,7 +25467,7 @@
     },
     "/v1/knowledge/wiki/ingestion-events/{event_id}/trail": {
       "get": {
-        "description": "Get what was read before an ingestion event.\n\nFor an event made in a session, or one applying a proposal staged in one:\nthe session's reads before it, grouped by project.",
+        "description": "Get an ingestion event's read trail.\n\nWhat was read before it. For an event made in a session, or one applying a proposal staged in one:\nthe session's reads before it, grouped by project.",
         "operationId": "ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get",
         "parameters": [
           {
@@ -25528,7 +25528,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get what was read before an ingestion event",
+        "summary": "Get an ingestion event's read trail",
         "tags": [
           "public",
           "knowledge"
@@ -26091,7 +26091,7 @@
     },
     "/v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail": {
       "get": {
-        "description": "Get what was read before a page revision.\n\nThrough the revision's ingestion event: the reads of the session that made\nit (or staged the proposal it applied), grouped by project.",
+        "description": "Get a revision's read trail.\n\nWhat was read before a page revision, through the revision's ingestion event: the reads of the session that made\nit (or staged the proposal it applied), grouped by project.",
         "operationId": "revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get",
         "parameters": [
           {
@@ -26164,7 +26164,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get what was read before a page revision",
+        "summary": "Get a revision's read trail",
         "tags": [
           "public",
           "knowledge"
@@ -26773,7 +26773,7 @@
     },
     "/v1/knowledge/wiki/proposals/{proposal_id}/trail": {
       "get": {
-        "description": "Get what was read before a proposal.\n\nThe reads its session made before it was staged, grouped by project, with\nreads of other projects flagged `cross_project`.",
+        "description": "Get a proposal's read trail.\n\nWhat was read before it: the reads its session made before it was staged, grouped by project, with\nreads of other projects flagged `cross_project`.",
         "operationId": "proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get",
         "parameters": [
           {
@@ -26834,7 +26834,7 @@
             "bearer": []
           }
         ],
-        "summary": "Get what was read before a proposal",
+        "summary": "Get a proposal's read trail",
         "tags": [
           "public",
           "knowledge"
@@ -31021,7 +31021,7 @@
         "x-beakr-scope": "kb:read"
       },
       "put": {
-        "description": "Change how long a session's reads are kept.\n\nReads older than this are deleted within the hour.",
+        "description": "Change read trail retention.\n\nHow long a session's reads are kept. Reads older than this are deleted within the hour.",
         "operationId": "set_read_trail_settings_v1_organizations__org_id__read_trail_put",
         "parameters": [
           {
@@ -31095,7 +31095,7 @@
             "bearer": []
           }
         ],
-        "summary": "Change how long a session's reads are kept",
+        "summary": "Change read trail retention",
         "tags": [
           "public",
           "organizations"

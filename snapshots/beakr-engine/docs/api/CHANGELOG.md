@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=dba0780272a4465206dd8c074478c898e01dc08786385f16463bab3376364500 changelog sha256=b69b8959a9f8b4e5454d9400496b50562432b802c49c55c1616e93db7e0e1bb1 -->
+<!-- contract-stamp: public-openapi sha256=87546018f05c9ededb6233e1a220b4a9cd6aee8916baabf3b6bc36b70ea7d03a changelog sha256=02aa827df9d43db02b9bb0800159d7f1a5491c31610d33320e8723a333a0369e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -76,9 +76,11 @@ The first public version.
   - `GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
     `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail` and
     `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail` return
-    the reads the session made before that write, in `groups` by project: the
+    the read trail of that write: the reads its session made before it (at
+    most the newest 500, with `truncated`), in `groups` by project: the
     write's project first, then other projects (`cross_project: true`), then
-    reads outside Beakr projects (`external: true`). `recorded: false` means
+    reads outside Beakr projects (`external: true`), beside the `write` itself
+    (its kind, project and time). `recorded: false` means
     the write was not made in a session with the read trail on. The person
     whose session made it, an owner or admin of its project and organization
     admins may read it; anyone else gets `403 read_trail_forbidden`. A read of
