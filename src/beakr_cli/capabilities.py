@@ -61,6 +61,14 @@ AREAS: tuple[tuple[str, re.Pattern[str], tuple[str, str] | None], ...] = (
         None,
     ),
     (
+        "project isolation",
+        re.compile(
+            r"^/v1/(organizations/[^/]+/project-isolation|projects/[^/]+/cross-project-guard)$"
+        ),
+        None,
+    ),
+    ("read trails", re.compile(r"^/v1/organizations/[^/]+/read-trail$"), None),
+    (
         "organization administration",
         re.compile(r"^/v1/organizations(/|$)"),
         ("GET", "/v1/organizations"),

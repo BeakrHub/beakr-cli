@@ -80,6 +80,11 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "org service-accounts create",
         "org service-accounts disable",
         "org service-accounts key",
+        # Project isolation: a person's own settings, never an MCP tool.
+        "org isolation show",
+        "org isolation set",
+        "org read-trail show",
+        "org read-trail set",
         "members ls",
         "members role",
         "members rm",
@@ -105,6 +110,9 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "projects members add",
         "projects members rm",
         "projects members invite",
+        # A project's cross-project guard (an owner or admin of the project).
+        "projects guard show",
+        "projects guard set",
         # Files
         "upload",
         "files upload",

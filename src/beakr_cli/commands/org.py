@@ -33,7 +33,9 @@ from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
 
-app = typer.Typer(help="Organization admin: credentials, service accounts and sign-in policy.")
+app = typer.Typer(
+    help="Organization admin: credentials, service accounts, sign-in policy and project isolation."
+)
 credentials_app = typer.Typer(help="Every API key and CLI/agent token in the organization.")
 accounts_app = typer.Typer(
     help="Service accounts: non-human members that own scoped keys. Create them and "

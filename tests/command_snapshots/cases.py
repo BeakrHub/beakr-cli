@@ -345,6 +345,12 @@ _NO_LABELS_FIXTURE = (
     "no recorded /v1/labels response yet; tests/test_cli_agent_friction.py covers it"
 )
 
+_NO_ISOLATION_FIXTURE = (
+    "no recorded project-isolation, read-trail or cross-project-guard response yet, and "
+    "the snapshot engine leaves their flags off; tests/test_isolation_admin.py pins the "
+    "requests and output"
+)
+
 #: Visible hand-written commands with no snapshot, each with the reason.
 EXEMPT: dict[str, str] = {
     "projects profile setup": (
@@ -356,6 +362,15 @@ EXEMPT: dict[str, str] = {
         "would answer feature_not_enabled); the request it sends and what it prints are pinned "
         "in tests/test_session_trail.py"
     ),
+    # Project isolation administration: no recorded response yet, and every change is
+    # behind an engine flag (cross_project_guard, session_auto_lock, ...,
+    # session_read_trail) the snapshot engine leaves off.
+    "org isolation show": _NO_ISOLATION_FIXTURE,
+    "org isolation set": _NO_ISOLATION_FIXTURE,
+    "org read-trail show": _NO_ISOLATION_FIXTURE,
+    "org read-trail set": _NO_ISOLATION_FIXTURE,
+    "projects guard show": _NO_ISOLATION_FIXTURE,
+    "projects guard set": _NO_ISOLATION_FIXTURE,
     "session forget": (
         "local only: edits this folder's .beakr/project.json and calls no API; "
         "tests/test_cli_session.py"
