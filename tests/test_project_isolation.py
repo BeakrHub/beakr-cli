@@ -638,3 +638,28 @@ def test_ending_a_conversation_session_says_it_is_final(conversation):
 
     assert result.exit_code == 0, result.output
     assert "never started again" in _text(result)
+
+
+@respx.mock
+def test_the_engines_own_held_line_is_not_said_twice():
+    from beakr_cli.mcp_server import mcp
+
+    respx.post(f"{API}/v1/knowledge/wiki/write").respond(
+        json={
+            "text": "Staged proposal prop-1. Held for an owner or admin of Pharma B to accept: "
+            "content from Pharma A (cited).",
+            "outcome": {"status": "ok"},
+            "proposal": _held_proposal(),
+        }
+    )
+
+    result = asyncio.run(
+        mcp.call_tool(
+            "knowledge_base_write",
+            {"action": "new", "arguments": {"title": "Notes"}, "scope": B},
+        )
+    )
+
+    text = result.content[0].text
+    assert not result.isError
+    assert text.lower().count("held for") == 1

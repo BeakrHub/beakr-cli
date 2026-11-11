@@ -37,6 +37,8 @@ from typing import Annotated, Any, Literal, get_args
 
 from pydantic import Field
 
+from beakr_cli.proposal_view import says_held
+
 #: Verbatim excerpt shown per cited document. 300 characters held 87-90% of
 #: the evidence answers used (excerpt-tuning.md, Q3).
 EXCERPT_CHARS = 300
@@ -118,7 +120,7 @@ def render(tool: str, body: dict[str, Any]) -> str:
         if state:
             parts.append(state)
         held = body.get("held_for_approval")
-        if isinstance(held, str) and held and held not in text:
+        if isinstance(held, str) and held and not says_held(text):
             parts.append(held)
     hints = [str(h) for h in body.get("next") or [] if str(h) and str(h) not in text]
     if hints:
