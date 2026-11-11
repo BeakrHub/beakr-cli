@@ -138,7 +138,7 @@ def staged_proposal_lines(result: dict[str, Any]) -> list[str]:
     if isinstance(proposal, dict) and proposal.get("content_hash"):
         lines.append(f"content_hash: {proposal['content_hash']}")
     held = held_line(result) if isinstance(result, dict) else None
-    if held and held not in _text_of(result):
+    if held and not says_held(_text_of(result)):
         lines.append(held)
     return lines
 
@@ -155,6 +155,12 @@ def cross_project_hold(holder: dict[str, Any]) -> dict[str, Any] | None:
         if isinstance(hold, dict):
             return hold
     return None
+
+
+def says_held(text: str) -> bool:
+    """Whether a write's reply text already says it was held (the engine's own line,
+    "Held for an owner or admin of Pharma B to accept: ...")."""
+    return "held for" in text.lower()
 
 
 def _via(project: dict[str, Any]) -> str:
