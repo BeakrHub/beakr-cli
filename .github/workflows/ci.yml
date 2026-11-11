@@ -65,16 +65,55 @@ jobs:
         run: uv run ruff check .
 
       - name: Install shells for completion tests
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends fish zsh
+        id: shells
+        # apt first, with short timeouts. When the Ubuntu mirror is unreachable (it
+        # stopped resolving on GitHub runners on 2026-11-11), fish and zsh come from
+        # conda-forge through a pinned, checksum-verified micromamba. If both fail,
+        # the zsh and fish completion tests are skipped with a warning, never
+        # silently: the run summary says so.
+        run: |
+          set -uo pipefail
+          source=""
+          if timeout 180 sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=20 \
+               -o Acquire::https::Timeout=20 update -qq \
+             && timeout 240 sudo apt-get install -y --no-install-recommends fish zsh; then
+            source=apt
+          else
+            echo "::warning::apt could not install fish and zsh; installing them from conda-forge"
+            url=https://github.com/mamba-org/micromamba-releases/releases/download/2.10.0-0/micromamba-linux-64
+            sha256=701f39c06f8e6a670a0e186c8479b9e5c0502a2f0cda6cef65d83bdd2875e8bd
+            mamba="$RUNNER_TEMP/micromamba"
+            if curl -fsSL --connect-timeout 20 --retry 5 --retry-all-errors --retry-delay 5 -o "$mamba" "$url" \
+               && echo "${sha256}  $mamba" | sha256sum --check --strict \
+               && chmod +x "$mamba" \
+               && timeout 300 "$mamba" create -y -q -r "$RUNNER_TEMP/mamba-root" -p "$RUNNER_TEMP/shells" \
+                    -c conda-forge --override-channels fish zsh; then
+              echo "$RUNNER_TEMP/shells/bin" >> "$GITHUB_PATH"
+              export PATH="$RUNNER_TEMP/shells/bin:$PATH"
+              source=conda-forge
+            fi
+          fi
+          if [[ -n "$source" ]] && fish --version && zsh --version; then
+            echo "fish and zsh installed from $source" | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "require=bash,zsh,fish,pwsh" >> "$GITHUB_OUTPUT"
+            echo "fish=true" >> "$GITHUB_OUTPUT"
+          else
+            message="fish and zsh could not be installed (apt and conda-forge both failed): the zsh and fish completion tests are SKIPPED in this run"
+            echo "::warning title=Completion tests skipped::$message"
+            echo "**$message**" >> "$GITHUB_STEP_SUMMARY"
+            echo "require=bash,pwsh" >> "$GITHUB_OUTPUT"
+            echo "fish=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Tests
         # Completion tests fail instead of skipping when a shell is missing.
         # PowerShell (pwsh) is preinstalled on ubuntu-latest runners.
         env:
-          BEAKR_REQUIRE_SHELLS: bash,zsh,fish,pwsh
+          BEAKR_REQUIRE_SHELLS: ${{ steps.shells.outputs.require }}
         run: uv run pytest -q
 
       - name: Fish shell completion
+        if: steps.shells.outputs.fish == 'true'
         run: |
           set -euo pipefail
           # fish is installed by "Install shells for completion tests" above.
