@@ -133,7 +133,7 @@ NOT_GATED: frozenset[str] = frozenset(
         "init", "install", "setup", "update", "mcp", "codex", "hooks install",
         "hooks uninstall", "hooks capture", "hooks learning",
         # The sessions themselves (always the person's own credential)
-        "session start", "session show", "session ls", "session edit",
+        "session start", "session show", "session trail", "session ls", "session edit",
         "session end",
         "session forget",
     }

@@ -167,6 +167,13 @@ Each release lists the public API changes it supports, taken from the API change
   the agent; `session_scope` does not narrow an auto_lock session. When the person
   ends an agent conversation's session, `beakr mcp` no longer replaces it: the
   agent is told to start a new conversation.
+- Read trails: `beakr session trail [SESSION_ID]` prints a session's reads, newest
+  first (op, projects, summary, the items each returned; `--limit`, `--cursor`,
+  `--json`), and finds this shell's, terminal's or agent conversation's session
+  without an id. `beakr kb proposals show --trail` adds the write's trail: the
+  reads its session made before filing it, grouped by project (the write's own
+  first, other projects marked, sources outside Beakr last). `session_status`
+  takes `trail=true` and `proposal_id` for the same.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

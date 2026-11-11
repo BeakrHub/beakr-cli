@@ -45,7 +45,6 @@ from beakr_cli.proposal_view import filed_by_line, held_line, payload_lines
 from beakr_cli.research_metadata import public_research
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
-from beakr_cli.session_trail import render_write_trail, write_trail
 from beakr_cli.source_listing import document_lines, group_by_document
 
 app = typer.Typer(help="Interact with your Beakr knowledge base.")
@@ -896,8 +895,6 @@ def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
         for text, style in payload_lines(payload):
             console.print(text, style=style, markup=False, highlight=False)
         console.print()
-    if with_payload and write_trail(proposal) is not None:
-        console.print(render_write_trail(proposal), markup=False, highlight=False)
     if proposal.get("changes_card_tables"):
         console.print("Changes card table rows: accept with --reviewed-hash and this content hash.")
     if proposal.get("content_hash"):
@@ -1416,16 +1413,34 @@ def proposals_show(
         help="Only if the proposal is in this project (id, slug or name).",
         callback=project_ref_callback,
     ),
+    trail: bool = typer.Option(
+        False,
+        "--trail",
+        help="Also show its read trail: what the session that filed it had read, by project.",
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
     """Show one wiki proposal: its change as a diff, and the content hash to accept it with."""
+    from beakr_cli.session_trail import proposal_trail_path, render_write_trail
+
     with get_sdk() as sdk:
         proposal = sdk.knowledge.proposals.show(proposal_id)
-    if project and proposal.get("project_id") and str(proposal["project_id"]) != project:
-        raise NotFoundError(f"Proposal {proposal_id} is not in project {project}.")
-    if machine_output(proposal, json_out=json_out, lines=_proposal_show_lines):
+        if project and proposal.get("project_id") and str(proposal["project_id"]) != project:
+            raise NotFoundError(f"Proposal {proposal_id} is not in project {project}.")
+        read_trail = sdk.request("GET", proposal_trail_path(proposal_id)) if trail else None
+    if read_trail is not None:
+        proposal = {**proposal, "read_trail": read_trail}
+
+    def lines(data: dict) -> list[str]:
+        shown = _proposal_show_lines(data)
+        return [*shown, "", *render_write_trail(read_trail).splitlines()] if read_trail else shown
+
+    if machine_output(proposal, json_out=json_out, lines=lines):
         return
     _print_proposal(proposal, with_payload=True)
+    if read_trail is not None:
+        console.print()
+        console.print(render_write_trail(read_trail), markup=False, highlight=False)
 
 
 def _proposal_show_lines(proposal: dict) -> list[str]:
@@ -1436,8 +1451,6 @@ def _proposal_show_lines(proposal: dict) -> list[str]:
     payload = proposal.get("payload")
     if isinstance(payload, dict):
         lines += ["", *(text for text, _style in payload_lines(payload))]
-    if write_trail(proposal) is not None:
-        lines += ["", *render_write_trail(proposal).splitlines()]
     if proposal.get("content_hash"):
         lines += ["", f"content_hash={proposal['content_hash']}"]
     return lines
