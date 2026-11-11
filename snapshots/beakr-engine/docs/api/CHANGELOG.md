@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=5719e0aa545a33179c8a16127ed24261bad954f8c011cd5e17350d64a35c8571 changelog sha256=05fdadd302d4143b73bb2a5e5e7cc0f6c414699b1f40d2603441a537ce776f32 -->
+<!-- contract-stamp: public-openapi sha256=a1858ecc230a3848584f6fbc94c97242762c221f5ad2793481239f8d60a392dd changelog sha256=931f3c95f3294a561c4746dbe34ef5c79bec1c561940b0fd63e43e8fe2724168 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -26,8 +26,9 @@ The first public version.
     organization admin signed in, or their key with `proposals:accept`, and
     answers `404 feature_not_enabled` for a part that is not turned on.
     `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set
-    one project's own guard (`override`; `null` follows the organization), which
-    needs an owner or admin of the project. Project responses
+    one project's own guard (`override`; `null` follows the organization), with
+    the organization's (`org_default`) and the one that applies (`effective`);
+    setting it needs an owner or admin of the project. Project responses
     (`GET /v1/projects`, `GET /v1/projects/{project_id}`) carry
     `cross_project_guard` and `cross_project_guard_override`.
   - One session per agent conversation: a request with a person's API key and
