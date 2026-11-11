@@ -650,6 +650,90 @@ def test_an_ended_conversation_session_is_not_replaced():
     assert not started.called and held.state is None
 
 
+def _ended(**extra) -> dict:
+    return {
+        **_session("locked", touched=(A,), status="ended"),
+        "ended_at": "2026-11-11T21:30:00+00:00",
+        **extra,
+    }
+
+
+_TRAIL = {
+    "data": [
+        {
+            "id": "r-1",
+            "session_id": SID,
+            "at": "2026-11-11T21:10:00+00:00",
+            "op": "search",
+            "projects": [_project(A)],
+            "items": [],
+            "summary": '"assay results"',
+            "redacted": False,
+        }
+    ],
+    "next_cursor": None,
+    "has_more": False,
+}
+
+
+@respx.mock
+def test_session_status_still_answers_after_the_person_ended_the_session():
+    """Reads and writes are refused; session_status says what it was and how to go on."""
+    held = _active(_session("locked", touched=(A,)))
+    respx.get(f"{API}/v1/sessions/current").respond(
+        401, json={"error": {"code": "invalid_token", "message": "ended", "fix": None}}
+    )
+    record = respx.get(f"{API}/v1/sessions/{SID}").respond(json=_ended())
+    trail = respx.get(f"{API}/v1/sessions/{SID}/trail").respond(json=_TRAIL)
+
+    text = asyncio.run(mcp_session.session_status(trail=True))
+
+    assert isinstance(text, str), text
+    assert f"Session {SID} (ended)" in text
+    assert "Ended at 2026-11-11 21:30:00." in text
+    assert "start a new Claude Code conversation" in text
+    assert "Touched: Pharma A" in text
+    assert '"assay results"' in text
+    # Read as the person: the session's own token no longer works.
+    assert record.calls.last.request.headers["authorization"] == f"Bearer {PERSON_KEY}"
+    assert trail.calls.last.request.headers["authorization"] == f"Bearer {PERSON_KEY}"
+    assert held.state is None
+    # Asked again, it answers the same way without the token.
+    again = asyncio.run(mcp_session.session_status())
+    assert isinstance(again, str) and "(ended)" in again
+
+
+@respx.mock
+def test_session_status_finds_an_ended_session_the_server_never_held(conversation):
+    """beakr mcp started after the conversation's session ended (409 on start)."""
+    held = McpSession(folder=None, agent=CONVERSATION)
+    scope_session.ACTIVE = held
+    respx.post(f"{API}/v1/sessions").respond(
+        409, json=_refusal(409, "session_ended", "This agent session has ended.")
+    )
+    respx.get(f"{API}/v1/sessions").respond(
+        json={"data": [_session(agent="other"), _ended()], "has_more": False}
+    )
+
+    text = asyncio.run(mcp_session.session_status())
+
+    assert isinstance(text, str), text
+    assert f"Session {SID} (ended)" in text and "new Claude Code conversation" in text
+
+
+@respx.mock
+def test_session_show_shows_an_ended_conversation_session(conversation):
+    respx.get(f"{API}/v1/sessions").respond(json={"data": [_ended()], "has_more": False})
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_ended())
+
+    result = runner.invoke(app, ["session", "show"])
+
+    assert result.exit_code == 0, result.output
+    text = _text(result)
+    assert f"Session {SID} (ended)" in text
+    assert "start a new Claude Code conversation" in text
+
+
 @respx.mock
 def test_ending_a_conversation_session_says_it_is_final(conversation):
     respx.post(f"{API}/v1/sessions/{SID}/end").respond(json=_session(status="ended"))

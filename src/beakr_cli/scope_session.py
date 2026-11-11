@@ -175,6 +175,22 @@ def lock_lines(session: dict[str, Any]) -> list[str]:
     return lines
 
 
+def ended_lines(session: dict[str, Any]) -> list[str]:
+    """When an ended session ended (and by whom, where the API says), and what to do now."""
+    at = str(session.get("ended_at") or "").replace("T", " ")[:19]
+    by = session.get("ended_by")
+    who = by.get("name") or by.get("email") if isinstance(by, dict) else by
+    line = "Ended" + (f" at {at}" if at else "") + (f" by {who}" if who else "") + "."
+    if session.get("agent_session"):
+        return [
+            line + " Reads and writes in it are refused, and an agent conversation's session "
+            "is never started again.",
+            "To work on: start a new Claude Code conversation (or Codex thread) to get a new "
+            "session.",
+        ]
+    return [line + " Reads and writes in it are refused."]
+
+
 def describe(session: dict[str, Any]) -> str:
     """A short human summary of a session's scope."""
 
@@ -184,10 +200,14 @@ def describe(session: dict[str, Any]) -> str:
 
     status = session.get("status", "?")
     lines = [f"Session {session.get('id')} ({status})"]
+    if status == "ended":
+        lines.extend(ended_lines(session))
     if auto_locked(session):
         lines.append("Mode: auto_lock (Beakr locks the session to the first project it touches)")
         if status != "ended":
             lines.extend(lock_lines(session))
+        elif session.get("touched_projects"):
+            lines.append(f"Touched: {names('touched_projects')}")
         if session.get("agent_session"):
             lines.append(f"Agent conversation: {session['agent_session']}")
         return "\n".join(lines)
@@ -195,7 +215,10 @@ def describe(session: dict[str, Any]) -> str:
         lines.append(f"Mode: {session['mode']}")
     if session.get("touched_projects"):
         lines.append(f"Touched: {names('touched_projects')}")
-    if status == "pending":
+    if status == "ended":
+        lines.append(f"Read: {names('read_projects')}")
+        lines.append(f"Wrote: {names('write_projects')}")
+    elif status == "pending":
         lines.append(f"No projects chosen yet. Choose them at {session.get('picker_url')}")
     else:
         lines.append(f"Reads: {names('read_projects')}")
@@ -1003,6 +1026,8 @@ class McpSession:
         self.replaced_from: str | None = None
         #: The agent conversation whose session the person ended: it is not replaced.
         self.ended_conversation: str | None = None
+        #: That session's id, for ``session_status`` to show it.
+        self.ended_session_id: str | None = None
         #: Start with the folder's remembered projects. Off once the person ended a
         #: session: its replacement reaches nothing until they choose again.
         self.reuse_remembered = True
@@ -1072,6 +1097,9 @@ class McpSession:
         """Start the session now if starting it failed before; raise when it still fails."""
         if self.state is not None:
             return
+        if self.ended_conversation:
+            # The person ended this conversation's session: it is never started again.
+            raise conversation_ended_error(self.ended_conversation)
         async with self._lock:
             if self.state is not None:
                 return
@@ -1214,6 +1242,7 @@ class McpSession:
                 self.state = None
                 self.session = {}
                 self.ended_conversation = str(conversation)
+                self.ended_session_id = refused.session_id
                 raise conversation_ended_error(self.ended_conversation)
             await self._replace(refused.session_id)
             return REPLACED
@@ -1262,6 +1291,30 @@ class McpSession:
             code=SESSION_ENDED,
             fix="Retry; if it keeps failing, restart the Beakr MCP server.",
         )
+
+    async def ended_record(self) -> dict[str, Any] | None:
+        """The conversation's ended session, read with the person's own credential.
+
+        By the id this server held, else (it started after the session ended: the API
+        refused to start another, ``409 session_ended``) among the person's sessions
+        by the conversation's id. None when neither finds it.
+        """
+        async with self._person() as person:
+            if self.ended_session_id:
+                return await person.request("GET", f"/v1/sessions/{self.ended_session_id}")
+            if not self.agent:
+                return None
+            found = None
+            async for row in person.paginate("/v1/sessions", include_ended=True):
+                if row.get("agent_session") == self.agent:
+                    found = row
+                    break
+            return found
+
+    async def ended_trail(self, path: str, params: dict[str, Any] | None = None) -> Any:
+        """A trail of the ended session, read with the person's own credential."""
+        async with self._person() as person:
+            return await person.request("GET", path, params=params)
 
     async def name_client(self, agent: str | None) -> None:
         """Label the session with the MCP client once it is known (a label is no widening)."""
