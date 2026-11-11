@@ -26,6 +26,10 @@ How the write runs (:data:`WRITE_COMMANDS`):
   (conversation imports and compounding, an interview's Knowledge, the profile
   agent's runs). The CLI checks the project it writes is
   in the session's write list, then sends the person's own credential.
+- ``person``: only a person may do it (a file's approval: the API refuses a
+  session token with ``403 person_review_required``, so an agent's session never
+  approves its own files). Checked like ``checked``, then sent with the person's
+  own credential and without ``X-Beakr-Session``, so it is joined to no session.
 
 No session is asked for where none can be held: an installation without sessions
 (``404`` on ``POST /v1/sessions``, as ``beakr mcp`` treats it), a service account
@@ -53,6 +57,7 @@ T = TypeVar("T")
 
 TOKEN = "token"
 CHECKED = "checked"
+PERSON = "person"
 
 #: Published commands that write into a project's content, and how each runs in
 #: the session (module docstring). ``tests/test_cli_write_sessions.py`` checks
@@ -62,9 +67,8 @@ WRITE_COMMANDS: dict[str, str] = {
     "upload": TOKEN,
     "files upload": TOKEN,
     "files rm": TOKEN,
-    # The API takes the session's token here since project isolation (it confines
-    # the file to the session's projects), so the approval counts in the session.
-    "files approve": TOKEN,
+    # Only a person approves a file: their own key, joined to no session.
+    "files approve": PERSON,
     # A project's Knowledge and its profile
     "projects retry": TOKEN,
     "projects profile set": TOKEN,
@@ -135,7 +139,7 @@ NOT_GATED: frozenset[str] = frozenset(
         "init", "install", "setup", "update", "mcp", "codex", "hooks install",
         "hooks uninstall", "hooks capture", "hooks learning",
         # The sessions themselves (always the person's own credential)
-        "session start", "session show", "session ls", "session edit",
+        "session start", "session show", "session trail", "session ls", "session edit",
         "session end",
         "session forget",
     }
@@ -150,15 +154,16 @@ _TOKEN_REFUSED_OPS = frozenset(
     }
 )
 #: ``beakr api`` operations that write a project's content under another scope: run
-#: with the session's token (a file's Knowledge and its approval are confined to the
-#: session's projects by the route).
+#: with the session's token (a file's Knowledge is confined to the session's
+#: projects by the route).
 _TOKEN_OPS = frozenset(
     {
         "POST /v1/artifacts/{artifact_id}/knowledge",
-        "POST /v1/artifacts/{artifact_id}/knowledge/approve",
         "POST /v1/interview/sendables/links/{link_id}/knowledge",
     }
 )
+#: ``beakr api`` operations only a person may make: run ``person``.
+_PERSON_OPS = frozenset({"POST /v1/artifacts/{artifact_id}/knowledge/approve"})
 #: Operation scopes whose writes are a project's content.
 _CONTENT_SCOPES = frozenset({"kb:write", "uploads:write"})
 
@@ -234,6 +239,8 @@ def operation_mode(entry: dict[str, Any]) -> str | None:
     op = entry["op"]
     if op in _TOKEN_REFUSED_OPS:
         return CHECKED
+    if op in _PERSON_OPS:
+        return PERSON
     if entry.get("scope") in _CONTENT_SCOPES:
         return TOKEN
     if op in _TOKEN_OPS:
@@ -270,8 +277,8 @@ def run_gated(
     # process it starts, such as a detached compound) uses the session.
     os.environ[scope_session.SESSION_ENV] = held.id
     try:
-        if mode == CHECKED:
-            with scope_session.person_credential():
+        if mode in {CHECKED, PERSON}:
+            with scope_session.person_credential(unjoined=mode == PERSON):
                 return invoke()
         return invoke()
     except BeakrError as exc:

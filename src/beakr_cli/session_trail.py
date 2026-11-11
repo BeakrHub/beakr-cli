@@ -1,78 +1,117 @@
-"""A session's read trail: which projects it read, when and how, and what a write had read.
+"""A session's read trail: what it read, when and from which projects, and what a write had read.
 
-The API keeps a ledger per session (``session_read_trail``): every project a
-request read or wrote, in order. ``beakr session trail`` and the
-``session_status`` tool print it; ``beakr kb proposals show`` and ``show_proposal``
-print a write's own trail, the projects its session had read when it was filed.
-Both are said here once, for the terminal and the MCP server alike.
+The API keeps a ledger of a session's reads (``session_read_trail``):
+``GET /v1/sessions/{session_id}/trail`` lists them newest first, and
+``GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`` gives a write's trail,
+the reads its session made before it, grouped by project (the write's own
+first, then the others in the order they were first read, then sources outside
+Beakr). ``beakr session trail``, ``beakr kb proposals show --trail`` and the
+``session_status`` tool print them; both are said here once, for the terminal
+and the MCP server alike.
 """
 
 from __future__ import annotations
 
 from typing import Any
 
+#: Reads printed by default; ``beakr session trail --limit`` and the tool take more.
+DEFAULT_LIMIT = 50
 
-def events_of(page: Any) -> list[dict[str, Any]]:
-    """The trail's events from the API's answer (a list, or a page of them)."""
-    if isinstance(page, list):
-        return [e for e in page if isinstance(e, dict)]
-    if isinstance(page, dict):
-        for key in ("events", "data", "trail", "items"):
-            if isinstance(page.get(key), list):
-                return [e for e in page[key] if isinstance(e, dict)]
-    return []
+
+def trail_path(session_id: str) -> str:
+    return f"/v1/sessions/{session_id}/trail"
+
+
+def proposal_trail_path(proposal_id: str) -> str:
+    return f"/v1/knowledge/wiki/proposals/{proposal_id}/trail"
+
+
+def reads_of(page: Any) -> list[dict[str, Any]]:
+    """The reads of a trail page (``{data, next_cursor, has_more}``) or a list of them."""
+    rows = page.get("data") if isinstance(page, dict) else page
+    return [row for row in rows or [] if isinstance(row, dict)]
 
 
 def _name(project: Any) -> str:
     if isinstance(project, dict):
         return str(project.get("name") or project.get("id") or "?")
-    return str(project or "?")
+    return "?"
 
 
-def event_line(event: dict[str, Any]) -> str:
-    """``2026-11-10 21:04  read   Pharma A  knowledge_base sections (search results)``."""
-    at = str(event.get("at") or event.get("created_at") or event.get("occurred_at") or "")
-    at = at.replace("T", " ")[:19]
-    kind = str(event.get("kind") or event.get("action") or "read")
-    projects = event.get("projects")
-    if isinstance(projects, list) and projects:
-        where = ", ".join(_name(p) for p in projects)
-    else:
-        where = _name(event.get("project"))
-    what = str(event.get("what") or event.get("route") or event.get("operation") or "").strip()
-    how = str(event.get("via") or event.get("counted_as") or "").replace("_", " ").strip()
-    tail = " ".join(part for part in (what, f"({how})" if how else "") if part)
-    effect = str(event.get("effect") or event.get("transition") or "").replace("_", " ").strip()
-    line = f"{at}  {kind:<6} {where}" + (f"  {tail}" if tail else "")
-    return line + (f"  -> {effect}" if effect else "")
+def _items(read: dict[str, Any], limit: int = 3) -> str:
+    """The first few things the read returned, by title (a redacted one has none)."""
+    items = [i for i in read.get("items") or [] if isinstance(i, dict)]
+    titles = [
+        str(i.get("title") or i.get("service") or i.get("kind") or "?")
+        + (f" [{i['service']}]" if i.get("service") and i.get("title") else "")
+        for i in items[:limit]
+    ]
+    more = f" +{len(items) - limit} more" if len(items) > limit else ""
+    return ", ".join(titles) + more
 
 
-def render_trail(page: Any) -> str:
-    events = events_of(page)
-    if not events:
-        return "Read trail: nothing read yet."
-    return "\n".join(["Read trail (oldest first):", *(f"  {event_line(e)}" for e in events)])
+def read_line(read: dict[str, Any]) -> str:
+    """``2026-11-10 21:04:11  search  Pharma A, Pharma B  "assay results"  (3 items: ...)``."""
+    at = str(read.get("at") or "").replace("T", " ")[:19]
+    op = str(read.get("op") or "read")
+    projects = ", ".join(_name(p) for p in read.get("projects") or []) or "no project"
+    parts = [f"{at}  {op:<9} {projects}"]
+    summary = str(read.get("summary") or "").strip()
+    if summary:
+        parts.append(f"  {summary}")
+    items = _items(read)
+    if items:
+        count = len(read.get("items") or [])
+        parts.append(f"  ({count} item{'s' if count != 1 else ''}: {items})")
+    if read.get("redacted"):
+        parts.append("  (redacted: you cannot read all of it)")
+    who = read.get("agent") or read.get("client")
+    if who:
+        parts.append(f"  by {who}")
+    return "".join(parts)
 
 
-def write_trail(proposal: dict[str, Any]) -> Any:
-    """A write's trail as the proposal carries it; None from an engine without trails."""
-    for key in ("read_trail", "session_trail", "trail"):
-        if proposal.get(key) is not None:
-            return proposal[key]
-    return None
+def render_trail(page: Any, *, session_id: str | None = None) -> str:
+    reads = reads_of(page)
+    head = f"Read trail of session {session_id}" if session_id else "Read trail"
+    if not reads:
+        return f"{head}: nothing read yet."
+    lines = [f"{head} (newest first):", *(f"  {read_line(r)}" for r in reads)]
+    if isinstance(page, dict) and page.get("has_more"):
+        lines.append(f"  ... older reads not shown (next_cursor: {page.get('next_cursor')})")
+    return "\n".join(lines)
 
 
-def render_write_trail(proposal: dict[str, Any]) -> str:
-    trail = write_trail(proposal)
-    if trail is None:
-        return "This proposal carries no read trail (filed outside a session, or before trails)."
-    events = events_of(trail) if not isinstance(trail, dict) or "events" in trail else []
-    if isinstance(trail, dict) and not events:
-        events = events_of(trail.get("reads"))
-    session = trail.get("session_id") if isinstance(trail, dict) else None
-    head = "What its session had read when it was filed" + (
-        f" (session {session})" if session else ""
-    )
-    if not events:
-        return f"{head}: nothing."
-    return "\n".join([f"{head}:", *(f"  {event_line(e)}" for e in events)])
+def render_write_trail(trail: dict[str, Any]) -> str:
+    """A write's trail (``WriteTrailOut``): the session's reads before it, by project."""
+    write = trail.get("write") if isinstance(trail.get("write"), dict) else {}
+    what = f"{write.get('kind') or 'write'} {write.get('id') or ''}".strip()
+    project = _name(write.get("project")) if write.get("project") else None
+    if not trail.get("recorded"):
+        return (
+            f"Read trail of {what}: none recorded (written outside a session, or the read "
+            "trail was off)."
+        )
+    total = int(trail.get("reads_total") or 0)
+    head = f"Read trail of {what}" + (f" into {project}" if project else "")
+    head += f" (session {trail.get('session_id')}): {total} read{'s' if total != 1 else ''}"
+    head += " before it"
+    if trail.get("truncated"):
+        head += ", the first ones shown"
+    lines = [head + "."]
+    if trail.get("cross_project"):
+        lines.append("Cross-project: its session read other projects before writing.")
+    for group in trail.get("groups") or []:
+        if not isinstance(group, dict):
+            continue
+        if group.get("external"):
+            label = "Outside Beakr"
+        elif group.get("project") and project and _name(group["project"]) == project:
+            label = f"{project} (this write's project)"
+        else:
+            label = _name(group.get("project")) + (
+                " (another project)" if group.get("cross_project") else ""
+            )
+        lines.append(f"  {label}:")
+        lines.extend(f"    {read_line(r)}" for r in reads_of(group.get("reads")))
+    return "\n".join(lines)

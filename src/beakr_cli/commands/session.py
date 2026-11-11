@@ -346,6 +346,44 @@ def _describe_lines(session: dict[str, Any]) -> list[str]:
     return scope_session.describe(session).splitlines()
 
 
+@app.command("trail")
+def trail(
+    session_id: str | None = typer.Argument(
+        None, help="Defaults to this shell's, this terminal's or this agent conversation's session."
+    ),
+    limit: int = typer.Option(
+        50, "--limit", "-n", min=1, max=200, help="Most reads to show (newest first)."
+    ),
+    cursor: str | None = typer.Option(None, "--cursor", help="Continue from an earlier page."),
+    json_out: bool = _json_opt,
+) -> None:
+    """The session's read trail, newest first: what each read was, which projects it
+    touched and what it returned.
+
+    Where the organization locks sessions (auto_lock), it shows which read locked the
+    session to its project and which made it read-only. Kept where the organization
+    has the read trail turned on.
+    """
+    from beakr_cli.session_trail import render_trail, trail_path
+
+    chosen = _session_id(session_id)
+    params: dict[str, Any] = {"limit": limit}
+    if cursor:
+        params["cursor"] = cursor
+    with get_sdk(scoped=False) as sdk:
+        page = sdk.request("GET", trail_path(chosen), params=params)
+
+    def text(data: Any) -> str:
+        return render_trail(data, session_id=chosen)
+
+    emit(
+        page,
+        json_out=json_out,
+        render=lambda data: console.print(text(data), highlight=False, markup=False),
+        lines=lambda data: text(data).splitlines(),
+    )
+
+
 @app.command("ls")
 def list_sessions(
     all_sessions: bool = typer.Option(False, "--all", help="Include ended sessions."),

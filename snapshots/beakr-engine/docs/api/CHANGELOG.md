@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ad68ee7e8560bae045b4eb7fc86570692d97e0c175f0af2988980819afffa667 changelog sha256=b1884a108987904a9fcde14e78529742a7e01e74b29e8e74dac1842a83c35aed -->
+<!-- contract-stamp: public-openapi sha256=836f025cf8abc95bba2dd2baed63d89dc3a3de0bdf6abfc933737376c61471b9 changelog sha256=d1e5856d56d451a04d919e0591c2392a61ca0410274b3f66887ffc8132f30c45 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -66,6 +66,37 @@ The first public version.
     `GET /v1/projects/{project_id}`) never counts as reading it.
     `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
     session token or `X-Beakr-Session`, confined to the session's projects.
+
+- Session read trail: what an agent session read before it wrote (available
+  where the organization has it turned on; otherwise these operations answer
+  `404 feature_not_enabled`). Each read a session makes is recorded by
+  reference, never by content: Knowledge reads, documents commands, file reads
+  (`op` `read_file`) and research (one `research` read per run, listing every
+  source it read or cited). A read lists the projects it touched and its
+  `items` (pages, files and interviews with their project; items in connected
+  services with `project_id: null` and `service`, such as `external:slack`),
+  with a summary of the query of at most 200 characters.
+  - `GET /v1/sessions/{session_id}/trail` lists a session's reads, newest
+    first. The session's person and organization admins see every read; an
+    owner or admin of a project the session read sees the reads of their
+    projects.
+  - `GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail` and
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail` return
+    the read trail of that write: the reads its session made before it (at
+    most the newest 500, with `truncated`), in `groups` by project: the
+    write's project first, then other projects (`cross_project: true`), then
+    reads outside Beakr projects (`external: true`), beside the `write` itself
+    (its kind, project and time). `recorded: false` means
+    the write was not made in a session with the read trail on. The person
+    whose session made it, an owner or admin of its project and organization
+    admins may read it; anyone else gets `403 read_trail_forbidden`. A read of
+    a project the caller cannot read comes back `redacted`, without its
+    summary or those items' titles.
+  - `GET /v1/organizations/{org_id}/read-trail` returns
+    `read_trail_retention_days` (default 90); `PUT` changes it (1 to 3650
+    days), which needs an organization admin signed in, or their key with
+    `proposals:accept`. Reads older than that are deleted within the hour.
 
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:

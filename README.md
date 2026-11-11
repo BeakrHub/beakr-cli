@@ -487,7 +487,9 @@ Writes run with the session's token, so the API holds them to its write list.
 A few routes take no session token (conversation imports and compounding, an
 interview's Knowledge, the profile agent): for those the
 CLI checks the project is one the session may write, then sends your own
-credential. A service account (or any credential that is not a person),
+credential. A file's approval (`beakr files approve`) is yours alone: after the
+same check it sends your own key without `X-Beakr-Session`, so it is joined to no
+session, and an agent's session never approves its own files. A service account (or any credential that is not a person),
 a session token given as the credential, and an installation without sessions
 run as before.
 
@@ -498,7 +500,8 @@ Where the installation has agent sessions, `beakr mcp`, its subagents and every
 share one session: each joins it by the conversation's id
 (`CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`, or `BEAKR_SESSION` where the host
 gives its MCP server none), so a Bash call or a subagent cannot step outside it.
-`beakr session show` (no argument) finds the conversation's session.
+`beakr session show` and `beakr session trail` (no argument) find the
+conversation's session.
 
 An organization can lock each session to one project instead of asking
 (`session_mode: auto_lock`, set by an admin). Then nothing shows a picker: the
@@ -508,6 +511,8 @@ agent conversation the CLI's reads run in the session too, so they count.
 
 ```bash
 beakr session show       # mode, the project it is locked to, read-only, the projects it touched
+beakr session trail      # its reads, newest first: op, projects, what each returned (--limit, --cursor)
+beakr kb proposals show PROPOSAL_ID --trail   # what the filing session read first, by project
 ```
 
 ```text
@@ -529,7 +534,11 @@ Error: Session 7c1e2d3f-... reads and writes Pharma A, so it cannot write Pharma
 ```
 
 `beakr mcp`'s new `session_status` tool shows the same state to the agent
-(`proposal_id` adds what that write's session had read). `session_scope` cannot narrow an auto_lock session, which has no project
+(`trail=true` adds the read trail, `proposal_id` what that write's session had
+read). The read trail is kept where the organization turns it on
+(`session_read_trail`); a write's trail groups the reads made before it by
+project, the write's own first, other projects marked, sources outside Beakr
+last. `session_scope` cannot narrow an auto_lock session, which has no project
 list to drop from.
 
 Two more organization settings show up as refusals or results:
@@ -545,8 +554,8 @@ Two more organization settings show up as refusals or results:
   as a result, not an error: "Held for approval by an owner or admin of Pharma
   B. ..." Only an owner or admin of Pharma B can accept it; auto-approve never
   does, and an agent's accept is refused (`cross_project_owner_required`).
-  `beakr kb proposals show` and `show_proposal` print the hold and, where the
-  engine records it, the write's read trail.
+  `beakr kb proposals show` and `show_proposal` print the hold, and
+  `beakr kb proposals show --trail` the write's read trail.
 
 ## Knowledge cards
 

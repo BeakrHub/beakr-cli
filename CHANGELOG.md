@@ -58,6 +58,36 @@ Each release lists the public API changes it supports, taken from the API change
     `GET /v1/projects/{project_id}`) never counts as reading it.
     `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
     session token or `X-Beakr-Session`, confined to the session's projects.
+- Session read trail: what an agent session read before it wrote (available
+  where the organization has it turned on; otherwise these operations answer
+  `404 feature_not_enabled`). Each read a session makes is recorded by
+  reference, never by content: Knowledge reads, documents commands, file reads
+  (`op` `read_file`) and research (one `research` read per run, listing every
+  source it read or cited). A read lists the projects it touched and its
+  `items` (pages, files and interviews with their project; items in connected
+  services with `project_id: null` and `service`, such as `external:slack`),
+  with a summary of the query of at most 200 characters.
+  - `GET /v1/sessions/{session_id}/trail` lists a session's reads, newest
+    first. The session's person and organization admins see every read; an
+    owner or admin of a project the session read sees the reads of their
+    projects.
+  - `GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail` and
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail` return
+    the read trail of that write: the reads its session made before it (at
+    most the newest 500, with `truncated`), in `groups` by project: the
+    write's project first, then other projects (`cross_project: true`), then
+    reads outside Beakr projects (`external: true`), beside the `write` itself
+    (its kind, project and time). `recorded: false` means
+    the write was not made in a session with the read trail on. The person
+    whose session made it, an owner or admin of its project and organization
+    admins may read it; anyone else gets `403 read_trail_forbidden`. A read of
+    a project the caller cannot read comes back `redacted`, without its
+    summary or those items' titles.
+  - `GET /v1/organizations/{org_id}/read-trail` returns
+    `read_trail_retention_days` (default 90); `PUT` changes it (1 to 3650
+    days), which needs an organization admin signed in, or their key with
+    `proposals:accept`. Reads older than that are deleted within the hour.
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
   who and what wrote it. `kind` is `beakr` (a model or maintenance process
@@ -175,12 +205,23 @@ Each release lists the public API changes it supports, taken from the API change
   the agent; `session_scope` does not narrow an auto_lock session. When the person
   ends an agent conversation's session, `beakr mcp` no longer replaces it: the
   agent is told to start a new conversation.
-- `beakr files approve` and the `beakr api` operations that compile or approve a
-  file's Knowledge run with the session's token, so they count in the session
-  (and satisfy `agent_writes_require_session`); they used to send your own
-  credential. A held write names the sources it cited from each other project and,
+- The `beakr api` operation that compiles a file's Knowledge
+  (`POST /v1/artifacts/{artifact_id}/knowledge`) runs with the session's token, so
+  it counts in the session (and satisfies `agent_writes_require_session`); it used
+  to send your own credential. `beakr files approve` (and the approve operation)
+  sends your own key and no `X-Beakr-Session`, so it is joined to no session: only
+  a person approves a file, and the API refuses a session token there
+  (`403 person_review_required`), so an agent's session never approves its own
+  files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
+- Read trails: `beakr session trail [SESSION_ID]` prints a session's reads, newest
+  first (op, projects, summary, the items each returned; `--limit`, `--cursor`,
+  `--json`), and finds this shell's, terminal's or agent conversation's session
+  without an id. `beakr kb proposals show --trail` adds the write's trail: the
+  reads its session made before filing it, grouped by project (the write's own
+  first, other projects marked, sources outside Beakr last). `session_status`
+  takes `trail=true` and `proposal_id` for the same.
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

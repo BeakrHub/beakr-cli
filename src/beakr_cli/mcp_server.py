@@ -27,7 +27,6 @@ from beakr_cli.mcp_render import (
 )
 from beakr_cli.mcp_tools_platform import _project_by_name_or_id
 from beakr_cli.proposal_view import held_line
-from beakr_cli.session_trail import render_write_trail, write_trail
 from beakr_cli.updates import (
     CHECK_OFF,
     box_line,
@@ -1101,8 +1100,6 @@ async def show_proposal(
     summary = proposal_summary_lines(payload)
     if summary:
         text += "\n" + "\n".join(summary)
-    if write_trail(data) is not None:
-        text += "\n" + render_write_trail(data)
     return text + "\n\nThe whole payload (page text, citation meta): show_proposal with raw=true."
 
 
