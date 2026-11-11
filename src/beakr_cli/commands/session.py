@@ -79,7 +79,14 @@ _write_all_opt = typer.Option(
 
 
 def _session_id(session_id: str | None) -> str:
-    chosen = session_id or scope_session.shell_session_id()
+    """The session named, else this shell's, else the one this terminal kept, else this
+    agent conversation's (``beakr mcp``'s, found among the person's open sessions)."""
+    chosen = (
+        session_id
+        or scope_session.shell_session_id()
+        or scope_session.terminal_session_id()
+        or _conversation_session_id()
+    )
     if not chosen:
         raise typer.BadParameter(
             f"name a session, or run this in a shell with {scope_session.SESSION_ENV} set "
@@ -87,6 +94,18 @@ def _session_id(session_id: str | None) -> str:
             param_hint="SESSION_ID",
         )
     return chosen
+
+
+def _conversation_session_id() -> str | None:
+    """The open session of the agent conversation this command runs in, if it has one."""
+    agent = scope_session.agent_session_id()
+    if not agent:
+        return None
+    with get_sdk(scoped=False) as sdk:
+        for row in sdk.paginate("/v1/sessions"):
+            if row.get("agent_session_id") == agent and row.get("status") != "ended":
+                return str(row.get("id"))
+    return None
 
 
 def _lists(read: list[str], write: list[str]) -> tuple[list[str], list[str]]:
@@ -319,7 +338,41 @@ def show(
     with get_sdk(scoped=False) as sdk:
         session = sdk.request("GET", f"/v1/sessions/{chosen}")
     _maybe_remember(session)
-    emit(session, json_out=json_out, render=_render)
+    emit(session, json_out=json_out, render=_render, lines=_describe_lines)
+
+
+def _describe_lines(session: dict[str, Any]) -> list[str]:
+    """Piped (an agent reading it): the same lines a person sees, mode and lock included."""
+    return scope_session.describe(session).splitlines()
+
+
+@app.command("trail")
+def trail(
+    session_id: str | None = typer.Argument(
+        None, help="Defaults to this shell's, this terminal's or this agent conversation's session."
+    ),
+    json_out: bool = _json_opt,
+) -> None:
+    """The session's read trail: every project it read or wrote, in order, and how.
+
+    Where the organization locks sessions (auto_lock), the trail shows which read
+    locked the session to its project and which made it read-only.
+    """
+    from beakr_cli.session_trail import render_trail, trail_path
+
+    chosen = _session_id(session_id)
+    with get_sdk(scoped=False) as sdk:
+        page = sdk.request("GET", trail_path(chosen))
+
+    def render(data: Any) -> None:
+        console.print(render_trail(data), highlight=False, markup=False)
+
+    emit(
+        page,
+        json_out=json_out,
+        render=render,
+        lines=lambda data: render_trail(data).splitlines(),
+    )
 
 
 @app.command("ls")
@@ -427,6 +480,13 @@ def end(
 
     def render(data: dict[str, Any]) -> None:
         err_console.print(f"Ended session {data.get('id')}.", markup=False)
+        if data.get("agent_session_id"):
+            err_console.print(
+                "It was an agent conversation's session, which is never started again: "
+                "Beakr refuses that conversation's requests from now on. "
+                + scope_session.NEW_CONVERSATION_FIX,
+                markup=False,
+            )
         if scope_session.shell_session_id() == chosen:
             err_console.print(
                 f"Leave it in this shell with: unset {scope_session.SESSION_ENV}", markup=False

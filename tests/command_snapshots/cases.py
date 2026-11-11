@@ -351,6 +351,10 @@ EXEMPT: dict[str, str] = {
         "a conversation with the setup agent, which the snapshot engine cannot run (no model); "
         "the runs it starts and how it answers are pinned in tests/test_cli_profile_setup.py"
     ),
+    "session trail": (
+        "behind the engine flag session_read_trail, which the snapshot engine leaves off; the "
+        "request it sends and what it prints are pinned in tests/test_project_isolation.py"
+    ),
     "session forget": (
         "local only: edits this folder's .beakr/project.json and calls no API; "
         "tests/test_cli_session.py"

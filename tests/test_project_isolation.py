@@ -1,0 +1,632 @@
+"""Project isolation (Octant): auto_lock sessions, one session per agent conversation,
+writes that need a session, and the cross-project guard (beakr-engine
+``max/sh-project-isolation``).
+
+What each piece promises, one test or more each:
+
+- ``beakr mcp`` and the CLI join the agent conversation's session
+  (``agent_session_id``): both hold a token for the same session; an installation
+  without agent sessions starts the session on its own, as before;
+- in auto_lock mode nothing asks: ``beakr mcp`` answers tools at once, the write
+  gate writes without the picker, a remembered folder choice is not sent, and in
+  an agent conversation the CLI's reads carry the conversation session's token too;
+- picker mode is unchanged: a pending session still answers with the picker;
+- a read-only or locked session's write is refused by name with the fix that
+  works where the command runs (a new agent conversation, or ``beakr session end``);
+- a write outside a session (``session_required``) and the guard's refusals say
+  what to do and exit 3;
+- a write the guard held is a normal result naming who must approve it;
+- ``beakr session show`` and the ``session_status`` tool show the mode, the locked
+  project, read-only and the touched projects;
+- an agent conversation's ended session is never replaced: the agent is told to
+  start a new conversation.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
+import httpx
+import pytest
+import respx
+from typer.testing import CliRunner
+
+from beakr_cli import mcp_session, scope_session, write_session
+from beakr_cli.main import internal_app as app
+from beakr_cli.scope_session import McpSession, SessionScopeError, TokenState
+
+API = "https://api.test"
+SID = "7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f"
+A = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+B = "8b2f6c10-3d4e-4f5a-9b6c-7d8e9f0a1b2c"
+NAMES = {A: "Pharma A", B: "Pharma B"}
+PERSON_KEY = "bk_live_person_key_for_tests"
+CONVERSATION = "conv-123"
+FILE = "f-1"
+
+pytestmark = pytest.mark.real_conversation_sessions
+
+runner = CliRunner()
+
+
+@pytest.fixture(autouse=True)
+def api(monkeypatch):
+    monkeypatch.setenv("BEAKR_API_URL", API)
+    monkeypatch.setenv("BEAKR_API_KEY", PERSON_KEY)
+    monkeypatch.delenv(scope_session.SESSION_ENV, raising=False)
+    monkeypatch.delenv(scope_session.MCP_SESSIONS_ENV, raising=False)
+    monkeypatch.setattr(write_session, "_sleep", lambda _seconds: None)
+    monkeypatch.setattr(write_session, "_interactive", lambda: False)
+    scope_session.ACTIVE = None
+    yield
+    scope_session.ACTIVE = None
+
+
+@pytest.fixture
+def conversation(monkeypatch):
+    """The command runs in a Claude Code conversation."""
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", CONVERSATION)
+    return CONVERSATION
+
+
+def _later(seconds: int = 3600) -> str:
+    return (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat()
+
+
+def _project(pid: str) -> dict:
+    return {"id": pid, "name": NAMES[pid]}
+
+
+def _session(
+    state: str | None = "open",
+    *,
+    mode: str = "auto_lock",
+    touched=(),
+    agent: str | None = CONVERSATION,
+    status: str = "active",
+) -> dict:
+    """A session as the API returns it; auto_lock unless ``mode`` says otherwise."""
+    locked = touched[0] if state in {"locked", "read_only"} and touched else None
+    auto = mode == "auto_lock"
+    return {
+        "id": SID,
+        "status": status,
+        "mode": mode,
+        "agent_session_id": agent,
+        "client_name": "beakr mcp",
+        "label": "claude-code",
+        "folder": None,
+        "remember_folder": False,
+        "lock_state": state if auto else None,
+        "write_project": _project(locked) if locked else None,
+        "touched_projects": [_project(p) for p in touched],
+        "read_only_at": _later(0) if state == "read_only" else None,
+        "read_only_reason": (
+            "Read " + " and ".join(NAMES[p] for p in touched) + "."
+            if state == "read_only"
+            else None
+        ),
+        "read_projects": [_project(p) for p in touched] if auto else [_project(A), _project(B)],
+        "write_projects": ([_project(locked)] if locked else []) if auto else [_project(A)],
+        "picker_url": f"https://app.test/sessions/{SID}",
+        "run_label": f"session:{SID}",
+    }
+
+
+def _created(session: dict, token: str = "bk_st_first") -> dict:
+    return {**session, "token": {"token": token, "token_type": "bearer", "expires_at": _later()}}
+
+
+def _isolation(mode: str = "auto_lock", *, agent_sessions: bool = True) -> dict:
+    return {
+        "session_mode": mode,
+        "auto_lock_counts_search_results": True,
+        "agent_writes_require_session": False,
+        "cross_project_guard": "allow",
+        "available": {
+            "server_agent_sessions": agent_sessions,
+            "session_auto_lock": True,
+            "agent_writes_require_session": True,
+            "cross_project_guard": True,
+        },
+        "can_change": False,
+    }
+
+
+def _refusal(status: int, code: str, message: str, fix: str | None = None, **extra) -> dict:
+    """The API's error envelope (``error``, and FastAPI's ``detail`` with its extras)."""
+    return {
+        "detail": {"code": code, "message": message, "fix": fix, **extra},
+        "error": {"code": code, "message": message, "fix": fix},
+    }
+
+
+def _bearer(route) -> str:
+    return route.calls.last.request.headers["authorization"]
+
+
+def _body(route) -> dict:
+    return json.loads(route.calls.last.request.content)
+
+
+def _text(result) -> str:
+    return " ".join(result.output.split())
+
+
+def _active(session: dict, *, agent: str | None = CONVERSATION) -> McpSession:
+    held = McpSession(folder=None, agent=agent)
+    held.state = TokenState(SID, "bk_st_first", _later())
+    held.session = session
+    scope_session.ACTIVE = held
+    return held
+
+
+# --- One session per agent conversation -----------------------------------------------
+
+
+@respx.mock
+def test_beakr_mcp_joins_the_conversations_session(conversation, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    created = respx.post(f"{API}/v1/sessions").respond(201, json=_created(_session()))
+
+    held = asyncio.run(scope_session.start_for_mcp())
+
+    assert held is not None and held.agent == CONVERSATION and held.token == "bk_st_first"
+    assert _body(created)["agent_session_id"] == CONVERSATION
+    assert created.calls.last.request.headers["x-beakr-session"] == CONVERSATION
+
+
+@respx.mock
+def test_without_agent_sessions_beakr_mcp_starts_its_own_session_as_before(
+    conversation, tmp_path, monkeypatch
+):
+    monkeypatch.chdir(tmp_path)
+    created = respx.post(f"{API}/v1/sessions").mock(
+        side_effect=[
+            httpx.Response(
+                422,
+                json=_refusal(422, "feature_not_enabled", "Agent sessions are not enabled here."),
+            ),
+            httpx.Response(201, json=_created(_session("open", mode="picker", agent=None))),
+        ]
+    )
+
+    held = asyncio.run(scope_session.start_for_mcp())
+
+    assert held is not None and held.token == "bk_st_first"
+    assert "agent_session_id" in json.loads(created.calls[0].request.content)
+    assert "agent_session_id" not in _body(created)
+
+
+@respx.mock
+def test_auto_lock_takes_no_remembered_projects_and_never_asks(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    respx.get(f"{API}/v1/me/organization").respond(json={"id": "org-1"})
+    scope_session.remember_selection(tmp_path, [A, B], [A])
+    created = respx.post(f"{API}/v1/sessions").mock(
+        side_effect=[
+            httpx.Response(
+                422,
+                json=_refusal(422, "session_mode_auto_lock", "This organization locks sessions."),
+            ),
+            httpx.Response(201, json=_created(_session(agent=None))),
+        ]
+    )
+
+    held = asyncio.run(scope_session.start_for_mcp())
+
+    assert "read_project_ids" in json.loads(created.calls[0].request.content)
+    assert "read_project_ids" not in _body(created)
+    # Active from the start: the gate lets every tool through, no picker, no form.
+    assert held is not None and not held.pending
+    assert asyncio.run(mcp_session.gate(SimpleNamespace(), "knowledge_base", None)) is None
+
+
+@respx.mock
+def test_picker_mode_still_answers_with_the_picker(conversation):
+    pending = {**_session(None, mode="picker"), "status": "pending"}
+    pending["read_projects"] = pending["write_projects"] = []
+    _active(pending)
+    respx.get(f"{API}/v1/sessions/current").respond(json=pending)
+    server = SimpleNamespace(
+        get_context=lambda: SimpleNamespace(
+            session=SimpleNamespace(client_params=SimpleNamespace(capabilities=None))
+        )
+    )
+
+    refusal = asyncio.run(mcp_session.gate(server, "knowledge_base", None))
+
+    assert refusal is not None and refusal["error_code"] == "session_needs_selection"
+
+
+@respx.mock
+def test_a_cli_write_joins_the_session_beakr_mcp_holds(conversation, monkeypatch):
+    """The MCP server and the command share one session id; the write uses its token."""
+    monkeypatch.setattr(write_session, "ENABLED", True)
+    respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    joined = respx.post(f"{API}/v1/sessions").respond(
+        201, json=_created(_session(), token="bk_st_cli")
+    )
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
+    delete = respx.delete(f"{API}/v1/artifacts/{FILE}").respond(204)
+
+    result = runner.invoke(app, ["files", "rm", FILE, "--yes"])
+
+    assert result.exit_code == 0, result.output
+    assert joined.call_count == 1
+    assert _body(joined)["agent_session_id"] == CONVERSATION
+    assert "read_project_ids" not in _body(joined)
+    assert _bearer(delete) == "Bearer bk_st_cli"
+    # No picker, no wait: auto_lock has nothing to choose.
+    assert "picker" not in result.output.lower() and "Waiting" not in result.output
+    assert scope_session.terminal_session_id(f"agent:{CONVERSATION}") == SID
+
+
+@respx.mock
+def test_cli_reads_in_an_auto_lock_conversation_carry_its_session(conversation):
+    from beakr_cli.sdk import get_sdk
+
+    settings = respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    joined = respx.post(f"{API}/v1/sessions").respond(
+        201, json=_created(_session(), token="bk_st_cli")
+    )
+    me = respx.get(f"{API}/v1/me").respond(json={"user": {}})
+
+    for _ in range(2):
+        with get_sdk() as sdk:
+            sdk.me.get()
+
+    assert _bearer(me) == "Bearer bk_st_cli"
+    assert _body(joined)["agent_session_id"] == CONVERSATION
+    # Asked once per conversation, then kept with the terminal's session.
+    assert settings.call_count == 1 and joined.call_count == 1
+    assert _bearer(settings) == f"Bearer {PERSON_KEY}"
+
+
+@respx.mock
+def test_cli_reads_in_a_picker_conversation_stay_as_before(conversation):
+    from beakr_cli.sdk import get_sdk
+
+    settings = respx.get(f"{API}/v1/project-isolation").respond(json=_isolation("picker"))
+    joined = respx.post(f"{API}/v1/sessions").respond(201, json=_created(_session()))
+    me = respx.get(f"{API}/v1/me").respond(json={"user": {}})
+
+    for _ in range(2):
+        with get_sdk() as sdk:
+            sdk.me.get()
+
+    assert _bearer(me) == f"Bearer {PERSON_KEY}"
+    assert settings.call_count == 1 and not joined.called
+
+
+@respx.mock
+def test_outside_an_agent_conversation_reads_never_ask():
+    from beakr_cli.sdk import get_sdk
+
+    settings = respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    me = respx.get(f"{API}/v1/me").respond(json={"user": {}})
+    with get_sdk() as sdk:
+        sdk.me.get()
+    assert _bearer(me) == f"Bearer {PERSON_KEY}" and not settings.called
+
+
+@respx.mock
+def test_an_ended_conversation_session_is_said_so(conversation):
+    from beakr_cli.sdk import get_sdk
+
+    respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    respx.post(f"{API}/v1/sessions").respond(
+        409,
+        json=_refusal(409, "session_ended", "This agent session has ended.", "Start a new one."),
+    )
+    with pytest.raises(SessionScopeError) as raised, get_sdk() as sdk:
+        sdk.me.get()
+    assert raised.value.code == "session_ended"
+    assert CONVERSATION in raised.value.message
+    assert "new agent conversation" in (raised.value.fix or "")
+
+
+# --- Refusals ---------------------------------------------------------------------------
+
+
+def _gate_write(monkeypatch, session: dict):
+    """``beakr files rm`` through the gate, in a terminal (not an agent) that kept ``session``."""
+    monkeypatch.setattr(write_session, "ENABLED", True)
+    scope_session.save_state(TokenState(SID, "bk_st_kept", _later()))
+    scope_session.remember_terminal(SID, mode=session.get("mode"))
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=session)
+
+
+@respx.mock
+def test_a_read_only_session_refuses_the_write_before_sending_it(monkeypatch):
+    _gate_write(monkeypatch, _session("read_only", touched=(A, B), agent=None))
+    respx.get(f"{API}/v1/projects/{B}").respond(json=_project(B))
+    write = respx.post(f"{API}/v1/knowledge/wiki/proposals").respond(201, json={})
+
+    result = runner.invoke(
+        app, ["kb", "propose", "create", "--title", "Notes", "--content", "x", "--project", B]
+    )
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert "read Pharma A, Pharma B, so it is read-only" in text
+    assert f"beakr session end {SID}" in text and "run the command again" in text
+    assert not write.called
+
+
+@respx.mock
+def test_the_apis_read_only_refusal_names_the_fix_for_an_agent_conversation(
+    conversation, monkeypatch
+):
+    session = _session("locked", touched=(A,))
+    monkeypatch.setattr(write_session, "ENABLED", True)
+    scope_session.save_state(TokenState(SID, "bk_st_kept", _later()))
+    scope_session.remember_terminal(SID, f"agent:{CONVERSATION}", mode="auto_lock")
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=session)
+    respx.delete(f"{API}/v1/artifacts/{FILE}").respond(
+        403,
+        json=_refusal(
+            403,
+            "session_read_only",
+            "This session read Pharma A and Pharma B, so it is read-only: writes are refused. "
+            "Start a new session to write.",
+            "Start a new agent conversation (or POST /v1/sessions) and work in one project.",
+            session_id=SID,
+            touched_projects=[_project(A), _project(B)],
+        ),
+    )
+
+    result = runner.invoke(app, ["files", "rm", FILE, "--yes"])
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert "This session read Pharma A and Pharma B, so it is read-only" in text
+    assert "Start a new agent conversation (a new Claude Code session" in text
+    assert "POST /v1/sessions" not in text
+
+
+@respx.mock
+def test_a_locked_session_refuses_another_project_by_name(monkeypatch):
+    _gate_write(monkeypatch, _session("locked", touched=(A,), agent=None))
+    respx.get(f"{API}/v1/projects/{B}").respond(json=_project(B))
+    write = respx.post(f"{API}/v1/knowledge/wiki/proposals").respond(201, json={})
+
+    result = runner.invoke(
+        app, ["kb", "propose", "create", "--title", "Notes", "--content", "x", "--project", B]
+    )
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert "reads and writes Pharma A, so it cannot write Pharma B" in text
+    assert "To write Pharma B:" in text
+    assert not write.called
+
+
+def test_an_open_or_locked_session_may_write_its_project():
+    held = write_session.Held(_session("open"))
+    assert held.may_write(A) and held.may_write(B)
+    held = write_session.Held(_session("locked", touched=(A,)))
+    assert held.may_write(A) and not held.may_write(B)
+    held = write_session.Held(_session("read_only", touched=(A, B)))
+    assert not held.may_write(A)
+    # Picker mode: the write list, as before.
+    held = write_session.Held(_session(None, mode="picker"))
+    assert held.may_write(A) and not held.may_write(B)
+
+
+@respx.mock
+def test_a_write_outside_a_session_says_how_to_run_it_in_one():
+    respx.delete(f"{API}/v1/artifacts/{FILE}").respond(
+        403,
+        json=_refusal(
+            403,
+            "session_required",
+            "Your organization requires agents to write inside a session; this request writes "
+            "with an API key and no session.",
+            "Send X-Beakr-Session ...",
+        ),
+    )
+
+    result = runner.invoke(app, ["files", "rm", FILE, "--yes"])
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert "requires agents to write inside a session" in text
+    assert 'eval "$(beakr session start --env)"' in text
+
+
+@respx.mock
+def test_the_guards_refusal_names_the_other_project_and_who_can_change_it():
+    respx.delete(f"{API}/v1/artifacts/{FILE}").respond(
+        403,
+        json=_refusal(
+            403,
+            "cross_project_write_refused",
+            "Pharma B does not accept content from other projects, and this write brings in "
+            "content from Pharma A (cited).",
+            "Remove what comes from Pharma A, or write it in Pharma A. An owner or admin of "
+            "Pharma B can change this setting.",
+        ),
+    )
+
+    result = runner.invoke(app, ["files", "rm", FILE, "--yes"])
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert "Pharma B does not accept content from other projects" in text
+    assert "An owner or admin of Pharma B can change this setting" in text
+
+
+_HOLD = {
+    "reason": "Content from Pharma A (cited) and Pharma C (read in this session).",
+    "projects": [{"id": A, "name": "Pharma A", "via": ["cited"]}],
+    "approver": "owner_or_admin",
+    "project": _project(B),
+}
+
+
+def _held_proposal() -> dict:
+    return {
+        "id": "prop-1",
+        "proposal_type": "create",
+        "status": "pending",
+        "page_title": "Notes",
+        "content_hash": "h1",
+        "cross_project_hold": _HOLD,
+        "needs_project_admin_to_accept": True,
+    }
+
+
+@respx.mock
+def test_a_held_proposal_is_shown_with_who_must_approve_it():
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/prop-1").respond(json=_held_proposal())
+
+    result = runner.invoke(app, ["kb", "proposals", "show", "prop-1"])
+
+    assert result.exit_code == 0, result.output
+    text = _text(result)
+    assert "Held for approval by an owner or admin of Pharma B." in text
+    assert "Pharma C (read in this session)" in text
+
+
+@respx.mock
+def test_knowledge_base_write_held_by_the_guard_is_a_normal_result():
+    from beakr_cli.mcp_server import mcp
+
+    respx.post(f"{API}/v1/knowledge/wiki/write").respond(
+        json={
+            "text": "Staged proposal prop-1 for Notes.",
+            "outcome": {"status": "ok"},
+            "proposal": _held_proposal(),
+            "approval_state": "pending",
+        }
+    )
+
+    result = asyncio.run(
+        mcp.call_tool(
+            "knowledge_base_write",
+            {"action": "new", "arguments": {"title": "Notes"}, "scope": B},
+        )
+    )
+
+    assert not result.isError
+    text = result.content[0].text
+    assert "Held for approval by an owner or admin of Pharma B." in text
+
+
+# --- Seeing the session's state -------------------------------------------------------
+
+
+def test_describe_shows_mode_lock_and_touched_projects():
+    text = scope_session.describe(_session("read_only", touched=(A, B)))
+    assert "Mode: auto_lock" in text
+    assert "Read-only: Read Pharma A and Pharma B." in text
+    assert "Touched: Pharma A, Pharma B" in text
+    assert "new agent conversation" in text
+    text = scope_session.describe(_session("locked", touched=(A,)))
+    assert "Locked to Pharma A" in text
+    assert "Open:" in scope_session.describe(_session("open"))
+    # Picker mode reads as before, with its mode.
+    picker = scope_session.describe(_session(None, mode="picker", touched=(A,)))
+    assert "Reads: Pharma A, Pharma B" in picker and "Mode: picker" in picker
+
+
+@respx.mock
+def test_session_show_prints_the_lock_state():
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session("locked", touched=(A,)))
+
+    result = runner.invoke(app, ["session", "show", SID])
+
+    assert result.exit_code == 0, result.output
+    assert "Locked to Pharma A" in result.output and "Mode: auto_lock" in result.output
+
+
+@respx.mock
+def test_session_show_finds_the_agent_conversations_session(conversation):
+    respx.get(f"{API}/v1/sessions").respond(
+        json={"data": [_session("open", agent="other"), _session("locked", touched=(A,))]}
+    )
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session("locked", touched=(A,)))
+
+    result = runner.invoke(app, ["session", "show"])
+
+    assert result.exit_code == 0, result.output
+    assert f"Session {SID}" in result.output
+
+
+@respx.mock
+def test_session_status_shows_the_state_without_changing_it():
+    _active(_session("read_only", touched=(A, B)))
+    current = respx.get(f"{API}/v1/sessions/current").respond(
+        json=_session("read_only", touched=(A, B))
+    )
+
+    text = asyncio.run(mcp_session.session_status())
+
+    assert current.called
+    assert "Read-only" in text and "Touched: Pharma A, Pharma B" in text
+
+
+@respx.mock
+def test_session_scope_does_not_narrow_an_auto_lock_session():
+    _active(_session("open"))
+    respx.get(f"{API}/v1/sessions/current").respond(json=_session("open"))
+    patched = respx.patch(f"{API}/v1/sessions/{SID}").respond(json=_session("open"))
+
+    refused = asyncio.run(mcp_session.session_scope(drop=[A]))
+
+    assert refused["error_code"] == "session_mode_auto_lock"
+    assert "session_status" in refused["fix"]
+    assert not patched.called
+
+
+@respx.mock
+def test_list_projects_in_auto_lock_lists_every_project_and_the_lock():
+    from beakr_cli.mcp_server import mcp
+
+    _active(_session("locked", touched=(A,)))
+    respx.get(f"{API}/v1/me/organization").respond(json={"id": "org-1", "name": "Octant"})
+    listed = respx.get(f"{API}/v1/projects").respond(
+        json={"data": [_project(A), _project(B)], "has_more": False}
+    )
+
+    result = asyncio.run(mcp.call_tool("list_projects", {}))
+
+    text = result.content[0].text
+    assert listed.called and "Pharma A" in text and "Pharma B" in text
+    assert "Locked to Pharma A" in text
+
+
+# --- An agent conversation's session ended ----------------------------------------------
+
+
+@respx.mock
+def test_an_ended_conversation_session_is_not_replaced():
+    from beakr_cli.mcp_errors import call_api
+
+    held = _active(_session("locked", touched=(A,)))
+    respx.get(f"{API}/v1/me").respond(
+        401, json={"error": {"code": "invalid_token", "message": "ended", "fix": None}}
+    )
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session(status="ended"))
+    started = respx.post(f"{API}/v1/sessions").respond(201, json=_created(_session()))
+
+    with pytest.raises(SessionScopeError) as raised:
+        asyncio.run(call_api(lambda sdk: sdk.me.get()))
+
+    assert raised.value.code == "session_ended"
+    assert "new agent conversation" in (raised.value.fix or "")
+    assert not started.called and held.state is None
+
+
+@respx.mock
+def test_ending_a_conversation_session_says_it_is_final(conversation):
+    respx.post(f"{API}/v1/sessions/{SID}/end").respond(json=_session(status="ended"))
+
+    result = runner.invoke(app, ["session", "end", SID])
+
+    assert result.exit_code == 0, result.output
+    assert "never started again" in _text(result)

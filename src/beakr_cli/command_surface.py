@@ -49,6 +49,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         # Sessions: limit a shell or agent to the projects you choose.
         "session start",
         "session show",
+        "session trail",
         "session ls",
         "session edit",
         "session end",

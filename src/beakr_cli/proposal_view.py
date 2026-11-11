@@ -127,15 +127,66 @@ def filed_by_line(proposal: dict[str, Any]) -> str | None:
 
 
 def staged_proposal_lines(result: dict[str, Any]) -> list[str]:
-    """What a write that staged a proposal adds below its text: the content hash.
+    """What a write that staged a proposal adds below its text: the content hash, and
+    whether the project's cross-project guard held it for its owners.
 
     The text already names the proposal id; ``kb proposals accept --reviewed-hash``
     takes this hash back, as the MCP servers print it (``mcp_render.render``).
     """
     proposal = result.get("proposal") if isinstance(result, dict) else None
+    lines: list[str] = []
     if isinstance(proposal, dict) and proposal.get("content_hash"):
-        return [f"content_hash: {proposal['content_hash']}"]
-    return []
+        lines.append(f"content_hash: {proposal['content_hash']}")
+    held = held_line(result) if isinstance(result, dict) else None
+    if held and held not in _text_of(result):
+        lines.append(held)
+    return lines
+
+
+def _text_of(result: dict[str, Any]) -> str:
+    text = result.get("text") or result.get("content") or ""
+    return text if isinstance(text, str) else ""
+
+
+def cross_project_hold(holder: dict[str, Any]) -> dict[str, Any] | None:
+    """The proposal's ``cross_project_hold`` (the engine's project isolation), when held."""
+    for found in (holder, holder.get("proposal"), holder.get("outcome")):
+        hold = found.get("cross_project_hold") if isinstance(found, dict) else None
+        if isinstance(hold, dict):
+            return hold
+    return None
+
+
+def _via(project: dict[str, Any]) -> str:
+    """How another project's content came in: ``cited``, ``read in this session``."""
+    return ", ".join(str(v).replace("_", " ") for v in project.get("via") or [])
+
+
+def held_line(holder: dict[str, Any]) -> str | None:
+    """``Held for approval by an owner or admin of Pharma B: <why>``, for a held proposal.
+
+    The project written guards against content from other projects (its
+    ``cross_project_guard`` is ``hold``): the proposal was staged as usual, but only
+    an owner or admin of that project can accept it, and auto-approve never does.
+    """
+    hold = cross_project_hold(holder)
+    if hold is None:
+        return None
+    project = hold.get("project") if isinstance(hold.get("project"), dict) else {}
+    name = project.get("name") or project.get("id") or "the project it writes"
+    reason = str(hold.get("reason") or "").strip()
+    if not reason:
+        others = [
+            f"{p.get('name') or p.get('id')} ({_via(p)})"
+            for p in hold.get("projects") or []
+            if isinstance(p, dict)
+        ]
+        reason = f"Content from {', '.join(others)}." if others else ""
+    reason = reason or "It brings in content from another project."
+    return (
+        f"Held for approval by an owner or admin of {name}. {reason} Only an owner or admin of "
+        f"{name} can accept it: auto-approve never does, and an agent's accept is refused."
+    )
 
 
 #: show_proposal's line for a proposal only a person may accept: the engine's

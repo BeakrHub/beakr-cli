@@ -41,7 +41,7 @@ from beakr_cli.project_binding import project_is_pinned, resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
-from beakr_cli.proposal_view import filed_by_line, payload_lines
+from beakr_cli.proposal_view import filed_by_line, held_line, payload_lines
 from beakr_cli.research_metadata import public_research
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
@@ -877,6 +877,8 @@ def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
         console.print(f"Summary: {proposal.get('summary')}", markup=False)
     if filed_by_line(proposal):
         console.print(filed_by_line(proposal), markup=False)
+    if held_line(proposal):
+        console.print(held_line(proposal), markup=False)
     payload = proposal.get("payload") or {}
     if proposal.get("proposal_type") == "find_replace":
         console.print(
@@ -1426,6 +1428,8 @@ def proposals_show(
 def _proposal_show_lines(proposal: dict) -> list[str]:
     """The proposal for an agent: its summary line, the payload as read, the hash last."""
     lines = _proposal_lines([proposal])
+    if held_line(proposal):
+        lines.append(str(held_line(proposal)))
     payload = proposal.get("payload")
     if isinstance(payload, dict):
         lines += ["", *(text for text, _style in payload_lines(payload))]

@@ -117,6 +117,9 @@ def render(tool: str, body: dict[str, Any]) -> str:
         state = approval_state_line(body.get("approval_state"), text)
         if state:
             parts.append(state)
+        held = body.get("held_for_approval")
+        if isinstance(held, str) and held and held not in text:
+            parts.append(held)
     hints = [str(h) for h in body.get("next") or [] if str(h) and str(h) not in text]
     if hints:
         parts.append("\n".join(f"next: {hint}" for hint in hints))
