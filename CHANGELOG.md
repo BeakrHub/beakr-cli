@@ -8,6 +8,16 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Attribution on Knowledge changes: each revision in
+  `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
+  who and what wrote it. `kind` is `beakr` (a model or maintenance process
+  Beakr ran, named in `model` or `process`), `agent` (a person's own agent
+  through MCP, the CLI, an SDK or the API, with the `client`, `agent` and
+  `session` it declared in `X-Beakr-Client`, `X-Beakr-Agent` and
+  `X-Beakr-Session`), `person` or `system`. `person` names the person behind
+  it and `accepted_by` who accepted a proposal. A file a client uploads
+  records that client, agent and session, so a revision compiled from it
+  names them too.
 - Chat run submission (`POST /v1/runs`) accepts `decision_id`
   and `decision_version` to answer a specific pending question, rejecting stale
   decision versions, and returns
