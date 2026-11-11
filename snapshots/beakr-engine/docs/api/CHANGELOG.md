@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a1858ecc230a3848584f6fbc94c97242762c221f5ad2793481239f8d60a392dd changelog sha256=931f3c95f3294a561c4746dbe34ef5c79bec1c561940b0fd63e43e8fe2724168 -->
+<!-- contract-stamp: public-openapi sha256=9260ed479e55f6b30f3abe3aea72eaaa1e3e60c2d0aebbb0bfc952263d282184 changelog sha256=af4c65faa786465f13bcd79627c9e5023ff039e3890f1f3040e9c57cdc0a9cc6 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -26,9 +26,8 @@ The first public version.
     organization admin signed in, or their key with `proposals:accept`, and
     answers `404 feature_not_enabled` for a part that is not turned on.
     `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set
-    one project's own guard (`override`; `null` follows the organization), with
-    the organization's (`org_default`) and the one that applies (`effective`);
-    setting it needs an owner or admin of the project. Project responses
+    one project's own guard (`override`; `null` follows the organization), which
+    needs an owner or admin of the project. Project responses
     (`GET /v1/projects`, `GET /v1/projects/{project_id}`) carry
     `cross_project_guard` and `cross_project_guard_override`.
   - One session per agent conversation: a request with a person's API key and
@@ -59,6 +58,35 @@ The first public version.
     anyone else gets `403 cross_project_owner_required`, and it is never
     auto-approved. A write that commits without a proposal is allowed under
     `hold` only for an owner or admin of the project.
+
+- Session read trail: what an agent session read before it wrote (available
+  where the organization has it turned on; otherwise these operations answer
+  `404 feature_not_enabled`). Each read a session makes is recorded by
+  reference, never by content: Knowledge reads, documents commands, file reads
+  (`op` `read_file`) and research (one `research` read per run, listing every
+  source it read or cited). A read lists the projects it touched and its
+  `items` (pages, files and interviews with their project; items in connected
+  services with `project_id: null` and `service`, such as `external:slack`),
+  with a summary of the query of at most 200 characters.
+  - `GET /v1/sessions/{session_id}/trail` lists a session's reads, newest
+    first. The session's person and organization admins see every read; an
+    owner or admin of a project the session read sees the reads of their
+    projects.
+  - `GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail` and
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail` return
+    the reads the session made before that write, in `groups` by project: the
+    write's project first, then other projects (`cross_project: true`), then
+    reads outside Beakr projects (`external: true`). `recorded: false` means
+    the write was not made in a session with the read trail on. The person
+    whose session made it, an owner or admin of its project and organization
+    admins may read it; anyone else gets `403 read_trail_forbidden`. A read of
+    a project the caller cannot read comes back `redacted`, without its
+    summary or those items' titles.
+  - `GET /v1/organizations/{org_id}/read-trail` returns
+    `read_trail_retention_days` (default 90); `PUT` changes it (1 to 3650
+    days), which needs an organization admin signed in, or their key with
+    `proposals:accept`. Reads older than that are deleted within the hour.
 
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:

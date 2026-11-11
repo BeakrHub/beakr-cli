@@ -2421,6 +2421,28 @@
    "summary": "List a page's sources"
   },
   {
+   "action": "ingestion-event-trail",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/ingestion-events/{event_id}/trail",
+   "path_params": [
+    {
+     "name": "event_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get what was read before an ingestion event"
+  },
+  {
    "action": "list-proposals",
    "anonymous": false,
    "area": "knowledge",
@@ -2573,6 +2595,28 @@
    "summary": "List Knowledge pages"
   },
   {
+   "action": "proposal-trail",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/proposals/{proposal_id}/trail",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/trail",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get what was read before a proposal"
+  },
+  {
    "action": "research",
    "anonymous": false,
    "area": "knowledge",
@@ -2645,6 +2689,33 @@
    "response": "json",
    "scope": "kb:write",
    "summary": "Undo a source's compiled Knowledge contributions"
+  },
+  {
+   "action": "revision-trail",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail",
+   "path_params": [
+    {
+     "name": "page_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "revision",
+     "required": true,
+     "type": "integer"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get what was read before a page revision"
   },
   {
    "action": "run-wiki-command",
@@ -4169,6 +4240,28 @@
    "summary": "Get the project isolation settings"
   },
   {
+   "action": "get-read-trail-settings",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations/{org_id}/read-trail",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/read-trail",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get the read trail settings"
+  },
+  {
    "action": "list-members",
    "anonymous": false,
    "area": "organizations",
@@ -4321,6 +4414,40 @@
    "response": "json",
    "scope": "members:admin",
    "summary": "Change the project isolation settings"
+  },
+  {
+   "action": "set-read-trail-settings",
+   "anonymous": false,
+   "area": "organizations",
+   "body": {
+    "fields": [
+     {
+      "description": "Days to keep a session's reads.",
+      "name": "read_trail_retention_days",
+      "required": true,
+      "type": "integer"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/organizations/{org_id}/read-trail",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/read-trail",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Change how long a session's reads are kept"
   },
   {
    "action": "update-member-role",
@@ -5964,6 +6091,42 @@
    "response": "json",
    "scope": null,
    "summary": "Mint a session token"
+  },
+  {
+   "action": "session-trail",
+   "anonymous": false,
+   "area": "sessions",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/sessions/{session_id}/trail",
+   "paginated": true,
+   "path": "/v1/sessions/{session_id}/trail",
+   "path_params": [
+    {
+     "name": "session_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List a session's reads"
   },
   {
    "action": "update-session",

@@ -3645,7 +3645,7 @@
             "title": "Override"
           },
           "project_id": {
-            "description": "The project this guard applies to.",
+            "description": "Project id.",
             "examples": [
               "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
             ],
@@ -3662,7 +3662,7 @@
                 "type": "null"
               }
             ],
-            "description": "That project's name, as its members see it.",
+            "description": "Project name.",
             "title": "Project Name"
           }
         },
@@ -12381,6 +12381,48 @@
         "title": "ProposalFiledBy",
         "type": "object"
       },
+      "ReadTrailSettingsOut": {
+        "properties": {
+          "available": {
+            "description": "Whether the read trail is turned on.",
+            "title": "Available",
+            "type": "boolean"
+          },
+          "can_change": {
+            "description": "Whether the caller may change it: an org admin acting as a person.",
+            "title": "Can Change",
+            "type": "boolean"
+          },
+          "read_trail_retention_days": {
+            "description": "How many days a session's reads are kept (default 90).",
+            "title": "Read Trail Retention Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "read_trail_retention_days",
+          "available",
+          "can_change"
+        ],
+        "title": "ReadTrailSettingsOut",
+        "type": "object"
+      },
+      "ReadTrailSettingsUpdate": {
+        "properties": {
+          "read_trail_retention_days": {
+            "description": "Days to keep a session's reads.",
+            "maximum": 3650.0,
+            "minimum": 1.0,
+            "title": "Read Trail Retention Days",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "read_trail_retention_days"
+        ],
+        "title": "ReadTrailSettingsUpdate",
+        "type": "object"
+      },
       "ResearchCompleteness": {
         "properties": {
           "enumeration": {
@@ -14617,6 +14659,151 @@
           "name"
         ],
         "title": "SessionProject",
+        "type": "object"
+      },
+      "SessionReadOut": {
+        "properties": {
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The agent that sent it (X-Beakr-Agent).",
+            "title": "Agent"
+          },
+          "at": {
+            "description": "When.",
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "client": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The client that sent it (X-Beakr-Client).",
+            "title": "Client"
+          },
+          "id": {
+            "description": "Read id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "description": "What it read, by reference (never contents); at most 100.",
+            "items": {
+              "$ref": "#/components/schemas/TrailItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "op": {
+            "description": "What the read was: a Knowledge read command (`search`, `sections`, `cat`, `rows`, `graph`, `sources`, `grep`, `ls` or another read command, verbatim), `documents:<command>` (for example `documents:search`), `read_file` or `research` (one row per research run, listing every source it read or cited).",
+            "title": "Op",
+            "type": "string"
+          },
+          "projects": {
+            "description": "The Beakr projects the read touched: those it was addressed to and those its results came from. Empty when it reached only connected services or the web.",
+            "items": {
+              "$ref": "#/components/schemas/TrailProject"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "redacted": {
+            "default": false,
+            "description": "True when it touched a project you cannot read: its summary and the titles of items outside your projects are null.",
+            "title": "Redacted",
+            "type": "boolean"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The request's id (X-Request-ID).",
+            "title": "Request Id"
+          },
+          "session_id": {
+            "description": "The session that read.",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A short summary of the query or arguments (at most 200 characters); null when redacted.",
+            "title": "Summary"
+          }
+        },
+        "required": [
+          "id",
+          "session_id",
+          "at",
+          "op"
+        ],
+        "title": "SessionReadOut",
+        "type": "object"
+      },
+      "SessionReadOutPage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/SessionReadOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "SessionReadOutPage",
         "type": "object"
       },
       "SessionToken": {
@@ -16971,6 +17158,197 @@
           "name"
         ],
         "title": "ToolUsedIn",
+        "type": "object"
+      },
+      "TrailGroup": {
+        "properties": {
+          "cross_project": {
+            "description": "True when this is a project other than the write's project.",
+            "title": "Cross Project",
+            "type": "boolean"
+          },
+          "external": {
+            "description": "True for the group of reads outside Beakr projects.",
+            "title": "External",
+            "type": "boolean"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrailProject"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project; null for reads of connected services and the web."
+          },
+          "reads": {
+            "description": "Its reads, newest first, with only its items.",
+            "items": {
+              "$ref": "#/components/schemas/SessionReadOut"
+            },
+            "title": "Reads",
+            "type": "array"
+          }
+        },
+        "required": [
+          "cross_project",
+          "external"
+        ],
+        "title": "TrailGroup",
+        "type": "object"
+      },
+      "TrailItem": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its id: a page, file or interview id, a connector item's id, or a web source's address.",
+            "title": "Id"
+          },
+          "kind": {
+            "description": "What was read.",
+            "enum": [
+              "page",
+              "file",
+              "connector_item",
+              "message",
+              "interview",
+              "web"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Beakr project it belongs to; null for connector items, messages and web sources.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "title": "Project Id"
+          },
+          "service": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a connector item, its service, such as `external:slack`; else null.",
+            "title": "Service"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Its title; null when redacted (a project you cannot read).",
+            "title": "Title"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "TrailItem",
+        "type": "object"
+      },
+      "TrailProject": {
+        "properties": {
+          "id": {
+            "description": "Project id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Project name.",
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "TrailProject",
+        "type": "object"
+      },
+      "TrailWrite": {
+        "properties": {
+          "at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was made.",
+            "title": "At"
+          },
+          "id": {
+            "description": "Its id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "description": "The write.",
+            "enum": [
+              "proposal",
+              "ingestion_event",
+              "revision"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrailProject"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project it writes into."
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "TrailWrite",
         "type": "object"
       },
       "UploadCompletePart": {
@@ -20161,6 +20539,63 @@
           "kind"
         ],
         "title": "WorkflowChatEvent",
+        "type": "object"
+      },
+      "WriteTrailOut": {
+        "properties": {
+          "cross_project": {
+            "description": "True when the session read another project before this write.",
+            "title": "Cross Project",
+            "type": "boolean"
+          },
+          "groups": {
+            "description": "The session's reads before the write, by project: the write's project first, then other projects in the order first read, then reads outside Beakr projects. A read that touched several projects is in each of their groups.",
+            "items": {
+              "$ref": "#/components/schemas/TrailGroup"
+            },
+            "title": "Groups",
+            "type": "array"
+          },
+          "reads_total": {
+            "default": 0,
+            "description": "How many reads the session made before the write.",
+            "title": "Reads Total",
+            "type": "integer"
+          },
+          "recorded": {
+            "description": "False when it was not made in a session with the read trail on: there is no trail, and `groups` is empty.",
+            "title": "Recorded",
+            "type": "boolean"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The session that made it.",
+            "title": "Session Id"
+          },
+          "truncated": {
+            "default": false,
+            "description": "True when only the newest 500 of those reads are grouped here.",
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "write": {
+            "$ref": "#/components/schemas/TrailWrite",
+            "description": "Write."
+          }
+        },
+        "required": [
+          "write",
+          "recorded",
+          "cross_project"
+        ],
+        "title": "WriteTrailOut",
         "type": "object"
       },
       "beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate": {
@@ -25030,6 +25465,77 @@
         "x-beakr-scope": "kb:read"
       }
     },
+    "/v1/knowledge/wiki/ingestion-events/{event_id}/trail": {
+      "get": {
+        "description": "Get what was read before an ingestion event.\n\nFor an event made in a session, or one applying a proposal staged in one:\nthe session's reads before it, grouped by project.",
+        "operationId": "ingestion_event_trail_v1_knowledge_wiki_ingestion_events__event_id__trail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Event Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteTrailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get what was read before an ingestion event",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:read"
+      }
+    },
     "/v1/knowledge/wiki/pages": {
       "get": {
         "description": "Knowledge pages in scope, ordered by title (or newest first with `sort_by`), one page of results at a time. For a tree view, `roots_only=true` lists top-level pages and `parent_page_id` lists a page's children. `archived=true` lists archived pages, by when they were archived.",
@@ -25576,6 +26082,89 @@
           }
         ],
         "summary": "List a page's revisions",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail": {
+      "get": {
+        "description": "Get what was read before a page revision.\n\nThrough the revision's ingestion event: the reads of the session that made\nit (or staged the proposal it applied), grouped by project.",
+        "operationId": "revision_trail_v1_knowledge_wiki_pages__page_id__revisions__revision__trail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "page_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14"
+              ],
+              "format": "uuid",
+              "title": "Page Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "title": "Revision",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteTrailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get what was read before a page revision",
         "tags": [
           "public",
           "knowledge"
@@ -26180,6 +26769,77 @@
           "knowledge"
         ],
         "x-beakr-scope": "kb:write"
+      }
+    },
+    "/v1/knowledge/wiki/proposals/{proposal_id}/trail": {
+      "get": {
+        "description": "Get what was read before a proposal.\n\nThe reads its session made before it was staged, grouped by project, with\nreads of other projects flagged `cross_project`.",
+        "operationId": "proposal_trail_v1_knowledge_wiki_proposals__proposal_id__trail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "proposal_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Proposal Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteTrailOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get what was read before a proposal",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:read"
       }
     },
     "/v1/knowledge/wiki/search": {
@@ -30287,6 +30947,162 @@
         "x-beakr-scope": "members:admin"
       }
     },
+    "/v1/organizations/{org_id}/read-trail": {
+      "get": {
+        "description": "Get the read trail settings.\n\nHow long a session's reads are kept, and whether the read trail is on.",
+        "operationId": "get_read_trail_settings_v1_organizations__org_id__read_trail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "4b1d0c7e-2f3a-4c55-9e1b-7a6d2c8f0e31"
+              ],
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadTrailSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get the read trail settings",
+        "tags": [
+          "public",
+          "organizations"
+        ],
+        "x-beakr-scope": "kb:read"
+      },
+      "put": {
+        "description": "Change how long a session's reads are kept.\n\nReads older than this are deleted within the hour.",
+        "operationId": "set_read_trail_settings_v1_organizations__org_id__read_trail_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "org_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "4b1d0c7e-2f3a-4c55-9e1b-7a6d2c8f0e31"
+              ],
+              "format": "uuid",
+              "title": "Org Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadTrailSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadTrailSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change how long a session's reads are kept",
+        "tags": [
+          "public",
+          "organizations"
+        ],
+        "x-beakr-scope": "members:admin"
+      }
+    },
     "/v1/organizations/{org_id}/service-accounts": {
       "get": {
         "description": "The organization's service accounts: non-human members for automation. Organization admins only.",
@@ -33733,6 +34549,109 @@
           "public",
           "sessions"
         ]
+      }
+    },
+    "/v1/sessions/{session_id}/trail": {
+      "get": {
+        "description": "List a session's reads.\n\nNewest first. The session's person and org admins see every read; an owner\nor admin of a project the session read sees the reads that touched their\nprojects.",
+        "operationId": "session_trail_v1_sessions__session_id__trail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionReadOutPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List a session's reads",
+        "tags": [
+          "public",
+          "sessions"
+        ],
+        "x-beakr-scope": "kb:read"
       }
     },
     "/v1/skills": {
