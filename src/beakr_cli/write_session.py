@@ -119,6 +119,9 @@ NOT_GATED: frozenset[str] = frozenset(
         "labels projects rm", "external-users create", "external-users edit",
         "external-users rm", "end-user-tokens mint", "end-user-tokens revoke",
         "integrations connect", "integrations disconnect", "integrations rm",
+        # Project isolation settings: the person's own credential, joined to no session
+        "org isolation show", "org isolation set", "org read-trail show", "org read-trail set",
+        "projects guard show", "projects guard set",
         # Sign-in and credentials
         "auth login", "auth logout", "auth status", "auth whoami", "auth token", "auth dev",
         "auth set-org", "auth clear-org", "auth set-scope", "keys ls", "keys create",

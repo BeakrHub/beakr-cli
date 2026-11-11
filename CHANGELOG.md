@@ -222,6 +222,17 @@ Each release lists the public API changes it supports, taken from the API change
   reads its session made before filing it, grouped by project (the write's own
   first, other projects marked, sources outside Beakr last). `session_status`
   takes `trail=true` and `proposal_id` for the same.
+- Project isolation settings from the CLI: `beakr org isolation show|set`
+  (`--session-mode auto_lock|picker`, `--require-session/--no-require-session`,
+  `--guard allow|hold|refuse`, `--count-search-results/--no-count-search-results`;
+  only the options given are sent), `beakr org read-trail show|set --days N` and
+  `beakr projects guard show|set PROJECT allow|hold|refuse|default`. They always
+  send your own credential and no `X-Beakr-Session`, never a session token, and
+  none is an MCP tool, so an agent cannot loosen its own guard. A loosening change
+  (a less strict guard, `--no-require-session`, `--no-count-search-results`, a
+  shorter read trail) asks first, or needs `--yes` without a terminal. A part not
+  turned on is refused before anything is sent with the flag to turn on (exit 4),
+  and a caller who may not change it (`can_change: false`) is refused (exit 3).
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.

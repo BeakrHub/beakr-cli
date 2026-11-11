@@ -557,6 +557,32 @@ Two more organization settings show up as refusals or results:
   `beakr kb proposals show` and `show_proposal` print the hold, and
   `beakr kb proposals show --trail` the write's read trail.
 
+#### Changing the settings
+
+An organization admin changes the organization's settings, and an owner or admin
+of a project its own guard, acting as a person: signed in to the web app, or with
+an API key they created with the `proposals:accept` scope (`BEAKR_API_KEY`).
+
+```bash
+beakr org isolation show                 # each setting, and which parts are turned on (--json)
+beakr org isolation set --session-mode auto_lock --require-session --guard hold
+beakr org isolation set --no-count-search-results --yes   # only the options given are sent
+beakr org read-trail show
+beakr org read-trail set --days 30       # shorter: older reads are deleted within the hour
+beakr projects guard show "Pharma B"
+beakr projects guard set "Pharma B" refuse   # or allow, hold; default follows the organization
+```
+
+These commands always send your own credential and no `X-Beakr-Session`, never
+a session's token, so a change is joined to no agent session. None of them is an
+MCP tool: an agent must never loosen its own guard. A change that loosens a rule
+(a guard less strict than the one in force, `--no-require-session`,
+`--no-count-search-results`, a shorter read trail) asks first; without a terminal
+it needs `--yes`. A part the installation has not turned on is refused before
+anything is sent, naming the flag (exit 4: "Ask your operator to turn on
+cross_project_guard on the Features page."), and so is a caller the settings say
+may not change them (`can_change: false`, exit 3).
+
 ## Knowledge cards
 
 Project-map cards hold Facts, Connections and dated Findings. Knowledge reads
