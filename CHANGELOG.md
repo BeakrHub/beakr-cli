@@ -4,7 +4,10 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.4.0 (2026-11-09)
+## beakr-cli 0.5.0 (unreleased)
+
+The self-hosted line: everything in the published beakr-cli 0.5.0, plus the
+self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit>`.
 
 ### Changes
 

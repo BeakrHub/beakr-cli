@@ -68,7 +68,7 @@ class UpdateStatus:
 
 
 #: What beakr-engine's build_clients.py adds to the version of the CLI a full
-#: self-hosted deployment ships in its release (``0.4.0+selfhosted.g<commit>``).
+#: self-hosted deployment ships in its release (``0.5.0+selfhosted.g<commit>``).
 #: That build is upgraded with the installation's release, never from PyPI, whose
 #: beakr-cli is a different client: it lacks sessions and the self-hosted additions.
 SELF_HOSTED_MARK = "+selfhosted."

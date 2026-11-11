@@ -11,8 +11,8 @@ $ beakr doctor --json
     {
       "name": "version",
       "status": "ok",
-      "detail": "beakr-cli 0.4.0",
-      "version": "0.4.0"
+      "detail": "beakr-cli 0.5.0",
+      "version": "0.5.0"
     },
     {
       "name": "api",
@@ -96,7 +96,7 @@ $ beakr doctor
 > GET /v1/me/api-keys?limit=200
 [exit 0]
 --- stdout
-ok    version  beakr-cli 0.4.0
+ok    version  beakr-cli 0.5.0
 ok    api      https://api.test (HTTP 200)
 ok    auth     Dana Whitfield via env
 warn  scopes   unknown
@@ -114,7 +114,7 @@ $ beakr doctor
 > GET /v1/me/api-keys?limit=200
 [exit 0]
 --- stdout
-ok	version	beakr-cli 0.4.0
+ok	version	beakr-cli 0.5.0
 ok	api	https://api.test (HTTP 200)
 ok	auth	Dana Whitfield via env
 warn	scopes	unknown
