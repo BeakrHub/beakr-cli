@@ -491,6 +491,66 @@ credential. A service account (or any credential that is not a person),
 a session token given as the credential, and an installation without sessions
 run as before.
 
+### Project isolation: one session per agent conversation
+
+Where the installation has agent sessions, `beakr mcp`, its subagents and every
+`beakr` command the agent runs in the same Claude Code or Codex conversation
+share one session: each joins it by the conversation's id
+(`CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`, or `BEAKR_SESSION` where the host
+gives its MCP server none), so a Bash call or a subagent cannot step outside it.
+`beakr session show` (no argument) and `beakr session trail` find the
+conversation's session.
+
+An organization can lock each session to one project instead of asking
+(`session_mode: auto_lock`, set by an admin). Then nothing shows a picker: the
+session starts open, the first project it reads or writes becomes its project,
+and reading a second project makes it read-only for the rest of its life. In an
+agent conversation the CLI's reads run in the session too, so they count.
+
+```bash
+beakr session show       # mode, the project it is locked to, read-only, the projects it touched
+beakr session trail      # every project it read or wrote, in order, and which read locked it
+```
+
+```text
+Session 7c1e2d3f-... (active)
+Mode: auto_lock (Beakr locks the session to the first project it touches)
+Read-only: Read Pharma A and Pharma B. Writes are refused; reads keep working.
+To write: Start a new agent conversation (a new Claude Code session, a new Codex thread): it gets a new Beakr session. Work in one project per conversation.
+Touched: Pharma A, Pharma B
+```
+
+A write the session may no longer make is refused by name before anything is
+sent, with the fix that works where the command runs (exit 3). An agent
+conversation's session is never started again once it ends or goes read-only, so
+the fix is a new conversation; a terminal's session is ended with `beakr session
+end <id>` and the next command starts a new one.
+
+```text
+Error: Session 7c1e2d3f-... reads and writes Pharma A, so it cannot write Pharma B; nothing was written. To fix: To write Pharma B: Start a new agent conversation ...
+```
+
+`beakr mcp`'s new `session_status` tool shows the same state to the agent
+(`trail=true` adds the read timeline, `proposal_id` what that write's session had
+read). `session_scope` cannot narrow an auto_lock session, which has no project
+list to drop from.
+
+Two more organization settings show up as refusals or results:
+
+- **Writes need a session** (`agent_writes_require_session`): a Knowledge or
+  file write made with an API key outside any session is refused
+  (`session_required`, exit 3). Run it from the agent conversation, or put the
+  shell in a session with `eval "$(beakr session start --env)"`.
+- **Cross-project guard** (per project, `allow`, `hold` or `refuse`): a write
+  into Pharma B that cites Pharma A's sources, or comes from a session that read
+  Pharma A, is refused (`cross_project_write_refused`, naming both projects and
+  who can change the setting) or held. A held write is staged as usual and shown
+  as a result, not an error: "Held for approval by an owner or admin of Pharma
+  B. ..." Only an owner or admin of Pharma B can accept it; auto-approve never
+  does, and an agent's accept is refused (`cross_project_owner_required`).
+  `beakr kb proposals show` and `show_proposal` print the hold and, where the
+  engine records it, the write's read trail.
+
 ## Knowledge cards
 
 Project-map cards hold Facts, Connections and dated Findings. Knowledge reads

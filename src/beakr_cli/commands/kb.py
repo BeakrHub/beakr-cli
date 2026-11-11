@@ -45,6 +45,7 @@ from beakr_cli.proposal_view import filed_by_line, held_line, payload_lines
 from beakr_cli.research_metadata import public_research
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
+from beakr_cli.session_trail import render_write_trail, write_trail
 from beakr_cli.source_listing import document_lines, group_by_document
 
 app = typer.Typer(help="Interact with your Beakr knowledge base.")
@@ -895,6 +896,8 @@ def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
         for text, style in payload_lines(payload):
             console.print(text, style=style, markup=False, highlight=False)
         console.print()
+    if with_payload and write_trail(proposal) is not None:
+        console.print(render_write_trail(proposal), markup=False, highlight=False)
     if proposal.get("changes_card_tables"):
         console.print("Changes card table rows: accept with --reviewed-hash and this content hash.")
     if proposal.get("content_hash"):
@@ -1433,6 +1436,8 @@ def _proposal_show_lines(proposal: dict) -> list[str]:
     payload = proposal.get("payload")
     if isinstance(payload, dict):
         lines += ["", *(text for text, _style in payload_lines(payload))]
+    if write_trail(proposal) is not None:
+        lines += ["", *render_write_trail(proposal).splitlines()]
     if proposal.get("content_hash"):
         lines += ["", f"content_hash={proposal['content_hash']}"]
     return lines

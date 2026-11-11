@@ -33,6 +33,7 @@ import asyncio
 import contextlib
 import json
 import os
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -376,11 +377,20 @@ def _token_of(minted: dict[str, Any]) -> tuple[str, str]:
     return str(minted["token"]), str(minted["expires_at"])
 
 
+#: What the API takes as an agent conversation id (``agent_session_id``).
+_AGENT_SESSION_ID = re.compile(r"[A-Za-z0-9._:-]{1,128}")
+
+
 def agent_session_id() -> str | None:
-    """The agent conversation this process runs in (``X-Beakr-Session``), when one is known."""
+    """The agent conversation this process runs in (``X-Beakr-Session``), when one is known.
+
+    None for a label the API would not take as an id (it keys sessions by at most
+    128 of ``A-Za-z0-9._:-``): such a conversation runs as before, unshared.
+    """
     from beakr_cli.sdk import _session
 
-    return _session()
+    agent = _session()
+    return agent if agent and _AGENT_SESSION_ID.fullmatch(agent) else None
 
 
 def retry_body(body: dict[str, Any], exc: BaseException) -> dict[str, Any] | None:
