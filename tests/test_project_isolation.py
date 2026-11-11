@@ -178,7 +178,9 @@ def test_beakr_mcp_joins_the_conversations_session(conversation, tmp_path, monke
 
     assert held is not None and held.agent == CONVERSATION and held.token == "bk_st_first"
     assert _body(created)["agent_session"] == CONVERSATION
-    assert created.calls.last.request.headers["x-beakr-session"] == CONVERSATION
+    # Joined by the body: the person's own credential carries no X-Beakr-Session, so
+    # the API does not answer it from inside some conversation's session.
+    assert "x-beakr-session" not in created.calls.last.request.headers
 
 
 @respx.mock
@@ -444,6 +446,24 @@ def test_a_write_outside_a_session_says_how_to_run_it_in_one():
     text = _text(result)
     assert "requires agents to write inside a session" in text
     assert 'eval "$(beakr session start --env)"' in text
+    # Not the other session_required (a browser session in the web app).
+    assert "signed-in browser session" not in text
+
+
+@respx.mock
+def test_the_web_apps_session_required_keeps_its_own_hint():
+    respx.delete(f"{API}/v1/artifacts/{FILE}").respond(
+        403,
+        json=_refusal(
+            403, "session_required", "Deleting a file requires the Beakr web app, not a key."
+        ),
+    )
+
+    result = runner.invoke(app, ["files", "rm", FILE, "--yes"])
+
+    text = _text(result)
+    assert "signed-in browser session" in text
+    assert "beakr session start" not in text
 
 
 @respx.mock

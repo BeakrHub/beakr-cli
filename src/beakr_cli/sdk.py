@@ -84,17 +84,25 @@ def _session() -> str | None:
     return None
 
 
-def _headers() -> dict[str, str]:
-    """The CLI's own headers: its version, and the agent session when one is known.
+def session_header(*, scoped: bool = True) -> str:
+    """The ``X-Beakr-Session`` every CLI client sends: the agent conversation, or none.
 
-    Sent as a default header, not the SDK's ``session=`` option, so it works with
-    SDK builds that predate it; the API shows it on the writes' provenance.
+    Always given to the SDK explicitly (``session=``): left unset, the SDK makes up
+    an id per client (``sdk-python-<random>``), and with agent sessions on the API
+    joins every such request to a throwaway session of its own, where the shell's
+    real session cannot be seen (``session show`` answered 404, and writes said the
+    shell's session had ended). ``""`` sends none, in every SDK version.
+
+    None for the person's own credential (``scoped=False``: the session commands,
+    starting, renewing and checking a session), which acts as the person and must
+    not be joined to the conversation's session; and none for a person's own act
+    inside a command (a file's approval, :func:`scope_session.person_credential`).
     """
     from beakr_cli import scope_session
 
-    # A person's own act (a file's approval) is never joined to the agent's session.
-    session = None if scope_session.unjoined() else _session()
-    return {**_CLI_HEADERS, "X-Beakr-Session": session} if session else dict(_CLI_HEADERS)
+    if not scoped or scope_session.unjoined():
+        return ""
+    return _session() or ""
 
 
 def get_sdk(
@@ -110,7 +118,8 @@ def get_sdk(
     attribute its writes to the agent session that ran it (in the MCP server
     the client's own clientInfo is the default), and ``BEAKR_RUN`` as
     ``X-Beakr-Run`` so `beakr kb undo-run <run>` can take back one run's writes,
-    and the agent session (``SESSION_ENV``) as ``X-Beakr-Session``.
+    and the agent session (``SESSION_ENV``) as ``X-Beakr-Session``
+    (:func:`session_header`; none with ``scoped=False``).
     ``base_url`` overrides the configured API (``BEAKR_BASE_URL``, the config).
 
     In a shell with a session (``BEAKR_SCOPE_SESSION``, ``beakr session start``)
@@ -128,7 +137,8 @@ def get_sdk(
         agent=_agent(),
         run=os.environ.get("BEAKR_RUN") or None,
         timeout=timeout,
-        default_headers=_headers(),
+        session=session_header(scoped=scoped),
+        default_headers=dict(_CLI_HEADERS),
     )
 
 
@@ -158,5 +168,6 @@ def get_async_sdk(
         agent=_agent(),
         run=run,
         timeout=timeout,
-        default_headers=_headers(),
+        session=session_header(scoped=scoped),
+        default_headers=dict(_CLI_HEADERS),
     )
