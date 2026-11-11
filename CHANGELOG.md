@@ -49,8 +49,15 @@ Each release lists the public API changes it supports, taken from the API change
     projects) and `needs_project_admin_to_accept: true`: only an owner or admin
     of the project, signed in or with a `proposals:accept` key, may accept it,
     anyone else gets `403 cross_project_owner_required`, and it is never
-    auto-approved. A write that commits without a proposal is allowed under
-    `hold` only for an owner or admin of the project.
+    auto-approved. Each project in the hold lists the sources `cited` from it,
+    and on proposal reads `can_accept` says whether the caller may accept it.
+    The write response's `proposal` carries the same `cross_project_hold` and
+    `needs_project_admin_to_accept`. A write that commits without a proposal is
+    allowed under `hold` only for an owner or admin of the project.
+  - Reading a project's name or metadata (`GET /v1/projects`,
+    `GET /v1/projects/{project_id}`) never counts as reading it.
+    `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
+    session token or `X-Beakr-Session`, confined to the session's projects.
 - Session read trail: what an agent session read before it wrote (available
   where the organization has it turned on; otherwise these operations answer
   `404 feature_not_enabled`). Each read a session makes is recorded by
@@ -198,6 +205,12 @@ Each release lists the public API changes it supports, taken from the API change
   the agent; `session_scope` does not narrow an auto_lock session. When the person
   ends an agent conversation's session, `beakr mcp` no longer replaces it: the
   agent is told to start a new conversation.
+- `beakr files approve` and the `beakr api` operations that compile or approve a
+  file's Knowledge run with the session's token, so they count in the session
+  (and satisfy `agent_writes_require_session`); they used to send your own
+  credential. A held write names the sources it cited from each other project and,
+  where the reader may accept it (`can_accept`), says so; a write reply that already
+  says it was held is not said twice.
 - Read trails: `beakr session trail [SESSION_ID]` prints a session's reads, newest
   first (op, projects, summary, the items each returned; `--limit`, `--cursor`,
   `--json`), and finds this shell's, terminal's or agent conversation's session

@@ -484,8 +484,8 @@ in `~/.beakr/hooks.log`. With no session open they capture into the folder's
 bound project as before: you chose that project with `beakr init`.
 
 Writes run with the session's token, so the API holds them to its write list.
-A few routes take no session token (conversation imports and compounding, a
-file's approval, an interview's Knowledge, the profile agent): for those the
+A few routes take no session token (conversation imports and compounding, an
+interview's Knowledge, the profile agent): for those the
 CLI checks the project is one the session may write, then sends your own
 credential. A service account (or any credential that is not a person),
 a session token given as the credential, and an installation without sessions
