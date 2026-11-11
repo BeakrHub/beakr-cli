@@ -138,7 +138,7 @@ def staged_proposal_lines(result: dict[str, Any]) -> list[str]:
     if isinstance(proposal, dict) and proposal.get("content_hash"):
         lines.append(f"content_hash: {proposal['content_hash']}")
     held = held_line(result) if isinstance(result, dict) else None
-    if held and held not in _text_of(result):
+    if held and not says_held(_text_of(result)):
         lines.append(held)
     return lines
 
@@ -155,6 +155,12 @@ def cross_project_hold(holder: dict[str, Any]) -> dict[str, Any] | None:
         if isinstance(hold, dict):
             return hold
     return None
+
+
+def says_held(text: str) -> bool:
+    """Whether a write's reply text already says it was held (the engine's own line,
+    "Held for an owner or admin of Pharma B to accept: ...")."""
+    return "held for" in text.lower()
 
 
 def _via(project: dict[str, Any]) -> str:
@@ -183,10 +189,29 @@ def held_line(holder: dict[str, Any]) -> str | None:
         ]
         reason = f"Content from {', '.join(others)}." if others else ""
     reason = reason or "It brings in content from another project."
-    return (
-        f"Held for approval by an owner or admin of {name}. {reason} Only an owner or admin of "
-        f"{name} can accept it: auto-approve never does, and an agent's accept is refused."
+    cited = _cited(hold)
+    who = (
+        "You may accept it (you are an owner or admin of it); auto-approve never does."
+        if hold.get("can_accept") is True
+        else f"Only an owner or admin of {name} can accept it: auto-approve never does, and "
+        "an agent's accept is refused."
     )
+    return f"Held for approval by an owner or admin of {name}. {reason}{cited} {who}"
+
+
+def _cited(hold: dict[str, Any], limit: int = 5) -> str:
+    """`` Cited: assay.pdf (Pharma A), ...`` from each held project's ``cited`` sources."""
+    named = [
+        f"{c.get('title') or c.get('source_type') or '?'} ({p.get('name') or p.get('id')})"
+        for p in hold.get("projects") or []
+        if isinstance(p, dict)
+        for c in p.get("cited") or []
+        if isinstance(c, dict)
+    ]
+    if not named:
+        return ""
+    more = f", +{len(named) - limit} more" if len(named) > limit else ""
+    return " Cited: " + ", ".join(named[:limit]) + more + "."
 
 
 #: show_proposal's line for a proposal only a person may accept: the engine's

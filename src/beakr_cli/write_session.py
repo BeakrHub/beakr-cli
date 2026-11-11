@@ -23,8 +23,8 @@ How the write runs (:data:`WRITE_COMMANDS`):
 - ``token``: with the session's token. The API confines it to the session's
   write list and refuses any other project (``403 session_write_scope``).
 - ``checked``: the API takes no session token on a route the command needs
-  (conversation imports and compounding, a file's approval, an interview's
-  Knowledge, the profile agent's runs). The CLI checks the project it writes is
+  (conversation imports and compounding, an interview's Knowledge, the profile
+  agent's runs). The CLI checks the project it writes is
   in the session's write list, then sends the person's own credential.
 
 No session is asked for where none can be held: an installation without sessions
@@ -62,7 +62,9 @@ WRITE_COMMANDS: dict[str, str] = {
     "upload": TOKEN,
     "files upload": TOKEN,
     "files rm": TOKEN,
-    "files approve": CHECKED,
+    # The API takes the session's token here since project isolation (it confines
+    # the file to the session's projects), so the approval counts in the session.
+    "files approve": TOKEN,
     # A project's Knowledge and its profile
     "projects retry": TOKEN,
     "projects profile set": TOKEN,
@@ -143,10 +145,18 @@ NOT_GATED: frozenset[str] = frozenset(
 #: project in their path, and not confined in the route): run ``checked``.
 _TOKEN_REFUSED_OPS = frozenset(
     {
-        "POST /v1/artifacts/{artifact_id}/knowledge",
-        "POST /v1/artifacts/{artifact_id}/knowledge/approve",
         "POST /v1/conversations/import",
         "POST /v1/compound",
+    }
+)
+#: ``beakr api`` operations that write a project's content under another scope: run
+#: with the session's token (a file's Knowledge and its approval are confined to the
+#: session's projects by the route).
+_TOKEN_OPS = frozenset(
+    {
+        "POST /v1/artifacts/{artifact_id}/knowledge",
+        "POST /v1/artifacts/{artifact_id}/knowledge/approve",
+        "POST /v1/interview/sendables/links/{link_id}/knowledge",
     }
 )
 #: Operation scopes whose writes are a project's content.
@@ -226,7 +236,7 @@ def operation_mode(entry: dict[str, Any]) -> str | None:
         return CHECKED
     if entry.get("scope") in _CONTENT_SCOPES:
         return TOKEN
-    if op == "POST /v1/interview/sendables/links/{link_id}/knowledge":
+    if op in _TOKEN_OPS:
         return TOKEN
     return None
 

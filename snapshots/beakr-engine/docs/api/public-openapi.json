@@ -3713,6 +3713,19 @@
             "title": "Approver",
             "type": "string"
           },
+          "can_accept": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On proposal reads: whether the caller may accept it (a person who is an owner or admin of `project`). Null where it is not computed.",
+            "title": "Can Accept"
+          },
           "project": {
             "anyOf": [
               {
@@ -3745,9 +3758,50 @@
         "title": "CrossProjectHold",
         "type": "object"
       },
+      "CrossProjectHoldCitation": {
+        "additionalProperties": true,
+        "properties": {
+          "source_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Its kind: `artifact`, `wiki`, `unit`...",
+            "title": "Source Type"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The cited source's title, as cited.",
+            "title": "Title"
+          }
+        },
+        "title": "CrossProjectHoldCitation",
+        "type": "object"
+      },
       "CrossProjectHoldProject": {
         "additionalProperties": true,
         "properties": {
+          "cited": {
+            "description": "The cited sources that come from this project (at most 10).",
+            "items": {
+              "$ref": "#/components/schemas/CrossProjectHoldCitation"
+            },
+            "title": "Cited",
+            "type": "array"
+          },
           "id": {
             "description": "Unique id of this cross project hold project.",
             "format": "uuid",
@@ -15857,6 +15911,18 @@
             "description": "The proposal's content hash, sent back as `reviewed_hash` on accept.",
             "title": "Content Hash"
           },
+          "cross_project_hold": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CrossProjectHold"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Set when the project's cross-project guard holds this proposal: only an owner or admin of its project may accept it, and it is never auto-approved."
+          },
           "filed_by": {
             "anyOf": [
               {
@@ -15874,6 +15940,12 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "needs_project_admin_to_accept": {
+            "default": false,
+            "description": "True when `cross_project_hold` is set.",
+            "title": "Needs Project Admin To Accept",
+            "type": "boolean"
           }
         },
         "required": [

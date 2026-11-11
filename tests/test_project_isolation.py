@@ -638,3 +638,73 @@ def test_ending_a_conversation_session_says_it_is_final(conversation):
 
     assert result.exit_code == 0, result.output
     assert "never started again" in _text(result)
+
+
+@respx.mock
+def test_the_engines_own_held_line_is_not_said_twice():
+    from beakr_cli.mcp_server import mcp
+
+    respx.post(f"{API}/v1/knowledge/wiki/write").respond(
+        json={
+            "text": "Staged proposal prop-1. Held for an owner or admin of Pharma B to accept: "
+            "content from Pharma A (cited).",
+            "outcome": {"status": "ok"},
+            "proposal": _held_proposal(),
+        }
+    )
+
+    result = asyncio.run(
+        mcp.call_tool(
+            "knowledge_base_write",
+            {"action": "new", "arguments": {"title": "Notes"}, "scope": B},
+        )
+    )
+
+    text = result.content[0].text
+    assert not result.isError
+    assert text.lower().count("held for") == 1
+
+
+def test_the_hold_names_what_was_cited_and_whether_the_reader_may_accept():
+    from beakr_cli.proposal_view import held_line
+
+    hold = {
+        **_HOLD,
+        "projects": [
+            {
+                "id": A,
+                "name": "Pharma A",
+                "via": ["cited"],
+                "cited": [{"title": "assay.pdf", "source_type": "artifact"}],
+            }
+        ],
+        "can_accept": True,
+    }
+    line = held_line({"cross_project_hold": hold})
+    assert "Cited: assay.pdf (Pharma A)." in line
+    assert "You may accept it" in line
+    line = held_line({"cross_project_hold": {**hold, "can_accept": False}})
+    assert "Only an owner or admin of Pharma B can accept it" in line
+
+
+@respx.mock
+def test_a_card_row_write_held_by_the_guard_says_so():
+    """add-fact's reply carries the hold in its proposal ref (the write response)."""
+    respx.post(f"{API}/v1/knowledge/wiki/write").respond(
+        json={
+            "text": "Staged proposal prop-1: 1 Facts row on Compound X.",
+            "outcome": {"status": "ok"},
+            "proposal": {"id": "prop-1", "content_hash": "h1", "cross_project_hold": _HOLD},
+        }
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "kb", "add-fact", "Compound X", "--attribute", "ic50", "--value", "12 nM",
+            "--evidence", "assay.pdf", "--project", B, "--rationale", "r",
+        ],
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    assert "Held for approval by an owner or admin of Pharma B." in _text(result)
