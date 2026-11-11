@@ -205,10 +205,14 @@ Each release lists the public API changes it supports, taken from the API change
   the agent; `session_scope` does not narrow an auto_lock session. When the person
   ends an agent conversation's session, `beakr mcp` no longer replaces it: the
   agent is told to start a new conversation.
-- `beakr files approve` and the `beakr api` operations that compile or approve a
-  file's Knowledge run with the session's token, so they count in the session
-  (and satisfy `agent_writes_require_session`); they used to send your own
-  credential. A held write names the sources it cited from each other project and,
+- The `beakr api` operation that compiles a file's Knowledge
+  (`POST /v1/artifacts/{artifact_id}/knowledge`) runs with the session's token, so
+  it counts in the session (and satisfies `agent_writes_require_session`); it used
+  to send your own credential. `beakr files approve` (and the approve operation)
+  sends your own key and no `X-Beakr-Session`, so it is joined to no session: only
+  a person approves a file, and the API refuses a session token there
+  (`403 person_review_required`), so an agent's session never approves its own
+  files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
 - Read trails: `beakr session trail [SESSION_ID]` prints a session's reads, newest

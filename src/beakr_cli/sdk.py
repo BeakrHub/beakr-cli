@@ -90,7 +90,10 @@ def _headers() -> dict[str, str]:
     Sent as a default header, not the SDK's ``session=`` option, so it works with
     SDK builds that predate it; the API shows it on the writes' provenance.
     """
-    session = _session()
+    from beakr_cli import scope_session
+
+    # A person's own act (a file's approval) is never joined to the agent's session.
+    session = None if scope_session.unjoined() else _session()
     return {**_CLI_HEADERS, "X-Beakr-Session": session} if session else dict(_CLI_HEADERS)
 
 

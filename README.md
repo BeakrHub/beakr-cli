@@ -487,7 +487,9 @@ Writes run with the session's token, so the API holds them to its write list.
 A few routes take no session token (conversation imports and compounding, an
 interview's Knowledge, the profile agent): for those the
 CLI checks the project is one the session may write, then sends your own
-credential. A service account (or any credential that is not a person),
+credential. A file's approval (`beakr files approve`) is yours alone: after the
+same check it sends your own key without `X-Beakr-Session`, so it is joined to no
+session, and an agent's session never approves its own files. A service account (or any credential that is not a person),
 a session token given as the credential, and an installation without sessions
 run as before.
 

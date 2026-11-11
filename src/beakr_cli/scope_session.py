@@ -522,22 +522,33 @@ def shell_session_id() -> str | None:
 #: Set while a command runs with the person's own credential inside a session
 #: (:func:`person_credential`).
 _PERSON_CREDENTIAL = False
+#: Set while that credential must not join any session either (``unjoined=True``).
+_UNJOINED = False
 
 
 @contextlib.contextmanager
-def person_credential() -> Any:
+def person_credential(*, unjoined: bool = False) -> Any:
     """Send the person's own credential while in a session, for a route that takes no session token.
 
     The CLI's write gate (:mod:`beakr_cli.write_session`) uses it for the few
     writes the API refuses to any session token, after checking itself that the
-    session may write the project.
+    session may write the project. ``unjoined`` also leaves out ``X-Beakr-Session``,
+    so the API does not join the request to the agent conversation's session: for
+    a file's approval, which only a person may give (an agent's session never
+    approves its own files).
     """
-    global _PERSON_CREDENTIAL
-    previous, _PERSON_CREDENTIAL = _PERSON_CREDENTIAL, True
+    global _PERSON_CREDENTIAL, _UNJOINED
+    previous = (_PERSON_CREDENTIAL, _UNJOINED)
+    _PERSON_CREDENTIAL, _UNJOINED = True, unjoined or _UNJOINED
     try:
         yield
     finally:
-        _PERSON_CREDENTIAL = previous
+        _PERSON_CREDENTIAL, _UNJOINED = previous
+
+
+def unjoined() -> bool:
+    """Whether requests now leave out ``X-Beakr-Session`` (:func:`person_credential`)."""
+    return _UNJOINED
 
 
 def token_session_id() -> str | None:
