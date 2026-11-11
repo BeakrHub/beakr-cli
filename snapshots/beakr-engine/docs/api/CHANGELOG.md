@@ -11,10 +11,53 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9386e622c4edc3f566d0e83751b04a8827fb3b4d19d5b3358bd570b230888100 changelog sha256=e3a54cb77434b8df7c22608bba8b90c09532c3aaafea9675840fd6eb8062450b -->
+<!-- contract-stamp: public-openapi sha256=5719e0aa545a33179c8a16127ed24261bad954f8c011cd5e17350d64a35c8571 changelog sha256=05fdadd302d4143b73bb2a5e5e7cc0f6c414699b1f40d2603441a537ce776f32 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- Project isolation, for organizations whose projects must not write into one
+  another (each part is available where the organization has it turned on;
+  `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
+  - Settings: `GET /v1/organizations/{org_id}/project-isolation` returns the organization's
+    `session_mode` (`picker` or `auto_lock`), `auto_lock_counts_search_results`,
+    `agent_writes_require_session` and `cross_project_guard` (`allow`, `hold` or
+    `refuse`). `PUT /v1/organizations/{org_id}/project-isolation` changes them; it needs an
+    organization admin signed in, or their key with `proposals:accept`, and
+    answers `404 feature_not_enabled` for a part that is not turned on.
+    `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set
+    one project's own guard (`override`; `null` follows the organization), which
+    needs an owner or admin of the project. Project responses
+    (`GET /v1/projects`, `GET /v1/projects/{project_id}`) carry
+    `cross_project_guard` and `cross_project_guard_override`.
+  - One session per agent conversation: a request with a person's API key and
+    `X-Beakr-Session: <conversation id>`, and no session token, runs inside that
+    person's session for the conversation, started on its first request, so an
+    MCP server, its subagents and CLI calls in one conversation share it.
+    `POST /v1/sessions` with `agent_session` returns that session, or starts it.
+    A conversation id whose session has ended answers `409 session_ended`.
+  - Auto-lock: in `auto_lock` the first project a session reads or writes
+    becomes its project. Writing another project answers
+    `403 session_locked_to_project`; once it reads a second project the session
+    is read-only, and every write answers `403 session_read_only`, naming the
+    projects it read. Reads keep working. An unscoped search counts the
+    projects its results come from while `auto_lock_counts_search_results` is
+    true. Choosing an auto-lock session's projects answers
+    `session_mode_auto_lock`. Session responses carry `mode`, `agent_session`,
+    `lock_state` (`open`, `locked` or `read_only`), `write_project`,
+    `touched_projects`, `read_only_at` and `read_only_reason`.
+  - With `agent_writes_require_session`, a Knowledge or file write made with a
+    person's API key or token outside a session answers `403 session_required`,
+    with a `fix` saying how to start one. Service-account keys are exempt.
+  - Cross-project guard: a write into a project that cites a source from another
+    project, moves or copies content from one, or comes from a session that read
+    one, answers `403 cross_project_write_refused` under `refuse`. Under `hold`
+    the proposal is staged with `cross_project_hold` (its `reason` names the
+    projects) and `needs_project_admin_to_accept: true`: only an owner or admin
+    of the project, signed in or with a `proposals:accept` key, may accept it,
+    anyone else gets `403 cross_project_owner_required`, and it is never
+    auto-approved. A write that commits without a proposal is allowed under
+    `hold` only for an owner or admin of the project.
 
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:

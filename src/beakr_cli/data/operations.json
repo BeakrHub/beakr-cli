@@ -4147,6 +4147,28 @@
    "summary": "Get an organization"
   },
   {
+   "action": "get-project-isolation",
+   "anonymous": false,
+   "area": "organizations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/organizations/{org_id}/project-isolation",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/project-isolation",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get the project isolation settings"
+  },
+  {
    "action": "list-members",
    "anonymous": false,
    "area": "organizations",
@@ -4238,6 +4260,67 @@
    "response": "none",
    "scope": "members:admin",
    "summary": "Remove an organization member"
+  },
+  {
+   "action": "set-project-isolation",
+   "anonymous": false,
+   "area": "organizations",
+   "body": {
+    "fields": [
+     {
+      "description": "Refuse Knowledge and file writes made with a person's API key or token outside a session (403 session_required). The web app and service accounts are exempt.",
+      "name": "agent_writes_require_session",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).",
+      "name": "auto_lock_counts_search_results",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.",
+      "enum": [
+       "allow",
+       "hold",
+       "refuse"
+      ],
+      "name": "cross_project_guard",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "`picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.",
+      "enum": [
+       "picker",
+       "auto_lock"
+      ],
+      "name": "session_mode",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/organizations/{org_id}/project-isolation",
+   "paginated": false,
+   "path": "/v1/organizations/{org_id}/project-isolation",
+   "path_params": [
+    {
+     "name": "org_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "members:admin",
+   "summary": "Change the project isolation settings"
   },
   {
    "action": "update-member-role",
@@ -4455,6 +4538,28 @@
    "response": "none",
    "scope": "projects:admin",
    "summary": "Delete a project"
+  },
+  {
+   "action": "get-cross-project-guard",
+   "anonymous": false,
+   "area": "projects",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/cross-project-guard",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/cross-project-guard",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a project's cross-project guard"
   },
   {
    "action": "get-model-refusal-summary",
@@ -5123,6 +5228,45 @@
    "summary": "Revoke a pending invitation"
   },
   {
+   "action": "set-cross-project-guard",
+   "anonymous": false,
+   "area": "projects",
+   "body": {
+    "fields": [
+     {
+      "description": "`allow`, `hold` or `refuse`; null clears it, so the project follows the organization.",
+      "enum": [
+       "allow",
+       "hold",
+       "refuse"
+      ],
+      "name": "override",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/projects/{project_id}/cross-project-guard",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/cross-project-guard",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:admin",
+   "summary": "Set a project's cross-project guard"
+  },
+  {
    "action": "update-project",
    "anonymous": false,
    "area": "projects",
@@ -5620,6 +5764,12 @@
    "area": "sessions",
    "body": {
     "fields": [
+     {
+      "description": "The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Needs `server_agent_sessions`.",
+      "name": "agent_session",
+      "required": false,
+      "type": "string"
+     },
      {
       "default": "api",
       "description": "The client holding the session, shown to the person (`beakr mcp`, `beakr-cli`).",

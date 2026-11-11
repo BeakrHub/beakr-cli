@@ -11,13 +11,6 @@ from __future__ import annotations
 
 from typing import Any
 
-#: Where the API keeps a session's trail.
-TRAIL_PATH = "/v1/sessions/{session_id}/trail"
-
-
-def trail_path(session_id: str) -> str:
-    return TRAIL_PATH.format(session_id=session_id)
-
 
 def events_of(page: Any) -> list[dict[str, Any]]:
     """The trail's events from the API's answer (a list, or a page of them)."""

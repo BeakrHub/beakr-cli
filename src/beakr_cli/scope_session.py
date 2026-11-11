@@ -66,7 +66,8 @@ REPLACED_MESSAGE = "The previous Beakr session was ended; choose projects for a 
 #: What every session token starts with.
 SESSION_TOKEN_PREFIX = "bk_st_"
 
-# Project isolation (an organization's settings, ``GET /v1/project-isolation``).
+# Project isolation (an organization's settings,
+# ``GET /v1/organizations/{org_id}/project-isolation``).
 #: The session mode where the server locks a session to the first project it touches.
 AUTO_LOCK = "auto_lock"
 #: A locked session wrote (or a read-only one wrote anything) outside its project.
@@ -78,7 +79,7 @@ SESSION_REQUIRED = "session_required"
 GUARD_REFUSED = "cross_project_write_refused"
 GUARD_OWNER_REQUIRED = "cross_project_owner_required"
 #: Refusals of what an auto_lock session does not take (project lists) or an
-#: installation without agent sessions (``agent_session_id``).
+#: installation without agent sessions (``agent_session``).
 MODE_AUTO_LOCK = "session_mode_auto_lock"
 FEATURE_NOT_ENABLED = "feature_not_enabled"
 #: The fix when an agent conversation's session can no longer be used: its id
@@ -138,7 +139,7 @@ def restart_fix(session: dict[str, Any], *, shell: bool | None = None) -> str:
     session_id = session.get("id") or ""
     if shell is None:
         shell = bool(session_id) and shell_session_id() == session_id
-    if session.get("agent_session_id") and not shell:
+    if session.get("agent_session") and not shell:
         return NEW_CONVERSATION_FIX
     if shell:
         return (
@@ -187,8 +188,8 @@ def describe(session: dict[str, Any]) -> str:
         lines.append("Mode: auto_lock (Beakr locks the session to the first project it touches)")
         if status != "ended":
             lines.extend(lock_lines(session))
-        if session.get("agent_session_id"):
-            lines.append(f"Agent conversation: {session['agent_session_id']}")
+        if session.get("agent_session"):
+            lines.append(f"Agent conversation: {session['agent_session']}")
         return "\n".join(lines)
     if session.get("mode"):
         lines.append(f"Mode: {session['mode']}")
@@ -377,7 +378,7 @@ def _token_of(minted: dict[str, Any]) -> tuple[str, str]:
     return str(minted["token"]), str(minted["expires_at"])
 
 
-#: What the API takes as an agent conversation id (``agent_session_id``).
+#: What the API takes as an agent conversation id (``agent_session``).
 _AGENT_SESSION_ID = re.compile(r"[A-Za-z0-9._:-]{1,128}")
 
 
@@ -396,15 +397,15 @@ def agent_session_id() -> str | None:
 def retry_body(body: dict[str, Any], exc: BaseException) -> dict[str, Any] | None:
     """The ``POST /v1/sessions`` body to send again after ``exc``, or None to raise it.
 
-    - ``422 feature_not_enabled`` for ``agent_session_id``: an installation without
+    - ``422 feature_not_enabled`` for ``agent_session``: an installation without
       agent sessions; start the session on its own, as before.
     - ``422 session_mode_auto_lock`` for project lists: the organization locks each
       session to the first project it touches, so it takes none.
     """
     if not isinstance(exc, BeakrError) or exc.status != 422:
         return None
-    if exc.code == FEATURE_NOT_ENABLED and "agent_session_id" in body:
-        return {k: v for k, v in body.items() if k != "agent_session_id"}
+    if exc.code == FEATURE_NOT_ENABLED and "agent_session" in body:
+        return {k: v for k, v in body.items() if k != "agent_session"}
     if exc.code == MODE_AUTO_LOCK and "read_project_ids" in body:
         return {k: v for k, v in body.items() if k not in {"read_project_ids", "write_project_ids"}}
     return None
@@ -454,7 +455,7 @@ def session_body(
     if agent:
         # Joins the session this agent conversation already has (beakr mcp's, or an
         # earlier command's), or starts it: one session per conversation.
-        body["agent_session_id"] = agent
+        body["agent_session"] = agent
     return body
 
 
@@ -670,7 +671,7 @@ def explain_lock_refusal(
     (``BEAKR_SCOPE_SESSION``), when the caller knows better than the environment.
     """
     session_id = str(refusal_field(exc, "session_id") or (session or {}).get("id") or "")
-    held = dict(session or {"id": session_id, "agent_session_id": agent_session_id()})
+    held = dict(session or {"id": session_id, "agent_session": agent_session_id()})
     fix = restart_fix(held, shell=shell)
     refused = refusal_field(exc, "refused_projects")
     if exc.code == LOCKED_TO_PROJECT and isinstance(refused, list) and refused:
@@ -844,7 +845,7 @@ def _terminal_record(key: str) -> dict[str, Any] | None:
 # Where the organization locks each session to the first project it touches
 # (``session_mode: auto_lock``), every command an agent runs in a conversation runs
 # in that conversation's session, reads included: ``beakr mcp``, its subagents and
-# the CLI calls in the same conversation share it (``agent_session_id``), so none
+# the CLI calls in the same conversation share it (``agent_session``), so none
 # can read a second project, or write the first after reading it, outside the lock.
 # A person's API key sending ``X-Beakr-Session`` joins it on the server anyway;
 # this covers every credential, and is checked once per conversation (the answer
@@ -852,6 +853,11 @@ def _terminal_record(key: str) -> dict[str, Any] | None:
 
 #: Off only in the test suite (tests/conftest.py), like ``write_session.ENABLED``.
 CONVERSATION_SESSIONS = True
+
+
+def isolation_path(org_id: str) -> str:
+    """Where the API keeps the organization's project isolation settings."""
+    return f"/v1/organizations/{org_id}/project-isolation"
 
 
 def conversation_token() -> str | None:
@@ -890,9 +896,12 @@ def _join_conversation(agent: str, key: str) -> TokenState | None:
 
     if _exempt_credential():
         return None
+    from beakr_cli.project_binding import credential_org_id
+
     with get_sdk(scoped=False) as person:
+        org_id = credential_org_id()
         try:
-            settings = person.request("GET", "/v1/project-isolation")
+            settings = person.request("GET", isolation_path(org_id)) if org_id else {}
         except BeakrError:
             settings = {}  # an installation without project isolation: as before
         available = settings.get("available") if isinstance(settings, dict) else None
@@ -1105,7 +1114,7 @@ class McpSession:
         - The person ended it (or it is gone): a new session is started without
           projects (pending), so it reaches nothing until the person chooses, and
           :data:`REPLACED` is returned; the next picker says why it is asking. An
-          agent conversation's session (``agent_session_id``) is not replaced: its
+          agent conversation's session (``agent_session``) is not replaced: its
           id never starts another, so :class:`SessionScopeError` says to start a new
           conversation.
 
@@ -1163,7 +1172,7 @@ class McpSession:
                     fix=check.fix
                     or "Retry shortly; if it keeps failing, restart the Beakr MCP server.",
                 ) from check
-            conversation = self.session.get("agent_session_id")
+            conversation = self.session.get("agent_session")
             if conversation:
                 # An agent conversation's session is never started again (the API
                 # refuses its id with 409 session_ended): a fresh session would let

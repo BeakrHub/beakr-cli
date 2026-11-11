@@ -5,7 +5,7 @@ writes that need a session, and the cross-project guard (beakr-engine
 What each piece promises, one test or more each:
 
 - ``beakr mcp`` and the CLI join the agent conversation's session
-  (``agent_session_id``): both hold a token for the same session; an installation
+  (``agent_session``): both hold a token for the same session; an installation
   without agent sessions starts the session on its own, as before;
 - in auto_lock mode nothing asks: ``beakr mcp`` answers tools at once, the write
   gate writes without the picker, a remembered folder choice is not sent, and in
@@ -44,6 +44,7 @@ A = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
 B = "8b2f6c10-3d4e-4f5a-9b6c-7d8e9f0a1b2c"
 NAMES = {A: "Pharma A", B: "Pharma B"}
 PERSON_KEY = "bk_live_person_key_for_tests"
+ORG = "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e"
 CONVERSATION = "conv-123"
 FILE = "f-1"
 
@@ -60,6 +61,7 @@ def api(monkeypatch):
     monkeypatch.delenv(scope_session.MCP_SESSIONS_ENV, raising=False)
     monkeypatch.setattr(write_session, "_sleep", lambda _seconds: None)
     monkeypatch.setattr(write_session, "_interactive", lambda: False)
+    monkeypatch.setattr("beakr_cli.project_binding.credential_org_id", lambda: ORG)
     scope_session.ACTIVE = None
     yield
     scope_session.ACTIVE = None
@@ -95,7 +97,7 @@ def _session(
         "id": SID,
         "status": status,
         "mode": mode,
-        "agent_session_id": agent,
+        "agent_session": agent,
         "client_name": "beakr mcp",
         "label": "claude-code",
         "folder": None,
@@ -175,7 +177,7 @@ def test_beakr_mcp_joins_the_conversations_session(conversation, tmp_path, monke
     held = asyncio.run(scope_session.start_for_mcp())
 
     assert held is not None and held.agent == CONVERSATION and held.token == "bk_st_first"
-    assert _body(created)["agent_session_id"] == CONVERSATION
+    assert _body(created)["agent_session"] == CONVERSATION
     assert created.calls.last.request.headers["x-beakr-session"] == CONVERSATION
 
 
@@ -197,8 +199,8 @@ def test_without_agent_sessions_beakr_mcp_starts_its_own_session_as_before(
     held = asyncio.run(scope_session.start_for_mcp())
 
     assert held is not None and held.token == "bk_st_first"
-    assert "agent_session_id" in json.loads(created.calls[0].request.content)
-    assert "agent_session_id" not in _body(created)
+    assert "agent_session" in json.loads(created.calls[0].request.content)
+    assert "agent_session" not in _body(created)
 
 
 @respx.mock
@@ -246,7 +248,7 @@ def test_picker_mode_still_answers_with_the_picker(conversation):
 def test_a_cli_write_joins_the_session_beakr_mcp_holds(conversation, monkeypatch):
     """The MCP server and the command share one session id; the write uses its token."""
     monkeypatch.setattr(write_session, "ENABLED", True)
-    respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    respx.get(f"{API}/v1/organizations/{ORG}/project-isolation").respond(json=_isolation())
     joined = respx.post(f"{API}/v1/sessions").respond(
         201, json=_created(_session(), token="bk_st_cli")
     )
@@ -257,7 +259,7 @@ def test_a_cli_write_joins_the_session_beakr_mcp_holds(conversation, monkeypatch
 
     assert result.exit_code == 0, result.output
     assert joined.call_count == 1
-    assert _body(joined)["agent_session_id"] == CONVERSATION
+    assert _body(joined)["agent_session"] == CONVERSATION
     assert "read_project_ids" not in _body(joined)
     assert _bearer(delete) == "Bearer bk_st_cli"
     # No picker, no wait: auto_lock has nothing to choose.
@@ -269,7 +271,9 @@ def test_a_cli_write_joins_the_session_beakr_mcp_holds(conversation, monkeypatch
 def test_cli_reads_in_an_auto_lock_conversation_carry_its_session(conversation):
     from beakr_cli.sdk import get_sdk
 
-    settings = respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    settings = respx.get(f"{API}/v1/organizations/{ORG}/project-isolation").respond(
+        json=_isolation()
+    )
     joined = respx.post(f"{API}/v1/sessions").respond(
         201, json=_created(_session(), token="bk_st_cli")
     )
@@ -280,7 +284,7 @@ def test_cli_reads_in_an_auto_lock_conversation_carry_its_session(conversation):
             sdk.me.get()
 
     assert _bearer(me) == "Bearer bk_st_cli"
-    assert _body(joined)["agent_session_id"] == CONVERSATION
+    assert _body(joined)["agent_session"] == CONVERSATION
     # Asked once per conversation, then kept with the terminal's session.
     assert settings.call_count == 1 and joined.call_count == 1
     assert _bearer(settings) == f"Bearer {PERSON_KEY}"
@@ -290,7 +294,9 @@ def test_cli_reads_in_an_auto_lock_conversation_carry_its_session(conversation):
 def test_cli_reads_in_a_picker_conversation_stay_as_before(conversation):
     from beakr_cli.sdk import get_sdk
 
-    settings = respx.get(f"{API}/v1/project-isolation").respond(json=_isolation("picker"))
+    settings = respx.get(f"{API}/v1/organizations/{ORG}/project-isolation").respond(
+        json=_isolation("picker")
+    )
     joined = respx.post(f"{API}/v1/sessions").respond(201, json=_created(_session()))
     me = respx.get(f"{API}/v1/me").respond(json={"user": {}})
 
@@ -306,7 +312,9 @@ def test_cli_reads_in_a_picker_conversation_stay_as_before(conversation):
 def test_outside_an_agent_conversation_reads_never_ask():
     from beakr_cli.sdk import get_sdk
 
-    settings = respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    settings = respx.get(f"{API}/v1/organizations/{ORG}/project-isolation").respond(
+        json=_isolation()
+    )
     me = respx.get(f"{API}/v1/me").respond(json={"user": {}})
     with get_sdk() as sdk:
         sdk.me.get()
@@ -317,7 +325,7 @@ def test_outside_an_agent_conversation_reads_never_ask():
 def test_an_ended_conversation_session_is_said_so(conversation):
     from beakr_cli.sdk import get_sdk
 
-    respx.get(f"{API}/v1/project-isolation").respond(json=_isolation())
+    respx.get(f"{API}/v1/organizations/{ORG}/project-isolation").respond(json=_isolation())
     respx.post(f"{API}/v1/sessions").respond(
         409,
         json=_refusal(409, "session_ended", "This agent session has ended.", "Start a new one."),

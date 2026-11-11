@@ -133,7 +133,7 @@ NOT_GATED: frozenset[str] = frozenset(
         "init", "install", "setup", "update", "mcp", "codex", "hooks install",
         "hooks uninstall", "hooks capture", "hooks learning",
         # The sessions themselves (always the person's own credential)
-        "session start", "session show", "session trail", "session ls", "session edit",
+        "session start", "session show", "session ls", "session edit",
         "session end",
         "session forget",
     }
@@ -434,7 +434,7 @@ def _held(command: str, params: dict[str, Any], *, hook: bool) -> Held | None:
 
 
 def _reuse_line(held: Held) -> str:
-    if held.session.get("agent_session_id"):
+    if held.session.get("agent_session"):
         return "This agent conversation's commands and beakr mcp all run in it."
     return (
         f"This terminal reuses it until `beakr session end {held.id}`. In another shell: "

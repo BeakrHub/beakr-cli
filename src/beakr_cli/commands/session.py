@@ -103,7 +103,7 @@ def _conversation_session_id() -> str | None:
         return None
     with get_sdk(scoped=False) as sdk:
         for row in sdk.paginate("/v1/sessions"):
-            if row.get("agent_session_id") == agent and row.get("status") != "ended":
+            if row.get("agent_session") == agent and row.get("status") != "ended":
                 return str(row.get("id"))
     return None
 
@@ -346,35 +346,6 @@ def _describe_lines(session: dict[str, Any]) -> list[str]:
     return scope_session.describe(session).splitlines()
 
 
-@app.command("trail")
-def trail(
-    session_id: str | None = typer.Argument(
-        None, help="Defaults to this shell's, this terminal's or this agent conversation's session."
-    ),
-    json_out: bool = _json_opt,
-) -> None:
-    """The session's read trail: every project it read or wrote, in order, and how.
-
-    Where the organization locks sessions (auto_lock), the trail shows which read
-    locked the session to its project and which made it read-only.
-    """
-    from beakr_cli.session_trail import render_trail, trail_path
-
-    chosen = _session_id(session_id)
-    with get_sdk(scoped=False) as sdk:
-        page = sdk.request("GET", trail_path(chosen))
-
-    def render(data: Any) -> None:
-        console.print(render_trail(data), highlight=False, markup=False)
-
-    emit(
-        page,
-        json_out=json_out,
-        render=render,
-        lines=lambda data: render_trail(data).splitlines(),
-    )
-
-
 @app.command("ls")
 def list_sessions(
     all_sessions: bool = typer.Option(False, "--all", help="Include ended sessions."),
@@ -480,7 +451,7 @@ def end(
 
     def render(data: dict[str, Any]) -> None:
         err_console.print(f"Ended session {data.get('id')}.", markup=False)
-        if data.get("agent_session_id"):
+        if data.get("agent_session"):
             err_console.print(
                 "It was an agent conversation's session, which is never started again: "
                 "Beakr refuses that conversation's requests from now on. "

@@ -71,9 +71,9 @@ SESSION_STATUS_DESCRIPTION = (
     "Show this Beakr session's state without changing it: its mode, and where the "
     "organization locks each session to the first project it touches (auto_lock), the "
     "project it is locked to, whether it is read-only (it read a second project, so writes "
-    "are refused) and every project it has touched, in order. `trail=true` adds the "
-    "session's read timeline; `proposal_id` shows what that write's session had read when "
-    "it was filed. Call it before writing when unsure which project this session may write."
+    "are refused) and every project it has touched, in order. `proposal_id` shows what "
+    "that write's session had read when it was filed. Call it before writing when unsure "
+    "which project this session may write."
 )
 
 
@@ -264,7 +264,7 @@ async def session_scope(
     return scope_session.describe(current)
 
 
-async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str, Any] | str:
+async def session_status(proposal_id: str = "") -> dict[str, Any] | str:
     """The ``session_status`` tool (see :data:`SESSION_STATUS_DESCRIPTION`)."""
     from beakr_cli import session_trail
     from beakr_cli.mcp_errors import call_api
@@ -276,11 +276,6 @@ async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str
         await session.ensure_started()
         current = await session.refresh()
         lines = [scope_session.describe(current)]
-        if trail:
-            path = session_trail.trail_path(str(session.id))
-            lines.append(
-                session_trail.render_trail(await call_api(lambda sdk: sdk.request("GET", path)))
-            )
         if proposal_id.strip():
             proposal = await call_api(lambda sdk: sdk.knowledge.proposals.show(proposal_id.strip()))
             lines.append(session_trail.render_write_trail(proposal))

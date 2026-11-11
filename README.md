@@ -498,8 +498,7 @@ Where the installation has agent sessions, `beakr mcp`, its subagents and every
 share one session: each joins it by the conversation's id
 (`CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`, or `BEAKR_SESSION` where the host
 gives its MCP server none), so a Bash call or a subagent cannot step outside it.
-`beakr session show` (no argument) and `beakr session trail` find the
-conversation's session.
+`beakr session show` (no argument) finds the conversation's session.
 
 An organization can lock each session to one project instead of asking
 (`session_mode: auto_lock`, set by an admin). Then nothing shows a picker: the
@@ -509,7 +508,6 @@ agent conversation the CLI's reads run in the session too, so they count.
 
 ```bash
 beakr session show       # mode, the project it is locked to, read-only, the projects it touched
-beakr session trail      # every project it read or wrote, in order, and which read locked it
 ```
 
 ```text
@@ -531,8 +529,7 @@ Error: Session 7c1e2d3f-... reads and writes Pharma A, so it cannot write Pharma
 ```
 
 `beakr mcp`'s new `session_status` tool shows the same state to the agent
-(`trail=true` adds the read timeline, `proposal_id` what that write's session had
-read). `session_scope` cannot narrow an auto_lock session, which has no project
+(`proposal_id` adds what that write's session had read). `session_scope` cannot narrow an auto_lock session, which has no project
 list to drop from.
 
 Two more organization settings show up as refusals or results:
