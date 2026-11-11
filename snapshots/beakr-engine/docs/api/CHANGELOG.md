@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a1858ecc230a3848584f6fbc94c97242762c221f5ad2793481239f8d60a392dd changelog sha256=931f3c95f3294a561c4746dbe34ef5c79bec1c561940b0fd63e43e8fe2724168 -->
+<!-- contract-stamp: public-openapi sha256=ad68ee7e8560bae045b4eb7fc86570692d97e0c175f0af2988980819afffa667 changelog sha256=b1884a108987904a9fcde14e78529742a7e01e74b29e8e74dac1842a83c35aed -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -57,8 +57,15 @@ The first public version.
     projects) and `needs_project_admin_to_accept: true`: only an owner or admin
     of the project, signed in or with a `proposals:accept` key, may accept it,
     anyone else gets `403 cross_project_owner_required`, and it is never
-    auto-approved. A write that commits without a proposal is allowed under
-    `hold` only for an owner or admin of the project.
+    auto-approved. Each project in the hold lists the sources `cited` from it,
+    and on proposal reads `can_accept` says whether the caller may accept it.
+    The write response's `proposal` carries the same `cross_project_hold` and
+    `needs_project_admin_to_accept`. A write that commits without a proposal is
+    allowed under `hold` only for an owner or admin of the project.
+  - Reading a project's name or metadata (`GET /v1/projects`,
+    `GET /v1/projects/{project_id}`) never counts as reading it.
+    `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
+    session token or `X-Beakr-Session`, confined to the session's projects.
 
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:

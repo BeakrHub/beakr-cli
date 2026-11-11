@@ -151,8 +151,10 @@ def test_api_operations_are_gated_by_what_they_write():
 
     assert mode("POST /v1/knowledge/wiki/write", "kb:write") == write_session.TOKEN
     assert mode("DELETE /v1/artifacts/{artifact_id}", "uploads:write") == write_session.TOKEN
+    # A file's Knowledge and its approval take the session's token (project isolation).
     approve = "POST /v1/artifacts/{artifact_id}/knowledge/approve"
-    assert mode(approve, "uploads:write") == write_session.CHECKED
+    assert mode(approve, "proposals:accept") == write_session.TOKEN
+    assert mode("POST /v1/artifacts/{artifact_id}/knowledge", "kb:write") == write_session.TOKEN
     assert mode("POST /v1/conversations/import", "conversations:write") == write_session.CHECKED
     assert mode("GET /v1/knowledge/wiki/pages", "kb:read") is None
     assert mode("POST /v1/projects", "projects:admin") is None
@@ -442,6 +444,18 @@ def test_approving_a_file_checks_the_files_project():
     assert result.exit_code == 3
     assert "may not write to Assays" in _text(result)
     assert not approved.called
+
+
+@respx.mock
+def test_approving_a_file_in_the_session_sends_its_token():
+    _kept_session()
+    respx.get(f"{API}/v1/artifacts/{FILE}").respond(json={"id": FILE, "project_id": A})
+    approved = respx.post(f"{API}/v1/artifacts/{FILE}/knowledge/approve").respond(json={})
+
+    result = runner.invoke(app, ["files", "approve", FILE])
+
+    assert result.exit_code == 0, result.output
+    assert _bearer(approved) == "Bearer bk_st_first"
 
 
 # --- Where no session can be held -------------------------------------------------------
