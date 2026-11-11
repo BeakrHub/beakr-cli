@@ -88,6 +88,8 @@ def hooks_status() -> dict[str, Any]:
 @app.command("install")
 def install(client: str = _client_opt, json_out: bool = _json_opt) -> None:
     """Install hooks (safe to re-run: existing Beakr hooks are replaced, others untouched)."""
+    if not agent_hooks.available():
+        agent_hooks.refuse()
     results = [_install(target) for target in _targets(client)]
 
     def render(rows: list[dict[str, Any]]) -> None:
@@ -246,8 +248,12 @@ def learning(
 
 
 def install_hooks_during_setup(targets: list[str], hooks_flag: bool | None) -> None:
-    """``beakr setup``: True installs, False skips, None asks only when interactive."""
-    if hooks_flag is False:
+    """``beakr setup``: True installs, False skips, None asks only when interactive.
+
+    Never on a build without hooks (:func:`agent_hooks.available`): not offered,
+    and ``--hooks`` was refused before setup did anything (``setup_command``).
+    """
+    if hooks_flag is False or not agent_hooks.available():
         return
     if hooks_flag is None:
         if not is_interactive():

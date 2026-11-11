@@ -218,6 +218,17 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
+- No agent hooks on self-hosted: a self-hosted build refuses `beakr hooks install`
+  (Claude Code and Codex) and `beakr setup --hooks` with "Agent hooks are not
+  available on this deployment." (exit 1), and `beakr setup` never offers them.
+  `beakr context --hook` and `beakr compound --hook` (what a separately installed
+  Beakr Claude Code plugin's hooks run) exit 0 at once and send no request, so no
+  hook opens or captures a session. `beakr hooks uninstall` still works. Sessions
+  need no hooks: `beakr mcp` keys the conversation's session itself.
+- `session_status` and `beakr session show` still answer for a session the person
+  ended: that it ended and when, what it touched, its read trail (`trail=true`),
+  and to start a new Claude Code conversation for a new session. Reads and writes
+  in it stay refused, and `beakr mcp` no longer tries to start it again.
 - Where the deployment turned Ask off, `beakr ask` says "Ask is turned off on
   this deployment." (exit 3; `--json` keeps the API's `ask_disabled` code)
   instead of the API's refusal. `session_required` is told apart by its message:

@@ -897,3 +897,32 @@ def test_one_conversation_makes_one_session_row(conversation, tmp_path, monkeypa
     # The MCP server, the CLI's reads and its write all hold the conversation's row.
     assert held.id == api.rows[CONVERSATION]["id"]
     assert scope_session.terminal_session_id(f"agent:{CONVERSATION}") == held.id
+
+
+@respx.mock
+def test_without_hooks_one_conversation_still_makes_one_row(conversation, tmp_path, monkeypatch):
+    """A self-hosted build runs no hooks; beakr mcp alone keys the conversation's row."""
+    from beakr_cli import updates
+    from beakr_cli.mcp_errors import call_api
+
+    monkeypatch.setattr(updates, "__version__", "0.5.0+selfhosted.g0123456789ab")
+    monkeypatch.chdir(tmp_path)
+    api = _ConversationApi()
+    respx.route(host="api.test").mock(side_effect=api)
+
+    held = asyncio.run(scope_session.start_for_mcp())
+    asyncio.run(call_api(lambda sdk: sdk.me.get()))
+    # What a Beakr Claude Code plugin's hooks would run: nothing reaches the API.
+    for args in (
+        ["context", "--format", "claude_md", "--project", "auto", "--hook"],
+        ["compound", "--hook", "--client", "claude-code", "--background"],
+    ):
+        assert runner.invoke(app, args, input="{}").exit_code == 0
+
+    assert held is not None
+    assert list(api.rows) == [CONVERSATION] and api.unkeyed == []
+    assert held.id == api.rows[CONVERSATION]["id"]
+    assert not any(
+        call.request.headers.get("x-beakr-client", "").startswith("claude-code-hook")
+        for call in respx.calls
+    )

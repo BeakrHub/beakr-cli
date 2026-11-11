@@ -624,6 +624,9 @@ beakr kb proposals accept <proposal-id> --reviewed-hash <content-hash>
 
 ## Agents: context, session capture, skills
 
+Hooks are for Beakr's hosted service; a self-hosted build does not install or run
+them (see the self-hosted note under the MCP server's tools).
+
 ```bash
 beakr hooks install                 # Claude Code: ~/.claude/settings.json
 beakr hooks install --client codex  # Codex: a Beakr block in ~/.codex/AGENTS.md
@@ -770,6 +773,17 @@ the installation lacks: it reads the installation's own
 not have answers "This Beakr installation does not provide ..." and leaves the
 listing. CLI commands for those areas print the same sentence, and
 `beakr doctor` lists them.
+
+Agent hooks are not available on self-hosted: a self-hosted build of the CLI
+(`<version>+selfhosted.g<commit>`) refuses `beakr hooks install` and
+`beakr setup --hooks` ("Agent hooks are not available on this deployment.",
+exit 1), and `beakr setup` never offers them. `beakr context --hook` and
+`beakr compound --hook`, which a separately installed Beakr Claude Code plugin's
+hooks call, exit 0 at once and send nothing, so no hook opens a session or
+captures one. `beakr hooks uninstall` still removes hooks installed before.
+Sessions work without them: `beakr mcp` opens or joins the Claude Code
+conversation's session (keyed by `CLAUDE_CODE_SESSION_ID`), so one conversation
+has one session.
 
 Beakr's hosted MCP server (`https://<api>/mcp`) exposes the same tools, including
 `beakr_version` and `update_beakr`. Those two answer for the server that runs
