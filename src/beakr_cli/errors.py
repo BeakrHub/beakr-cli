@@ -117,6 +117,11 @@ def exit_code_for(exc: BaseException) -> int:
     return EXIT_ERROR
 
 
+#: The API's refusal to start Beakr's chat agent where the deployment turned Ask off
+#: (``web_ask_enabled``): ``beakr ask``, and ``beakr api`` runs. Said in one line.
+ASK_DISABLED = "ask_disabled"
+ASK_DISABLED_MESSAGE = "Ask is turned off on this deployment."
+
 #: The fix for refusals the API states with a specific ``error.code``.
 _CODE_HINTS = {
     "proposal_changed": (
@@ -215,6 +220,8 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
     message = not_provided_message(exc, command)
     if message:
         return message
+    if isinstance(exc, BeakrError) and exc.code == ASK_DISABLED:
+        return ASK_DISABLED_MESSAGE
     if isinstance(exc, KnowledgeCommandError):
         text = _refusal_text(exc)
         return f"{text}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}" if needs_a_person(exc) else text
