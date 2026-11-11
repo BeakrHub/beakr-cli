@@ -31,6 +31,35 @@ from beakr_cli.commands.install import _beakr_command, _claude_home, _codex_home
 
 HOOK_TIMEOUT_SECONDS = 30
 
+#: Said when a self-hosted build is asked to install hooks (:func:`available`).
+UNAVAILABLE = "Agent hooks are not available on this deployment."
+
+
+def available() -> bool:
+    """Whether this build installs and runs agent hooks.
+
+    Not a self-hosted build (``+selfhosted.`` in its version): a self-hosted
+    deployment works without them. There ``beakr mcp`` holds the agent
+    conversation's session, so no hook opens one or captures a session, including
+    the hooks of a Beakr Claude Code plugin installed separately (they call
+    ``beakr context --hook`` and ``beakr compound --hook``, which then do nothing).
+    ``beakr hooks uninstall`` still removes hooks installed before.
+    """
+    from beakr_cli.updates import self_hosted_build
+
+    return not self_hosted_build()
+
+
+def refuse() -> None:
+    """Refuse a hooks install on a build without hooks: the line, then exit 1."""
+    import typer
+
+    from beakr_cli.output import err_console
+
+    err_console.print(f"[red]Error:[/red] {UNAVAILABLE}", highlight=False)
+    raise typer.Exit(1)
+
+
 CONTEXT_ARGS = "context --format claude_md --project auto --hook"
 STOP_ARGS = "compound --hook --client claude-code --background"
 SESSION_END_ARGS = "compound --hook --client claude-code --background --force"

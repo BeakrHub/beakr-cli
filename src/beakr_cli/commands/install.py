@@ -777,6 +777,11 @@ def setup_command(
     ``hooks`` is the ``--hooks/--no-hooks`` flag: True installs, False skips,
     None asks when interactive and skips otherwise.
     """
+    from beakr_cli import agent_hooks
+
+    if hooks and not uninstall and not agent_hooks.available():
+        # Before signing in or writing anything: --hooks cannot be honoured here.
+        agent_hooks.refuse()
     targets = _resolve_targets(client)
     # `--no-skills --no-mcp --no-hooks` only signs in, which needs no client: it
     # is how the agent-plugin docs install the CLI next to a plugin (which wires

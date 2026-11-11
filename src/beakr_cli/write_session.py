@@ -264,6 +264,12 @@ def run_gated(
     ``params`` are the command's parsed parameters; ``targets`` names the projects
     it writes when they are known (default: from ``params``, :func:`_targets`).
     """
+    if command == "compound" and params.get("hook"):
+        from beakr_cli import agent_hooks
+
+        if not agent_hooks.available():
+            # A self-hosted build runs no hooks: no session is read or opened for one.
+            return None
     if mode is None or not ENABLED or _exempt_credential():
         return invoke()
     find_targets = targets or (lambda: _targets(command, params))

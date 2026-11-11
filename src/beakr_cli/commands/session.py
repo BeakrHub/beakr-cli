@@ -101,9 +101,10 @@ def _conversation_session_id() -> str | None:
     agent = scope_session.agent_session_id()
     if not agent:
         return None
+    # Ended ones too: a conversation has one session, which never starts again.
     with get_sdk(scoped=False) as sdk:
-        for row in sdk.paginate("/v1/sessions"):
-            if row.get("agent_session") == agent and row.get("status") != "ended":
+        for row in sdk.paginate("/v1/sessions", include_ended=True):
+            if row.get("agent_session") == agent:
                 return str(row.get("id"))
     return None
 

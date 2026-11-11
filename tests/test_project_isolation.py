@@ -650,6 +650,90 @@ def test_an_ended_conversation_session_is_not_replaced():
     assert not started.called and held.state is None
 
 
+def _ended(**extra) -> dict:
+    return {
+        **_session("locked", touched=(A,), status="ended"),
+        "ended_at": "2026-11-11T21:30:00+00:00",
+        **extra,
+    }
+
+
+_TRAIL = {
+    "data": [
+        {
+            "id": "r-1",
+            "session_id": SID,
+            "at": "2026-11-11T21:10:00+00:00",
+            "op": "search",
+            "projects": [_project(A)],
+            "items": [],
+            "summary": '"assay results"',
+            "redacted": False,
+        }
+    ],
+    "next_cursor": None,
+    "has_more": False,
+}
+
+
+@respx.mock
+def test_session_status_still_answers_after_the_person_ended_the_session():
+    """Reads and writes are refused; session_status says what it was and how to go on."""
+    held = _active(_session("locked", touched=(A,)))
+    respx.get(f"{API}/v1/sessions/current").respond(
+        401, json={"error": {"code": "invalid_token", "message": "ended", "fix": None}}
+    )
+    record = respx.get(f"{API}/v1/sessions/{SID}").respond(json=_ended())
+    trail = respx.get(f"{API}/v1/sessions/{SID}/trail").respond(json=_TRAIL)
+
+    text = asyncio.run(mcp_session.session_status(trail=True))
+
+    assert isinstance(text, str), text
+    assert f"Session {SID} (ended)" in text
+    assert "Ended at 2026-11-11 21:30:00." in text
+    assert "start a new Claude Code conversation" in text
+    assert "Touched: Pharma A" in text
+    assert '"assay results"' in text
+    # Read as the person: the session's own token no longer works.
+    assert record.calls.last.request.headers["authorization"] == f"Bearer {PERSON_KEY}"
+    assert trail.calls.last.request.headers["authorization"] == f"Bearer {PERSON_KEY}"
+    assert held.state is None
+    # Asked again, it answers the same way without the token.
+    again = asyncio.run(mcp_session.session_status())
+    assert isinstance(again, str) and "(ended)" in again
+
+
+@respx.mock
+def test_session_status_finds_an_ended_session_the_server_never_held(conversation):
+    """beakr mcp started after the conversation's session ended (409 on start)."""
+    held = McpSession(folder=None, agent=CONVERSATION)
+    scope_session.ACTIVE = held
+    respx.post(f"{API}/v1/sessions").respond(
+        409, json=_refusal(409, "session_ended", "This agent session has ended.")
+    )
+    respx.get(f"{API}/v1/sessions").respond(
+        json={"data": [_session(agent="other"), _ended()], "has_more": False}
+    )
+
+    text = asyncio.run(mcp_session.session_status())
+
+    assert isinstance(text, str), text
+    assert f"Session {SID} (ended)" in text and "new Claude Code conversation" in text
+
+
+@respx.mock
+def test_session_show_shows_an_ended_conversation_session(conversation):
+    respx.get(f"{API}/v1/sessions").respond(json={"data": [_ended()], "has_more": False})
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_ended())
+
+    result = runner.invoke(app, ["session", "show"])
+
+    assert result.exit_code == 0, result.output
+    text = _text(result)
+    assert f"Session {SID} (ended)" in text
+    assert "start a new Claude Code conversation" in text
+
+
 @respx.mock
 def test_ending_a_conversation_session_says_it_is_final(conversation):
     respx.post(f"{API}/v1/sessions/{SID}/end").respond(json=_session(status="ended"))
@@ -728,3 +812,117 @@ def test_a_card_row_write_held_by_the_guard_says_so():
 
     assert result.exit_code == 0, result.output
     assert "Held for approval by an owner or admin of Pharma B." in _text(result)
+
+
+# --- One conversation, one session row (rc.8 QA) ----------------------------------------
+
+
+class _ConversationApi:
+    """An API with agent sessions on, keeping its session rows as the engine keys them.
+
+    A ``POST /v1/sessions`` with ``agent_session`` joins (or starts) that
+    conversation's row; one without starts an unkeyed row; any request a person's
+    key sends with ``X-Beakr-Session`` (and no session token) is joined to that id's
+    row, started on first sight. rc.8 QA saw three rows for one Claude Code
+    conversation: the conversation's, an unkeyed ``beakr mcp`` row, and an
+    ``sdk-python-<random>`` decoy.
+    """
+
+    def __init__(self) -> None:
+        self.rows: dict[str, dict] = {}
+        self.unkeyed: list[dict] = []
+
+    def _row(self, key: str) -> dict:
+        if key not in self.rows:
+            self.rows[key] = {**_session(agent=key), "id": f"row-{len(self.rows)}"}
+        return self.rows[key]
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        bearer = request.headers.get("authorization", "")
+        header = request.headers.get("x-beakr-session")
+        if header and not bearer.startswith("Bearer bk_st_"):
+            self._row(header)
+        path = request.url.path
+        if request.method == "POST" and path == "/v1/sessions":
+            body = json.loads(request.content)
+            if body.get("agent_session"):
+                row = self._row(body["agent_session"])
+            else:
+                row = {**_session(agent=None), "id": f"unkeyed-{len(self.unkeyed)}"}
+                self.unkeyed.append(row)
+            return httpx.Response(201, json=_created(row, token=f"bk_st_{row['id']}"))
+        if path == f"/v1/organizations/{ORG}/project-isolation":
+            return httpx.Response(200, json=_isolation())
+        if path == "/v1/sessions/current":
+            return httpx.Response(200, json=_session())
+        for row in [*self.rows.values(), *self.unkeyed]:
+            if path == f"/v1/sessions/{row['id']}":
+                return httpx.Response(200, json=row)
+        if request.method == "DELETE":
+            return httpx.Response(204)
+        return httpx.Response(200, json={"user": {}})
+
+
+@respx.mock
+def test_one_conversation_makes_one_session_row(conversation, tmp_path, monkeypatch):
+    """beakr mcp, a CLI read and a write in one Claude Code conversation: one row."""
+    from beakr_sdk import _base_client
+
+    from beakr_cli.mcp_errors import call_api
+    from beakr_cli.sdk import get_sdk
+
+    # The SDK as built since its per-client default: a made-up id unless told one.
+    original = _base_client.BaseClient.__init__
+
+    def init(self, *args, session=None, **kwargs):
+        made_up = "sdk-python-0123456789abcdef0123456789abcdef"
+        original(self, *args, session=made_up if session is None else session, **kwargs)
+
+    monkeypatch.setattr(_base_client.BaseClient, "__init__", init)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(write_session, "ENABLED", True)
+    api = _ConversationApi()
+    respx.route(host="api.test").mock(side_effect=api)
+
+    held = asyncio.run(scope_session.start_for_mcp())
+    asyncio.run(call_api(lambda sdk: sdk.me.get()))
+    with get_sdk() as sdk:
+        sdk.me.get()
+    deleted = runner.invoke(app, ["files", "rm", FILE, "--yes"])
+
+    assert deleted.exit_code == 0, deleted.output
+    assert held is not None
+    assert list(api.rows) == [CONVERSATION], api.rows
+    assert api.unkeyed == []
+    # The MCP server, the CLI's reads and its write all hold the conversation's row.
+    assert held.id == api.rows[CONVERSATION]["id"]
+    assert scope_session.terminal_session_id(f"agent:{CONVERSATION}") == held.id
+
+
+@respx.mock
+def test_without_hooks_one_conversation_still_makes_one_row(conversation, tmp_path, monkeypatch):
+    """A self-hosted build runs no hooks; beakr mcp alone keys the conversation's row."""
+    from beakr_cli import updates
+    from beakr_cli.mcp_errors import call_api
+
+    monkeypatch.setattr(updates, "__version__", "0.5.0+selfhosted.g0123456789ab")
+    monkeypatch.chdir(tmp_path)
+    api = _ConversationApi()
+    respx.route(host="api.test").mock(side_effect=api)
+
+    held = asyncio.run(scope_session.start_for_mcp())
+    asyncio.run(call_api(lambda sdk: sdk.me.get()))
+    # What a Beakr Claude Code plugin's hooks would run: nothing reaches the API.
+    for args in (
+        ["context", "--format", "claude_md", "--project", "auto", "--hook"],
+        ["compound", "--hook", "--client", "claude-code", "--background"],
+    ):
+        assert runner.invoke(app, args, input="{}").exit_code == 0
+
+    assert held is not None
+    assert list(api.rows) == [CONVERSATION] and api.unkeyed == []
+    assert held.id == api.rows[CONVERSATION]["id"]
+    assert not any(
+        call.request.headers.get("x-beakr-client", "").startswith("claude-code-hook")
+        for call in respx.calls
+    )

@@ -92,7 +92,11 @@ def context(
         )
         raise typer.Exit(2)
     if hook:
-        _context_hook(project, question, since, fmt, budget_chars)
+        from beakr_cli import agent_hooks
+
+        if agent_hooks.available():
+            _context_hook(project, question, since, fmt, budget_chars)
+        # Else nothing at all: a self-hosted build runs no hooks (a plugin's included).
         return
     with get_sdk() as sdk:
         result = sdk.engine.context(
@@ -219,6 +223,11 @@ def compound(
         choices = ", ".join(CONVERSATION_CLIENTS)
         err_console.print(f"Invalid --client '{client}'. Choose: {choices}.", markup=False)
         raise typer.Exit(2)
+    if hook:
+        from beakr_cli import agent_hooks
+
+        if not agent_hooks.available():
+            return  # a self-hosted build captures nothing from hooks (write_session too)
     # The detached child carries the marker its parent hook set; any other hook
     # process that finds it set is nested inside a hook and must stop.
     if hook and not detached_child and _inside_another_hook():
