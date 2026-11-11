@@ -11,10 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c1a54afddaece8b2b5a051901a51808f79851cecdd2fa55a0b18249de4828b3d changelog sha256=6e4a9d1a1cbf6676e3378eda4c62943e909559b74058144aedd7fb85433fde65 -->
+<!-- contract-stamp: public-openapi sha256=028e7b8a011f5ed7fec2c76a08db66875cb0292d36cc2ec02138fad302bc8a9b changelog sha256=cee599d4154b53e8caf7538c995d9879472e7ab7d31d67070a73aa1b1139bddf -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- Attribution on Knowledge changes: each revision in
+  `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
+  who and what wrote it. `kind` is `beakr` (a model or maintenance process
+  Beakr ran, named in `model` or `process`), `agent` (a person's own agent
+  through MCP, the CLI, an SDK or the API, with the `client`, `agent` and
+  `session` it declared in `X-Beakr-Client`, `X-Beakr-Agent` and
+  `X-Beakr-Session`), `person` or `system`. `person` names the person behind
+  it and `accepted_by` who accepted a proposal. A file a client uploads
+  records that client, agent and session, so a revision compiled from it
+  names them too.
 
 - `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
   owner when the newest turn failed without an answer: `run_id`, a `reason`

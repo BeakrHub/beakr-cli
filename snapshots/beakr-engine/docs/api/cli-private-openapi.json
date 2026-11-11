@@ -3054,6 +3054,113 @@
     "title": "KGProfileOut",
     "type": "object"
    },
+   "KnowledgeAttribution": {
+    "additionalProperties": true,
+    "description": "Who and what wrote a Knowledge change: a person, their agent and session, or Beakr.",
+    "properties": {
+     "accepted_by": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Who accepted the proposal, for one.",
+      "title": "Accepted By"
+     },
+     "agent": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "The agent as it declared itself (`X-Beakr-Agent`), e.g. `claude-code/2.1`.",
+      "title": "Agent"
+     },
+     "client": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "The client the agent used (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.",
+      "title": "Client"
+     },
+     "kind": {
+      "description": "Who wrote the words: `beakr` (a model or maintenance process Beakr ran), `agent` (a person's own agent through MCP, the CLI, an SDK or the API), `person` (a person in Beakr itself) or `system`.",
+      "title": "Kind",
+      "type": "string"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "For Beakr's own runs, the model alias it ran.",
+      "title": "Model"
+     },
+     "person": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "The person behind it: who filed, uploaded or edited, or the owner of the connector a compile came from.",
+      "title": "Person"
+     },
+     "process": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "For Beakr's maintenance, the process, e.g. `health_agent` or `growth_reorg`.",
+      "title": "Process"
+     },
+     "session": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "The agent session: its own id (`X-Beakr-Session`), else the Beakr session a session token wrote as.",
+      "title": "Session"
+     }
+    },
+    "required": [
+     "kind"
+    ],
+    "title": "KnowledgeAttribution",
+    "type": "object"
+   },
    "KnowledgeConflict": {
     "additionalProperties": false,
     "properties": {
@@ -5077,6 +5184,18 @@
    "WikiBlameLine": {
     "additionalProperties": true,
     "properties": {
+     "attribution": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/KnowledgeAttribution"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Who and what wrote the revision that last changed this paragraph."
+     },
      "created_at": {
       "anyOf": [
        {
