@@ -648,7 +648,9 @@ def explain_refusal(exc: BaseException) -> BaseException:
         return explain_write_refusal(exc, shell_session_id())
     if exc.code in {READ_ONLY, LOCKED_TO_PROJECT}:
         return explain_lock_refusal(exc)
-    if exc.code == SESSION_REQUIRED:
+    if exc.code == SESSION_REQUIRED and "inside a session" in (exc.message or ""):
+        # Project isolation's refusal. The same code also means "do it in the web app"
+        # (a browser session), which errors.py says as it is.
         return SessionScopeError(
             exc.message,
             code=SESSION_REQUIRED,

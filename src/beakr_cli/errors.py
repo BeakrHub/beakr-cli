@@ -222,7 +222,15 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
         return f"{exc}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}"
     if isinstance(exc, BeakrError) and exc.code == PROJECT_PROFILE_REQUIRED:
         return f"{exc}\n{profile_required_hint(exc)}"
-    if isinstance(exc, BeakrError) and exc.code in _CODE_HINTS:
+    from beakr_cli.scope_session import SessionScopeError
+
+    # A session refusal the CLI has already said with its own fix (one code,
+    # session_required, also names the web app's browser session).
+    if (
+        isinstance(exc, BeakrError)
+        and exc.code in _CODE_HINTS
+        and not isinstance(exc, SessionScopeError)
+    ):
         return f"{exc}\n{_CODE_HINTS[exc.code]}"
     if isinstance(exc, PermissionDeniedError) and exc.required_scope:
         return (
