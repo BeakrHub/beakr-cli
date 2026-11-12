@@ -306,10 +306,9 @@ def test_isolation_set_without_a_field_is_a_usage_error():
 
 @respx.mock
 def test_requests_carry_the_persons_key_and_no_session(monkeypatch):
-    # In a shell session (whose token this machine does not even hold) and an
-    # agent conversation: neither the session's token nor the conversation joins.
+    # In a shell session (whose token this machine does not even hold): the
+    # session's token is not sent, nor any session header.
     monkeypatch.setenv(scope_session.SESSION_ENV, "sess-shell")
-    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-123")
     read = respx.get(ISOLATION).respond(json=_isolation())
     write = respx.put(ISOLATION).respond(json=_isolation())
 
@@ -320,6 +319,14 @@ def test_requests_carry_the_persons_key_and_no_session(monkeypatch):
         request = route.calls.last.request
         assert request.headers["Authorization"] == f"Bearer {PERSON_KEY}"
         assert "X-Beakr-Session" not in request.headers
+    # In an agent conversation a change is refused before anything is sent
+    # (tests/test_cli_session_in_conversation.py); reading the settings still works,
+    # as the person and joined to no session.
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-123")
+    shown = runner.invoke(app, ["org", "isolation", "show"])
+    assert shown.exit_code == 0, shown.output
+    assert read.calls.last.request.headers["Authorization"] == f"Bearer {PERSON_KEY}"
+    assert "X-Beakr-Session" not in read.calls.last.request.headers
 
 
 @pytest.mark.real_conversation_sessions
