@@ -215,20 +215,8 @@ class Held:
         return scope_session.project_ids(self.session.get("write_projects"))
 
     def may_write(self, project: str) -> bool:
-        """Whether the session may write ``project`` now, as the API will decide it.
-
-        An auto_lock session may write any project while open (the first one it
-        touches becomes its project), only its project once locked, and none once
-        read-only.
-        """
-        if not self.auto_locked:
-            return project in self.writes()
-        state = self.session.get("lock_state")
-        if state == "read_only":
-            return False
-        if state == "locked":
-            return project in self.writes()
-        return True
+        """Whether the session may write ``project`` now (:func:`scope_session.may_write`)."""
+        return scope_session.may_write(self.session, project)
 
     def write_names(self) -> str:
         if self.auto_locked and self.session.get("lock_state") in {None, "open"}:
@@ -690,22 +678,7 @@ def _check_writes(held: Held, projects: list[str]) -> None:
 
 def _lock_refusal(held: Held, refused: list[str]) -> SessionScopeError:
     """An auto_lock session's refusal, said before anything is sent, as the API words it."""
-    what = held.names_of(refused) or "that project"
-    fix = scope_session.restart_fix(held.session)
-    if held.session.get("lock_state") == "read_only":
-        touched = _names(held.session.get("touched_projects")) or "two projects"
-        return SessionScopeError(
-            f"Session {held.id} read {touched}, so it is read-only: it cannot write {what}; "
-            "nothing was written.",
-            code=scope_session.READ_ONLY,
-            fix=fix,
-        )
-    return SessionScopeError(
-        f"Session {held.id} reads and writes {held.write_names()}, so it cannot write {what}; "
-        "nothing was written.",
-        code=scope_session.LOCKED_TO_PROJECT,
-        fix=f"To write {what}: {fix}",
-    )
+    return scope_session.lock_refusal(held.session, held.names_of(refused) or "that project")
 
 
 def _write_refusal(held: Held, refused: list[str]) -> SessionScopeError:

@@ -129,6 +129,49 @@ def _project_name(project: Any) -> str:
     return str(project.get("name") or project.get("id")) if isinstance(project, dict) else ""
 
 
+def may_write(session: dict[str, Any], project_id: str) -> bool:
+    """Whether the session may write ``project_id`` now, as the API will decide it.
+
+    Picker mode: its write list. An auto_lock session may write any project while
+    open (it reports ``write_projects: []`` then, and its first write locks it to that
+    project), only its ``write_project`` once locked, and none once read-only.
+    """
+    if not auto_locked(session):
+        return project_id in project_ids(session.get("write_projects"))
+    state = session.get("lock_state")
+    if state == "read_only":
+        return False
+    if state == "locked":
+        locked = session.get("write_project")
+        ids = {str(locked.get("id"))} if isinstance(locked, dict) else set()
+        return project_id in ids | set(project_ids(session.get("write_projects")))
+    return True
+
+
+def lock_refusal(session: dict[str, Any], what: str) -> SessionScopeError:
+    """An auto_lock session's refusal of a write to ``what`` (project names), said before
+    anything is sent, as the API words it, with the fix that works here."""
+    session_id = session.get("id")
+    fix = restart_fix(session)
+    if session.get("lock_state") == "read_only":
+        touched = ", ".join(_project_name(p) for p in session.get("touched_projects") or [])
+        return SessionScopeError(
+            f"Session {session_id} read {touched or 'two projects'}, so it is read-only: it "
+            f"cannot write {what}; nothing was written.",
+            code=READ_ONLY,
+            fix=fix,
+        )
+    locked = _project_name(session.get("write_project")) or ", ".join(
+        _project_name(p) for p in session.get("write_projects") or []
+    )
+    return SessionScopeError(
+        f"Session {session_id} reads and writes {locked}, so it cannot write {what}; "
+        "nothing was written.",
+        code=LOCKED_TO_PROJECT,
+        fix=f"To write {what}: {fix}",
+    )
+
+
 def restart_fix(session: dict[str, Any], *, shell: bool | None = None) -> str:
     """How to get a fresh session after this one locked or went read-only.
 

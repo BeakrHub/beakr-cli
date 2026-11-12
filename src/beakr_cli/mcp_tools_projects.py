@@ -175,9 +175,13 @@ async def _write_refusal(project_id: str, project_name: str) -> dict[str, Any] |
     if session is None:
         return None
     current = await session.refresh()
-    writable = current.get("write_projects") or []
-    if project_id in scope_session.project_ids(writable):
+    if scope_session.may_write(current, project_id):
         return None
+    if scope_session.auto_locked(current):
+        # Locked to another project, or read-only: no picker to add it at.
+        refused = scope_session.lock_refusal(current, project_name)
+        return _error(str(refused.code), refused.message, refused.fix)
+    writable = current.get("write_projects") or []
     names = ", ".join(str(p.get("name") or p.get("id")) for p in writable) or "none"
     return _error(
         scope_session.WRITE_SCOPE,
@@ -186,6 +190,15 @@ async def _write_refusal(project_id: str, project_name: str) -> dict[str, Any] |
         "then retry.",
         picker_url=session.picker_url,
     )
+
+
+def _auto_lock_line(session: dict[str, Any], project_id: str) -> str:
+    """What an auto_lock session may do with a project it just created."""
+    if session.get("lock_state") in {None, "open"}:
+        return "This session may write it: its first write locks the session to that project."
+    if scope_session.may_write(session, project_id):
+        return "This session may read and write it."
+    return " ".join(scope_session.lock_lines(session))
 
 
 # --- create_project -------------------------------------------------------------------
@@ -230,14 +243,17 @@ async def create_project(name: str, description: str = "") -> str | dict[str, An
     project_id = str(project.get("id"))
     lines = [f"Created project {project.get('name') or name!r} (id: {project_id})."]
     if session is not None:
-        await session.refresh()
-        writable = scope_session.project_ids(session.session.get("write_projects"))
-        lines.append(
-            "This session may read and write it."
-            if project_id in writable
-            else "It is not in this session's projects yet: ask the person to add it at "
-            f"{session.picker_url}."
-        )
+        current = await session.refresh()
+        if scope_session.auto_locked(current):
+            lines.append(_auto_lock_line(current, project_id))
+        else:
+            writable = scope_session.project_ids(current.get("write_projects"))
+            lines.append(
+                "This session may read and write it."
+                if project_id in writable
+                else "It is not in this session's projects yet: ask the person to add it at "
+                f"{session.picker_url}."
+            )
     if project.get("requires_knowledge_profile"):
         lines.append(
             "The organization requires a Knowledge profile on every new project: files and "
