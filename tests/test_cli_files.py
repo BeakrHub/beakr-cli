@@ -297,3 +297,55 @@ def test_upload_file_records_the_relative_path_typed(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert _completed_relative_paths(routes) == ["deals/acme/memo.txt", None]
+
+
+def _review(holds: bool) -> dict:
+    policy = {
+        "agent_proposals_need_a_person": False,
+        "agent_uploads_need_a_person": holds,
+        "capture_auto_approve_allowed": False,
+    }
+    return {"available": True, "project_id": "p1", "effective": policy, "org": policy}
+
+
+@pytest.mark.real_upload_review
+@pytest.mark.parametrize("holds", [True, False])
+@respx.mock
+def test_an_upload_held_for_a_person_says_so(tmp_path, monkeypatch, holds):
+    """rc.9 QA: a held file is stored, and a person must approve it."""
+    import beakr_cli.output as output
+
+    monkeypatch.setattr(output, "output_mode", lambda json_out: "human")
+    mock_resumable_uploads(API)
+    respx.get(f"{API}/v1/knowledge/agent-review").respond(json=_review(holds))
+    path = tmp_path / "notes.md"
+    path.write_text("hello")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "--project", "p1"])
+
+    assert result.exit_code == 0, result.output
+    text = " ".join(result.output.split())
+    if holds:
+        assert (
+            "Stored. A person must approve it before it's added to Knowledge (Files → the "
+            "file → Approve, or `beakr files approve art-notes.md`)." in text
+        )
+        assert "Indexing runs in the background" not in text
+    else:
+        assert "Indexing runs in the background" in text and "must approve" not in text
+
+
+@pytest.mark.real_upload_review
+@respx.mock
+def test_an_agent_piping_an_upload_held_for_a_person_reads_it_too(tmp_path):
+    mock_resumable_uploads(API)
+    respx.get(f"{API}/v1/knowledge/agent-review").respond(json=_review(True))
+    path = tmp_path / "notes.md"
+    path.write_text("hello")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "--project", "p1"])
+
+    assert result.exit_code == 0, result.output
+    text = " ".join(result.output.split())
+    assert "A person must approve it before it's added to Knowledge" in text
+    assert "beakr files approve art-notes.md" in text

@@ -218,6 +218,13 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
+- An upload into a project whose agent review policy holds agent uploads for a
+  person (`agent_uploads_need_a_person`) now says so: `beakr upload` and `beakr mcp`'s
+  `upload_files` answer "Stored. A person must approve it before it's added to
+  Knowledge (Files → the file → Approve, or `beakr files approve <id>`)." instead
+  of promising Knowledge "in the background, usually within a few minutes". The
+  policy is read once per upload (`GET /v1/knowledge/agent-review`); where it
+  cannot be read, the upload says what it said before.
 - `beakr projects profile setup` no longer starts a session: it uses (and checks)
   one already open in the shell, terminal or agent conversation, and otherwise
   runs as before, so its one-turn runs leave no empty sessions behind. A bare

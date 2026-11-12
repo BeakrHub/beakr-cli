@@ -163,6 +163,12 @@ def upload_command(
                         markup=False,
                     )
     waited = wait and bool(job_ids)
+    waits_for_person = False
+    if ingest and project_id and results:
+        from beakr_cli.upload_review import uploads_wait
+
+        with get_sdk() as sdk:
+            waits_for_person = uploads_wait(sdk, str(project_id))
     knowledge_failed: list[dict[str, Any]] = []
     knowledge_settled = False
     knowledge_statuses: dict[str, str | None] = {}
@@ -191,7 +197,11 @@ def upload_command(
                 + (f" ({status})" if status else ""),
                 markup=False,
             )
-        if knowledge_settled:
+        if waits_for_person and not knowledge_settled:
+            from beakr_cli.upload_review import waiting_line
+
+            note = waiting_line([str((row.get("artifact") or {}).get("id")) for row in rows])
+        elif knowledge_settled:
             note = (
                 f"{len(knowledge_failed)} failed to reach Knowledge."
                 if knowledge_failed
@@ -239,6 +249,9 @@ def upload_command(
             project_id=project_id,
             knowledge_failed=bool(knowledge_failed or knowledge_incomplete),
             knowledge_settled=knowledge_settled,
+            waiting_for_person=[str((row.get("artifact") or {}).get("id")) for row in results]
+            if waits_for_person
+            else None,
         ),
     )
     if waited and not all_uploaded(list(states.values())):
@@ -318,7 +331,12 @@ def _upload_hint(
     project_id: str | None,
     knowledge_failed: bool = False,
     knowledge_settled: bool = False,
+    waiting_for_person: list[str] | None = None,
 ) -> str | None:
+    if waiting_for_person and not knowledge_settled:
+        from beakr_cli.upload_review import waiting_line
+
+        return waiting_line(waiting_for_person)
     if knowledge_failed:
         return f"beakr projects retry -P {project_id or '<project>'}"
     if knowledge_settled:
