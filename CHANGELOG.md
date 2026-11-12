@@ -6,6 +6,14 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## beakr-cli 0.6.0 (unreleased)
 
+### Client changes
+
+- The Beakr block in Codex's `~/.codex/AGENTS.md` is written as one block. The
+  engine's context already carries the block markers, and wrapping it again
+  nested one block inside another; each later rewrite then left the old capture
+  notice and an orphaned end marker behind. The next `beakr codex` or
+  `beakr hooks install --client codex` repairs a file left that way.
+
 ### Changes
 
 - Attribution on Knowledge changes: each revision in
