@@ -1459,14 +1459,26 @@ def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict | str:
     the trail.
     """
     from beakr_cli import scope_session
-    from beakr_cli.session_trail import proposal_trail_path, write_trail_as_person
+    from beakr_cli.session_trail import (
+        TRAIL_FORBIDDEN,
+        proposal_trail_path,
+        write_trail_as_person,
+        write_trail_not_yours,
+    )
 
     try:
         return sdk.request("GET", proposal_trail_path(proposal_id))
     except PermissionDeniedError as exc:
-        if not scope_session.sent_session_token(exc):
+        # Two refusals: the public gate's (insufficient_scope) for a session or a
+        # project-restricted key, and the route's own (read_trail_forbidden), to a
+        # session or to a person who may not see this write's trail.
+        if exc.code not in {"insufficient_scope", TRAIL_FORBIDDEN}:
             raise
-        return write_trail_as_person(proposal_id)
+        if scope_session.sent_in_session(exc):
+            return write_trail_as_person(proposal_id)
+        if exc.code == TRAIL_FORBIDDEN:
+            return write_trail_not_yours(proposal_id)
+        raise
 
 
 def _proposal_show_lines(proposal: dict) -> list[str]:

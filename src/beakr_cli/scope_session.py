@@ -168,7 +168,9 @@ def lock_refusal(session: dict[str, Any], what: str) -> SessionScopeError:
         f"Session {session_id} reads and writes {locked}, so it cannot write {what}; "
         "nothing was written.",
         code=LOCKED_TO_PROJECT,
-        fix=f"To write {what}: {fix}",
+        # The project is named in the message: the fix is only what to do (a "To write
+        # B:" lead-in read "To fix: To write B: ..." on one line, rc.9 QA).
+        fix=fix,
     )
 
 
@@ -749,11 +751,8 @@ def explain_lock_refusal(
     """
     session_id = str(refusal_field(exc, "session_id") or (session or {}).get("id") or "")
     held = dict(session or {"id": session_id, "agent_session": agent_session_id()})
+    # The API's message names the projects; the fix is only what to do.
     fix = restart_fix(held, shell=shell)
-    refused = refusal_field(exc, "refused_projects")
-    if exc.code == LOCKED_TO_PROJECT and isinstance(refused, list) and refused:
-        names = ", ".join(_project_name(p) for p in refused)
-        fix = f"To write {names}: {fix}"
     return SessionScopeError(exc.message, code=str(exc.code), fix=fix)
 
 
@@ -807,6 +806,18 @@ def gone(exc: BaseException) -> bool:
     return "x-beakr-session" not in request.headers and not request.headers.get(
         "authorization", ""
     ).startswith(f"Bearer {SESSION_TOKEN_PREFIX}")
+
+
+def sent_in_session(exc: BeakrError) -> bool:
+    """Whether the refused request ran inside a session: its token, or ``X-Beakr-Session``
+    (a person's key joined to an agent conversation's session)."""
+    if sent_session_token(exc):
+        return True
+    try:
+        request = exc.response.request if exc.response is not None else None
+    except RuntimeError:
+        return False
+    return request is not None and "x-beakr-session" in request.headers
 
 
 def sent_session_token(exc: BeakrError) -> bool:

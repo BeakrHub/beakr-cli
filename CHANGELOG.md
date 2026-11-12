@@ -251,6 +251,15 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   `session_read_only`), without a picker link. `create_project` says what an
   auto-lock session may do with the new project. The CLI's write gate and
   `upload_files` share one rule (`scope_session.may_write`).
+- Wording: a locked session's refusal no longer reads "nothing was written. To fix:
+  To write Pharma B: End it ..." (the project is named in the message; the fix says
+  only what to do). `show_proposal` no longer adds "this project requires a person
+  to accept" to a held proposal, whose held line already says who must accept it. A
+  write's read trail refused with `read_trail_forbidden` as well as
+  `insufficient_scope` is said the same way inside a session (read it as a person),
+  and outside any session as "You can't see the read trail of write <id>: only the
+  person who filed it, an owner or admin of its project, or an organization admin
+  can."
 - `beakr projects profile setup` no longer starts a session: it uses (and checks)
   one already open in the shell, terminal or agent conversation, and otherwise
   runs as before, so its one-turn runs leave no empty sessions behind. A bare

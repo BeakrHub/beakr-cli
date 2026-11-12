@@ -288,3 +288,46 @@ def test_proposals_show_trail_in_a_session_says_a_person_reads_it(monkeypatch):
     assert "A write's read trail is shown to a person" in text
     assert "(Knowledge → the proposal → What it read first)" in text
     assert "Traceback" not in result.output
+
+
+def _forbidden(code: str, message: str) -> dict:
+    return {"error": {"code": code, "message": message}}
+
+
+@respx.mock
+def test_proposals_show_trail_says_a_person_reads_it_for_either_session_refusal(monkeypatch):
+    """Inside a session the write trail is refused by the gate (insufficient_scope) or,
+    since engine #2639, by the route itself (read_trail_forbidden): the same line."""
+    _setup(monkeypatch)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-1")
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").respond(
+        json={"id": PROPOSAL, "proposal_type": "create", "status": "pending"}
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
+        403, json=_forbidden("read_trail_forbidden", "Read it as a person.")
+    )
+
+    result = runner.invoke(app, ["kb", "proposals", "show", PROPOSAL, "--trail"])
+
+    assert result.exit_code == 0, result.output
+    assert "A write's read trail is shown to a person" in " ".join(result.output.split())
+
+
+@respx.mock
+def test_proposals_show_trail_says_when_a_person_may_not_see_it(monkeypatch):
+    """Outside any session read_trail_forbidden means this person may not see it."""
+    _setup(monkeypatch)
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").respond(
+        json={"id": PROPOSAL, "proposal_type": "create", "status": "pending"}
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
+        403, json=_forbidden("read_trail_forbidden", "You may not read this trail.")
+    )
+
+    result = runner.invoke(app, ["kb", "proposals", "show", PROPOSAL, "--trail"])
+
+    assert result.exit_code == 0, result.output
+    text = " ".join(result.output.split())
+    assert f"You can't see the read trail of write {PROPOSAL}" in text
+    assert "an owner or admin of its project, or an organization admin" in text
+    assert "shown to a person" not in text

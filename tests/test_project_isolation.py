@@ -411,7 +411,9 @@ def test_a_locked_session_refuses_another_project_by_name(monkeypatch):
     assert result.exit_code == 3, result.output
     text = _text(result)
     assert "reads and writes Pharma A, so it cannot write Pharma B" in text
-    assert "To write Pharma B:" in text
+    # One lead-in only: the project is named in the message, the fix says what to do.
+    assert "To fix: To write" not in text and "To write Pharma B:" not in text
+    assert "nothing was written. To fix: End it with `beakr session end" in text
     assert not write.called
 
 
@@ -933,3 +935,43 @@ def test_without_hooks_one_conversation_still_makes_one_row(conversation, tmp_pa
         call.request.headers.get("x-beakr-client", "").startswith("claude-code-hook")
         for call in respx.calls
     )
+
+
+@respx.mock
+def test_the_apis_locked_refusal_has_one_lead_in(conversation, monkeypatch):
+    """rc.9 QA: "nothing was written. To fix: To write Pharma B: End it ..."."""
+    monkeypatch.setattr(write_session, "ENABLED", True)
+    scope_session.save_state(TokenState(SID, "bk_st_kept", _later()))
+    scope_session.remember_terminal(SID, f"agent:{CONVERSATION}", mode="auto_lock")
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session("open"))
+    respx.delete(f"{API}/v1/artifacts/{FILE}").respond(
+        403,
+        json=_refusal(
+            403,
+            "session_locked_to_project",
+            "This session reads and writes Pharma A, so it cannot write Pharma B.",
+            "Start a new session to write Pharma B.",
+            session_id=SID,
+            refused_projects=[_project(B)],
+        ),
+    )
+
+    result = runner.invoke(app, ["files", "rm", FILE, "--yes"])
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert "so it cannot write Pharma B. To fix: Start a new agent conversation" in text
+    assert "To write" not in text
+
+
+def test_a_held_proposal_does_not_say_the_project_requires_a_person():
+    """rc.9 QA: show_proposal said "this project requires a person to accept" for a hold."""
+    from beakr_cli.mcp_server import _format_proposal
+
+    held = {**_held_proposal(), "needs_person_to_accept": True}
+    text = _format_proposal(held)
+    assert "Held for approval by an owner or admin of Pharma B." in text
+    assert "this project requires a person to accept" not in text
+    # Without a hold, the project-policy line is unchanged.
+    plain = {**_held_proposal(), "cross_project_hold": None, "needs_person_to_accept": True}
+    assert "this project requires a person to accept" in _format_proposal(plain)
