@@ -26,6 +26,22 @@ def proposal_trail_path(proposal_id: str) -> str:
     return f"/v1/knowledge/wiki/proposals/{proposal_id}/trail"
 
 
+def write_trail_as_person(proposal_id: str) -> str:
+    """Why an agent's session is not shown a write's trail, and where a person reads it.
+
+    A write's trail lists what its session read in every project, unredacted for
+    its person; shown to an agent it would carry other projects' content into the
+    session. The API refuses it a session token (``403 insufficient_scope``), and
+    the MCP server never reads it with the person's own credential instead.
+    """
+    return (
+        f"The read trail of write {proposal_id} is read by a person, not by an agent's "
+        "session (it can list other projects' reads). In a terminal outside an agent "
+        f"conversation: `beakr kb proposals show {proposal_id} --trail`, or open the "
+        "proposal in the web app."
+    )
+
+
 def reads_of(page: Any) -> list[dict[str, Any]]:
     """The reads of a trail page (``{data, next_cursor, has_more}``) or a list of them."""
     rows = page.get("data") if isinstance(page, dict) else page

@@ -72,8 +72,8 @@ SESSION_STATUS_DESCRIPTION = (
     "organization locks each session to the first project it touches (auto_lock), the "
     "project it is locked to, whether it is read-only (it read a second project, so writes "
     "are refused) and every project it has touched, in order. `trail=true` adds the "
-    "session's read trail (newest first); `proposal_id` shows what that write's session had "
-    "read before filing it, by project. Call it before writing when unsure "
+    "session's read trail (newest first). A write's own trail (`proposal_id`) is read by a "
+    "person, not by the agent: the tool says where. Call it before writing when unsure "
     "which project this session may write."
 )
 
@@ -290,10 +290,9 @@ async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str
         )
         lines.append(session_trail.render_trail(page))
     if proposal_id.strip():
-        path = session_trail.proposal_trail_path(proposal_id.strip())
-        lines.append(
-            session_trail.render_write_trail(await call_api(lambda sdk: sdk.request("GET", path)))
-        )
+        # Never fetched here: the API refuses a session token, and the person's own
+        # key would hand the agent other projects' reads.
+        lines.append(session_trail.write_trail_as_person(proposal_id.strip()))
     return "\n\n".join(lines)
 
 
@@ -319,19 +318,14 @@ async def _ended_status(
                 session_trail.render_trail,
             )
         )
-    if proposal_id.strip():
-        reads.append(
-            (
-                session_trail.proposal_trail_path(proposal_id.strip()),
-                None,
-                session_trail.render_write_trail,
-            )
-        )
     for path, params, render in reads:
         try:
             lines.append(render(await session.ended_trail(path, params)))
         except BeakrError as exc:
             lines.append(f"Read trail not available: {exc.message}")
+    if proposal_id.strip():
+        # As for an open session: never with the person's key on the agent's behalf.
+        lines.append(session_trail.write_trail_as_person(proposal_id.strip()))
     return "\n\n".join(lines)
 
 

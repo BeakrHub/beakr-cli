@@ -9,10 +9,11 @@ from itertools import islice
 from pathlib import Path
 
 import typer
-from beakr_sdk.errors import BeakrError, NotFoundError
+from beakr_sdk.errors import BeakrError, NotFoundError, PermissionDeniedError
 from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
+from beakr_cli._private_api import PrivateBeakr
 from beakr_cli.citations import (
     SECTION_MARKER_RE,
     CitationValidationError,
@@ -1421,13 +1422,13 @@ def proposals_show(
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
     """Show one wiki proposal: its change as a diff, and the content hash to accept it with."""
-    from beakr_cli.session_trail import proposal_trail_path, render_write_trail
+    from beakr_cli.session_trail import render_write_trail
 
     with get_sdk() as sdk:
         proposal = sdk.knowledge.proposals.show(proposal_id)
         if project and proposal.get("project_id") and str(proposal["project_id"]) != project:
             raise NotFoundError(f"Proposal {proposal_id} is not in project {project}.")
-        read_trail = sdk.request("GET", proposal_trail_path(proposal_id)) if trail else None
+        read_trail = _write_trail(sdk, proposal_id) if trail else None
     if read_trail is not None:
         proposal = {**proposal, "read_trail": read_trail}
 
@@ -1441,6 +1442,22 @@ def proposals_show(
     if read_trail is not None:
         console.print()
         console.print(render_write_trail(read_trail), markup=False, highlight=False)
+
+
+def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict:
+    """A write's read trail, which only a person reads: an agent's session token is
+    refused it (it can list other projects' reads), said here with where to read it."""
+    from beakr_cli import scope_session
+    from beakr_cli.session_trail import proposal_trail_path, write_trail_as_person
+
+    try:
+        return sdk.request("GET", proposal_trail_path(proposal_id))
+    except PermissionDeniedError as exc:
+        if not scope_session.sent_session_token(exc):
+            raise
+        raise scope_session.SessionScopeError(
+            write_trail_as_person(proposal_id), code="insufficient_scope"
+        ) from exc
 
 
 def _proposal_show_lines(proposal: dict) -> list[str]:
