@@ -41,6 +41,18 @@ def write_trail_as_person(proposal_id: str) -> str:
     )
 
 
+#: A write trail's own refusal (the person may not see it, or a session asked).
+TRAIL_FORBIDDEN = "read_trail_forbidden"
+
+
+def write_trail_not_yours(proposal_id: str) -> str:
+    """A person outside any session whom the API refuses a write's trail."""
+    return (
+        f"You can't see the read trail of write {proposal_id}: only the person who filed "
+        "it, an owner or admin of its project, or an organization admin can."
+    )
+
+
 def reads_of(page: Any) -> list[dict[str, Any]]:
     """The reads of a trail page (``{data, next_cursor, has_more}``) or a list of them."""
     rows = page.get("data") if isinstance(page, dict) else page

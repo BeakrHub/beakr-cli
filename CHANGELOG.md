@@ -257,6 +257,13 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   API treats any request inside a session as an agent's, which may not accept where
   a person must, nor accept a held proposal. Inside an agent conversation it stays
   the agent's, in the conversation's session, for the API to decide.
+- Wording: a locked session's refusal no longer reads "nothing was written. To fix:
+  To write Pharma B: End it ..." (the project is named in the message; the fix says
+  only what to do). A write's read trail refused with `read_trail_forbidden` as well as
+  `insufficient_scope` is said the same way inside a session (read it as a person),
+  and outside any session as "You can't see the read trail of write <id>: only the
+  person who filed it, an owner or admin of its project, or an organization admin
+  can."
 - `beakr projects profile setup` no longer starts a session: it uses (and checks)
   one already open in the shell, terminal or agent conversation, and otherwise
   runs as before, so its one-turn runs leave no empty sessions behind. A bare
