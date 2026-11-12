@@ -574,15 +574,18 @@ def test_session_show_prints_the_lock_state():
 
 @respx.mock
 def test_session_show_finds_the_agent_conversations_session(conversation):
-    respx.get(f"{API}/v1/sessions").respond(
-        json={"data": [_session("open", agent="other"), _session("locked", touched=(A,))]}
+    # Joined by the conversation's id; read with that session's own token.
+    joined = respx.post(f"{API}/v1/sessions").respond(
+        201, json=_created(_session("locked", touched=(A,)), token="bk_st_conv")
     )
-    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session("locked", touched=(A,)))
+    shown = respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session("locked", touched=(A,)))
 
     result = runner.invoke(app, ["session", "show"])
 
     assert result.exit_code == 0, result.output
     assert f"Session {SID}" in result.output
+    assert _body(joined)["agent_session"] == CONVERSATION
+    assert _bearer(shown) == "Bearer bk_st_conv"
 
 
 @respx.mock
@@ -723,6 +726,9 @@ def test_session_status_finds_an_ended_session_the_server_never_held(conversatio
 
 @respx.mock
 def test_session_show_shows_an_ended_conversation_session(conversation):
+    respx.post(f"{API}/v1/sessions").respond(
+        409, json=_refusal(409, "session_ended", "This agent session has ended.")
+    )
     respx.get(f"{API}/v1/sessions").respond(json={"data": [_ended()], "has_more": False})
     respx.get(f"{API}/v1/sessions/{SID}").respond(json=_ended())
 
@@ -736,6 +742,7 @@ def test_session_show_shows_an_ended_conversation_session(conversation):
 
 @respx.mock
 def test_ending_a_conversation_session_says_it_is_final(conversation):
+    respx.post(f"{API}/v1/sessions").respond(201, json=_created(_session()))
     respx.post(f"{API}/v1/sessions/{SID}/end").respond(json=_session(status="ended"))
 
     result = runner.invoke(app, ["session", "end", SID])

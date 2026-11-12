@@ -23,6 +23,7 @@ the terminal keeps the session for its next writes.
 from __future__ import annotations
 
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,7 @@ from beakr_cli import scope_session
 from beakr_cli.output import console, emit, err_console, is_interactive, print_table, short
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import prompt_text
+from beakr_cli.scope_session import SessionScopeError
 from beakr_cli.sdk import get_sdk
 
 app = typer.Typer(
@@ -107,6 +109,81 @@ def _conversation_session_id() -> str | None:
             if row.get("agent_session") == agent:
                 return str(row.get("id"))
     return None
+
+
+# --- Inside an agent conversation --------------------------------------------------------
+#
+# The `beakr session` commands act with the person's own credential, which can read
+# every session of theirs, unredacted. Inside an agent conversation (an agent
+# conversation id is known: Claude Code, Codex, Cursor, BEAKR_SESSION) the agent runs
+# them too, so reading another session (its read trail lists other projects' reads)
+# would carry that content into this conversation. There they read through this
+# conversation's own session token, which the API answers for that session only, and
+# never name another session; ending another session is refused. From a plain
+# terminal they act as the person, as before.
+
+
+@dataclass
+class _Conversation:
+    """The agent conversation this command runs in, and its own session."""
+
+    agent: str
+    session_id: str | None
+    #: Its token, when this terminal holds one; None once the session ended.
+    token: str | None
+
+
+def _conversation() -> _Conversation | None:
+    """The agent conversation this command runs in; None in a plain terminal."""
+    agent = scope_session.agent_session_id()
+    if not agent:
+        return None
+    try:
+        state = scope_session.conversation_state(agent)
+    except SessionScopeError as exc:
+        if exc.code != scope_session.SESSION_ENDED:
+            raise
+        # Ended, never started again: its own record is still the person's to read.
+        return _Conversation(agent, _conversation_session_id(), None)
+    return _Conversation(agent, state.session_id, state.token)
+
+
+def _own(conversation: _Conversation) -> set[str]:
+    """The sessions this conversation may read: its own, and this shell's (held here)."""
+    return {s for s in (conversation.session_id, scope_session.shell_session_id()) if s}
+
+
+def _confine(chosen: str | None, conversation: _Conversation) -> str:
+    """The session to read inside an agent conversation: its own, never another."""
+    chosen = chosen or conversation.session_id or scope_session.shell_session_id()
+    if not chosen:
+        raise typer.BadParameter(
+            "this agent conversation has no session yet", param_hint="SESSION_ID"
+        )
+    if chosen not in _own(conversation):
+        raise SessionScopeError(
+            f"Inside an agent conversation, `beakr session` reads only this conversation's "
+            f"session ({conversation.session_id}); {chosen} is another session.",
+            code=OUTSIDE_CONVERSATION,
+            fix=scope_session.OUTSIDE_CONVERSATION_FIX,
+        )
+    return chosen
+
+
+def _reader(chosen: str, conversation: _Conversation | None) -> Any:
+    """The client that reads ``chosen``: the conversation's (or this shell's) own token
+    inside an agent conversation, else the person's own credential."""
+    if conversation is None:
+        return get_sdk(scoped=False)
+    if chosen == scope_session.shell_session_id():
+        return get_sdk()  # this shell's session token
+    if conversation.token:
+        return get_sdk(token=conversation.token)
+    return get_sdk(scoped=False)  # the conversation's own ended session, as the person
+
+
+#: The refusal of another session from inside an agent conversation.
+OUTSIDE_CONVERSATION = "session_outside_conversation"
 
 
 def _lists(read: list[str], write: list[str]) -> tuple[list[str], list[str]]:
@@ -334,7 +411,17 @@ def show(
     session_id: str | None = typer.Argument(None, help="Defaults to this shell's session."),
     json_out: bool = _json_opt,
 ) -> None:
-    """The session's projects: what it may read and write, and where to change them."""
+    """The session's projects: what it may read and write, and where to change them.
+
+    Inside an agent conversation it shows only that conversation's own session.
+    """
+    conversation = _conversation()
+    if conversation is not None:
+        chosen = _confine(session_id, conversation)
+        with _reader(chosen, conversation) as sdk:
+            session = sdk.request("GET", f"/v1/sessions/{chosen}")
+        emit(session, json_out=json_out, render=_render, lines=_describe_lines)
+        return
     ended_here = None
     if session_id is None and not _current_session_id():
         # This terminal's session was ended (`beakr session end`): say so, not usage.
@@ -389,11 +476,12 @@ def trail(
     """
     from beakr_cli.session_trail import render_trail, trail_path
 
-    chosen = _session_id(session_id)
+    conversation = _conversation()
+    chosen = _confine(session_id, conversation) if conversation else _session_id(session_id)
     params: dict[str, Any] = {"limit": limit}
     if cursor:
         params["cursor"] = cursor
-    with get_sdk(scoped=False) as sdk:
+    with _reader(chosen, conversation) as sdk:
         page = sdk.request("GET", trail_path(chosen), params=params)
 
     def text(data: Any) -> str:
@@ -412,9 +500,21 @@ def list_sessions(
     all_sessions: bool = typer.Option(False, "--all", help="Include ended sessions."),
     json_out: bool = _json_opt,
 ) -> None:
-    """Your open sessions (agents and shells), newest first."""
-    with get_sdk(scoped=False) as sdk:
-        rows = list(sdk.paginate("/v1/sessions", include_ended=all_sessions))
+    """Your open sessions (agents and shells), newest first.
+
+    Inside an agent conversation only that conversation's own session is listed.
+    """
+    conversation = _conversation()
+    if conversation is not None and conversation.token:
+        # The API lists a session token only its own session.
+        with get_sdk(token=conversation.token) as sdk:
+            rows = list(sdk.paginate("/v1/sessions", include_ended=all_sessions))
+    else:
+        with get_sdk(scoped=False) as sdk:
+            rows = list(sdk.paginate("/v1/sessions", include_ended=all_sessions))
+        if conversation is not None:
+            # Its session ended (no token): only its own row, read as the person.
+            rows = [r for r in rows if r.get("agent_session") == conversation.agent]
 
     def render(data: list[dict[str, Any]]) -> None:
         if not data:
@@ -504,8 +604,27 @@ def end(
     session_id: str | None = typer.Argument(None, help="Defaults to this shell's session."),
     json_out: bool = _json_opt,
 ) -> None:
-    """End the session: its token stops working at once."""
-    chosen = _session_id(session_id)
+    """End the session: its token stops working at once.
+
+    Inside an agent conversation only that conversation's own session (or this
+    shell's) may be ended here.
+    """
+    conversation = _conversation()
+    if conversation is not None:
+        chosen = session_id or conversation.session_id or scope_session.shell_session_id()
+        if not chosen or chosen not in _own(conversation):
+            raise SessionScopeError(
+                f"Inside an agent conversation, `beakr session end` ends only this "
+                f"conversation's session ({conversation.session_id}).",
+                code=OUTSIDE_CONVERSATION,
+                fix=(
+                    "End other sessions from the web app or a terminal outside an agent "
+                    "conversation. Commands typed with `!` in Claude Code share the agent's "
+                    "environment, so they are confined the same way."
+                ),
+            )
+    else:
+        chosen = _session_id(session_id)
     with get_sdk(scoped=False) as sdk:
         session = sdk.request("POST", f"/v1/sessions/{chosen}/end")
     scope_session.delete_state(chosen)
