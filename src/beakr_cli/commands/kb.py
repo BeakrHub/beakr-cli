@@ -941,9 +941,24 @@ def _accept_created(proposal: dict) -> dict:
 
 
 def _accept_bound(proposal_id: str, reviewed_hash: str | None) -> dict:
-    """Accept bound to ``reviewed_hash``; a card-table proposal without one is refused (exit 2)."""
+    """Accept bound to ``reviewed_hash``; a card-table proposal without one is refused (exit 2).
+
+    From a plain terminal it is the person's own review: their key, joined to no
+    session (the API treats any request inside a session as an agent's, which may not
+    accept where a person must, nor accept a held proposal). Inside an agent
+    conversation it stays the agent's, in its session, for the API to decide.
+    """
+    from contextlib import nullcontext
+
+    from beakr_cli import scope_session
+
+    as_person = (
+        scope_session.person_credential(unjoined=True)
+        if scope_session.agent_session_id() is None
+        else nullcontext()
+    )
     try:
-        with get_sdk() as sdk:
+        with as_person, get_sdk() as sdk:
             return accept_reviewed(sdk, proposal_id, reviewed_hash)
     except ReviewRequired as refused:
         err_console.print(

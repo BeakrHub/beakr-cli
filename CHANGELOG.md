@@ -251,6 +251,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   `session_read_only`), without a picker link. `create_project` says what an
   auto-lock session may do with the new project. The CLI's write gate and
   `upload_files` share one rule (`scope_session.may_write`).
+- `beakr kb proposals accept` (and `kb propose ... --accept`) from a plain
+  terminal is the person's own review: it is sent with their key and no session,
+  even in a shell session or a terminal that kept one, and starts no session. The
+  API treats any request inside a session as an agent's, which may not accept where
+  a person must, nor accept a held proposal. Inside an agent conversation it stays
+  the agent's, in the conversation's session, for the API to decide.
 - Wording: a locked session's refusal no longer reads "nothing was written. To fix:
   To write Pharma B: End it ..." (the project is named in the message; the fix says
   only what to do). A write's read trail refused with `read_trail_forbidden` as well as
