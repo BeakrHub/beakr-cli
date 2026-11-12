@@ -22,6 +22,7 @@ import typer
 from beakr_sdk import SessionRequiredError
 from beakr_sdk.errors import NotFoundError
 
+from beakr_cli import scope_session
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.errors import EXIT_NOT_FOUND, EXIT_PERSON_REVIEW, error_object
 from beakr_cli.output import emit, err_console, output_mode, print_json, print_table
@@ -173,6 +174,7 @@ def set_policy(
     agent review is not available on this installation, 4; a key that is not
     a person's, 6.
     """
+    scope_session.refuse_inside_conversation("beakr kb agent-review set", "Change agent review")
     given = {
         field: value
         for (field, _flag, _help), value in zip(FIELDS, (proposals, uploads, capture), strict=True)

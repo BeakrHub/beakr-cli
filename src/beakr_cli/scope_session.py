@@ -1009,6 +1009,34 @@ OUTSIDE_CONVERSATION_FIX = (
 )
 
 
+#: The refusal of a person's own act from inside an agent conversation.
+OUTSIDE_CONVERSATION = "session_outside_conversation"
+
+
+def refuse_inside_conversation(what: str, where: str) -> None:
+    """Refuse a person's own act (it could widen the agent's reach) inside an agent
+    conversation: starting or changing a session, loosening a setting, approving a file.
+
+    "Inside" is what the environment says (an agent conversation id: Claude Code,
+    Codex, Cursor or ``BEAKR_SESSION``), so ``!`` commands typed in Claude Code are
+    refused too. An agent that clears those variables is not stopped here: the lock
+    guards against mistakes, not a determined agent.
+    """
+    agent = agent_session_id()
+    if not agent:
+        return
+    raise SessionScopeError(
+        f"`{what}` is refused inside an agent conversation ({agent}): it acts with your own "
+        "key and could widen what the agent reaches.",
+        code=OUTSIDE_CONVERSATION,
+        fix=(
+            f"{where} in the web app or a terminal outside the agent conversation. Commands "
+            "typed with `!` in Claude Code share the agent's environment, so they are refused "
+            "the same way."
+        ),
+    )
+
+
 def _join_conversation(agent: str, key: str) -> TokenState | None:
     """Join (or start) the conversation's session where the organization is auto_lock."""
     from beakr_cli.sdk import get_sdk

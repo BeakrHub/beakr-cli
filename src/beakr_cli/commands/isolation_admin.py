@@ -270,6 +270,7 @@ def set_isolation(
     it, 3. Loosening a rule (a less strict guard, --no-require-session,
     --no-count-search-results) asks first; --yes skips the question.
     """
+    scope_session.refuse_inside_conversation("beakr org isolation set", "Change project isolation")
     changes: dict[str, Any] = {}
     if session_mode is not None:
         changes["session_mode"] = session_mode.value
@@ -371,6 +372,7 @@ def set_read_trail(
     period are deleted within the hour, so a shorter period asks first; --yes
     skips the question.
     """
+    scope_session.refuse_inside_conversation("beakr org read-trail set", "Change the read trail")
     with scope_session.person_credential(unjoined=True), _person_sdk() as sdk:
         path = _read_trail_path(_org_id(org))
         current = sdk.request("GET", path)
@@ -467,6 +469,7 @@ def set_guard(
     not turned on, exits 4; a caller who may not change it, 3. A guard less strict
     than the one in force asks first; --yes skips the question.
     """
+    scope_session.refuse_inside_conversation("beakr projects guard set", "Change a project's guard")
     override = None if mode is ProjectGuard.default else mode.value
     with scope_session.person_credential(unjoined=True):
         project_id = _project_id(project)

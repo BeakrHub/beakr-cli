@@ -277,6 +277,13 @@ def run_gated(
         if not agent_hooks.available():
             # A self-hosted build runs no hooks: no session is read or opened for one.
             return None
+    if mode == PERSON:
+        # A person's own approval: never from inside an agent conversation, where the
+        # agent could approve what it uploaded itself.
+        scope_session.refuse_inside_conversation(
+            "beakr files approve" if command == "files approve" else f"beakr {command}",
+            "Approve the file",
+        )
     if mode is None or not ENABLED or _exempt_credential():
         return invoke()
     find_targets = targets or (lambda: _targets(command, params))

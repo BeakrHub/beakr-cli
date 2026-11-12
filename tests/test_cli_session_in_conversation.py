@@ -184,3 +184,65 @@ def test_a_plain_terminal_reads_any_of_the_persons_sessions():
     for route in (shown, trail, listed, ended):
         assert _bearer(route) == f"Bearer {PERSON}"
     assert not joined.called
+
+
+# --- A person's own acts are refused inside an agent conversation ------------------------
+
+PROJECT = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+ORG = "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e"
+
+
+@pytest.mark.parametrize(
+    ("argv", "what", "where"),
+    [
+        (["session", "start", "--env"], "beakr session start", "Start a session"),
+        (
+            ["session", "start", "--read", PROJECT, "--write", PROJECT],
+            "beakr session start",
+            "Start a session",
+        ),
+        (
+            ["session", "edit", OWN, "--write-all"],
+            "beakr session edit",
+            "Change a session's projects",
+        ),
+        (
+            ["session", "edit", "--read", PROJECT],
+            "beakr session edit",
+            "Change a session's projects",
+        ),
+        (
+            ["org", "isolation", "set", "--org", ORG, "--guard", "allow", "--yes"],
+            "beakr org isolation set",
+            "Change project isolation",
+        ),
+        (
+            ["org", "read-trail", "set", "--org", ORG, "--days", "1", "--yes"],
+            "beakr org read-trail set",
+            "Change the read trail",
+        ),
+        (
+            ["projects", "guard", "set", PROJECT, "allow", "--yes"],
+            "beakr projects guard set",
+            "Change a project's guard",
+        ),
+        (
+            ["kb", "agent-review", "set", "--uploads", "off"],
+            "beakr kb agent-review set",
+            "Change agent review",
+        ),
+        (["files", "approve", "f-1"], "beakr files approve", "Approve the file"),
+    ],
+)
+@respx.mock
+def test_a_persons_own_act_is_refused_inside_an_agent_conversation(conversation, argv, what, where):
+    api = respx.route(host="api.test").respond(200, json={})
+
+    result = runner.invoke(app, argv)
+
+    assert result.exit_code == 3, (argv, result.output)
+    text = _text(result)
+    assert f"`{what}` is refused inside an agent conversation ({CONVERSATION})" in text
+    assert f"{where} in the web app or a terminal outside the agent conversation" in text
+    assert "`!` in Claude Code" in text
+    assert not api.called
