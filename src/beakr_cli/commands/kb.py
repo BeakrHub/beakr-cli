@@ -1429,24 +1429,35 @@ def proposals_show(
         if project and proposal.get("project_id") and str(proposal["project_id"]) != project:
             raise NotFoundError(f"Proposal {proposal_id} is not in project {project}.")
         read_trail = _write_trail(sdk, proposal_id) if trail else None
-    if read_trail is not None:
+    # A string: the trail is a person's to read, not this session's (said in its place).
+    if isinstance(read_trail, dict):
         proposal = {**proposal, "read_trail": read_trail}
+    elif read_trail is not None:
+        proposal = {**proposal, "read_trail": None, "read_trail_note": read_trail}
+
+    def trail_text() -> str:
+        return render_write_trail(read_trail) if isinstance(read_trail, dict) else str(read_trail)
 
     def lines(data: dict) -> list[str]:
         shown = _proposal_show_lines(data)
-        return [*shown, "", *render_write_trail(read_trail).splitlines()] if read_trail else shown
+        return [*shown, "", *trail_text().splitlines()] if read_trail is not None else shown
 
     if machine_output(proposal, json_out=json_out, lines=lines):
         return
     _print_proposal(proposal, with_payload=True)
     if read_trail is not None:
         console.print()
-        console.print(render_write_trail(read_trail), markup=False, highlight=False)
+        console.print(trail_text(), markup=False, highlight=False)
 
 
-def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict:
-    """A write's read trail, which only a person reads: an agent's session token is
-    refused it (it can list other projects' reads), said here with where to read it."""
+def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict | str:
+    """A write's read trail; in a session, where a person reads it instead.
+
+    Only a person reads a write's trail: the API refuses a session token (it can
+    list other projects' reads), and the CLI never falls back to the person's own
+    key inside a session. The proposal is still shown, with that line in place of
+    the trail.
+    """
     from beakr_cli import scope_session
     from beakr_cli.session_trail import proposal_trail_path, write_trail_as_person
 
@@ -1455,9 +1466,7 @@ def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict:
     except PermissionDeniedError as exc:
         if not scope_session.sent_session_token(exc):
             raise
-        raise scope_session.SessionScopeError(
-            write_trail_as_person(proposal_id), code="insufficient_scope"
-        ) from exc
+        return write_trail_as_person(proposal_id)
 
 
 def _proposal_show_lines(proposal: dict) -> list[str]:

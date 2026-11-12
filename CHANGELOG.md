@@ -268,7 +268,7 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   session token): `session_status` with `proposal_id` says where to read it
   instead of failing with `403 insufficient_scope`, and never reads it with the
   person's own key on the agent's behalf; `beakr kb proposals show --trail` run
-  in a session says the same.
+  in a session shows the proposal with that line in place of the trail (exit 0).
 - Project isolation settings from the CLI: `beakr org isolation show|set`
   (`--session-mode auto_lock|picker`, `--require-session/--no-require-session`,
   `--guard allow|hold|refuse`, `--count-search-results/--no-count-search-results`;
