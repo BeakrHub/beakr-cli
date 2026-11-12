@@ -111,6 +111,7 @@ def get_sdk(
     timeout: float = 60.0,
     base_url: str | None = None,
     scoped: bool = True,
+    token: str | None = None,
 ) -> PrivateBeakr:
     """A client sending ``X-Beakr-Client: beakr-cli/<version>`` (or ``client_name``).
 
@@ -125,11 +126,13 @@ def get_sdk(
     In a shell with a session (``BEAKR_SCOPE_SESSION``, ``beakr session start``)
     requests carry the session's token, confined to the projects the person
     chose; ``scoped=False`` uses the person's own credential (the session
-    commands themselves, and renewing the token).
+    commands themselves, and renewing the token). ``token`` names a session token
+    to send instead (an agent conversation's own session, read by ``beakr session``).
     """
     from beakr_cli import scope_session
 
-    token = scope_session.shell_token() if scoped else None
+    if token is None:
+        token = scope_session.shell_token() if scoped else None
     return PrivateBeakr(
         api_key=token,
         base_url=base_url,

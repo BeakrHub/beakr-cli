@@ -218,6 +218,16 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
+- Inside an agent conversation (an agent conversation id is known: Claude Code,
+  Codex, Cursor or `BEAKR_SESSION`), `beakr session show`, `trail` and `ls` read
+  only the conversation's own session, through its own session token, and never
+  name another (exit 3, "Inside an agent conversation, `beakr session` reads only
+  this conversation's session"); `beakr session end` of another session is refused,
+  and ending its own still works. They used to act with the person's own key, which
+  reads every session of theirs unredacted, a read trail's other projects included.
+  Commands typed with `!` in Claude Code share the agent's environment, so they are
+  confined the same way. From a plain terminal the commands act as the person, as
+  before.
 - An upload into a project whose agent review policy holds agent uploads for a
   person (`agent_uploads_need_a_person`) now says so: `beakr upload` and `beakr mcp`'s
   `upload_files` answer "Stored. A person must approve it before it's added to

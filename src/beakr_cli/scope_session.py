@@ -955,6 +955,60 @@ def conversation_token() -> str | None:
     return state.token
 
 
+def conversation_state(agent: str) -> TokenState:
+    """A token for this agent conversation's own session, joined (or started) when this
+    terminal holds none. For ``beakr session`` inside an agent conversation, whose reads
+    of sessions run with it, so the API answers for this conversation's session only.
+
+    Raises :class:`SessionScopeError`: ``session_ended`` when the conversation's
+    session has ended (never started again), ``no_conversation_sessions`` where the
+    installation keeps no session per conversation.
+    """
+    from beakr_cli.sdk import get_sdk
+
+    key = f"agent:{agent}"
+    kept = (_terminal_record(key) or {}).get("session_id")
+    state = load_state(str(kept)) if kept else None
+    if state is not None:
+        if state.expires_soon():
+            with get_sdk(scoped=False) as person:
+                state = _renew_conversation(person, state, agent, key)
+            save_state(state)
+        return state
+    folder = os.getcwd()
+    body = session_body(
+        client_name="beakr-cli", label=f"beakr in {Path(folder).name}", folder=folder, agent=agent
+    )
+    with get_sdk(scoped=False) as person:
+        try:
+            session = person.request("POST", "/v1/sessions", json=body)
+        except BeakrError as exc:
+            ended = conversation_ended(exc, agent)
+            if ended is not None:
+                raise ended from exc
+            if exc.code == FEATURE_NOT_ENABLED:
+                raise SessionScopeError(
+                    "This installation keeps no session per agent conversation, so "
+                    "`beakr session` cannot read sessions from inside one.",
+                    code="no_conversation_sessions",
+                    fix=OUTSIDE_CONVERSATION_FIX,
+                ) from exc
+            raise
+    token, expires_at = _token_of(session)
+    state = TokenState(str(session["id"]), token, expires_at)
+    save_state(state)
+    remember_terminal(state.session_id, key, mode=str(session.get("mode") or "picker"))
+    return state
+
+
+#: Where a person reads or ends sessions other than an agent conversation's own.
+OUTSIDE_CONVERSATION_FIX = (
+    "Use the web app (Settings, Sessions) or a terminal outside the agent conversation. "
+    "Commands typed with `!` in Claude Code share the agent's environment, so they are "
+    "confined the same way."
+)
+
+
 def _join_conversation(agent: str, key: str) -> TokenState | None:
     """Join (or start) the conversation's session where the organization is auto_lock."""
     from beakr_cli.sdk import get_sdk
