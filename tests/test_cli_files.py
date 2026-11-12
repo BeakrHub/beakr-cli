@@ -317,6 +317,8 @@ def test_an_upload_held_for_a_person_says_so(tmp_path, monkeypatch, holds):
 
     monkeypatch.setattr(output, "output_mode", lambda json_out: "human")
     mock_resumable_uploads(API)
+    # The file says nothing yet (no hold recorded): the policy decides.
+    respx.get(f"{API}/v1/artifacts/art-notes.md").respond(json={"id": "art-notes.md"})
     respx.get(f"{API}/v1/knowledge/agent-review").respond(json=_review(holds))
     path = tmp_path / "notes.md"
     path.write_text("hello")
@@ -339,6 +341,7 @@ def test_an_upload_held_for_a_person_says_so(tmp_path, monkeypatch, holds):
 @respx.mock
 def test_an_agent_piping_an_upload_held_for_a_person_reads_it_too(tmp_path):
     mock_resumable_uploads(API)
+    respx.get(f"{API}/v1/artifacts/art-notes.md").respond(json={"id": "art-notes.md"})
     respx.get(f"{API}/v1/knowledge/agent-review").respond(json=_review(True))
     path = tmp_path / "notes.md"
     path.write_text("hello")
@@ -348,4 +351,35 @@ def test_an_agent_piping_an_upload_held_for_a_person_reads_it_too(tmp_path):
     assert result.exit_code == 0, result.output
     text = " ".join(result.output.split())
     assert "A person must approve it before it's added to Knowledge" in text
+    assert "beakr files approve art-notes.md" in text
+
+
+@pytest.mark.real_upload_review
+@respx.mock
+def test_an_upload_in_a_session_reads_the_files_own_status(tmp_path, monkeypatch):
+    """rc.10 QA: in a session the policy read is refused; the file's own status says it."""
+    import beakr_cli.output as output
+    from beakr_cli import scope_session
+    from beakr_cli.scope_session import TokenState
+
+    monkeypatch.setattr(output, "output_mode", lambda json_out: "human")
+    scope_session.save_state(TokenState("s-1", "bk_st_shell", "2999-01-01T00:00:00+00:00"))
+    monkeypatch.setenv(scope_session.SESSION_ENV, "s-1")
+    mock_resumable_uploads(API)
+    status = respx.get(f"{API}/v1/artifacts/art-notes.md").respond(
+        json={"id": "art-notes.md", "knowledge_status": "waiting_for_person"}
+    )
+    policy = respx.get(f"{API}/v1/knowledge/agent-review").respond(
+        403, json={"error": {"code": "insufficient_scope", "message": "Not for a session."}}
+    )
+    path = tmp_path / "notes.md"
+    path.write_text("hello")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "--project", "p1"])
+
+    assert result.exit_code == 0, result.output
+    assert status.calls.last.request.headers["authorization"] == "Bearer bk_st_shell"
+    assert not policy.called
+    text = " ".join(result.output.split())
+    assert "Stored. A person must approve it before it's added to Knowledge" in text
     assert "beakr files approve art-notes.md" in text

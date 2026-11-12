@@ -488,6 +488,8 @@ async def test_an_upload_held_for_a_person_says_so(tmp_path: Path, monkeypatch, 
     _file(tmp_path, "memo.pdf")
     respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
     respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    # The file says nothing yet (no hold recorded): the policy decides.
+    respx.get(url__regex=rf"{API}/v1/artifacts/art-[^/]+$").respond(json={"id": "art"})
     policy = respx.get(f"{API}/v1/knowledge/agent-review").respond(json=_review(holds))
     mock_resumable_uploads(API)
 
@@ -591,3 +593,31 @@ async def test_create_project_says_what_an_auto_lock_session_may_do(state, touch
 
     assert said in text
     assert "ask the person to add it" not in text
+
+
+@pytest.mark.real_upload_review
+@respx.mock
+async def test_an_upload_held_in_an_agent_session_says_so(tmp_path: Path, monkeypatch) -> None:
+    """rc.10 QA: inside a session the policy read is refused, so the reply fell back to
+    "Knowledge compiles ...": the file's own knowledge_status now says it waits."""
+    monkeypatch.chdir(tmp_path)
+    _hold(_session(read=(A,), write=(A,)))
+    _file(tmp_path, "memo.pdf")
+    respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    respx.get(f"{API}/v1/sessions/current").respond(json=_session(read=(A,), write=(A,)))
+    status = respx.get(f"{API}/v1/artifacts/art-memo.pdf").respond(
+        json={"id": "art-memo.pdf", "knowledge_status": "waiting_for_person"}
+    )
+    policy = respx.get(f"{API}/v1/knowledge/agent-review").respond(
+        403, json={"error": {"code": "insufficient_scope", "message": "Not for a session."}}
+    )
+    mock_resumable_uploads(API)
+
+    text = await mcp_tools_projects.upload_files(A, paths=["memo.pdf"])
+
+    assert status.calls.last.request.headers["authorization"] == "Bearer bk_st_first"
+    assert not policy.called
+    assert "Stored. A person must approve it before it's added to Knowledge" in text
+    assert "beakr files approve art-memo.pdf" in text
+    assert "Knowledge compiles from them" not in text

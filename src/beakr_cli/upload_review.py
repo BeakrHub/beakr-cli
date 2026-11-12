@@ -35,6 +35,57 @@ def holds_uploads(settings: Any) -> bool:
     return isinstance(effective, dict) and effective.get("agent_uploads_need_a_person") is True
 
 
+#: Most uploaded files whose own knowledge_status is read after an upload.
+CHECK_LIMIT = 20
+
+
+def waiting_ids(sdk: Any, project_id: str | None, file_ids: list[str]) -> list[str]:
+    """The uploaded files that wait for a person's approval.
+
+    Each file's own ``knowledge_status`` first (``GET /v1/artifacts/{id}``): the hold
+    is recorded when the upload asks for Knowledge, and a session token may read its
+    own project's file. The project's policy (``GET /v1/knowledge/agent-review``) is
+    the fallback, but a session token is refused it: inside an agent session (rc.10
+    QA) only the files' own status could say so.
+    """
+    from beakr_sdk.errors import BeakrError
+
+    if not ENABLED or not file_ids:
+        return []
+    waiting: list[str] = []
+    for file_id in file_ids[:CHECK_LIMIT]:
+        try:
+            status = (sdk.files.get(file_id) or {}).get("knowledge_status")
+        except BeakrError:
+            continue
+        if status == WAITING:
+            waiting.append(file_id)
+    if waiting:
+        return waiting
+    return list(file_ids) if uploads_wait(sdk, project_id) else []
+
+
+async def waiting_ids_async(call: Any, project_id: str | None, file_ids: list[str]) -> list[str]:
+    """:func:`waiting_ids` for ``beakr mcp``: ``call`` runs one SDK request (``call_api``)."""
+    if not ENABLED or not file_ids:
+        return []
+    waiting: list[str] = []
+    for file_id in file_ids[:CHECK_LIMIT]:
+        try:
+            info = await call(lambda sdk, f=file_id: sdk.files.get(f))
+        except Exception:  # noqa: BLE001 - one unreadable file says nothing
+            continue
+        if (info or {}).get("knowledge_status") == WAITING:
+            waiting.append(file_id)
+    if waiting:
+        return waiting
+    try:
+        settings = await call(lambda sdk: sdk.knowledge.agent_review.get(project_id=project_id))
+    except Exception:  # noqa: BLE001 - refused to a session token, or not offered
+        return []
+    return list(file_ids) if holds_uploads(settings) else []
+
+
 def uploads_wait(sdk: Any, project_id: str | None) -> bool:
     """Whether files this client uploads to ``project_id`` wait for a person; False when
     the policy cannot be read (an installation without agent review, a key without the
