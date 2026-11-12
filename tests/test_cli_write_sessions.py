@@ -448,12 +448,10 @@ def test_approving_a_file_checks_the_files_project():
 
 
 @respx.mock
-def test_approving_a_file_sends_the_persons_own_key_joined_to_no_session(monkeypatch):
+def test_approving_a_file_sends_the_persons_own_key_joined_to_no_session():
     """The API refuses a session token here (an agent's session never approves its own
     files): the person's key, without X-Beakr-Session, after checking the project."""
-    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-123")
     _kept_session()
-    scope_session.remember_terminal(SID, "agent:conv-123")
     respx.get(f"{API}/v1/artifacts/{FILE}").respond(json={"id": FILE, "project_id": A})
     approved = respx.post(f"{API}/v1/artifacts/{FILE}/knowledge/approve").respond(json={})
 
@@ -463,6 +461,20 @@ def test_approving_a_file_sends_the_persons_own_key_joined_to_no_session(monkeyp
     request = approved.calls.last.request
     assert request.headers["authorization"] == f"Bearer {PERSON_KEY}"
     assert "x-beakr-session" not in request.headers
+
+
+@respx.mock
+def test_approving_a_file_inside_an_agent_conversation_is_refused(monkeypatch):
+    """There the agent runs it, and could approve what it uploaded itself."""
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-123")
+    approved = respx.post(f"{API}/v1/artifacts/{FILE}/knowledge/approve").respond(json={})
+
+    result = runner.invoke(app, ["files", "approve", FILE])
+
+    assert result.exit_code == 3, result.output
+    assert "refused inside an agent conversation" in _text(result)
+    assert "Approve the file in the web app or a terminal outside" in _text(result)
+    assert not approved.called
 
 
 # --- Where no session can be held -------------------------------------------------------
