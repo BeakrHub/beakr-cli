@@ -236,6 +236,14 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   operation). These rely on the conversation id in the environment: an agent that
   clears those variables is not stopped by the CLI. The lock guards against
   mistakes, not a determined agent.
+- `beakr mcp`'s `upload_files` no longer refuses the first write of an open
+  auto-lock session ("It may write: none" with a picker link): an open session
+  reports no write list, and its first write locks it to that project. A locked
+  session uploads into its own project, and its refusal of another one (or a
+  read-only session's) is worded as the API's (`session_locked_to_project`,
+  `session_read_only`), without a picker link. `create_project` says what an
+  auto-lock session may do with the new project. The CLI's write gate and
+  `upload_files` share one rule (`scope_session.may_write`).
 - `beakr projects profile setup` no longer starts a session: it uses (and checks)
   one already open in the shell, terminal or agent conversation, and otherwise
   runs as before, so its one-turn runs leave no empty sessions behind. A bare

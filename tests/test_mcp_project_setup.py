@@ -462,3 +462,92 @@ async def test_a_name_two_members_share_is_refused() -> None:
 
     assert result["error_code"] == "person_ambiguous"
     assert not added.called
+
+
+# --- rc.10 bug 4: an auto-lock session's first write ---------------------------------------
+
+
+def _auto_lock(state: str, touched=()) -> dict:
+    """An auto_lock session as the API reports it: no write list while open."""
+    locked = touched[0] if state == "locked" else None
+    return {
+        "id": SID,
+        "status": "active",
+        "mode": "auto_lock",
+        "lock_state": state,
+        "agent_session": None,
+        "write_project": {"id": locked, "name": NAMES[locked]} if locked else None,
+        "read_projects": [{"id": p, "name": NAMES[p]} for p in touched],
+        "write_projects": [{"id": locked, "name": NAMES[locked]}] if locked else [],
+        "touched_projects": [{"id": p, "name": NAMES[p]} for p in touched],
+        "picker_url": f"https://app.test/sessions/{SID}",
+    }
+
+
+async def _upload_into(tmp_path: Path, session: dict, target: str):
+    _hold(session)
+    memo = _file(tmp_path, "memo.pdf")
+    respx.get(f"{API}/v1/projects/{target}").respond(json={"id": target, "name": NAMES[target]})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A, B))
+    respx.get(f"{API}/v1/sessions/current").respond(json=session)
+    routes = mock_resumable_uploads(API)
+    result = await mcp_tools_projects.upload_files(target, paths=[str(memo)])
+    return result, routes
+
+
+@respx.mock
+async def test_an_open_auto_lock_session_uploads_its_first_write(tmp_path: Path) -> None:
+    """rc.9 QA: refused as "It may write: none", though the server locks on that write."""
+    result, routes = await _upload_into(tmp_path, _auto_lock("open"), A)
+
+    assert isinstance(result, str), result
+    assert "Uploaded 1 of 1 files" in result
+    assert routes["create"].called
+
+
+@respx.mock
+async def test_a_locked_session_uploads_into_its_own_project(tmp_path: Path) -> None:
+    result, routes = await _upload_into(tmp_path, _auto_lock("locked", touched=(A,)), A)
+
+    assert isinstance(result, str), result
+    assert routes["create"].called
+
+
+@respx.mock
+async def test_a_locked_session_refuses_another_project_without_the_picker(tmp_path: Path) -> None:
+    result, routes = await _upload_into(tmp_path, _auto_lock("locked", touched=(A,)), B)
+
+    assert result["error_code"] == scope_session.LOCKED_TO_PROJECT
+    assert "reads and writes Helios, so it cannot write Assays" in result["message"]
+    assert "picker_url" not in result and "/sessions/" not in str(result.get("fix"))
+    assert not routes["create"].called
+
+
+@respx.mock
+async def test_a_read_only_session_refuses_every_upload(tmp_path: Path) -> None:
+    result, routes = await _upload_into(tmp_path, _auto_lock("read_only", touched=(A, B)), A)
+
+    assert result["error_code"] == scope_session.READ_ONLY
+    assert "read Helios, Assays, so it is read-only" in result["message"]
+    assert not routes["create"].called
+
+
+@pytest.mark.parametrize(
+    ("state", "touched", "said"),
+    [
+        ("open", (), "its first write locks the session to that project"),
+        ("locked", (A,), "Locked to Helios"),
+    ],
+)
+@respx.mock
+async def test_create_project_says_what_an_auto_lock_session_may_do(state, touched, said) -> None:
+    session = _auto_lock(state, touched=touched)
+    _hold(session)
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    respx.post(f"{API}/v1/projects").respond(201, json={"id": NEW, "name": "Stability"})
+    respx.get(f"{API}/v1/sessions/current").respond(json=session)
+
+    text = await mcp_tools_projects.create_project("Stability")
+
+    assert said in text
+    assert "ask the person to add it" not in text
