@@ -42,6 +42,16 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
     `session_mode_auto_lock`. Session responses carry `mode`, `agent_session`,
     `lock_state` (`open`, `locked` or `read_only`), `write_project`,
     `touched_projects`, `read_only_at` and `read_only_reason`.
+  - A request in a session (a session token, or a key with `X-Beakr-Session`)
+    that must name a project and names none answers
+    `403 session_project_required`, with the session's `session_id` and a `fix`:
+    pass one of the session's projects, which `GET /v1/sessions/current` lists.
+    This applies to every operation that takes a project filter or target, such
+    as `POST /v1/knowledge/research`, `GET` and `POST /v1/folders`,
+    `POST /v1/artifacts`, `POST /v1/artifacts/{artifact_id}/move`,
+    `POST /v1/uploads`, `POST /v1/bulk/prepare` and
+    `POST /v1/knowledge/wiki/proposals`. A project-restricted key outside a
+    session still answers `403 insufficient_scope`.
   - With `agent_writes_require_session`, a Knowledge or file write made with a
     person's API key or token outside a session answers `403 session_required`,
     with a `fix` saying how to start one. Service-account keys are exempt.
@@ -267,6 +277,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   and outside any session as "You can't see the read trail of write <id>: only the
   person who filed it, an owner or admin of its project, or an organization admin
   can."
+- `403 session_project_required` (a call in a session that must name a project
+  named none; it used to answer `insufficient_scope`): the CLI says "Name one of
+  the session's projects with --project (`beakr session show` lists them)" (exit 3),
+  and `beakr mcp`'s tools say to pass `scope` with one of the session's projects
+  (`session_status` lists them), not that the key lacks a scope. It also stops an
+  `upload_files` batch, as the other session refusals do.
 - `beakr projects profile setup` no longer starts a session: it uses (and checks)
   one already open in the shell, terminal or agent conversation, and otherwise
   runs as before, so its one-turn runs leave no empty sessions behind. A bare

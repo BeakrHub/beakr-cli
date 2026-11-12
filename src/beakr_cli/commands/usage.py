@@ -85,7 +85,7 @@ def _trace_by_id(sdk: Any, item_id: str) -> dict[str, Any]:
         except (NotFoundError, ValidationError):
             continue
         except PermissionDeniedError as exc:
-            if exc.code != "insufficient_scope":
+            if exc.code not in {"insufficient_scope", "session_project_required"}:
                 raise
             refused = refused or exc
     if not found:

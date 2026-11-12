@@ -75,6 +75,9 @@ LOCKED_TO_PROJECT = "session_locked_to_project"
 READ_ONLY = "session_read_only"
 #: The organization requires an agent's writes to run in a session.
 SESSION_REQUIRED = "session_required"
+#: A call in a session that must name a project named none (engine #2651; it used
+#: to answer ``insufficient_scope``, whose fix pointed at a missing key scope).
+PROJECT_REQUIRED = "session_project_required"
 #: The project written does not take content from the other projects in play.
 GUARD_REFUSED = "cross_project_write_refused"
 GUARD_OWNER_REQUIRED = "cross_project_owner_required"
@@ -726,6 +729,15 @@ def explain_refusal(exc: BaseException) -> BaseException:
                 "Run the write in a session: from your agent conversation (it joins the "
                 "conversation's session), or in a shell put in one with `eval \"$(beakr session "
                 'start --env)"`, then run the command again.'
+            ),
+        )
+    if exc.code == PROJECT_REQUIRED and not isinstance(exc, SessionScopeError):
+        return SessionScopeError(
+            exc.message,
+            code=PROJECT_REQUIRED,
+            fix=(
+                "Name one of the session's projects with --project (`beakr session show` "
+                "lists them), and run the command once for each project you need."
             ),
         )
     return exc
