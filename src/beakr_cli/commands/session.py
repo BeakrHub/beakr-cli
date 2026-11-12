@@ -335,11 +335,33 @@ def show(
     json_out: bool = _json_opt,
 ) -> None:
     """The session's projects: what it may read and write, and where to change them."""
-    chosen = _session_id(session_id)
+    ended_here = None
+    if session_id is None and not _current_session_id():
+        # This terminal's session was ended (`beakr session end`): say so, not usage.
+        ended_here = scope_session.terminal_recorded_id()
+    chosen = ended_here or _session_id(session_id)
     with get_sdk(scoped=False) as sdk:
         session = sdk.request("GET", f"/v1/sessions/{chosen}")
+    if ended_here and session.get("status") == "ended":
+        at = str(session.get("ended_at") or "").replace("T", " ")[:16]
+        line = (
+            f"This terminal's session {chosen} ended" + (f" at {at} UTC" if at else "") + ". "
+            "Start a new one with `beakr session start`."
+        )
+        emit(
+            session,
+            json_out=json_out,
+            render=lambda _data: console.print(line, markup=False, highlight=False),
+            lines=lambda _data: [line],
+        )
+        return
     _maybe_remember(session)
     emit(session, json_out=json_out, render=_render, lines=_describe_lines)
+
+
+def _current_session_id() -> str | None:
+    """A session in use here without asking the API: this shell's, or this terminal's."""
+    return scope_session.shell_session_id() or scope_session.terminal_session_id()
 
 
 def _describe_lines(session: dict[str, Any]) -> list[str]:

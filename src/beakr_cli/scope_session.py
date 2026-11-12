@@ -873,6 +873,13 @@ def terminal_session_id(key: str | None = None) -> str | None:
     return session_id
 
 
+def terminal_recorded_id(key: str | None = None) -> str | None:
+    """The session this terminal kept last, even once ended (its token gone)."""
+    record = _terminal_record(key or terminal_key())
+    session_id = record.get("session_id") if record else None
+    return session_id if isinstance(session_id, str) and session_id else None
+
+
 def remember_terminal(
     session_id: str | None, key: str | None = None, *, mode: str | None = None
 ) -> Path:

@@ -218,6 +218,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   files. A held write names the sources it cited from each other project and,
   where the reader may accept it (`can_accept`), says so; a write reply that already
   says it was held is not said twice.
+- `beakr projects profile setup` no longer starts a session: it uses (and checks)
+  one already open in the shell, terminal or agent conversation, and otherwise
+  runs as before, so its one-turn runs leave no empty sessions behind. A bare
+  `beakr session show` after `beakr session end` in a terminal that kept the
+  session says "This terminal's session <id> ended at <time>. Start a new one
+  with `beakr session start`." and exits 0, instead of a usage error.
 - No agent hooks on self-hosted: a self-hosted build refuses `beakr hooks install`
   (Claude Code and Codex) and `beakr setup --hooks` with "Agent hooks are not
   available on this deployment." (exit 1), and `beakr setup` never offers them.
