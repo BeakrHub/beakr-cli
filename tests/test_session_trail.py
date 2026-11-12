@@ -232,7 +232,7 @@ def test_session_status_shows_the_trail_and_sends_a_writes_trail_to_a_person(mon
     assert not write.called
     assert "Pharma B (another project)" not in text
     assert f"beakr kb proposals show {PROPOSAL} --trail" in text
-    assert "read by a person" in text
+    assert "A write's read trail is shown to a person: open it in the web app" in text
 
 
 @respx.mock
@@ -281,7 +281,10 @@ def test_proposals_show_trail_in_a_session_says_a_person_reads_it(monkeypatch):
 
     result = runner.invoke(app, ["kb", "proposals", "show", PROPOSAL, "--trail"])
 
-    assert result.exit_code != 0
+    # The proposal is shown; the line stands where the trail would be; a clean exit.
+    assert result.exit_code == 0, result.output
     text = " ".join(result.output.split())
-    assert "read by a person, not by an agent's session" in text
+    assert PROPOSAL in text
+    assert "A write's read trail is shown to a person" in text
+    assert "(Knowledge → the proposal → What it read first)" in text
     assert "Traceback" not in result.output

@@ -536,9 +536,9 @@ Error: Session 7c1e2d3f-... reads and writes Pharma A, so it cannot write Pharma
 `beakr mcp`'s new `session_status` tool shows the same state to the agent
 (`trail=true` adds the session's own read trail). A write's trail is read by a
 person, never by the agent: it can list other projects' reads, so the API refuses
-it to a session token, and `session_status` with `proposal_id` says to run
-`beakr kb proposals show <id> --trail` in a terminal outside an agent
-conversation (or open the proposal in the web app). The read trail is kept where the organization turns it on
+it to a session token, and `session_status` with `proposal_id` says to open it
+in the web app (Knowledge → the proposal → What it read first) or run
+`beakr kb proposals show <id> --trail` from a terminal outside any session. The read trail is kept where the organization turns it on
 (`session_read_trail`); a write's trail groups the reads made before it by
 project, the write's own first, other projects marked, sources outside Beakr
 last. `session_scope` cannot narrow an auto_lock session, which has no project
