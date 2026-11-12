@@ -97,6 +97,22 @@ def conversations_need_no_session(request, monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def uploads_read_no_review_policy(request, monkeypatch):
+    """Uploads say what they said before, unless a test asks for the policy read.
+
+    An upload with Knowledge reads the project's agent review policy once
+    (beakr_cli/upload_review.py) to tell a file that waits for a person; tests
+    across the suite mock only the upload. Tests of it are marked
+    ``@pytest.mark.real_upload_review``.
+    """
+    from beakr_cli import upload_review
+
+    monkeypatch.setattr(
+        upload_review, "ENABLED", bool(request.node.get_closest_marker("real_upload_review"))
+    )
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "real_project_refs: resolve --project slugs and names through the API"
@@ -113,6 +129,9 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers",
         "real_conversation_sessions: join an agent conversation's session (auto_lock)",
+    )
+    config.addinivalue_line(
+        "markers", "real_upload_review: read the agent review policy after an upload"
     )
 
 

@@ -416,6 +416,8 @@ class _Upload:
     failed: list[dict[str, Any]] = field(default_factory=list)
     sent_bytes: int = 0
     stopped: dict[str, Any] | None = None
+    #: The project's policy holds agent uploads for a person (``upload_review``).
+    waits_for_person: bool = False
     started: float = field(default_factory=time.monotonic)
     finished: float | None = None
     task: asyncio.Task | None = None
@@ -527,6 +529,8 @@ async def _run_upload(upload: _Upload) -> None:
     except Exception as exc:  # noqa: BLE001 - kept for upload_status, never lost in a task
         upload.stopped = {"error_code": "upload_failed", "message": str(exc), "fix": None}
     finally:
+        if upload.sent and upload.ingest:
+            upload.waits_for_person = await _uploads_wait(upload.project_id)
         upload.finished = time.monotonic()
 
 
@@ -664,11 +668,30 @@ def _upload_text(upload: _Upload, *, skipped: list[dict[str, Any]] | None = None
     if upload.stopped is not None:
         lines.append(_stopped_line(upload))
     elif upload.finished is not None and upload.sent and upload.ingest:
-        lines.append(
-            "Knowledge compiles from them in the background, usually within a few minutes; "
-            "list_projects says while it is still building."
-        )
+        if upload.waits_for_person:
+            from beakr_cli.upload_review import waiting_line
+
+            lines.append(waiting_line([str(row["file_id"]) for row in upload.sent]))
+        else:
+            lines.append(
+                "Knowledge compiles from them in the background, usually within a few "
+                "minutes; list_projects says while it is still building."
+            )
     return "\n".join(lines)
+
+
+async def _uploads_wait(project_id: str) -> bool:
+    """Whether the project's agent review policy holds this server's uploads for a person."""
+    from beakr_cli import upload_review
+    from beakr_cli.upload_review import holds_uploads
+
+    if not upload_review.ENABLED:
+        return False
+    try:
+        settings = await call_api(lambda sdk: sdk.knowledge.agent_review.get(project_id=project_id))
+    except Exception:  # noqa: BLE001 - unknown policy: say what it said before
+        return False
+    return holds_uploads(settings)
 
 
 def _stopped_line(upload: _Upload) -> str:

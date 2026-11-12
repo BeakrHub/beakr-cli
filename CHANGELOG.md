@@ -236,6 +236,13 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   operation). These rely on the conversation id in the environment: an agent that
   clears those variables is not stopped by the CLI. The lock guards against
   mistakes, not a determined agent.
+- An upload into a project whose agent review policy holds agent uploads for a
+  person (`agent_uploads_need_a_person`) now says so: `beakr upload` and `beakr mcp`'s
+  `upload_files` answer "Stored. A person must approve it before it's added to
+  Knowledge (Files → the file → Approve, or `beakr files approve <id>`)." instead
+  of promising Knowledge "in the background, usually within a few minutes". The
+  policy is read once per upload (`GET /v1/knowledge/agent-review`); where it
+  cannot be read, the upload says what it said before.
 - `beakr mcp`'s `upload_files` no longer refuses the first write of an open
   auto-lock session ("It may write: none" with a picker link): an open session
   reports no write list, and its first write locks it to that project. A locked
