@@ -1487,7 +1487,7 @@ def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict | str:
         # Two refusals: the public gate's (insufficient_scope) for a session or a
         # project-restricted key, and the route's own (read_trail_forbidden), to a
         # session or to a person who may not see this write's trail.
-        if exc.code not in {"insufficient_scope", TRAIL_FORBIDDEN}:
+        if exc.code not in {"insufficient_scope", "session_project_required", TRAIL_FORBIDDEN}:
             raise
         if scope_session.sent_in_session(exc):
             return write_trail_as_person(proposal_id)

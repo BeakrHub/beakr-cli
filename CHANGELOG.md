@@ -267,6 +267,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   and outside any session as "You can't see the read trail of write <id>: only the
   person who filed it, an owner or admin of its project, or an organization admin
   can."
+- `403 session_project_required` (a call in a session that must name a project
+  named none; it used to answer `insufficient_scope`): the CLI says "Name one of
+  the session's projects with --project (`beakr session show` lists them)" (exit 3),
+  and `beakr mcp`'s tools say to pass `scope` with one of the session's projects
+  (`session_status` lists them), not that the key lacks a scope. It also stops an
+  `upload_files` batch, as the other session refusals do.
 - `beakr projects profile setup` no longer starts a session: it uses (and checks)
   one already open in the shell, terminal or agent conversation, and otherwise
   runs as before, so its one-turn runs leave no empty sessions behind. A bare

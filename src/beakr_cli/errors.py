@@ -91,6 +91,8 @@ _ISOLATION_REFUSALS = frozenset(
         "cross_project_owner_required",
         # `beakr session` naming another session from inside an agent conversation.
         "session_outside_conversation",
+        # A call in a session that must name a project named none.
+        "session_project_required",
     }
 )
 

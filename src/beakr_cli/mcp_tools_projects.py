@@ -91,6 +91,7 @@ _STOPPING_CODES = frozenset(
         "session_write_scope",
         "session_needs_selection",
         "insufficient_scope",
+        "session_project_required",
         "not_found",
     }
 )

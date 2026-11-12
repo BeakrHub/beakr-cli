@@ -162,7 +162,16 @@ async def call_api(request: Callable[[AsyncBeakr], Awaitable[T]]) -> T:
                 response = exc.response
                 if response is None:
                     raise
-                raise ApiCallError(
+                refused = ApiCallError(
                     describe_error(response), request=response.request, response=response
-                ) from exc
+                )
+                if refused.fields.get("error_code") == scope_session.PROJECT_REQUIRED:
+                    # The API's fix names its own parameter and route; say it as tools do.
+                    refused.fields = {
+                        **refused.fields,
+                        "fix": "Pass `scope` (the project's name or id) with one of this "
+                        "session's projects (session_status lists them), and call once for "
+                        "each project you need.",
+                    }
+                raise refused from exc
     raise AssertionError("unreachable")  # pragma: no cover
