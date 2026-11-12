@@ -257,7 +257,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   without an id. `beakr kb proposals show --trail` adds the write's trail: the
   reads its session made before filing it, grouped by project (the write's own
   first, other projects marked, sources outside Beakr last). `session_status`
-  takes `trail=true` and `proposal_id` for the same.
+  takes `trail=true` for the session's own trail. A write's trail is read by a
+  person only (it can list other projects' reads, and the API refuses it to a
+  session token): `session_status` with `proposal_id` says where to read it
+  instead of failing with `403 insufficient_scope`, and never reads it with the
+  person's own key on the agent's behalf; `beakr kb proposals show --trail` run
+  in a session says the same.
 - Project isolation settings from the CLI: `beakr org isolation show|set`
   (`--session-mode auto_lock|picker`, `--require-session/--no-require-session`,
   `--guard allow|hold|refuse`, `--count-search-results/--no-count-search-results`;

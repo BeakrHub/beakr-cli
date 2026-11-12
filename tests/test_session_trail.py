@@ -203,7 +203,13 @@ def test_a_write_without_a_recorded_trail_says_so():
 
 
 @respx.mock
-def test_session_status_shows_the_trail_and_a_writes_trail(monkeypatch):
+def test_session_status_shows_the_trail_and_sends_a_writes_trail_to_a_person(monkeypatch):
+    """rc.9 QA: the write's trail answered 403 insufficient_scope to the session token.
+
+    Refused on purpose (it can list other projects' reads), so the tool never asks
+    for it, with the session's token or the person's own key: it says where a person
+    reads it.
+    """
     _setup(monkeypatch)
     held = McpSession(folder=None)
     held.state = TokenState(
@@ -213,11 +219,69 @@ def test_session_status_shows_the_trail_and_a_writes_trail(monkeypatch):
     monkeypatch.setattr(scope_session, "ACTIVE", held)
     respx.get(f"{API}/v1/sessions/current").respond(json=held.session)
     page = respx.get(f"{API}/v1/sessions/{SID}/trail").respond(json=_PAGE)
-    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(json=_WRITE_TRAIL)
+    write = respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
+        json=_WRITE_TRAIL
+    )
 
     text = asyncio.run(mcp_session.session_status(trail=True, proposal_id=PROPOSAL))
 
+    assert isinstance(text, str), text
     assert page.calls.last.request.headers["authorization"] == "Bearer bk_st_first"
     assert "Read trail of session" not in text  # the tool's own session needs no id
     assert "Read trail (newest first):" in text
-    assert "Pharma B (another project):" in text
+    assert not write.called
+    assert "Pharma B (another project)" not in text
+    assert f"beakr kb proposals show {PROPOSAL} --trail" in text
+    assert "read by a person" in text
+
+
+@respx.mock
+def test_an_ended_sessions_status_never_reads_a_writes_trail_with_the_persons_key(monkeypatch):
+    _setup(monkeypatch)
+    held = McpSession(folder=None, agent="conv-1")
+    held.ended_conversation = "conv-1"
+    held.ended_session_id = SID
+    monkeypatch.setattr(scope_session, "ACTIVE", held)
+    respx.get(f"{API}/v1/sessions/{SID}").respond(
+        json={"id": SID, "status": "ended", "mode": "auto_lock", "agent_session": "conv-1"}
+    )
+    write = respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
+        json=_WRITE_TRAIL
+    )
+
+    text = asyncio.run(mcp_session.session_status(proposal_id=PROPOSAL))
+
+    assert isinstance(text, str) and "(ended)" in text
+    assert not write.called
+    assert f"beakr kb proposals show {PROPOSAL} --trail" in text
+
+
+@respx.mock
+def test_proposals_show_trail_in_a_session_says_a_person_reads_it(monkeypatch):
+    """In a shell or agent conversation the CLI sends a session token: refused, said so."""
+    _setup(monkeypatch)
+    scope_session.save_state(
+        TokenState(
+            SID, "bk_st_shell", (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        )
+    )
+    monkeypatch.setenv(scope_session.SESSION_ENV, SID)
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").respond(
+        json={"id": PROPOSAL, "proposal_type": "create", "status": "pending"}
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
+        403,
+        json={
+            "error": {
+                "code": "insufficient_scope",
+                "message": "This credential is not allowed to call this endpoint.",
+            }
+        },
+    )
+
+    result = runner.invoke(app, ["kb", "proposals", "show", PROPOSAL, "--trail"])
+
+    assert result.exit_code != 0
+    text = " ".join(result.output.split())
+    assert "read by a person, not by an agent's session" in text
+    assert "Traceback" not in result.output
