@@ -183,7 +183,7 @@ def _reader(chosen: str, conversation: _Conversation | None) -> Any:
 
 
 #: The refusal of another session from inside an agent conversation.
-OUTSIDE_CONVERSATION = "session_outside_conversation"
+OUTSIDE_CONVERSATION = scope_session.OUTSIDE_CONVERSATION
 
 
 def _lists(read: list[str], write: list[str]) -> tuple[list[str], list[str]]:
@@ -353,6 +353,7 @@ def start(
     (preselecting what you remembered for this folder); not at a terminal, the
     session starts pending and you choose at the link it prints.
     """
+    scope_session.refuse_inside_conversation("beakr session start", "Start a session")
     folder = os.getcwd()
     lists: tuple[list[str], list[str]] | None = None
     with get_sdk(scoped=False) as sdk:
@@ -563,6 +564,7 @@ def edit(
     --read/--write (or --read-all/--write-all) replace the lists; without them, at a
     terminal, the picker opens with the current choice.
     """
+    scope_session.refuse_inside_conversation("beakr session edit", "Change a session's projects")
     chosen = _session_id(session_id)
     with get_sdk(scoped=False) as sdk:
         current = sdk.request("GET", f"/v1/sessions/{chosen}")

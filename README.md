@@ -503,6 +503,17 @@ gives its MCP server none), so a Bash call or a subagent cannot step outside it.
 `beakr session show` and `beakr session trail` (no argument) find the
 conversation's session.
 
+Inside an agent conversation the `beakr session` commands read only that
+conversation's own session (through its token), and a person's own acts that
+could widen the agent's reach are refused: `beakr session start`, `beakr session
+edit`, `beakr session end` of another session, `beakr org isolation set`,
+`beakr org read-trail set`, `beakr projects guard set`, `beakr kb agent-review set`
+and `beakr files approve`. Do those in the web app or a terminal outside the
+conversation (`!` commands typed in Claude Code share the agent's environment, so
+they are refused too). This relies on the conversation id in the environment: an
+agent that clears those variables is not stopped by the CLI. The lock guards
+against mistakes, not a determined agent.
+
 An organization can lock each session to one project instead of asking
 (`session_mode: auto_lock`, set by an admin). Then nothing shows a picker: the
 session starts open, the first project it reads or writes becomes its project,

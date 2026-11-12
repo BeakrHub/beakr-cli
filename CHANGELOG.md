@@ -227,7 +227,15 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   reads every session of theirs unredacted, a read trail's other projects included.
   Commands typed with `!` in Claude Code share the agent's environment, so they are
   confined the same way. From a plain terminal the commands act as the person, as
-  before.
+  before. A person's own acts that could widen the agent's reach are refused there
+  too (exit 3, "... in the web app or a terminal outside the agent conversation"):
+  `beakr session start` (with or without `--env`), `beakr session edit` (any
+  session, its own included: an agent narrows only by ending it), `beakr org
+  isolation set`, `beakr org read-trail set`, `beakr projects guard set`,
+  `beakr kb agent-review set` and `beakr files approve` (and its `beakr api`
+  operation). These rely on the conversation id in the environment: an agent that
+  clears those variables is not stopped by the CLI. The lock guards against
+  mistakes, not a determined agent.
 - An upload into a project whose agent review policy holds agent uploads for a
   person (`agent_uploads_need_a_person`) now says so: `beakr upload` and `beakr mcp`'s
   `upload_files` answer "Stored. A person must approve it before it's added to
