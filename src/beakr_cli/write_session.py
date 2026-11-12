@@ -91,6 +91,13 @@ WRITE_COMMANDS: dict[str, str] = {
     "compound": CHECKED,
 }
 
+#: Writes that use a session already open here (named, or kept for this terminal or
+#: agent conversation) but never start one: the session would only serve the CLI's
+#: own check (they run ``checked``), and each run left an empty session behind
+#: (``projects profile setup`` is a conversation of separate one-turn runs when not
+#: at a terminal: rc.9 QA found two empty sessions after one setup).
+NO_NEW_SESSION: frozenset[str] = frozenset({"projects profile setup"})
+
 #: Published commands that run as before: they read, act on the organization or
 #: its administration, on the person's own account, library or machine, or on
 #: the session itself.
@@ -432,7 +439,7 @@ def _held(command: str, params: dict[str, Any], *, hook: bool) -> Held | None:
             kept = _kept(person)
             if kept is not None:
                 held = kept
-            elif hook:
+            elif hook or command in NO_NEW_SESSION:
                 return None
             else:
                 started = _start(person, command)
