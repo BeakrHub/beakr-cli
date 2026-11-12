@@ -251,6 +251,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   `session_read_only`), without a picker link. `create_project` says what an
   auto-lock session may do with the new project. The CLI's write gate and
   `upload_files` share one rule (`scope_session.may_write`).
+- `beakr kb proposals accept` (and `kb propose ... --accept`) from a plain
+  terminal is the person's own review: it is sent with their key and no session,
+  even in a shell session or a terminal that kept one, and starts no session. The
+  API treats any request inside a session as an agent's, which may not accept where
+  a person must, nor accept a held proposal. Inside an agent conversation it stays
+  the agent's, in the conversation's session, for the API to decide.
 - `beakr projects profile setup` no longer starts a session: it uses (and checks)
   one already open in the shell, terminal or agent conversation, and otherwise
   runs as before, so its one-turn runs leave no empty sessions behind. A bare

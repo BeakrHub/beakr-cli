@@ -96,7 +96,14 @@ WRITE_COMMANDS: dict[str, str] = {
 #: own check (they run ``checked``), and each run left an empty session behind
 #: (``projects profile setup`` is a conversation of separate one-turn runs when not
 #: at a terminal: rc.9 QA found two empty sessions after one setup).
-NO_NEW_SESSION: frozenset[str] = frozenset({"projects profile setup"})
+NO_NEW_SESSION: frozenset[str] = frozenset(
+    {
+        "projects profile setup",
+        # A person's review from a plain terminal is sent with their own key and no
+        # session (commands/kb.py ``_accept_bound``): a new session would serve nothing.
+        "kb proposals accept",
+    }
+)
 
 #: Published commands that run as before: they read, act on the organization or
 #: its administration, on the person's own account, library or machine, or on
