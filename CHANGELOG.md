@@ -240,9 +240,12 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   person (`agent_uploads_need_a_person`) now says so: `beakr upload` and `beakr mcp`'s
   `upload_files` answer "Stored. A person must approve it before it's added to
   Knowledge (Files → the file → Approve, or `beakr files approve <id>`)." instead
-  of promising Knowledge "in the background, usually within a few minutes". The
-  policy is read once per upload (`GET /v1/knowledge/agent-review`); where it
-  cannot be read, the upload says what it said before.
+  of promising Knowledge "in the background, usually within a few minutes". Each
+  uploaded file's own `knowledge_status` says so (`waiting_for_person`, up to 20
+  files read), which also works inside an agent session, where the policy read
+  (`GET /v1/knowledge/agent-review`) is refused to the session's token; the policy
+  is the fallback when no file says so yet. Where neither can be read, the upload
+  says what it said before.
 - `beakr mcp`'s `upload_files` no longer refuses the first write of an open
   auto-lock session ("It may write: none" with a picker link): an open session
   reports no write list, and its first write locks it to that project. A locked

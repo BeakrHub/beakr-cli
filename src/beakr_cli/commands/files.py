@@ -163,12 +163,16 @@ def upload_command(
                         markup=False,
                     )
     waited = wait and bool(job_ids)
-    waits_for_person = False
+    waiting: list[str] = []
     if ingest and project_id and results:
-        from beakr_cli.upload_review import uploads_wait
+        from beakr_cli.upload_review import waiting_ids
 
         with get_sdk() as sdk:
-            waits_for_person = uploads_wait(sdk, str(project_id))
+            waiting = waiting_ids(
+                sdk,
+                str(project_id),
+                [str((row.get("artifact") or {}).get("id")) for row in results],
+            )
     knowledge_failed: list[dict[str, Any]] = []
     knowledge_settled = False
     knowledge_statuses: dict[str, str | None] = {}
@@ -197,10 +201,10 @@ def upload_command(
                 + (f" ({status})" if status else ""),
                 markup=False,
             )
-        if waits_for_person and not knowledge_settled:
+        if waiting and not knowledge_settled:
             from beakr_cli.upload_review import waiting_line
 
-            note = waiting_line([str((row.get("artifact") or {}).get("id")) for row in rows])
+            note = waiting_line(waiting)
         elif knowledge_settled:
             note = (
                 f"{len(knowledge_failed)} failed to reach Knowledge."
@@ -249,9 +253,7 @@ def upload_command(
             project_id=project_id,
             knowledge_failed=bool(knowledge_failed or knowledge_incomplete),
             knowledge_settled=knowledge_settled,
-            waiting_for_person=[str((row.get("artifact") or {}).get("id")) for row in results]
-            if waits_for_person
-            else None,
+            waiting_for_person=waiting or None,
         ),
     )
     if waited and not all_uploaded(list(states.values())):
