@@ -462,3 +462,43 @@ async def test_a_name_two_members_share_is_refused() -> None:
 
     assert result["error_code"] == "person_ambiguous"
     assert not added.called
+
+
+def _review(holds: bool) -> dict:
+    policy = {
+        "agent_proposals_need_a_person": False,
+        "agent_uploads_need_a_person": holds,
+        "capture_auto_approve_allowed": False,
+    }
+    return {
+        "available": True,
+        "project_id": A,
+        "effective": policy,
+        "org": policy,
+        "project_override": None,
+    }
+
+
+@pytest.mark.real_upload_review
+@pytest.mark.parametrize("holds", [True, False])
+@respx.mock
+async def test_an_upload_held_for_a_person_says_so(tmp_path: Path, monkeypatch, holds) -> None:
+    """rc.9 QA: the reply promised Knowledge "within a few minutes" for a held file."""
+    monkeypatch.chdir(tmp_path)
+    _file(tmp_path, "memo.pdf")
+    respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    policy = respx.get(f"{API}/v1/knowledge/agent-review").respond(json=_review(holds))
+    mock_resumable_uploads(API)
+
+    text = await mcp_tools_projects.upload_files(A, paths=["memo.pdf"])
+
+    assert policy.calls.last.request.url.params["project_id"] == A
+    if holds:
+        assert (
+            "Stored. A person must approve it before it's added to Knowledge (Files → the "
+            "file → Approve, or `beakr files approve art-memo.pdf`)." in text
+        )
+        assert "Knowledge compiles from them" not in text
+    else:
+        assert "Knowledge compiles from them" in text and "must approve" not in text
