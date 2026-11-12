@@ -197,9 +197,7 @@ def _format_proposal(data: dict) -> str:
 
     # Printed plainly: accept_proposal takes content_hash back as reviewed_hash.
     lines.extend(review_lines(data))
-    # A held proposal says who must accept it (its held line): not the project-policy
-    # line, which read "this project requires a person to accept" for a hold.
-    if data.get("needs_person_to_accept") and data.get("status") == "pending" and not held:
+    if data.get("needs_person_to_accept") and data.get("status") == "pending":
         lines.append(NEEDS_A_PERSON_LINE)
     if data.get("proposal_type") == "find_replace":
         lines.append(

@@ -964,14 +964,13 @@ def test_the_apis_locked_refusal_has_one_lead_in(conversation, monkeypatch):
     assert "To write" not in text
 
 
-def test_a_held_proposal_does_not_say_the_project_requires_a_person():
-    """rc.9 QA: show_proposal said "this project requires a person to accept" for a hold."""
+def test_a_held_proposal_in_a_person_review_project_says_both():
+    """needs_person_to_accept is the project's policy alone, so both lines are true."""
     from beakr_cli.mcp_server import _format_proposal
 
-    held = {**_held_proposal(), "needs_person_to_accept": True}
-    text = _format_proposal(held)
+    text = _format_proposal({**_held_proposal(), "needs_person_to_accept": True})
     assert "Held for approval by an owner or admin of Pharma B." in text
-    assert "this project requires a person to accept" not in text
-    # Without a hold, the project-policy line is unchanged.
-    plain = {**_held_proposal(), "cross_project_hold": None, "needs_person_to_accept": True}
-    assert "this project requires a person to accept" in _format_proposal(plain)
+    assert "this project requires a person to accept" in text
+    # Held in a project without that policy: the held line alone.
+    alone = _format_proposal({**_held_proposal(), "needs_person_to_accept": False})
+    assert "this project requires a person to accept" not in alone
