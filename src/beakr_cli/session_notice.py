@@ -68,11 +68,12 @@ def collecting() -> Iterator[list[str]]:
 
 
 def prefixed(text: str, notices: list[str]) -> str:
-    """``text`` under one ``Session: <message>`` line per notice."""
+    """``text`` under one ``Session: <message>`` line per notice, and a blank line, as the
+    engine's remote server sets them."""
     if not notices:
         return text
     head = "\n".join(f"Session: {notice}" for notice in notices)
-    return f"{head}\n{text}" if text else head
+    return f"{head}\n\n{text}" if text else head
 
 
 def attach(client: Any, *, is_async: bool) -> None:
