@@ -66,13 +66,29 @@ REPLACED_MESSAGE = "The previous Beakr session was ended; choose projects for a 
 #: What every session token starts with.
 SESSION_TOKEN_PREFIX = "bk_st_"
 
-# Project isolation (an organization's settings,
+# Project boundaries (each project's ``boundary``, and the organization's settings,
 # ``GET /v1/organizations/{org_id}/project-isolation``).
-#: The session mode where the server locks a session to the first project it touches.
+#: Session modes (``mode`` on every session). automatic: it starts open and the
+#: server tracks what it touches; picked: its read and write lists were chosen at
+#: the start; read_everything: it reads every project the person can, writes none.
+AUTOMATIC = "automatic"
+PICKED = "picked"
+READ_EVERYTHING = "read_everything"
+#: What an engine before project boundaries called automatic and picked.
 AUTO_LOCK = "auto_lock"
-#: A locked session wrote (or a read-only one wrote anything) outside its project.
+PICKER = "picker"
+#: The organization's ``session_mode``: automatic, or every session must pick.
+MUST_PICK = "must_pick"
+#: Rule A: a session that touched one locked project writes only it, two make it
+#: read-only (and a read_everything session never writes).
 LOCKED_TO_PROJECT = "session_locked_to_project"
 READ_ONLY = "session_read_only"
+#: Picked lists that break a boundary, refused at the start (``reasons[]`` says why).
+SELECTION_INVALID = "session_selection_invalid"
+#: Declaring (or changing the mode of) a session that has already touched a project.
+ALREADY_STARTED = "session_already_started"
+#: A write that brings a locked project's content into another project.
+CONTENT_LOCKED = "project_content_locked"
 #: The organization requires an agent's writes to run in a session.
 SESSION_REQUIRED = "session_required"
 #: A call in a session that must name a project named none (engine #2651; it used
@@ -81,8 +97,9 @@ PROJECT_REQUIRED = "session_project_required"
 #: The project written does not take content from the other projects in play.
 GUARD_REFUSED = "cross_project_write_refused"
 GUARD_OWNER_REQUIRED = "cross_project_owner_required"
-#: Refusals of what an auto_lock session does not take (project lists) or an
-#: installation without agent sessions (``agent_session``).
+#: Refusals of what an engine before project boundaries' auto_lock session did not
+#: take (project lists; never answered now) or an installation without agent
+#: sessions (``agent_session``).
 MODE_AUTO_LOCK = "session_mode_auto_lock"
 FEATURE_NOT_ENABLED = "feature_not_enabled"
 #: The fix when an agent conversation's session can no longer be used: its id
@@ -123,9 +140,30 @@ def project_ids(projects: list[dict[str, Any]] | None) -> list[str]:
     return [str(p.get("id")) for p in projects or [] if p.get("id")]
 
 
-def auto_locked(session: dict[str, Any]) -> bool:
-    """Whether the server locks this session to the first project it touches."""
-    return session.get("mode") == AUTO_LOCK
+def mode_of(session: dict[str, Any]) -> str | None:
+    """The session's mode, an older engine's ``auto_lock``/``picker`` read as today's."""
+    mode = session.get("mode")
+    return {AUTO_LOCK: AUTOMATIC, PICKER: PICKED}.get(str(mode), mode) if mode else None
+
+
+def automatic(session: dict[str, Any]) -> bool:
+    """Whether the session starts open and the server tracks what it touches."""
+    return mode_of(session) == AUTOMATIC
+
+
+def reads_everything(session: dict[str, Any]) -> bool:
+    """Whether the session reads every project the person can, and writes none."""
+    return mode_of(session) == READ_EVERYTHING
+
+
+def lock_bound(session: dict[str, Any]) -> bool:
+    """Whether a refused write is the lock's doing (or read everything's), not the lists'
+    a person can widen at the picker."""
+    return (
+        automatic(session)
+        or reads_everything(session)
+        or session.get("lock_state") in {"locked", "read_only"}
+    )
 
 
 def _project_name(project: Any) -> str:
@@ -135,32 +173,43 @@ def _project_name(project: Any) -> str:
 def may_write(session: dict[str, Any], project_id: str) -> bool:
     """Whether the session may write ``project_id`` now, as the API will decide it.
 
-    Picker mode: its write list. An auto_lock session may write any project while
-    open (it reports ``write_projects: []`` then, and its first write locks it to that
-    project), only its ``write_project`` once locked, and none once read-only.
+    Picked: its write list. Automatic: any project while open (it reports
+    ``write_projects: []`` then). In either, once it touched a locked project
+    (``lock_state: locked``) only that project, and once read-only none; a
+    read_everything session writes none. Content in (a project that takes no
+    content from others) is the API's to decide.
     """
-    if not auto_locked(session):
-        return project_id in project_ids(session.get("write_projects"))
     state = session.get("lock_state")
-    if state == "read_only":
+    if reads_everything(session) or state == "read_only":
         return False
     if state == "locked":
         locked = session.get("write_project")
-        ids = {str(locked.get("id"))} if isinstance(locked, dict) else set()
-        return project_id in ids | set(project_ids(session.get("write_projects")))
-    return True
+        if isinstance(locked, dict) and locked.get("id"):
+            return project_id == str(locked["id"])
+        return project_id in project_ids(session.get("write_projects"))
+    if automatic(session):
+        return True
+    return project_id in project_ids(session.get("write_projects"))
 
 
 def lock_refusal(session: dict[str, Any], what: str) -> SessionScopeError:
-    """An auto_lock session's refusal of a write to ``what`` (project names), said before
-    anything is sent, as the API words it, with the fix that works here."""
+    """A locked, read-only or read_everything session's refusal of a write to ``what``
+    (project names), said before anything is sent, with the fix that works here."""
     session_id = session.get("id")
     fix = restart_fix(session)
+    if reads_everything(session):
+        return SessionScopeError(
+            f"Session {session_id} reads everything, so it cannot write {what}; nothing was "
+            "written.",
+            code=READ_ONLY,
+            fix=fix,
+        )
     if session.get("lock_state") == "read_only":
         touched = ", ".join(_project_name(p) for p in session.get("touched_projects") or [])
+        reason = session.get("read_only_reason") or f"It read {touched or 'two locked projects'}."
         return SessionScopeError(
-            f"Session {session_id} read {touched or 'two projects'}, so it is read-only: it "
-            f"cannot write {what}; nothing was written.",
+            f"Session {session_id} is read-only: {reason} It cannot write {what}; nothing was "
+            "written.",
             code=READ_ONLY,
             fix=fix,
         )
@@ -168,8 +217,8 @@ def lock_refusal(session: dict[str, Any], what: str) -> SessionScopeError:
         _project_name(p) for p in session.get("write_projects") or []
     )
     return SessionScopeError(
-        f"Session {session_id} reads and writes {locked}, so it cannot write {what}; "
-        "nothing was written.",
+        f"Session {session_id} is locked to {locked}: it can write only to {locked}, so it "
+        f"cannot write {what}; nothing was written.",
         code=LOCKED_TO_PROJECT,
         # The project is named in the message: the fix is only what to do (a "To write
         # B:" lead-in read "To fix: To write B: ..." on one line, rc.9 QA).
@@ -201,11 +250,17 @@ def restart_fix(session: dict[str, Any], *, shell: bool | None = None) -> str:
 
 
 def lock_lines(session: dict[str, Any]) -> list[str]:
-    """An auto_lock session's state: open, locked to one project, or read-only."""
+    """Where the session can write now: open, locked to one project, read-only, or (read
+    everything) nowhere; then what it has touched."""
     touched = ", ".join(_project_name(p) for p in session.get("touched_projects") or [])
     state = session.get("lock_state")
     locked = _project_name(session.get("write_project"))
-    if state == "read_only":
+    if reads_everything(session):
+        lines = [
+            "Reads every project you can read, locked ones included, and writes nothing.",
+            f"To write: {restart_fix(session)}",
+        ]
+    elif state == "read_only":
         reason = session.get("read_only_reason") or f"Read {touched}."
         lines = [
             f"Read-only: {reason} Writes are refused; reads keep working.",
@@ -213,11 +268,16 @@ def lock_lines(session: dict[str, Any]) -> list[str]:
         ]
     elif state == "locked":
         lines = [
-            f"Locked to {locked}: it reads and writes {locked}. Reading another project makes "
-            "it read-only."
+            f"Locked to {locked}: it can write only to {locked}. Touching another locked "
+            "project makes it read-only."
+        ]
+    elif automatic(session):
+        lines = [
+            "Open: it writes where project boundaries allow. Touching a locked project "
+            "locks its writes to that project."
         ]
     else:
-        lines = ["Open: the first project it reads or writes becomes its project."]
+        lines = []
     if touched:
         lines.append(f"Touched: {touched}")
     return lines
@@ -239,19 +299,44 @@ def ended_lines(session: dict[str, Any]) -> list[str]:
     return [line + " Reads and writes in it are refused."]
 
 
+#: Each mode in plain words, for ``Mode:`` lines.
+MODE_WORDS = {
+    AUTOMATIC: "automatic (the server tracks what it touches)",
+    PICKED: "picked (its projects were chosen at the start)",
+    READ_EVERYTHING: "read everything (every project you can read; writes nothing)",
+}
+
+
+def note_lines(session: dict[str, Any]) -> list[str]:
+    """The API's notes on the session's lists (writes held for a project's owners)."""
+    return [
+        f"Note: {note['message']}"
+        for note in session.get("notes") or []
+        if isinstance(note, dict) and note.get("message")
+    ]
+
+
 def describe(session: dict[str, Any]) -> str:
-    """A short human summary of a session's scope."""
+    """A short human summary of a session: the API's one line, its mode, where it reads
+    and writes."""
 
     def names(key: str) -> str:
         projects = session.get(key) or []
         return ", ".join(f"{p.get('name') or p.get('id')}" for p in projects) or "none"
 
     status = session.get("status", "?")
+    mode = mode_of(session)
     lines = [f"Session {session.get('id')} ({status})"]
     if status == "ended":
         lines.extend(ended_lines(session))
-    if auto_locked(session):
-        lines.append("Mode: auto_lock (Beakr locks the session to the first project it touches)")
+    elif session.get("summary"):
+        lines.append(str(session["summary"]))
+    if mode:
+        lines.append(f"Mode: {MODE_WORDS.get(mode, mode)}")
+    if status == "pending":
+        lines.append(f"No projects chosen yet. Choose them at {session.get('picker_url')}")
+        return "\n".join(lines)
+    if automatic(session) or reads_everything(session):
         if status != "ended":
             lines.extend(lock_lines(session))
         elif session.get("touched_projects"):
@@ -259,20 +344,95 @@ def describe(session: dict[str, Any]) -> str:
         if session.get("agent_session"):
             lines.append(f"Agent conversation: {session['agent_session']}")
         return "\n".join(lines)
-    if session.get("mode"):
-        lines.append(f"Mode: {session['mode']}")
-    if session.get("touched_projects"):
+    if status != "ended" and session.get("lock_state") in {"locked", "read_only"}:
+        lines.extend(lock_lines(session))
+    elif session.get("touched_projects"):
         lines.append(f"Touched: {names('touched_projects')}")
     if status == "ended":
         lines.append(f"Read: {names('read_projects')}")
         lines.append(f"Wrote: {names('write_projects')}")
-    elif status == "pending":
-        lines.append(f"No projects chosen yet. Choose them at {session.get('picker_url')}")
     else:
         lines.append(f"Reads: {names('read_projects')}")
         lines.append(f"Writes: {names('write_projects')}")
+        lines.extend(note_lines(session))
         lines.append(f"Change at {session.get('picker_url')}")
     return "\n".join(lines)
+
+
+def _names_of(projects: Any) -> str:
+    return ", ".join(_project_name(p) for p in projects or [] if isinstance(p, dict))
+
+
+def status_lines(status: dict[str, Any], *, events: int = 5) -> list[str]:
+    """Session status (``GET /v1/sessions/.../status``) in plain words: the API's summary,
+    what it read, where it can still write and why not elsewhere, then its last events.
+
+    The same lines for ``beakr session status`` and the ``session_status`` tool.
+    """
+    lines = [str(status.get("summary") or f"Session {status.get('session_id')}.")]
+    read = _names_of(status.get("read_projects"))
+    lines.append(f"Read: {read or 'nothing yet'}")
+    if status.get("reads_everything"):
+        mode = mode_of(status)
+        lines.append(
+            "Can read: every project you can read"
+            + (", locked ones included" if mode == READ_EVERYTHING else "")
+        )
+    elif status.get("readable_projects"):
+        lines.append(f"Can read: {_names_of(status.get('readable_projects'))}")
+    write = status.get("write") if isinstance(status.get("write"), dict) else {}
+    refused = [r for r in write.get("refused") or [] if isinstance(r, dict)]
+    if write.get("anywhere"):
+        except_ = _names_of(refused)
+        lines.append("Can write: any project" + (f", except {except_}" if except_ else ""))
+    else:
+        writable = []
+        for project in write.get("projects") or []:
+            if not isinstance(project, dict):
+                continue
+            name = _project_name(project)
+            if project.get("outcome") == "held":
+                name += " (writes wait for its owners to approve)"
+            writable.append(name)
+        lines.append(f"Can write: {', '.join(writable) or 'nothing'}")
+    for project in refused:
+        reason = project.get("reason") or project.get("code") or "refused"
+        lines.append(f"Can't write: {_project_name(project)} ({reason})")
+    rows = [e for e in status.get("events") or [] if isinstance(e, dict)][:events]
+    if rows:
+        lines.append("Recent session events (newest first):")
+        for event in rows:
+            at = str(event.get("at") or "").replace("T", " ")[:19]
+            lines.append(f"  {at}  {event.get('summary') or event.get('op') or ''}".rstrip())
+    return lines
+
+
+#: ``beakr session status`` where no session is in use.
+NOT_IN_SESSION = "This shell is not in a session: commands run as you, and no session rules apply."
+
+
+def selection_reasons(source: Any) -> list[dict[str, Any]]:
+    """The reasons a picked selection breaks a boundary: from ``POST /v1/sessions/options``
+    or a ``422 session_selection_invalid`` refusal."""
+    if isinstance(source, BeakrError):
+        value = refusal_field(source, "reasons")
+    else:
+        value = source.get("reasons") if isinstance(source, dict) else None
+    return [r for r in value or [] if isinstance(r, dict)]
+
+
+def selection_invalid(source: Any, *, fix: str | None = None) -> SessionScopeError:
+    """Picked lists that break a boundary: every reason, one per line, in the API's words."""
+    reasons = [str(r.get("message")) for r in selection_reasons(source) if r.get("message")]
+    refused = source if isinstance(source, BeakrError) else None
+    message = "\n".join(reasons) or (
+        refused.message if refused else "These projects can't be picked together."
+    )
+    return SessionScopeError(
+        message,
+        code=SELECTION_INVALID,
+        fix=fix or (refused.fix if refused else None) or "Change the read or write list.",
+    )
 
 
 def narrowed(
@@ -510,6 +670,7 @@ def session_body(
     write: list[str] | None = None,
     ttl_seconds: int = TOKEN_TTL_SECONDS,
     agent: str | None = None,
+    read_everything: bool = False,
 ) -> dict[str, Any]:
     body: dict[str, Any] = {
         "client_name": client_name,
@@ -520,7 +681,10 @@ def session_body(
         body["label"] = label[:200]
     if folder:
         body["folder"] = str(folder)[:1024]
-    if read is not None or write is not None:
+    if read_everything:
+        # Every project the person can read, locked ones included, and no writes.
+        body["read_everything"] = True
+    elif read is not None or write is not None:
         body["read_project_ids"] = list(read or [])
         body["write_project_ids"] = list(write or [])
     if agent:
@@ -540,12 +704,15 @@ def create_session(
     write: list[str] | None = None,
     ttl_seconds: int = TOKEN_TTL_SECONDS,
     agent: str | None = None,
+    read_everything: bool = False,
 ) -> tuple[dict[str, Any], TokenState]:
     """Start a session with the person's credential; returns it and its first token.
 
     With ``agent`` (an agent conversation's id) the session is that conversation's:
     joined when it exists, so ``beakr mcp`` and the commands run in the same
-    conversation share it.
+    conversation share it. Lists (or ``read_everything``) declare it: the API applies
+    a declaration to a joined session only while it has touched nothing
+    (``409 session_already_started`` otherwise).
     """
     body = session_body(
         client_name=client_name,
@@ -555,6 +722,7 @@ def create_session(
         write=write,
         ttl_seconds=ttl_seconds,
         agent=agent,
+        read_everything=read_everything,
     )
     while True:
         try:
@@ -637,7 +805,7 @@ def shell_token() -> str | None:
     """
     session_id = token_session_id()
     if session_id is None:
-        # In an agent conversation of an auto_lock organization: its session.
+        # In an agent conversation whose session it runs in: its session.
         return None if _PERSON_CREDENTIAL else conversation_token()
     state = load_state(session_id)
     if state is None:
@@ -699,7 +867,7 @@ def explain_refusal(exc: BaseException) -> BaseException:
       credential. When the session is still open the token is renewed for the next
       command.
     - ``403 session_write_scope``: the projects by name, not id, and how to add them.
-    - ``403 session_read_only`` / ``session_locked_to_project`` (auto_lock): the API's
+    - ``403 session_read_only`` / ``session_locked_to_project`` (rule A): the API's
       words, with how to get a fresh session from here (:func:`restart_fix`).
     - ``403 session_required``: how to run the write in a session.
 
@@ -719,6 +887,9 @@ def explain_refusal(exc: BaseException) -> BaseException:
         return explain_write_refusal(exc, shell_session_id())
     if exc.code in {READ_ONLY, LOCKED_TO_PROJECT}:
         return explain_lock_refusal(exc)
+    if exc.code == SELECTION_INVALID:
+        # Each reason on its own line, in the API's words.
+        return selection_invalid(exc)
     if exc.code == SESSION_REQUIRED and "inside a session" in (exc.message or ""):
         # Project isolation's refusal. The same code also means "do it in the web app"
         # (a browser session), which errors.py says as it is.
@@ -754,7 +925,7 @@ def refusal_field(exc: BeakrError, name: str) -> Any:
 def explain_lock_refusal(
     exc: BeakrError, session: dict[str, Any] | None = None, *, shell: bool | None = None
 ) -> SessionScopeError:
-    """An auto_lock session refused a write: the API's words, and the fix that works here.
+    """A locked or read-only session refused a write: the API's words, and the fix that works here.
 
     ``session`` is the refused session when the caller holds it (the write gate);
     else it is this shell's, this agent conversation's (the command runs in one),
@@ -947,9 +1118,17 @@ def terminal_recorded_id(key: str | None = None) -> str | None:
 
 
 def remember_terminal(
-    session_id: str | None, key: str | None = None, *, mode: str | None = None
+    session_id: str | None,
+    key: str | None = None,
+    *,
+    mode: str | None = None,
+    declared: bool = False,
 ) -> Path:
-    """Keep the terminal's session (``None``: none, with the organization's ``mode`` known)."""
+    """Keep the terminal's session (``None``: none, with the organization's ``mode`` known).
+
+    ``declared``: an agent conversation chose this session's projects itself
+    (``beakr session start`` inside it), so its commands run in it.
+    """
     from beakr_sdk.credentials import write_private_file
 
     key = key or terminal_key()
@@ -960,6 +1139,8 @@ def remember_terminal(
     record: dict[str, Any] = {"session_id": session_id, "terminal": key}
     if mode:
         record["mode"] = mode
+    if declared:
+        record["declared"] = True
     write_private_file(path, json.dumps(record))
     return path
 
@@ -972,16 +1153,21 @@ def _terminal_record(key: str) -> dict[str, Any] | None:
     return data if isinstance(data, dict) else None
 
 
-# --- An agent conversation's session (auto_lock) ------------------------------------------
+# --- An agent conversation's session (project boundaries) ---------------------------------
 #
-# Where the organization locks each session to the first project it touches
-# (``session_mode: auto_lock``), every command an agent runs in a conversation runs
+# Where the organization has project boundaries on and sessions start automatic
+# (``session_mode: automatic``), every command an agent runs in a conversation runs
 # in that conversation's session, reads included: ``beakr mcp``, its subagents and
-# the CLI calls in the same conversation share it (``agent_session``), so none
-# can read a second project, or write the first after reading it, outside the lock.
-# A person's API key sending ``X-Beakr-Session`` joins it on the server anyway;
-# this covers every credential, and is checked once per conversation (the answer
-# is kept with the terminal's session).
+# the CLI calls in the same conversation share it (``agent_session``), so none can
+# touch a locked project, or write elsewhere after touching it, outside the lock.
+# The same holds once the conversation declared its session (``beakr session start``
+# or ``start_session`` in it), in any organization. A person's API key sending
+# ``X-Beakr-Session`` joins it on the server anyway; this covers every credential,
+# and is checked once per conversation (the answer is kept with the terminal's
+# session).
+
+#: Session modes an agent conversation's commands run in without declaring them.
+JOINED_MODES = frozenset({AUTOMATIC, AUTO_LOCK, READ_EVERYTHING})
 
 #: Off only in the test suite (tests/conftest.py), like ``write_session.ENABLED``.
 CONVERSATION_SESSIONS = True
@@ -992,19 +1178,26 @@ def isolation_path(org_id: str) -> str:
     return f"/v1/organizations/{org_id}/project-isolation"
 
 
+def _joined(record: dict[str, Any]) -> bool:
+    """Whether a conversation's kept record says its commands run in its session."""
+    return bool(record.get("declared")) or record.get("mode") in JOINED_MODES
+
+
 def conversation_token() -> str | None:
-    """The token of this agent conversation's auto_lock session; None outside one.
+    """The token of this agent conversation's session; None outside one.
 
     None when the command does not run in an agent conversation, when the
     credential holds no session (a service account, a session token), or when the
-    organization's sessions are not auto_lock (picker mode: reads stay as before).
+    conversation neither declared a session nor runs where sessions start automatic
+    (an organization that makes each session pick, or without project boundaries:
+    reads stay as before).
     """
     agent = agent_session_id()
     if not agent or not CONVERSATION_SESSIONS:
         return None
     key = f"agent:{agent}"
     record = _terminal_record(key)
-    if record is not None and record.get("mode") != AUTO_LOCK:
+    if record is not None and not _joined(record):
         return None
     kept = (record or {}).get("session_id")
     state = load_state(str(kept)) if kept else None
@@ -1063,7 +1256,7 @@ def conversation_state(agent: str) -> TokenState:
     token, expires_at = _token_of(session)
     state = TokenState(str(session["id"]), token, expires_at)
     save_state(state)
-    remember_terminal(state.session_id, key, mode=str(session.get("mode") or "picker"))
+    remember_terminal(state.session_id, key, mode=str(session.get("mode") or PICKED))
     return state
 
 
@@ -1104,7 +1297,7 @@ def refuse_inside_conversation(what: str, where: str) -> None:
 
 
 def _join_conversation(agent: str, key: str) -> TokenState | None:
-    """Join (or start) the conversation's session where the organization is auto_lock."""
+    """Join (or start) the conversation's session where sessions start automatic."""
     from beakr_cli.sdk import get_sdk
     from beakr_cli.write_session import _exempt_credential
 
@@ -1118,14 +1311,8 @@ def _join_conversation(agent: str, key: str) -> TokenState | None:
             settings = person.request("GET", isolation_path(org_id)) if org_id else {}
         except BeakrError:
             settings = {}  # an installation without project isolation: as before
-        available = settings.get("available") if isinstance(settings, dict) else None
-        if not (
-            isinstance(available, dict)
-            and available.get("server_agent_sessions")
-            and available.get("session_auto_lock")
-            and settings.get("session_mode") == AUTO_LOCK
-        ):
-            remember_terminal(None, key, mode=str(settings.get("session_mode") or "picker"))
+        if not sessions_start_automatic(settings):
+            remember_terminal(None, key, mode=str(settings.get("session_mode") or PICKED))
             return None
         folder = os.getcwd()
         session, state = create_session(
@@ -1135,11 +1322,69 @@ def _join_conversation(agent: str, key: str) -> TokenState | None:
             folder=folder,
             agent=agent,
         )
-    mode = str(session.get("mode") or "picker")
+    mode = str(session.get("mode") or PICKED)
     save_state(state)
     remember_terminal(state.session_id, key, mode=mode)
     # A session started before the organization switched keeps the mode it began with.
-    return state if mode == AUTO_LOCK else None
+    return state if mode in JOINED_MODES else None
+
+
+def sessions_start_automatic(settings: Any) -> bool:
+    """Whether the organization's settings start every agent session automatic, tracked
+    by the server: agent sessions and project boundaries on, ``session_mode: automatic``.
+
+    An engine before project boundaries said so with ``session_auto_lock`` and
+    ``session_mode: auto_lock``.
+    """
+    if not isinstance(settings, dict):
+        return False
+    available = settings.get("available")
+    if not (isinstance(available, dict) and available.get("server_agent_sessions")):
+        return False
+    if available.get("project_boundaries") and settings.get("session_mode") == AUTOMATIC:
+        return True
+    return bool(available.get("session_auto_lock")) and settings.get("session_mode") == AUTO_LOCK
+
+
+def declare_conversation(
+    agent: str,
+    *,
+    read: list[str] | None = None,
+    write: list[str] | None = None,
+    read_everything: bool = False,
+) -> dict[str, Any]:
+    """Declare this agent conversation's session (``POST /v1/sessions`` with
+    ``agent_session``), as the ``start_session`` tool does, with the person's own credential.
+
+    The API applies the lists (or ``read_everything``) only while the session has
+    touched nothing (``409 session_already_started`` otherwise), so an agent picks
+    up front and never widens later. Nothing declared: the session as it starts
+    (automatic, or pending where every session must pick). Its token is kept, and
+    the conversation's commands run in it from now on.
+    """
+    from beakr_cli.sdk import get_sdk
+
+    folder = os.getcwd()
+    with get_sdk(scoped=False) as person:
+        session, state = create_session(
+            person,
+            client_name="beakr-cli",
+            label=f"beakr in {Path(folder).name}",
+            folder=folder,
+            read=read,
+            write=write,
+            agent=agent,
+            read_everything=read_everything,
+        )
+    save_state(state)
+    declared = read_everything or read is not None or write is not None
+    remember_terminal(
+        state.session_id,
+        f"agent:{agent}",
+        mode=str(session.get("mode") or PICKED),
+        declared=declared,
+    )
+    return session
 
 
 def _renew_conversation(person: Any, state: TokenState, agent: str, key: str) -> TokenState:
@@ -1495,6 +1740,63 @@ class McpSession:
                 f"/v1/sessions/{self.id}",
                 json={"read_project_ids": read, "write_project_ids": write},
             )
+        return self.session
+
+    async def declare(
+        self,
+        *,
+        read: list[str] | None = None,
+        write: list[str] | None = None,
+        read_everything: bool = False,
+    ) -> dict[str, Any]:
+        """``start_session``: choose this session's projects up front, with the person's
+        own credential, as the engine's remote tool does.
+
+        An agent conversation's session is declared through ``POST /v1/sessions`` with
+        ``agent_session``, which the API applies only while it has touched nothing
+        (``409 session_already_started``). Without a conversation id the server's own
+        session is changed the same way, checked here first.
+        """
+        if self.agent:
+            body = session_body(
+                client_name="beakr mcp",
+                label=_label(None, self.folder),
+                folder=self.folder,
+                read=read,
+                write=write,
+                agent=self.agent,
+                read_everything=read_everything,
+            )
+            async with self._person() as person:
+                try:
+                    session = await person.request("POST", "/v1/sessions", json=body)
+                except BeakrError as exc:
+                    ended = conversation_ended(exc, self.agent)
+                    if ended is not None:
+                        raise ended from exc
+                    raise
+            token, expires_at = _token_of(session)
+            self.state = TokenState(str(session["id"]), token, expires_at)
+            self.session = session
+            return session
+        current = await self.refresh()
+        touched = current.get("touched_projects") or []
+        if touched and (read is not None or write is not None or read_everything):
+            names = ", ".join(_project_name(p) for p in touched)
+            raise SessionScopeError(
+                f"This session has already worked in {names}, so its projects can't be chosen now.",
+                code=ALREADY_STARTED,
+                fix="Start a new session (restart the Beakr MCP server) to choose its projects.",
+            )
+        patch: dict[str, Any] = {}
+        if read_everything:
+            patch["read_everything"] = True
+        elif read is not None or write is not None:
+            patch = {"read_project_ids": list(read or []), "write_project_ids": list(write or [])}
+        if not patch:
+            return current
+        async with self._person() as person:
+            self.session = await person.request("PATCH", f"/v1/sessions/{self.id}", json=patch)
         return self.session
 
     async def choose(self, read: list[str], write: list[str], *, remember: bool) -> dict[str, Any]:

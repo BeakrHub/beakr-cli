@@ -93,8 +93,12 @@ _ISOLATION_REFUSALS = frozenset(
         "session_outside_conversation",
         # A call in a session that must name a project named none.
         "session_project_required",
+        # A write that brings a locked project's content into another project.
+        "project_content_locked",
     }
 )
+#: Picked lists that break a project boundary: the caller's arguments (exit 2).
+_SELECTION_INVALID = "session_selection_invalid"
 
 
 def exit_code_for(exc: BaseException) -> int:
@@ -104,6 +108,8 @@ def exit_code_for(exc: BaseException) -> int:
         return EXIT_PERSON_REVIEW
     if isinstance(exc, BeakrError) and exc.code in _ISOLATION_REFUSALS:
         return EXIT_AUTH
+    if isinstance(exc, BeakrError) and exc.code == _SELECTION_INVALID:
+        return EXIT_USAGE
     if isinstance(exc, KnowledgeCommandError) and exc.code in _ARGUMENT_REFUSALS:
         return EXIT_USAGE
     if isinstance(exc, (AuthenticationError, PermissionDeniedError)):

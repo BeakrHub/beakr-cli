@@ -195,12 +195,8 @@ ORG = "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e"
 @pytest.mark.parametrize(
     ("argv", "what", "where"),
     [
-        (["session", "start", "--env"], "beakr session start", "Start a session"),
-        (
-            ["session", "start", "--read", PROJECT, "--write", PROJECT],
-            "beakr session start",
-            "Start a session",
-        ),
+        # `beakr session start` declares the conversation's own session instead
+        # (tests/test_project_boundaries.py).
         (
             ["session", "edit", OWN, "--write-all"],
             "beakr session edit",

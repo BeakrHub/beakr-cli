@@ -362,7 +362,7 @@ def test_a_read_only_session_refuses_the_write_before_sending_it(monkeypatch):
 
     assert result.exit_code == 3, result.output
     text = _text(result)
-    assert "read Pharma A, Pharma B, so it is read-only" in text
+    assert "is read-only: Read Pharma A and Pharma B. It cannot write Pharma B" in text
     assert f"beakr session end {SID}" in text and "run the command again" in text
     assert not write.called
 
@@ -410,7 +410,9 @@ def test_a_locked_session_refuses_another_project_by_name(monkeypatch):
 
     assert result.exit_code == 3, result.output
     text = _text(result)
-    assert "reads and writes Pharma A, so it cannot write Pharma B" in text
+    assert (
+        "is locked to Pharma A: it can write only to Pharma A, so it cannot write Pharma B" in text
+    )
     # One lead-in only: the project is named in the message, the fix says what to do.
     assert "To fix: To write" not in text and "To write Pharma B:" not in text
     assert "nothing was written. To fix: End it with `beakr session end" in text
@@ -551,8 +553,10 @@ def test_knowledge_base_write_held_by_the_guard_is_a_normal_result():
 
 
 def test_describe_shows_mode_lock_and_touched_projects():
+    # An engine before project boundaries says auto_lock and picker: read as automatic
+    # and picked.
     text = scope_session.describe(_session("read_only", touched=(A, B)))
-    assert "Mode: auto_lock" in text
+    assert "Mode: automatic" in text
     assert "Read-only: Read Pharma A and Pharma B." in text
     assert "Touched: Pharma A, Pharma B" in text
     assert "new agent conversation" in text
@@ -561,7 +565,7 @@ def test_describe_shows_mode_lock_and_touched_projects():
     assert "Open:" in scope_session.describe(_session("open"))
     # Picker mode reads as before, with its mode.
     picker = scope_session.describe(_session(None, mode="picker", touched=(A,)))
-    assert "Reads: Pharma A, Pharma B" in picker and "Mode: picker" in picker
+    assert "Reads: Pharma A, Pharma B" in picker and "Mode: picked" in picker
 
 
 @respx.mock
@@ -571,7 +575,7 @@ def test_session_show_prints_the_lock_state():
     result = runner.invoke(app, ["session", "show", SID])
 
     assert result.exit_code == 0, result.output
-    assert "Locked to Pharma A" in result.output and "Mode: auto_lock" in result.output
+    assert "Locked to Pharma A" in result.output and "Mode: automatic" in result.output
 
 
 @respx.mock
@@ -592,10 +596,12 @@ def test_session_show_finds_the_agent_conversations_session(conversation):
 
 @respx.mock
 def test_session_status_shows_the_state_without_changing_it():
+    # An engine without the status route (its bare 404): the session's own description.
     _active(_session("read_only", touched=(A, B)))
     current = respx.get(f"{API}/v1/sessions/current").respond(
         json=_session("read_only", touched=(A, B))
     )
+    respx.get(f"{API}/v1/sessions/current/status").respond(404, json={"detail": "Not Found"})
 
     text = asyncio.run(mcp_session.session_status())
 
@@ -611,7 +617,8 @@ def test_session_scope_does_not_narrow_an_auto_lock_session():
 
     refused = asyncio.run(mcp_session.session_scope(drop=[A]))
 
-    assert refused["error_code"] == "session_mode_auto_lock"
+    assert refused["error_code"] == "session_not_picked"
+    assert "automatic" in refused["message"]
     assert "session_status" in refused["fix"]
     assert not patched.called
 

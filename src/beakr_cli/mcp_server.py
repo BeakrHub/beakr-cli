@@ -72,6 +72,7 @@ _INSTRUCTIONS_TEMPLATE = (
     "Scope: pass 'scope' (a project name or id) to work in one project, or omit it to read "
     "everything you can see; list_projects names them, the user's personal project "
     "included (project_type='personal').\n\n"
+    "{boundaries}"
     "Writes: when the conversation produces something durable (a decision with its "
     "rationale, a process, an owner, a dated event), check with knowledge_base "
     "command='sections' that it is not already captured, then offer to propose it. "
@@ -91,6 +92,26 @@ _INSTRUCTIONS_TEMPLATE = (
     "excerpt; 'source changed since cited' means a newer version exists.\n\n"
     "Version: beakr_version says whether this server is out of date; call update_beakr "
     "only when the user asks, then they restart the client."
+)
+
+
+#: The two rules and the three session modes, in the engine remote MCP server's words
+#: (the engine's API contract, project boundaries section 6).
+BOUNDARIES_INSTRUCTIONS = (
+    "Project boundaries. list_projects shows each project's boundary. Beakr enforces two "
+    "rules on this session. Content out: once the session reads or writes a project whose "
+    'boundary says "Touching it locks", it can write only to that project, and after two '
+    "such projects it is read-only. Content in: a project that takes no content from other "
+    "projects refuses writes from a session that has read another project, and one whose "
+    "owners approve holds those writes for them. A write that cites or copies a locked "
+    "project's content into another project is refused. A session works one of three ways: "
+    "automatic (the default; the server tracks what it touches), picked (call start_session "
+    "with read and write before anything else) or read everything (start_session "
+    "read_everything=true: every project, locked ones included, and no writes). Searches "
+    "that name no project skip locked projects this session has not touched; name the "
+    "project to search it. session_status says where this session can still write and why. "
+    "When a write is refused, tell the user and start a new session (a new agent "
+    "conversation) to work in the other project."
 )
 
 
@@ -135,6 +156,7 @@ def instructions(hidden: Collection[str] = ()) -> str:
         _INSTRUCTIONS_TEMPLATE.replace("{integrations}", integrations)
         .replace("{start}", start)
         .replace("{setup}", setup)
+        .replace("{boundaries}", BOUNDARIES_INSTRUCTIONS + "\n\n")
     )
 
 
@@ -476,8 +498,13 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
 
     session = scope_session.ACTIVE
     held = session is not None and session.state is not None
-    if held and not scope_session.auto_locked(session.session):
-        # A session reaches only the projects the person chose for it; listing the
+    if (
+        held
+        and session is not None
+        and not scope_session.automatic(session.session)
+        and not scope_session.reads_everything(session.session)
+    ):
+        # A picked session reaches only the projects chosen for it; listing the
         # organization's projects is not open to its token.
         return await _session_projects_result()
     page = await _call_api(
@@ -493,10 +520,11 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         project_type = p.get("project_type", "standard")
         desc = p.get("description", "") or ""
         lines.append(f"- {name} ({project_type}, id: {pid}){f' -- {desc}' if desc else ''}")
+        lines.extend(_boundary_lines(p))
     projects = "\n".join(lines) if lines else "No projects found."
     listed = f"{await _organization_line()}\n\n{projects}"
     if held and session is not None:
-        # auto_lock: every project is listed until the session locks to one.
+        # Automatic or read everything: every project is listed, with where it can write.
         listed += "\n\nThis session: " + " ".join(scope_session.lock_lines(session.session))
     # Which listed projects' Knowledge is still building or has failed files,
     # the same notice the hosted server appends.
@@ -510,6 +538,30 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
     )
 
 
+def _boundary_lines(project: dict[str, Any]) -> list[str]:
+    """The project's boundary in plain words (``boundary.summary``), while boundaries are on."""
+    boundary = project.get("boundary")
+    if isinstance(boundary, dict) and boundary.get("summary"):
+        return [f"  {boundary['summary']}"]
+    return []
+
+
+async def _boundaries_of(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Each project's ``boundary``, read with the session's token (reading a project's
+    name and metadata touches nothing). Projects it can't read are left out."""
+    ids = [str(p.get("id")) for p in rows[:50] if p.get("id")]
+
+    async def one(project_id: str) -> tuple[str, Any]:
+        try:
+            project = await _call_api(lambda sdk: sdk.projects.get(project_id))
+        except Exception:  # noqa: BLE001 - the line is shown without its boundary
+            return project_id, None
+        return project_id, project.get("boundary") if isinstance(project, dict) else None
+
+    found = await asyncio.gather(*(one(project_id) for project_id in ids))
+    return {pid: boundary for pid, boundary in found if isinstance(boundary, dict)}
+
+
 async def _session_projects_result() -> dict[str, Any]:
     from beakr_cli import mcp_session, scope_session
     from beakr_cli.mcp_tools_platform import _page_result
@@ -518,12 +570,15 @@ async def _session_projects_result() -> dict[str, Any]:
     assert session is not None
     await session.refresh()
     rows = mcp_session.session_projects(session)
-    lines = [
-        f"- {p.get('name') or 'Untitled'} (id: {p.get('id')}) -- {p['session_access']}"
-        for p in rows
-    ]
+    boundaries = await _boundaries_of(rows)
+    lines = []
+    for p in rows:
+        lines.append(
+            f"- {p.get('name') or 'Untitled'} (id: {p.get('id')}) -- {p['session_access']}"
+        )
+        lines.extend(_boundary_lines({"boundary": boundaries.get(str(p.get("id")))}))
     text = (
-        "This session's projects (the person chose them; session_scope shows or narrows them):\n"
+        "This session's projects (chosen for it; session_scope shows or narrows them):\n"
         + ("\n".join(lines) if lines else "None yet.")
         + f"\nTo add a project, give the person this link: {session.picker_url}"
     )

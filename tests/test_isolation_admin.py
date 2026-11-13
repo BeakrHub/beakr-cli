@@ -1,4 +1,5 @@
-"""``beakr org isolation``, ``beakr org read-trail`` and ``beakr projects guard``.
+"""``beakr org isolation``, ``beakr org read-trail``, ``beakr projects boundary`` and the
+deprecated ``beakr projects guard``.
 
 What each promises, one test or more each:
 
@@ -49,18 +50,21 @@ def api(monkeypatch):
 
 
 def _isolation(**overrides) -> dict:
+    """``GET /v1/organizations/{org_id}/project-isolation`` with project boundaries."""
     available = {
         "server_agent_sessions": True,
-        "session_auto_lock": True,
+        "project_boundaries": True,
         "agent_writes_require_session": True,
+        "session_auto_lock": False,
         "cross_project_guard": True,
         **overrides.pop("available", {}),
     }
     return {
-        "session_mode": "picker",
-        "auto_lock_counts_search_results": True,
+        "session_mode": "must_pick",
+        "default_boundary": {"content_out": "allowed", "content_in": "owner_approves"},
+        "minimum_boundary": None,
         "agent_writes_require_session": True,
-        "cross_project_guard": "hold",
+        "presets": [],
         "available": available,
         "can_change": True,
         **overrides,
@@ -109,19 +113,27 @@ def _refusal(status: int, code: str, message: str) -> httpx.Response:
 @respx.mock
 def test_isolation_show_prints_each_setting_and_what_is_turned_on():
     respx.get(ISOLATION).respond(
-        json=_isolation(available={"cross_project_guard": False}, can_change=False)
+        json=_isolation(
+            available={"project_boundaries": False},
+            minimum_boundary={"content_out": "locked"},
+            can_change=False,
+        )
     )
 
     result = runner.invoke(app, ["org", "isolation", "show"])
 
     assert result.exit_code == 0, result.output
-    assert "session_mode\tpicker\tturned_on=yes" in result.stdout
+    assert "session_mode\tmust_pick\tturned_on=no" in result.stdout
+    assert (
+        "default_boundary\tcontent out allowed, content in owner_approves (Leadership)"
+        "\tturned_on=no"
+    ) in result.stdout
+    assert "minimum_boundary\tcontent out locked\tturned_on=no" in result.stdout
     assert "agent_writes_require_session\ton\tturned_on=yes" in result.stdout
-    assert "cross_project_guard\thold\tturned_on=no" in result.stdout
     assert "can_change\tno" in result.stdout
     assert result.stderr.startswith(
-        "Not turned on: cross_project_guard. Ask your operator to turn on cross_project_guard "
-        "on the Features page."
+        "Not turned on: Project boundaries (cross_project_guard). Ask your operator to turn on "
+        "Project boundaries (cross_project_guard) on the Features page."
     )
 
 
@@ -154,47 +166,87 @@ def test_isolation_show_takes_an_org():
 @respx.mock
 def test_isolation_set_sends_only_the_fields_given():
     respx.get(ISOLATION).respond(json=_isolation())
-    route = respx.put(ISOLATION).respond(json=_isolation(session_mode="auto_lock"))
+    route = respx.put(ISOLATION).respond(json=_isolation(session_mode="must_pick"))
 
     result = runner.invoke(
-        app, ["org", "isolation", "set", "--session-mode", "auto_lock", "--guard", "refuse"]
+        app,
+        ["org", "isolation", "set", "--default-boundary", "siloed", "--minimum-out", "locked"],
     )
 
     assert result.exit_code == 0, result.output
-    assert _body(route) == {"session_mode": "auto_lock", "cross_project_guard": "refuse"}
-    assert "session_mode\tauto_lock" in result.stdout
+    assert _body(route) == {
+        "default_boundary": {"content_out": "locked", "content_in": "owner_approves"},
+        "minimum_boundary": {"content_out": "locked"},
+    }
+    assert "session_mode\tmust_pick" in result.stdout
+
+
+@respx.mock
+def test_isolation_set_keeps_the_values_not_given():
+    # A default or minimum key not given keeps its value; "allowed" drops a floor.
+    respx.get(ISOLATION).respond(
+        json=_isolation(minimum_boundary={"content_out": "locked", "content_in": "blocked"})
+    )
+    route = respx.put(ISOLATION).respond(json=_isolation())
+
+    result = runner.invoke(
+        app,
+        [
+            "org", "isolation", "set", "--default-out", "locked", "--minimum-in", "allowed",
+            "--yes",
+        ],
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {
+        "default_boundary": {"content_out": "locked", "content_in": "owner_approves"},
+        "minimum_boundary": {"content_out": "locked"},
+    }
+
+
+@respx.mock
+def test_isolation_set_no_minimum_clears_it():
+    respx.get(ISOLATION).respond(json=_isolation(minimum_boundary={"content_out": "locked"}))
+    route = respx.put(ISOLATION).respond(json=_isolation())
+
+    result = runner.invoke(app, ["org", "isolation", "set", "--no-minimum", "--yes"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {"minimum_boundary": None}
 
 
 @respx.mock
 def test_isolation_set_tightening_does_not_ask():
     respx.get(ISOLATION).respond(
-        json=_isolation(agent_writes_require_session=False, auto_lock_counts_search_results=False)
+        json=_isolation(session_mode="automatic", agent_writes_require_session=False)
     )
     route = respx.put(ISOLATION).respond(json=_isolation())
 
     result = runner.invoke(
-        app, ["org", "isolation", "set", "--require-session", "--count-search-results"]
+        app, ["org", "isolation", "set", "--require-session", "--session-mode", "must_pick"]
     )
 
     assert result.exit_code == 0, result.output
-    assert _body(route) == {
-        "agent_writes_require_session": True,
-        "auto_lock_counts_search_results": True,
-    }
+    assert _body(route) == {"agent_writes_require_session": True, "session_mode": "must_pick"}
 
 
 @pytest.mark.parametrize(
-    ("argv", "said"),
+    ("argv", "current", "said"),
     [
-        (["--guard", "allow"], "cross-project guard hold -> allow"),
-        (["--guard", "allow"], "Loosen project isolation"),
-        (["--no-require-session"], "agent writes need a session on -> off"),
-        (["--no-count-search-results"], "search results count as read on -> off"),
+        (["--session-mode", "automatic"], {}, "session mode must_pick -> automatic"),
+        (["--default-in", "allowed"], {}, "new projects' content in owner_approves -> allowed"),
+        (["--default-in", "allowed"], {}, "Loosen project isolation"),
+        (
+            ["--no-minimum"],
+            {"minimum_boundary": {"content_out": "locked"}},
+            "minimum content out locked -> allowed",
+        ),
+        (["--no-require-session"], {}, "agent writes need a session on -> off"),
     ],
 )
 @respx.mock
-def test_isolation_set_loosening_needs_yes_without_a_terminal(argv, said):
-    respx.get(ISOLATION).respond(json=_isolation())
+def test_isolation_set_loosening_needs_yes_without_a_terminal(argv, current, said):
+    respx.get(ISOLATION).respond(json=_isolation(**current))
     route = respx.put(ISOLATION).respond(json=_isolation())
 
     refused = runner.invoke(app, ["org", "isolation", "set", *argv])
@@ -212,45 +264,118 @@ def test_isolation_set_loosening_needs_yes_without_a_terminal(argv, said):
 @respx.mock
 def test_isolation_set_loosening_asks_at_a_terminal(monkeypatch):
     monkeypatch.setattr("beakr_cli.output.is_interactive", lambda: True)
-    respx.get(ISOLATION).respond(json=_isolation(cross_project_guard="refuse"))
-    route = respx.put(ISOLATION).respond(json=_isolation(cross_project_guard="allow"))
+    respx.get(ISOLATION).respond(
+        json=_isolation(default_boundary={"content_out": "locked", "content_in": "blocked"})
+    )
+    route = respx.put(ISOLATION).respond(json=_isolation())
 
-    declined = runner.invoke(app, ["org", "isolation", "set", "--guard", "hold"], input="n\n")
+    argv = ["org", "isolation", "set", "--default-boundary", "leadership"]
+    declined = runner.invoke(app, argv, input="n\n")
 
     assert declined.exit_code == 1, declined.output
-    assert "cross-project guard refuse -> hold" in _said(declined)
+    said = _said(declined)
+    assert "new projects' content out locked -> allowed" in said
+    assert "new projects' content in blocked -> owner_approves" in said
     assert not route.called
 
-    accepted = runner.invoke(app, ["org", "isolation", "set", "--guard", "hold"], input="y\n")
+    accepted = runner.invoke(app, argv, input="y\n")
 
     assert accepted.exit_code == 0, accepted.output
-    assert _body(route) == {"cross_project_guard": "hold"}
+    assert _body(route) == {
+        "default_boundary": {"content_out": "allowed", "content_in": "owner_approves"}
+    }
+
+
+# -- the old auto-lock options: kept for one release, said deprecated ------------------
+
+
+@respx.mock
+def test_session_mode_auto_lock_is_automatic_with_every_project_locked():
+    respx.get(ISOLATION).respond(json=_isolation())
+    route = respx.put(ISOLATION).respond(json=_isolation(session_mode="automatic"))
+
+    result = runner.invoke(app, ["org", "isolation", "set", "--session-mode", "auto_lock", "--yes"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {
+        "session_mode": "automatic",
+        "minimum_boundary": {"content_out": "locked"},
+    }
+    assert "Deprecated: --session-mode auto_lock" in _said(result)
+
+
+@respx.mock
+def test_session_mode_picker_is_must_pick():
+    respx.get(ISOLATION).respond(json=_isolation(session_mode="automatic"))
+    route = respx.put(ISOLATION).respond(json=_isolation())
+
+    result = runner.invoke(app, ["org", "isolation", "set", "--session-mode", "picker"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {"session_mode": "must_pick"}
+    assert "Deprecated: --session-mode picker is now must_pick" in _said(result)
+
+
+@respx.mock
+def test_guard_is_the_content_in_new_projects_start_with():
+    respx.get(ISOLATION).respond(json=_isolation())
+    route = respx.put(ISOLATION).respond(json=_isolation())
+
+    result = runner.invoke(app, ["org", "isolation", "set", "--guard", "refuse"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {"default_boundary": {"content_out": "allowed", "content_in": "blocked"}}
+    assert "Deprecated: --guard is now the content in new projects start with" in _said(result)
+
+
+@pytest.mark.parametrize("flag", ["--count-search-results", "--no-count-search-results"])
+@respx.mock
+def test_count_search_results_is_retired_and_sends_nothing(flag):
+    read = respx.get(ISOLATION).respond(json=_isolation())
+    route = respx.put(ISOLATION).respond(json=_isolation())
+
+    alone = runner.invoke(app, ["org", "isolation", "set", flag])
+
+    assert alone.exit_code == 0, alone.output
+    assert "Deprecated: --count-search-results was retired by project boundaries" in _said(alone)
+    assert "it can never lock a session" in _said(alone)
+    assert not read.called and not route.called
+
+    with_another = runner.invoke(app, ["org", "isolation", "set", flag, "--require-session"])
+
+    assert with_another.exit_code == 0, with_another.output
+    assert _body(route) == {"agent_writes_require_session": True}
 
 
 @respx.mock
 def test_isolation_set_refuses_a_part_not_turned_on():
-    respx.get(ISOLATION).respond(json=_isolation(available={"cross_project_guard": False}))
+    respx.get(ISOLATION).respond(json=_isolation(available={"project_boundaries": False}))
     route = respx.put(ISOLATION)
 
-    result = runner.invoke(app, ["org", "isolation", "set", "--guard", "refuse"])
+    result = runner.invoke(app, ["org", "isolation", "set", "--default-in", "blocked"])
 
     assert result.exit_code == 4, result.output
-    assert "Ask your operator to turn on cross_project_guard on the Features page" in _said(result)
+    assert (
+        "Ask your operator to turn on Project boundaries (cross_project_guard) on the Features page"
+    ) in _said(result)
     assert not route.called
 
 
 @respx.mock
 def test_isolation_set_refusal_in_json_names_the_code_and_fix():
-    respx.get(ISOLATION).respond(json=_isolation(available={"session_auto_lock": False}))
+    respx.get(ISOLATION).respond(json=_isolation(available={"project_boundaries": False}))
 
     result = runner.invoke(
-        app, ["org", "isolation", "set", "--session-mode", "auto_lock", "--json"]
+        app, ["org", "isolation", "set", "--session-mode", "automatic", "--json"]
     )
 
     assert result.exit_code == 4, result.output
     error = json.loads(result.stdout)["error"]
     assert error["code"] == "feature_not_enabled"
-    assert error["fix"] == "Ask your operator to turn on session_auto_lock on the Features page."
+    assert error["fix"] == (
+        "Ask your operator to turn on Project boundaries (cross_project_guard) on the Features "
+        "page."
+    )
 
 
 @respx.mock
@@ -258,7 +383,7 @@ def test_isolation_set_refuses_a_caller_who_cannot_change_it():
     respx.get(ISOLATION).respond(json=_isolation(can_change=False))
     route = respx.put(ISOLATION)
 
-    result = runner.invoke(app, ["org", "isolation", "set", "--guard", "allow", "--yes"])
+    result = runner.invoke(app, ["org", "isolation", "set", "--default-in", "allowed", "--yes"])
 
     assert result.exit_code == 3, result.output
     assert "You can't change project isolation settings" in _said(result)
@@ -271,14 +396,29 @@ def test_isolation_set_says_the_operator_fix_when_the_api_refuses_the_feature():
     respx.get(ISOLATION).respond(json=_isolation())
     respx.put(ISOLATION).mock(
         return_value=_refusal(
-            404, "feature_not_enabled", "Not enabled for this organization: cross_project_guard."
+            404, "feature_not_enabled", "Not enabled for this organization: Project boundaries."
         )
     )
 
-    result = runner.invoke(app, ["org", "isolation", "set", "--guard", "refuse"])
+    result = runner.invoke(app, ["org", "isolation", "set", "--default-in", "blocked"])
 
     assert result.exit_code == 4, result.output
-    assert "Ask your operator to turn on cross_project_guard on the Features page" in _said(result)
+    assert "turn on Project boundaries (cross_project_guard) on the Features page" in _said(result)
+
+
+@respx.mock
+def test_isolation_set_says_the_apis_minimum_refusal():
+    respx.get(ISOLATION).respond(json=_isolation(minimum_boundary={"content_out": "locked"}))
+    message = (
+        "Your organization's minimum boundary keeps every project locked, so new projects "
+        "can't start allowed."
+    )
+    respx.put(ISOLATION).mock(return_value=_refusal(422, "boundary_below_minimum", message))
+
+    result = runner.invoke(app, ["org", "isolation", "set", "--default-out", "allowed", "--yes"])
+
+    assert result.exit_code != 0, result.output
+    assert message in _said(result)
 
 
 @respx.mock
@@ -288,7 +428,7 @@ def test_isolation_set_a_credential_that_is_not_a_person_exits_3():
         return_value=_refusal(403, "session_required", "Changing these needs a person.")
     )
 
-    result = runner.invoke(app, ["org", "isolation", "set", "--guard", "refuse"])
+    result = runner.invoke(app, ["org", "isolation", "set", "--default-in", "blocked"])
 
     assert result.exit_code == 3, result.output
     assert "needs a person" in _said(result)
@@ -312,7 +452,7 @@ def test_requests_carry_the_persons_key_and_no_session(monkeypatch):
     read = respx.get(ISOLATION).respond(json=_isolation())
     write = respx.put(ISOLATION).respond(json=_isolation())
 
-    result = runner.invoke(app, ["org", "isolation", "set", "--guard", "refuse"])
+    result = runner.invoke(app, ["org", "isolation", "set", "--default-in", "blocked"])
 
     assert result.exit_code == 0, result.output
     for route in (read, write):
@@ -336,7 +476,7 @@ def test_an_auto_lock_conversation_does_not_lend_its_session_token(monkeypatch):
     # session token; these commands never do, so no session is started for them.
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-123")
     sessions = respx.post(f"{API}/v1/sessions")
-    read = respx.get(ISOLATION).respond(json=_isolation(session_mode="auto_lock"))
+    read = respx.get(ISOLATION).respond(json=_isolation(session_mode="automatic"))
 
     result = runner.invoke(app, ["org", "isolation", "show"])
 
@@ -491,7 +631,11 @@ def test_guard_set_loosening_asks_first(current, mode, said):
 @pytest.mark.parametrize(
     ("current", "code", "said"),
     [
-        (_guard(available=False), 4, "turn on cross_project_guard on the Features page"),
+        (
+            _guard(available=False),
+            4,
+            "turn on Project boundaries (cross_project_guard) on the Features page",
+        ),
         (_guard(can_change=False), 3, "an owner or admin of the project"),
     ],
 )
@@ -520,6 +664,10 @@ ROUTE_FRAGMENTS = ("/project-isolation", "/cross-project-guard", "/read-trail")
 #: The settings' request fields: no MCP tool takes one.
 SETTING_FIELDS = (
     "session_mode",
+    "default_boundary",
+    "minimum_boundary",
+    "boundary",
+    "boundary_preset",
     "auto_lock_counts_search_results",
     "agent_writes_require_session",
     "cross_project_guard",

@@ -218,6 +218,9 @@ def test_session_status_shows_the_trail_and_sends_a_writes_trail_to_a_person(mon
     held.session = {"id": SID, "status": "active", "mode": "auto_lock", "lock_state": "open"}
     monkeypatch.setattr(scope_session, "ACTIVE", held)
     respx.get(f"{API}/v1/sessions/current").respond(json=held.session)
+    respx.get(f"{API}/v1/sessions/current/status").respond(
+        json={"session_id": SID, "summary": "Automatic session.", "write": {"anywhere": True}}
+    )
     page = respx.get(f"{API}/v1/sessions/{SID}/trail").respond(json=_PAGE)
     write = respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
         json=_WRITE_TRAIL

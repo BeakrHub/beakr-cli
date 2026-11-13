@@ -178,8 +178,8 @@ async def _write_refusal(project_id: str, project_name: str) -> dict[str, Any] |
     current = await session.refresh()
     if scope_session.may_write(current, project_id):
         return None
-    if scope_session.auto_locked(current):
-        # Locked to another project, or read-only: no picker to add it at.
+    if scope_session.lock_bound(current):
+        # Locked to another project, read-only or reading everything: no picker to add it at.
         refused = scope_session.lock_refusal(current, project_name)
         return _error(str(refused.code), refused.message, refused.fix)
     writable = current.get("write_projects") or []
@@ -193,12 +193,13 @@ async def _write_refusal(project_id: str, project_name: str) -> dict[str, Any] |
     )
 
 
-def _auto_lock_line(session: dict[str, Any], project_id: str) -> str:
-    """What an auto_lock session may do with a project it just created."""
-    if session.get("lock_state") in {None, "open"}:
-        return "This session may write it: its first write locks the session to that project."
-    if scope_session.may_write(session, project_id):
-        return "This session may read and write it."
+def _lock_line(session: dict[str, Any], project: dict[str, Any]) -> str:
+    """What an automatic (or locked, or read_everything) session may do with a project it
+    just created, and the project's boundary in plain words."""
+    boundary = project.get("boundary") if isinstance(project.get("boundary"), dict) else {}
+    summary = f" {boundary['summary']}" if boundary.get("summary") else ""
+    if scope_session.may_write(session, str(project.get("id"))):
+        return f"This session may read and write it.{summary}"
     return " ".join(scope_session.lock_lines(session))
 
 
@@ -245,8 +246,8 @@ async def create_project(name: str, description: str = "") -> str | dict[str, An
     lines = [f"Created project {project.get('name') or name!r} (id: {project_id})."]
     if session is not None:
         current = await session.refresh()
-        if scope_session.auto_locked(current):
-            lines.append(_auto_lock_line(current, project_id))
+        if scope_session.lock_bound(current):
+            lines.append(_lock_line(current, project))
         else:
             writable = scope_session.project_ids(current.get("write_projects"))
             lines.append(

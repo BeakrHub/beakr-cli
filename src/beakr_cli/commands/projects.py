@@ -22,24 +22,67 @@ app = typer.Typer(
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 
 
+#: A boundary preset's title, for the table's Boundary column.
+_PRESET_TITLES = {
+    "internal": "Internal",
+    "siloed": "Partner (siloed)",
+    "leadership": "Leadership",
+    "custom": "Custom",
+}
+
+
+def boundary_summary(project: dict[str, Any]) -> str | None:
+    """The project's boundary in plain words (``boundary.summary``); None while the
+    organization has project boundaries off."""
+    boundary = project.get("boundary")
+    if isinstance(boundary, dict) and boundary.get("summary"):
+        return str(boundary["summary"])
+    return None
+
+
 def _render_projects(rows: list[dict[str, Any]]) -> None:
     if not rows:
         err_console.print("No projects found.")
         return
+    bounded = any(isinstance(p.get("boundary"), dict) for p in rows)
+
+    def preset(p: dict[str, Any]) -> str:
+        boundary = p.get("boundary") if isinstance(p.get("boundary"), dict) else {}
+        key = str(boundary.get("preset") or "")
+        return _PRESET_TITLES.get(key, key)
+
     print_table(
-        ["Name", "ID", "Type", "Status", "Description"],
+        ["Name", "ID", "Type", "Status", *(["Boundary"] if bounded else []), "Description"],
         [
             [
                 short(p.get("name"), 32),
                 str(p.get("id", "")),
                 str(p.get("project_type") or ""),
                 str(p.get("status") or ""),
+                *([preset(p)] if bounded else []),
                 short(p.get("description"), 40),
             ]
             for p in rows
         ],
         title="Projects",
     )
+    summaries = [line for line in (boundary_summary(p) for p in rows) if line]
+    if summaries:
+        console.print("\nBoundaries:", markup=False, highlight=False)
+        for line in summaries:
+            console.print(f"  {line}", markup=False, highlight=False, soft_wrap=True)
+
+
+def _project_lines(rows: list[dict[str, Any]]) -> list[str]:
+    """Piped: one line per project, its boundary in plain words at the end."""
+    from beakr_cli.compact import summary_line
+
+    lines = []
+    for project in rows:
+        line = summary_line(project)
+        summary = boundary_summary(project)
+        lines.append(f"{line}\tboundary={' '.join(summary.split())}" if summary else line)
+    return lines
 
 
 @app.command("ls")
@@ -47,10 +90,11 @@ def list_projects(
     member_only: bool = typer.Option(False, "--member-only", help="Only projects you belong to."),
     json_out: bool = _json_opt,
 ) -> None:
-    """List projects you can see, including your personal project."""
+    """List projects you can see, including your personal project, each with its
+    boundary in plain words where the organization has project boundaries on."""
     with get_sdk() as sdk:
         projects = sdk.projects.list(member_only=member_only or None)
-    emit(projects, json_out=json_out, render=_render_projects)
+    emit(projects, json_out=json_out, render=_render_projects, lines=_project_lines)
 
 
 @app.command("create")
@@ -102,6 +146,9 @@ def show_project(
         ):
             if d.get(key) is not None:
                 console.print(f"{label + ':':<9}{d.get(key)}", markup=False)
+        summary = boundary_summary(d)
+        if summary:
+            console.print(f"Boundary: {summary}", markup=False, soft_wrap=True)
         if d.get("description"):
             console.print(f"\n{d['description']}", markup=False)
 

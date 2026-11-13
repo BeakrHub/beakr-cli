@@ -215,8 +215,8 @@ class Held:
         return self.session.get("status") == "active"
 
     @property
-    def auto_locked(self) -> bool:
-        return scope_session.auto_locked(self.session)
+    def automatic(self) -> bool:
+        return scope_session.automatic(self.session)
 
     def writes(self) -> list[str]:
         return scope_session.project_ids(self.session.get("write_projects"))
@@ -226,8 +226,8 @@ class Held:
         return scope_session.may_write(self.session, project)
 
     def write_names(self) -> str:
-        if self.auto_locked and self.session.get("lock_state") in {None, "open"}:
-            return "the first project it touches"
+        if self.automatic and self.session.get("lock_state") in {None, "open"}:
+            return "any project its boundaries allow"
         return _names(self.session.get("write_projects")) or "no project"
 
     def names_of(self, ids: list[str]) -> str:
@@ -454,10 +454,10 @@ def _held(command: str, params: dict[str, Any], *, hook: bool) -> Held | None:
             else:
                 _wait_for_choice(person, held, command)
     scope_session.keep_remembered(held.session)
-    if held.new and held.auto_locked:
+    if held.new and held.automatic:
         _say(
-            f"Session {held.id}: Beakr locks it to the first project it touches, and a second "
-            f"project read makes it read-only. {_reuse_line(held)}"
+            f"Session {held.id}: automatic. Touching a locked project locks its writes to that "
+            f"project, and a second one makes it read-only. {_reuse_line(held)}"
         )
     elif held.new:
         _say(
@@ -684,13 +684,13 @@ def _check_writes(held: Held, projects: list[str]) -> None:
 
 
 def _lock_refusal(held: Held, refused: list[str]) -> SessionScopeError:
-    """An auto_lock session's refusal, said before anything is sent, as the API words it."""
+    """A locked, read-only or read_everything session's refusal, said before anything is sent."""
     return scope_session.lock_refusal(held.session, held.names_of(refused) or "that project")
 
 
 def _write_refusal(held: Held, refused: list[str]) -> SessionScopeError:
     """The refusal of a write outside the session, naming the projects and how to add them."""
-    if held.auto_locked:
+    if scope_session.lock_bound(held.session):
         return _lock_refusal(held, refused)
     what = held.names_of(refused) or "that project"
     return SessionScopeError(

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any
 
 from beakr_sdk import AsyncBeakr, Beakr
 
+from beakr_cli import session_notice
 from beakr_cli._private_api._generated.operations import AsyncBeakrApi, BeakrApi
 from beakr_cli._private_api.resources import attach_private_resources
 
@@ -60,6 +61,8 @@ class PrivateBeakr(Beakr):
         super().__init__(**kwargs)
         attach_private_resources(self)
         self.private_api = BeakrApi(self)
+        # A request that locks the session says so (beakr_cli.session_notice).
+        session_notice.attach(self, is_async=False)
 
     def __enter__(self) -> PrivateBeakr:
         return self
@@ -89,6 +92,7 @@ class AsyncPrivateBeakr(AsyncBeakr):
         super().__init__(**kwargs)
         attach_private_resources(self)
         self.private_api = AsyncBeakrApi(self)
+        session_notice.attach(self, is_async=True)
 
     async def __aenter__(self) -> AsyncPrivateBeakr:
         return self

@@ -1,10 +1,22 @@
-"""``beakr session start|show|edit|end|ls|forget``: limit a shell to the projects you choose.
+"""``beakr session start|status|show|edit|end|ls|forget``: work in a session.
 
-A session lets an agent (or any command) read only the projects you pick, and
-write only the ones you allow; you can change both while it runs. ``beakr session
-start`` opens one and prints the line that puts this shell in it::
+A session works one of three ways. Picked (``--read A,B --write A``): it reads only
+the projects you pick and writes only the ones you allow; you can change both while
+it runs. Read everything (``--read-everything``): it reads every project you can
+read, locked ones included, and writes nothing. Automatic (``--automatic``, the
+default where the organization allows it): it starts open and Beakr tracks what it
+touches, so project boundaries decide where it can still write. Picked lists are
+checked against the projects' boundaries before the session starts
+(``POST /v1/sessions/options``); a choice that breaks one is refused with the reason.
+``beakr session status`` says where a session can still write, and why.
+
+``beakr session start`` opens one and prints the line that puts this shell in it::
 
     eval "$(beakr session start --env)"
+
+Inside an agent conversation (Claude Code, Codex, Cursor, ``BEAKR_SESSION``) it
+declares that conversation's own session instead, as the ``start_session`` MCP tool
+does: only before the session has read or written anything.
 
 From then on every ``beakr`` command in the shell sends the session's token
 instead of your own credential, until ``beakr session end`` (or ``unset
@@ -28,6 +40,7 @@ from pathlib import Path
 from typing import Any
 
 import typer
+from beakr_sdk.errors import BeakrError, NotFoundError
 
 from beakr_cli import scope_session
 from beakr_cli.output import console, emit, err_console, is_interactive, print_table, short
@@ -38,9 +51,10 @@ from beakr_cli.sdk import get_sdk
 
 app = typer.Typer(
     help=(
-        "Limit a shell or agent session to the projects you choose. Commands that write "
-        "into a project always run in one: outside a session, the first write in a "
-        "terminal asks which projects it may write and the terminal keeps that session."
+        "Work in a session: picked (--read/--write), read everything, or automatic, where "
+        "project boundaries decide where it can still write. Commands that write into a "
+        "project always run in one: outside a session, the first write in a terminal asks "
+        "which projects it may write and the terminal keeps that session."
     )
 )
 
@@ -49,7 +63,11 @@ _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 
 def _person_project_refs(value: Any) -> Any:
     """Resolve --read/--write names with the person's own credential, never the shell's
-    session token: the session may not read the project yet, or may have ended."""
+    session token: the session may not read the project yet, or may have ended.
+
+    Each value may name several projects, comma-separated (``--read A,B``)."""
+    if isinstance(value, (list, tuple)):
+        value = [part.strip() for v in value for part in str(v).split(",") if part.strip()]
     with scope_session.person_credential():
         return project_ref_callback(value)
 
@@ -58,15 +76,20 @@ _read_opt = typer.Option(
     [],
     "--read",
     "-r",
-    help="A project the session may read (id, slug or name); repeatable.",
+    help="Projects the session may read (ids, slugs or names), comma-separated or repeated.",
     callback=_person_project_refs,
 )
 _write_opt = typer.Option(
     [],
     "--write",
     "-w",
-    help="A project the session may write (it may also read it); repeatable.",
+    help="Projects the session may write (it also reads them), comma-separated or repeated.",
     callback=_person_project_refs,
+)
+_read_everything_opt = typer.Option(
+    False,
+    "--read-everything",
+    help="Read every project you can read, locked ones included, and write nothing.",
 )
 _read_all_opt = typer.Option(
     False,
@@ -326,14 +349,157 @@ def _interactive() -> bool:
     return is_interactive()
 
 
+def _pick_valid(sdk: Any, read: list[str], write: list[str]) -> tuple[list[str], list[str]]:
+    """The terminal picker, again until the choice keeps every project's boundary."""
+    projects = _projects(sdk)
+    while True:
+        picked = pick(projects, read, write)
+        if picked is None:
+            raise typer.Exit(1)
+        try:
+            check_selection(sdk, *picked)
+        except SessionScopeError as refused:
+            err_console.print(f"{refused.message}\n{refused.fix}", markup=False, highlight=False)
+            read, write = picked
+            continue
+        return picked
+
+
 def _render(data: dict[str, Any]) -> None:
     console.print(scope_session.describe(data), highlight=False, markup=False)
+
+
+#: Where the picker's lists are checked against the projects' boundaries.
+OPTIONS_PATH = "/v1/sessions/options"
+
+
+def check_selection(sdk: Any, read: list[str], write: list[str]) -> dict[str, Any] | None:
+    """Check picked lists against the projects' boundaries before starting
+    (``POST /v1/sessions/options``); raise the API's reasons when they break one.
+
+    None from an engine without the route (its bare 404): the session start checks
+    them anyway.
+    """
+    from beakr_cli.capabilities import is_bare_not_found
+
+    try:
+        options = sdk.request(
+            "POST", OPTIONS_PATH, json={"read_project_ids": read, "write_project_ids": write}
+        )
+    except NotFoundError as exc:
+        if is_bare_not_found(exc.response):
+            return None
+        raise
+    if isinstance(options, dict) and options.get("valid") is False:
+        raise scope_session.selection_invalid(
+            options,
+            fix=(
+                "Change --read or --write: a project you read that locks its content limits "
+                "writes to it, and a project that takes no content from others can be written "
+                "only by a session that reads it alone."
+            ),
+        )
+    return options if isinstance(options, dict) else None
+
+
+def _refuse_together(**given: bool) -> None:
+    """Refuse modes given together (``--read-everything`` with lists, ``--automatic`` with
+    either)."""
+    named = [flag for flag, on in given.items() if on]
+    if len(named) > 1:
+        raise typer.BadParameter(
+            f"{' and '.join(named)} can't be combined: a session is picked (--read/--write), "
+            "read everything (--read-everything) or automatic (--automatic).",
+            param_hint=named[0],
+        )
+
+
+def _org_session_mode(sdk: Any) -> str | None:
+    """The organization's ``session_mode`` (``automatic`` or ``must_pick``), when it says."""
+    from beakr_cli.project_binding import credential_org_id
+
+    org_id = credential_org_id()
+    if not org_id:
+        return None
+    try:
+        settings = sdk.request("GET", scope_session.isolation_path(org_id))
+    except BeakrError:
+        return None
+    mode = settings.get("session_mode") if isinstance(settings, dict) else None
+    return str(mode) if mode else None
+
+
+def _refuse_automatic_where_must_pick(sdk: Any) -> None:
+    if _org_session_mode(sdk) == scope_session.MUST_PICK:
+        raise SessionScopeError(
+            "Your organization makes every session choose its projects (session mode "
+            "must_pick), so an automatic session can't be started.",
+            code="session_mode_must_pick",
+            fix="Start it with --read/--write, or with --read-everything.",
+        )
+
+
+def _start_line(session: dict[str, Any]) -> str:
+    """The one line an agent gets back: the API's summary, else the lists."""
+    if session.get("summary"):
+        return str(session["summary"])
+
+    def names(key: str) -> str:
+        return ", ".join(str(p.get("name") or p.get("id")) for p in session.get(key) or [])
+
+    return (
+        f"Reads: {names('read_projects') or 'none'}. Writes: {names('write_projects') or 'none'}."
+    )
+
+
+def _declare_in_conversation(
+    agent: str,
+    lists: tuple[list[str], list[str]] | None,
+    *,
+    read_everything: bool,
+    json_out: bool,
+) -> None:
+    """``beakr session start`` inside an agent conversation: declare its own session."""
+    session = scope_session.declare_conversation(
+        agent,
+        read=lists[0] if lists else None,
+        write=lists[1] if lists else None,
+        read_everything=read_everything,
+    )
+
+    def render(data: dict[str, Any]) -> None:
+        console.print(f"Session started. {_start_line(data)}", markup=False, highlight=False)
+        for line in scope_session.note_lines(data):
+            console.print(line, markup=False, highlight=False)
+        if data.get("status") == "pending":
+            console.print(
+                f"Show the user this link to choose the projects: {data.get('picker_url')}",
+                markup=False,
+                highlight=False,
+            )
+
+    def lines(data: dict[str, Any]) -> list[str]:
+        return [f"Session started. {_start_line(data)}", *scope_session.note_lines(data)]
+
+    emit(
+        {k: v for k, v in session.items() if k != "token"},
+        json_out=json_out,
+        render=render,
+        lines=lines,
+    )
 
 
 @app.command("start")
 def start(
     read: list[str] = _read_opt,
     write: list[str] = _write_opt,
+    read_everything: bool = _read_everything_opt,
+    automatic: bool = typer.Option(
+        False,
+        "--automatic",
+        help="Start open: Beakr tracks what the session touches, and project boundaries "
+        "decide where it can still write.",
+    ),
     read_all: bool = _read_all_opt,
     write_all: bool = _write_all_opt,
     label: str | None = typer.Option(None, "--label", help="How the session is shown to you."),
@@ -347,13 +513,27 @@ def start(
     ),
     json_out: bool = _json_opt,
 ) -> None:
-    """Start a session limited to the projects you choose, and put this shell in it.
+    """Start a session and put this shell in it: picked, read everything, or automatic.
 
-    Without --read/--write (or --read-all/--write-all) it opens a checkbox picker
-    (preselecting what you remembered for this folder); not at a terminal, the
-    session starts pending and you choose at the link it prints.
+    --read A,B --write A picks its projects, checked first against their boundaries
+    (a choice that breaks one is refused with the reason); --read-everything reads
+    every project and writes none; --automatic starts it open. With none of them it
+    opens a checkbox picker (preselecting what you remembered for this folder); not
+    at a terminal, the session starts pending and you choose at the link it prints.
+
+    Inside an agent conversation it declares that conversation's own session, before
+    it has read or written anything, as the start_session MCP tool does.
     """
-    scope_session.refuse_inside_conversation("beakr session start", "Start a session")
+    picked_lists = bool(read or write or read_all or write_all)
+    _refuse_together(
+        **{
+            "--read/--write": picked_lists,
+            "--read-everything": read_everything,
+            "--automatic": automatic,
+            "--pending": pending,
+        }
+    )
+    agent = scope_session.agent_session_id()
     folder = os.getcwd()
     lists: tuple[list[str], list[str]] | None = None
     with get_sdk(scoped=False) as sdk:
@@ -363,24 +543,45 @@ def start(
             )
         elif read or write:
             lists = _lists(read, write)
-        elif not pending:
+        if agent:
+            if pending or env or label:
+                raise SessionScopeError(
+                    "Inside an agent conversation `beakr session start` declares that "
+                    "conversation's own session: --pending, --env and --label are for a shell "
+                    "session.",
+                    code=scope_session.OUTSIDE_CONVERSATION,
+                    fix="Give --read/--write, --read-everything or --automatic alone.",
+                )
+            if lists is not None:
+                check_selection(sdk, *lists)
+            elif automatic:
+                _refuse_automatic_where_must_pick(sdk)
+        elif lists is not None:
+            check_selection(sdk, *lists)
+        elif automatic:
+            _refuse_automatic_where_must_pick(sdk)
+        elif not (pending or read_everything):
             remembered = scope_session.remembered_selection(folder)
             if _interactive() and not env:
-                start_read, start_write = remembered or ([], [])
-                picked = pick(_projects(sdk), start_read, start_write)
-                if picked is None:
-                    raise typer.Exit(1)
-                lists = picked
+                lists = _pick_valid(sdk, *(remembered or ([], [])))
             elif remembered:
                 lists = remembered
-        session, state = scope_session.create_session(
-            sdk,
-            client_name="beakr-cli",
-            label=label or f"beakr shell in {Path(folder).name}",
-            folder=folder,
-            read=lists[0] if lists else None,
-            write=lists[1] if lists else None,
-        )
+        if agent:
+            session = None
+        else:
+            session, state = scope_session.create_session(
+                sdk,
+                client_name="beakr-cli",
+                label=label or f"beakr shell in {Path(folder).name}",
+                folder=folder,
+                read=lists[0] if lists else None,
+                write=lists[1] if lists else None,
+                read_everything=read_everything,
+            )
+    if agent:
+        _declare_in_conversation(agent, lists, read_everything=read_everything, json_out=json_out)
+        return
+    assert session is not None
     scope_session.save_state(state)
     export = f"export {scope_session.SESSION_ENV}={state.session_id}"
     if env:
@@ -391,6 +592,8 @@ def start(
                 markup=False,
                 highlight=False,
             )
+        else:
+            err_console.print(_start_line(session), markup=False, highlight=False)
         return
 
     def render(data: dict[str, Any]) -> None:
@@ -404,7 +607,12 @@ def start(
             highlight=False,
         )
 
-    emit({k: v for k, v in session.items() if k != "token"}, json_out=json_out, render=render)
+    emit(
+        {k: v for k, v in session.items() if k != "token"},
+        json_out=json_out,
+        render=render,
+        lines=_describe_lines,
+    )
 
 
 @app.command("show")
@@ -447,6 +655,71 @@ def show(
     emit(session, json_out=json_out, render=_render, lines=_describe_lines)
 
 
+@app.command("status")
+def status(
+    session_id: str | None = typer.Argument(
+        None, help="Defaults to this shell's, this terminal's or this agent conversation's session."
+    ),
+    json_out: bool = _json_opt,
+) -> None:
+    """Where the session can still write, and why: its mode, what it has read, the
+    projects it can't write with the reason, and its last boundary events.
+
+    Inside an agent conversation it shows only that conversation's own session.
+    """
+    conversation = _conversation()
+    if conversation is not None:
+        chosen: str | None = (
+            _confine(session_id, conversation)
+            if (session_id or conversation.session_id or scope_session.shell_session_id())
+            else None
+        )
+    else:
+        chosen = (
+            session_id or scope_session.shell_session_id() or scope_session.terminal_session_id()
+        )
+    if not chosen:
+        line = scope_session.NOT_IN_SESSION
+        emit(
+            {"in_session": False, "message": line},
+            json_out=json_out,
+            render=lambda _data: console.print(line, markup=False, highlight=False),
+            lines=lambda _data: [line],
+        )
+        return
+    with _reader(chosen, conversation) as sdk:
+        status = _status_of(sdk, chosen, conversation)
+
+    def text(data: dict[str, Any]) -> list[str]:
+        if "lock_state" in data and "write" not in data:
+            return scope_session.describe(data).splitlines()  # an engine without the route
+        return scope_session.status_lines(data, events=10)
+
+    emit(
+        status,
+        json_out=json_out,
+        render=lambda data: console.print("\n".join(text(data)), markup=False, highlight=False),
+        lines=text,
+    )
+
+
+def _status_of(sdk: Any, chosen: str, conversation: _Conversation | None) -> dict[str, Any]:
+    """``GET /v1/sessions/{id}/status`` (``current`` with a session token); the session
+    itself from an engine without the route."""
+    from beakr_cli.capabilities import is_bare_not_found
+
+    own_token = conversation is not None and (
+        chosen == scope_session.shell_session_id() or conversation.token
+    )
+    path = "/v1/sessions/current/status" if own_token else f"/v1/sessions/{chosen}/status"
+    try:
+        return sdk.request("GET", path)  # type: ignore[no-any-return]
+    except NotFoundError as exc:
+        if not is_bare_not_found(exc.response):
+            raise
+    return sdk.request("GET", f"/v1/sessions/{chosen}")  # type: ignore[no-any-return]
+
+
 def _current_session_id() -> str | None:
     """A session in use here without asking the API: this shell's, or this terminal's."""
     return scope_session.shell_session_id() or scope_session.terminal_session_id()
@@ -471,9 +744,9 @@ def trail(
     """The session's read trail, newest first: what each read was, which projects it
     touched and what it returned.
 
-    Where the organization locks sessions (auto_lock), it shows which read locked the
-    session to its project and which made it read-only. Kept where the organization
-    has the read trail turned on.
+    With project boundaries it shows the session's declaration, which read locked it
+    to a project, which made it read-only, and each refusal (``boundary:*`` rows).
+    Kept where the organization has the read trail turned on.
     """
     from beakr_cli.session_trail import render_trail, trail_path
 
@@ -552,6 +825,7 @@ def edit(
     write: list[str] = _write_opt,
     read_all: bool = _read_all_opt,
     write_all: bool = _write_all_opt,
+    read_everything: bool = _read_everything_opt,
     remember: bool | None = typer.Option(
         None,
         "--remember/--no-remember",
@@ -561,16 +835,27 @@ def edit(
 ) -> None:
     """Change the session's projects with your own credential; it applies to its next request.
 
-    --read/--write (or --read-all/--write-all) replace the lists; without them, at a
-    terminal, the picker opens with the current choice.
+    --read/--write (or --read-all/--write-all) replace the lists, checked first against
+    the projects' boundaries; --read-everything makes it read every project and write
+    none. Without them, at a terminal, the picker opens with the current choice. An
+    automatic or read-everything session that has touched a project can't be changed
+    (409 session_already_started).
     """
     scope_session.refuse_inside_conversation("beakr session edit", "Change a session's projects")
+    _refuse_together(
+        **{
+            "--read/--write": bool(read or write or read_all or write_all),
+            "--read-everything": read_everything,
+        }
+    )
     chosen = _session_id(session_id)
     with get_sdk(scoped=False) as sdk:
         current = sdk.request("GET", f"/v1/sessions/{chosen}")
         where = f"on the session's page ({current.get('picker_url')})"
         lists: tuple[list[str], list[str]] | None
-        if read_all or write_all:
+        if read_everything:
+            lists = None
+        elif read_all or write_all:
             lists = _every(sdk, read, write, read_all=read_all, write_all=write_all, where=where)
         elif read or write:
             lists = _lists(read, write)
@@ -586,13 +871,17 @@ def edit(
         else:
             lists = None
         body: dict[str, Any] = {}
-        if lists is not None:
+        if read_everything:
+            body["read_everything"] = True
+        elif lists is not None:
+            check_selection(sdk, *lists)
             body["read_project_ids"], body["write_project_ids"] = lists
         if remember is not None:
             body["remember_folder"] = remember
         if not body:
             raise typer.BadParameter(
-                "give --read/--write, --read-all/--write-all, or --remember", param_hint="--read"
+                "give --read/--write, --read-all/--write-all, --read-everything or --remember",
+                param_hint="--read",
             )
         session = sdk.request("PATCH", f"/v1/sessions/{chosen}", json=body)
     if remember is False:
