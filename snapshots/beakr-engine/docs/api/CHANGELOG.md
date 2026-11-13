@@ -11,11 +11,72 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=e9c8499ffbde9a24f13662273668a595c597b7321e98b99b0d202180358dad30 changelog sha256=608dff2308d1f85fb1bc8f9f7ffe287e1e79b656f648aeeddf690058879b3244 -->
+<!-- contract-stamp: public-openapi sha256=12e6630c1d10556b209681becd7237ab5dbad52f0014cbdf111bcf6b5b006c05 changelog sha256=754e895f1c250f2a6750a2619611b322efac58db01767a46adc880f6a18cedd4 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/command` `ls`: following the continuation a reply
+  prints now reaches every page. A window is ordered by title in byte order
+  (uppercase before lowercase, then non-ASCII letters), and `after_title` was
+  compared in another order, so pages whose titles start with a lowercase or
+  accented letter could be on no window; a listing filtered with `created_by`
+  or `changed_by` lost pages the same way. Titles can repeat across projects:
+  when a window ends between two pages with the same title, the reply prints
+  `after_page_id` beside `after_title`; send both, and keep sending the
+  `after_page_id` each later reply prints. `after_page_id` without
+  `after_title`, or one that is not a page id, is refused with
+  `invalid_arguments`. A partial `ls` now sets `coverage.continue_with` to the
+  arguments to change (`after_title`, and `after_page_id` when printed), and
+  its first `next` step names them; before, `next` said to raise `limit`. A
+  date-sorted `ls` (`sort_by: updated_at` or `created_at`) has no cursor: its
+  reply and `coverage.continue_with` (`{"sort_by": "title"}`) say to page the
+  title-ordered listing from its start. Both MCP servers report `has_more:
+  true` for such a window.
+- `POST /v1/knowledge/wiki/command` `sources`, `sections`, `cat` and
+  `provenance`: the `fetch:` line under a cited connected item (a meeting
+  note, an email or Slack thread, an issue) is now the call an API, CLI, SDK
+  or MCP caller can make, `integrations command='call' tool='...'
+  arguments={...}`, for the caller's own connection. It named the provider
+  tool alone (`granola_get_note with note_id=...`), which is not callable
+  outside Beakr. The `next` step of `sources` says to make that call as
+  written.
+- `POST /v1/knowledge/wiki/command` `log` with no filter now names each writer
+  as a filtered `log` does: the person, the client or agent, and for a
+  revision from a proposal who accepted it (`auto-approve` where it was
+  applied automatically). It printed stored identifiers (`human:<user id>`,
+  `api:<user id>:<client>`) and, for an auto-approved proposal, the person who
+  filed it as the one who accepted it. It is also paged like a filtered `log`:
+  20 revisions by default, 50 at most, with `offset`, `coverage.next_offset`
+  and a final line giving the call that continues it.
+- `POST /v1/knowledge/wiki/command` `proposals` with `by`, `via`, `kind`,
+  `since` or `until` that matches nothing now says which status it read
+  (`pending` unless `status` is given) and prints the call that lists the
+  accepted proposals with the same filters. Its `next` step no longer suggests
+  checking a page name.
+- `POST /v1/knowledge/wiki/command`: the `unknown_command` message lists the
+  commands the caller can run, `help` included, and `query` where it is
+  enabled for the organization.
+- `POST /v1/knowledge/wiki/command` and `POST /v1/knowledge/wiki/write`: a
+  `scope` that names no project you can read (`scope_not_found`) now says what
+  to do: list the projects you can read and pass one of their names or ids,
+  or leave `scope` out. A read carries it in `next`, a write at the end of its
+  text. The answer is the same for a project that does not exist and one you
+  cannot read.
+- `POST /v1/knowledge/documents` `read` and `grep`: a file with no indexed
+  text is reported as having no readable text yet. The message no longer
+  names `artifact_download`, which is not available through the API, the CLI
+  or either MCP server.
+- The hosted MCP server's `wiki_stats` and `wiki_graph` accept a project name
+  in `project`, as their schema says; a name was refused with `bad_request`.
+  A name that matches no project you can read is refused in the same words
+  whether or not such a project exists.
+- The `knowledge_base_write` tool description and `action: help` (both MCP
+  servers; `POST /v1/knowledge/wiki/write` `help`) now describe approval the
+  way the result does: a write is a proposal, applied at once where the
+  project's auto-approve is on, otherwise when a person accepts it, and
+  staging one needs no permission first. They said nothing is written until a
+  person approves.
 - `POST /v1/knowledge/wiki/command` `log`, `proposals` and `ls` filter by who
   wrote a change and through which agent. `log` (with or without `page`) and
   `proposals` take, in any combination: `by`, a person given as a name, email

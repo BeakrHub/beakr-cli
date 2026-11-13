@@ -6644,7 +6644,7 @@
               }
             ],
             "default": null,
-            "description": "On a reply cut to its response budget: the arguments that continue it. For `cat`, the whole call's arguments (`page` as the page id, `lines` as the page line range not shown yet, `scope` when the call gave one); for a listing, the arguments to change in the same call. Null when nothing remains.",
+            "description": "On a reply cut to its response budget, and on an `ls` window with more pages after it: the arguments that continue it. For `cat`, the whole call's arguments (`page` as the page id, `lines` as the page line range not shown yet, `scope` when the call gave one); for a listing, the arguments to change in the same call (`ls`: `after_title`, with `after_page_id` when the next page shares that title; a date-sorted `ls` has no cursor and gives `sort_by: title`). Null when nothing remains.",
             "title": "Continue With"
           },
           "limit": {
