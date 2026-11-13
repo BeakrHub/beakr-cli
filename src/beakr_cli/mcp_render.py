@@ -283,7 +283,30 @@ def _brief_line(entry: dict[str, Any]) -> str:
     else:
         handle = ""
     tail = f" · {handle}" if handle else ""
+    read_call = _read_call(record)
+    if read_call:
+        tail += f" · {read_call}"
     return f"- {_line_label(record)}{head}{tail}".rstrip()
+
+
+def _read_call(record: dict[str, Any]) -> str:
+    """``read with integrations command='call' tool='granola_get_note' ...``, or "".
+
+    A connected item that is not a file (a meeting note, an email or Slack
+    thread) is read through its provider's own tool with the provider's own
+    id. Its share link carries a different id that the tool refuses, so the
+    line names the exact call. Mirrors the hosted server's ``render._read_call``.
+    """
+    retrieval = record.get("retrieval")
+    if not isinstance(retrieval, dict):
+        return ""
+    arguments = retrieval.get("arguments")
+    if not isinstance(arguments, dict) or "handle" in arguments or not arguments:
+        return ""
+    return (
+        f"read with integrations command='call' tool='{retrieval.get('tool')}' "
+        f"arguments={json.dumps(arguments, sort_keys=True)}"
+    )
 
 
 #: What each ``approval_state`` of a staged write means for the agent that made it.
@@ -404,6 +427,9 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         where.append(f"{passages} passages cited")
     if record.get("source_ref"):
         where.append(f"source_ref {record['source_ref']}")
+    read_call = _read_call(record)
+    if read_call:
+        where.append(read_call)
     tail = f" · {' · '.join(where)}" if where else ""
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     lines = [f"- {_line_label(record)}{head}{tail}".rstrip()]

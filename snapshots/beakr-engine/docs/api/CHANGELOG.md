@@ -11,11 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=028e7b8a011f5ed7fec2c76a08db66875cb0292d36cc2ec02138fad302bc8a9b changelog sha256=cee599d4154b53e8caf7538c995d9879472e7ab7d31d67070a73aa1b1139bddf -->
+<!-- contract-stamp: public-openapi sha256=14f87bfb5e5b2a897c92f2a6b703d565bfd9fdc133afdf4c5b2bf99b0b15f3fb changelog sha256=8439e7eaa300b536e4098b833d99e311621ffe07cd97e37276b811284c8ae7ef -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/artifacts?thread_outputs=true` lists every file and document a
+  chat produced, including ones not yet saved to a project. Each row's
+  `saved_to_files` says whether project Files lists it. Files attached to a
+  chat as context are still left out. Other listings are unchanged.
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
   who and what wrote it. `kind` is `beakr` (a model or maintenance process
@@ -26,6 +30,10 @@ The first public version.
   it and `accepted_by` who accepted a proposal. A file a client uploads
   records that client, agent and session, so a revision compiled from it
   names them too.
+- `DELETE /v1/projects/{project_id}` no longer requires step-up MFA, even
+  when the organization requires it for sensitive actions. Project deletion
+  permissions still apply. Keys and tokens remain blocked with
+  `403 session_required` in organizations requiring enterprise SSO.
 
 - `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
   owner when the newest turn failed without an answer: `run_id`, a `reason`
@@ -1293,8 +1301,9 @@ The first public version.
   `detail.error_type: enterprise_sso_required`; keys and tokens are not
   sessions and keep their own scopes, but in an organization that requires
   single sign-on they answer `403 session_required` to every action that needs
-  step-up (creating keys or service accounts, deleting a project, changing
-  roles or the authentication policy).
+  step-up (creating service-account keys or service accounts, changing
+  roles or the authentication policy), and to project deletion independently
+  of the step-up setting.
 - An organization admin revoking a member's credential, and
   `POST /v1/organizations/{org_id}/service-accounts/{account_id}/disable`, need
   an interactive session (and step-up where the organization requires it); keys

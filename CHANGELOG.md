@@ -4,18 +4,14 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.6.0 (unreleased)
-
-### Client changes
-
-- The Beakr block in Codex's `~/.codex/AGENTS.md` is written as one block. The
-  engine's context already carries the block markers, and wrapping it again
-  nested one block inside another; each later rewrite then left the old capture
-  notice and an orphaned end marker behind. The next `beakr codex` or
-  `beakr hooks install --client codex` repairs a file left that way.
+## beakr-cli 0.6.0 (2026-11-12)
 
 ### Changes
 
+- `GET /v1/artifacts?thread_outputs=true` lists every file and document a
+  chat produced, including ones not yet saved to a project. Each row's
+  `saved_to_files` says whether project Files lists it. Files attached to a
+  chat as context are still left out. Other listings are unchanged.
 - Attribution on Knowledge changes: each revision in
   `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
   who and what wrote it. `kind` is `beakr` (a model or maintenance process
@@ -26,6 +22,10 @@ Each release lists the public API changes it supports, taken from the API change
   it and `accepted_by` who accepted a proposal. A file a client uploads
   records that client, agent and session, so a revision compiled from it
   names them too.
+- `DELETE /v1/projects/{project_id}` no longer requires step-up MFA, even
+  when the organization requires it for sensitive actions. Project deletion
+  permissions still apply. Keys and tokens remain blocked with
+  `403 session_required` in organizations requiring enterprise SSO.
 - Chat run submission (`POST /v1/runs`) accepts `decision_id`
   and `decision_version` to answer a specific pending question, rejecting stale
   decision versions, and returns
@@ -35,6 +35,21 @@ Each release lists the public API changes it supports, taken from the API change
   last-poll time, and capacity-wait and overdue flags, with field descriptions
   explaining how to interpret operation progress.
 
+### Organization administration
+
+- Enterprise single sign-on state on organizations: `GET /v1/organizations`,
+  `GET /v1/organizations/{org_id}` and `GET /v1/me/organization` return
+  `sso_required`, `sso_satisfied` (whether the calling session meets the
+  requirement; always `true` when none is required), and, when single sign-on
+  is required, `enterprise_sso_connection_id` (the identity provider's
+  connection id, not a Beakr UUID) and `sso_provider`. A web session that has
+  not signed in through a required connection is refused with `403` and
+  `detail.error_type: enterprise_sso_required`; keys and tokens are not
+  sessions and keep their own scopes, but in an organization that requires
+  single sign-on they answer `403 session_required` to every action that needs
+  step-up (creating service-account keys or service accounts, changing
+  roles or the authentication policy), and to project deletion independently
+  of the step-up setting.
 ## beakr-cli 0.5.0 (2026-11-10)
 
 ### Client changes
