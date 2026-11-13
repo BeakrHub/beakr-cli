@@ -105,3 +105,40 @@ def test_the_path_is_followed_by_every_place_cited_in_it():
         "- Finance/2026/book.xlsx › sheet 2, B4:D9, sheet 3 · google_drive · "
         "https://drive.example/book"
     ) in text
+
+
+def test_a_cited_note_names_the_call_that_reads_it():
+    # ROOT CAUSE (agent diary KBID-20261112-01a1d20c-006..008): a cited Granola
+    # note was listed by its share link only; the link's uuid is not the id
+    # granola_get_note takes, so the agent's reads were refused. The engine now
+    # sends the provider read call as the record's ``retrieval`` and both
+    # servers print it.
+    from beakr_cli.mcp_render import sources_block
+
+    note = {
+        "name": "Granola: Investor Update + fundraising planning",
+        "source_ref": "beakr-source:v1:n",
+        "provider": "granola",
+        "location": {"url": "https://notes.granola.ai/d/ef1a85e3-6012-4a11-85c8-d6592cacd647"},
+        "retrieval": {"tool": "granola_get_note", "arguments": {"note_id": "not_KwJkAq0ZqUsOG1"}},
+    }
+    expected = (
+        "read with integrations command='call' tool='granola_get_note' "
+        'arguments={"note_id": "not_KwJkAq0ZqUsOG1"}'
+    )
+
+    for mode in ("brief", "full"):
+        assert expected in sources_block([note], mode=mode)
+
+
+def test_a_file_with_a_download_handle_prints_no_read_call():
+    from beakr_cli.mcp_render import sources_block
+
+    memo = {
+        "name": "memo.pdf",
+        "source_ref": "beakr-source:v1:memo",
+        "location": {"file_id": "f-1"},
+        "retrieval": {"tool": "drive_download", "arguments": {"handle": "beakr://x"}},
+    }
+
+    assert "read with integrations" not in sources_block([memo], mode="full")
