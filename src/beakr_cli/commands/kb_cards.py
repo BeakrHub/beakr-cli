@@ -17,6 +17,7 @@ from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
 from beakr_cli.commands.kb import app as kb_app
+from beakr_cli.kb_shell_hints import DoorCall, shell_content
 from beakr_cli.output import console, emit, err_console
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.proposal_view import staged_proposal_lines
@@ -27,6 +28,8 @@ _ROW_TABLES = ("facts", "connections", "findings")
 _MATCH_MODES = ("exact", "similar", "meaning")
 _ROW_VIEWS = ("values", "fields", "groups", "conflicts")
 _EDIT_TABLES = ("facts", "connections", "findings")
+#: The door reads here; every other command of this module stages a write.
+_READ_COMMANDS = frozenset({"rows", "query"})
 
 _scope_opt = typer.Option(
     None,
@@ -74,12 +77,20 @@ def _scope(explicit: str | None) -> str | None:
     return resolve_project(explicit)
 
 
-def _print_result(result: dict[str, Any], *, json_out: bool) -> None:
+def _print_result(result: dict[str, Any], *, json_out: bool, call: DoorCall) -> None:
     # Piped, an agent reads the door's text too (the rows table, the staged
     # proposal), not a summary of the reply's fields. A staged write's content
     # hash follows it: `kb proposals accept --reviewed-hash` takes it back.
+    # The calls the text names (`call rows again with offset=50`, `call
+    # accept_proposal`) are printed as the `beakr` commands that make them.
+    staged = result.get("proposal") if isinstance(result, dict) else None
+    write = call.command not in _READ_COMMANDS
+    if isinstance(staged, dict) and staged.get("id"):
+        call = DoorCall(call.command, call.arguments, proposal_id=str(staged["id"]))
+
     def text_lines(r: dict[str, Any]) -> list[str]:
-        return [*result_text(r).splitlines(), *staged_proposal_lines(r)]
+        text = shell_content(result_text(r), call, acknowledgement=write)
+        return [*text.splitlines(), *staged_proposal_lines(r)]
 
     emit(
         result,
@@ -273,7 +284,8 @@ def rows(
     with get_sdk() as sdk:
         # The generic door call: the SDK's rows() predates to, connected_to, as_of
         # and group_by, and the door takes every rows argument by its tool name.
-        result = sdk.knowledge.command("rows", match="exact" if exact_first else match, **arguments)
+        asked = {**arguments, "match": "exact" if exact_first else match}
+        result = sdk.knowledge.command("rows", **asked)
         if exact_first and _no_rows(result):
             err_console.print(
                 f"No field is named exactly {attribute!r}; these rows are the default "
@@ -281,8 +293,9 @@ def rows(
                 "Pass --match exact to keep only that name.",
                 markup=False,
             )
-            result = sdk.knowledge.command("rows", **arguments)
-    _print_result(result, json_out=json_out)
+            asked = arguments
+            result = sdk.knowledge.command("rows", **asked)
+    _print_result(result, json_out=json_out, call=DoorCall("rows", asked))
 
 
 def _no_rows(result: Any) -> bool:
@@ -339,8 +352,11 @@ def query(
     if cursor:
         arguments["cursor"] = cursor
     with get_sdk() as sdk:
-        result = sdk.knowledge.command("query", scope=_scope(scope), **arguments)
-    _print_result(result, json_out=json_out)
+        project = _scope(scope)
+        result = sdk.knowledge.command("query", scope=project, **arguments)
+    _print_result(
+        result, json_out=json_out, call=DoorCall("query", {**arguments, "scope": project})
+    )
 
 
 def _query_text(text: str | None, query_file: Path | None) -> str:
@@ -382,7 +398,7 @@ def add_fact(
             rationale=rationale,
             scope=_scope(scope),
         )
-    _print_result(result, json_out=json_out)
+    _print_result(result, json_out=json_out, call=DoorCall("add_fact"))
 
 
 def add_connection(
@@ -411,7 +427,7 @@ def add_connection(
             rationale=rationale,
             scope=_scope(scope),
         )
-    _print_result(result, json_out=json_out)
+    _print_result(result, json_out=json_out, call=DoorCall("add_connection"))
 
 
 def add_finding(
@@ -452,7 +468,7 @@ def add_finding(
             rationale=rationale,
             scope=_scope(scope),
         )
-    _print_result(result, json_out=json_out)
+    _print_result(result, json_out=json_out, call=DoorCall("add_finding"))
 
 
 def edit_rows(
@@ -499,7 +515,7 @@ def edit_rows(
                 rationale=rationale,
                 scope=_scope(scope),
             )
-    _print_result(result, json_out=json_out)
+    _print_result(result, json_out=json_out, call=DoorCall("edit_rows"))
 
 
 def register(root: typer.Typer) -> None:

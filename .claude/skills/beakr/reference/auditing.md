@@ -51,4 +51,8 @@ Organize by severity:
 - **Minor** -- style inconsistencies, missing Related Pages sections
 - **Recommendations** -- specific pages to create, merge, or reorganize
 
-Offer to stage fixes with `knowledge_base_write` (`edit_section`, `merge`, `mv`, `new`) if the user approves. See [writing-pages.md](writing-pages.md#renaming-merging-and-replacing-text) for what `merge` carries and what `mv` leaves.
+Then fix what you found with `knowledge_base_write`. Every write stages a proposal, so staging one needs no permission; accepting it is the user's, unless the result says auto-approve is on.
+- **Additive findings** (a missing citation, fact, connection or finding; a new index page): stage them without asking (`add_fact`, `add_connection`, `add_finding`, `new`) and say what you staged.
+- **Changes that rewrite or remove existing content** (`edit_section`, `edit_rows`, `find_replace`, `merge`, `mv`, `archive`): list them and confirm with the user before staging.
+
+See [writing-pages.md](writing-pages.md#renaming-merging-and-replacing-text) for what `merge` carries and what `mv` leaves.

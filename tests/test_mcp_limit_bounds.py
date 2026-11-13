@@ -155,19 +155,55 @@ async def test_read_file_over_the_maximum_reads_the_largest_window_and_says_so()
     assert f"limit reduced from 999999 to {READ_FILE_CHARS}" in _text(result)
 
 
-# The context route refuses budget_chars under 2000 (ContextIn, ge=2000): the
-# tool used to declare no bounds and send anything from 500 up.
+# ROOT CAUSE (live check 2026-11-13, call 11_input__context_small): the hosted
+# server checks a call against the tool's schema and refuses budget_chars=500
+# with "500 is less than the minimum of 2000" and the shape to send. This server
+# declared the same bounds but raised the budget to 2000 without a word, so the
+# caller got a context larger than it asked for and no notice. Both now refuse
+# in the same words (the hosted reply of that run, byte for byte).
+HOSTED_SMALL_BUDGET_REFUSAL = (
+    '{"status": "error", "error_code": "invalid_arguments", "message": "This call does not '
+    'fit the context tool: 500 is less than the minimum of 2000.", "fix": "Send the call in '
+    'the tool\'s shape: context takes {\\"project\\": <string>, \\"question\\": <string>, '
+    '\\"format\\": \\"markdown\\", \\"budget_chars\\": <integer>} (required: none; no other '
+    'keys)."}'
+)
+
+
 @respx.mock
-async def test_context_declares_and_keeps_to_the_routes_budget_bounds() -> None:
+async def test_context_refuses_a_budget_under_the_minimum_as_the_hosted_server_does() -> None:
     tools: list = []
     route = respx.post(f"{API}/v1/context").respond(json={"content": "# You"})
 
     result = await _session_call("context", {"budget_chars": 500}, listed=tools)
 
-    assert not result.isError, _text(result)
-    assert json.loads(route.calls.last.request.content)["budget_chars"] == 2000
+    assert result.isError
+    assert _text(result) == HOSTED_SMALL_BUDGET_REFUSAL
+    assert not route.called
     schema = next(t for t in tools if t.name == "context").inputSchema["properties"]
     assert (schema["budget_chars"]["minimum"], schema["budget_chars"]["maximum"]) == (2000, 20000)
+
+
+@respx.mock
+async def test_context_refuses_a_budget_over_the_maximum() -> None:
+    route = respx.post(f"{API}/v1/context").respond(json={"content": "# You"})
+
+    result = await _session_call("context", {"budget_chars": 999_999})
+
+    assert result.isError
+    assert "999999 is greater than the maximum of 20000" in _text(result)
+    assert not route.called
+
+
+@respx.mock
+@pytest.mark.parametrize("budget", [2000, 20000])
+async def test_context_sends_a_budget_at_either_bound(budget: int) -> None:
+    route = respx.post(f"{API}/v1/context").respond(json={"content": "# You"})
+
+    result = await _session_call("context", {"budget_chars": budget})
+
+    assert not result.isError, _text(result)
+    assert json.loads(route.calls.last.request.content)["budget_chars"] == budget
 
 
 # The engine tells a caller whose X-Beakr-Client starts with "beakr-mcp" to open

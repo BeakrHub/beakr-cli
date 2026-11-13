@@ -325,3 +325,90 @@ def test_after_title_without_a_filter_is_a_usage_error():
     assert result.exit_code == 2
     assert "--cursor" in result.output
     assert not pages.called
+
+
+# ROOT CAUSE (live check 2026-11-13, capture cli/12_log_alpha.txt): `kb log
+# <page>` without a filter reads the revisions route and printed each row's
+# storage stamp (`by=proposal:<uuid>`, `by=api:<uuid>:beakr-cli`), while the
+# filtered form, which is the door's text, named the person and their agent.
+# The route's rows carry the same facts as `writer` and `attribution`.
+_STAMPED_REVISIONS = [
+    {
+        "revision": 6,
+        "compiled_by": "api:92f34b40-9d0c-429e-8e7a-e260c8998df3:beakr-cli",
+        "writer": "Blake Rivers via beakr-cli (applied directly)",
+        "attribution": {"kind": "agent", "person": "Blake Rivers", "agent": "beakr-cli"},
+        "created_at": "2026-11-10T23:30:00",
+    },
+    {
+        "revision": 5,
+        "compiled_by": "health_agent",
+        "attribution": {"kind": "beakr", "process": "health_agent"},
+        "created_at": "2026-11-09T12:00:00",
+    },
+    {
+        "revision": 4,
+        "compiled_by": "gpt-6-luna",
+        "attribution": {
+            "kind": "beakr",
+            "model": "gpt-6-luna",
+            "person": "Blake Rivers",
+            "client": "codex/1.4",
+        },
+        "created_at": "2026-11-07T12:00:00",
+    },
+    {
+        "revision": 3,
+        "compiled_by": "proposal:179c343c-9f18-4653-a76b-7d80b3126281",
+        "writer": "Avery Stone via codex/1.4 (proposal 179c343c, accepted by auto-approve)",
+        "attribution": {"kind": "agent", "person": "Avery Stone", "agent": "codex/1.4"},
+        "created_at": "2026-11-05T12:00:00",
+    },
+    {
+        # An engine that sends the structured attribution and no sentence.
+        "revision": 2,
+        "compiled_by": "proposal:d9811dd7-75e3-45e8-8cff-0492bd875812",
+        "attribution": {
+            "kind": "agent",
+            "person": "Avery Stone",
+            "client": "beakr-mcp/0.4.0",
+            "agent": "claude-code/2.1",
+            "accepted_by": "Avery Stone",
+        },
+        "created_at": "2026-11-03T12:00:00",
+    },
+    {
+        "revision": 1,
+        "compiled_by": "human:92f34b40-9d0c-429e-8e7a-e260c8998df3",
+        "editor_name": "Avery Stone",
+        "attribution": {"kind": "person", "person": "Avery Stone"},
+        "created_at": "2026-11-01T12:00:00",
+    },
+    # No attribution at all (an older engine): the stamp is all there is.
+    {"revision": 0, "compiled_by": "system", "created_at": "2026-10-31T12:00:00"},
+]
+
+
+@respx.mock
+def test_unfiltered_log_names_the_person_and_agent_not_the_storage_stamp() -> None:
+    respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
+    respx.get(f"{PAGES}/{PAGE_ID}/revisions").respond(
+        json={"data": _STAMPED_REVISIONS, "has_more": False, "next_cursor": None, "total": 7}
+    )
+
+    result = runner.invoke(app, ["kb", "log", PAGE_ID, "--project", PROJECT])
+
+    assert result.exit_code == 0, result.output
+    writers = [
+        line.split("\t")[2] for line in result.stdout.splitlines() if line.startswith("rev=")
+    ]
+    assert writers == [
+        "by=Blake Rivers via beakr-cli (applied directly)",
+        "by=health_agent",
+        "by=gpt-6-luna (for Blake Rivers via codex/1.4)",
+        "by=Avery Stone via codex/1.4 (proposal 179c343c, accepted by auto-approve)",
+        "by=Avery Stone via claude-code/2.1 (accepted by Avery Stone)",
+        "by=Avery Stone",
+        "by=system",
+    ]
+    assert "proposal:" not in result.stdout and "api:" not in result.stdout

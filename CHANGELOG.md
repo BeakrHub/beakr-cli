@@ -193,6 +193,25 @@ Each release lists the public API changes it supports, taken from the API change
   reads the Knowledge command door and prints its reply, which opens with the
   filters applied and names the option that continues a cut listing. Without a
   filter the three commands read and print as before.
+- `beakr kb` prints each next step as a command. The Knowledge door names the
+  next call the way an MCP client makes it (`cat {page, lines}`, `proposals
+  {"offset": 1}`, `call accept_proposal`, `read_file <id>`); the text output of
+  `beakr kb` now prints the `beakr` command that makes it
+  (`beakr kb cat <id> --lines 5-533`, `beakr kb proposals ls ... --offset 1`,
+  `beakr kb proposals accept <id>`, `beakr documents read <id>`), and
+  `beakr api knowledge run-wiki-command ...` for a call with no dedicated flag.
+  `--json` output and the MCP server's replies are unchanged.
+- A cited meeting note, email or Slack thread names the call that re-reads it.
+  The stdio MCP server's Sources line ends `read with integrations
+  command='call' tool='granola_get_note' arguments={...}`, as the hosted
+  server's does, and `beakr kb` prints it as `beakr integrations call ...`.
+- The MCP `context` tool refuses a `budget_chars` outside 2000 to 20000 with
+  `invalid_arguments`, as the hosted server does, instead of changing it
+  silently.
+- `beakr kb log <page>` without a filter names who wrote each revision and
+  through which agent (`by=Dana Reyes via codex/1.4 (proposal 179c343c,
+  accepted by auto-approve)`) instead of the stored stamp
+  (`by=proposal:<uuid>`).
 
 ## beakr-cli 0.5.0 (2026-11-10)
 

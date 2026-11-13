@@ -26,6 +26,7 @@ from beakr_cli.mcp_render import (
     organization_line,
 )
 from beakr_cli.mcp_tools_platform import PageLimit, _project_by_name_or_id
+from beakr_cli.source_records import with_read_call
 from beakr_cli.updates import (
     CHECK_OFF,
     box_line,
@@ -382,8 +383,9 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
 
     The one shape the SDK, the CLI and this server share (``beakr_sdk.sources``),
     plus what a Knowledge read adds to name its citations readably: every place
-    the text cites in the document (``cited_places``) and the name it uses for
-    it when that is not ``filename`` (``reference``), as the hosted server's
+    the text cites in the document (``cited_places``), the name it uses for it
+    when that is not ``filename`` (``reference``) and the call that re-reads a
+    connected item (``retrieval``), as the hosted server's
     ``formatting.public_source`` keeps them.
     """
     item = _shared_public_source(source, citation_key=citation_key)
@@ -392,7 +394,7 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
         item["cited_places"] = places
     if source.get("reference"):
         item["reference"] = str(source["reference"])
-    return item
+    return with_read_call(item, source)
 
 
 def _wiki_result(result: dict) -> dict:

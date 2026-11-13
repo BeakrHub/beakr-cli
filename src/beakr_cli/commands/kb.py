@@ -23,6 +23,7 @@ from beakr_cli.cited_answer import print_research_result, research_lines
 from beakr_cli.commands import kb_author_filters as author
 from beakr_cli.compact import cell, next_page_hint, print_compact
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
+from beakr_cli.kb_shell_hints import DoorCall, shell_hint, shell_reply
 from beakr_cli.output import (
     console,
     err_console,
@@ -44,9 +45,11 @@ from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
 from beakr_cli.proposal_view import filed_by_line, payload_lines
 from beakr_cli.research_metadata import public_research
+from beakr_cli.revision_view import revision_writer
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
+from beakr_cli.source_records import with_read_call
 
 app = typer.Typer(help="Interact with your Beakr knowledge base.")
 propose_app = typer.Typer(help="Create user-approved wiki write proposals.")
@@ -313,6 +316,7 @@ def _ls_by_author(
         # --all reads every project the caller can open: the door's unscoped read.
         scope=None if all_scopes else _project_id(project=project, mine=mine),
         json_out=json_out,
+        flags=("--all",) if all_scopes else (),
         page_type=page_type or None,
         parent=parent_id,
         limit=limit,
@@ -427,9 +431,11 @@ def _door_read(
     """Run a Knowledge read command and print it as the MCP tools show it.
 
     The text is the engine's rendering, followed by one line per cited document
-    (its citation tokens, filename, provider, the id ``read_file``/``beakr files
-    download`` takes, one verbatim excerpt) -- the same text an agent gets from
-    the ``knowledge_base`` tool. ``--json`` prints the door's reply unchanged.
+    (its citation tokens, filename, provider, the id ``beakr documents read``
+    takes, one verbatim excerpt) -- the text an agent gets from the
+    ``knowledge_base`` tool, with each call a hint names spelled as the
+    ``beakr`` command that makes it (:mod:`beakr_cli.kb_shell_hints`).
+    ``--json`` prints the door's reply unchanged.
 
     The reply's ``coverage`` is passed to the renderer, which prints it whenever
     the read is partial: a cut read is otherwise indistinguishable from a whole
@@ -440,11 +446,20 @@ def _door_read(
     )
 
 
-def _door_print(command: str, *, scope: str | None, json_out: bool, **arguments: object) -> None:
-    """:func:`_door_read` for a scope the caller already resolved (None: every project)."""
-    from beakr_sdk.sources import public_source
+def _door_print(
+    command: str,
+    *,
+    scope: str | None,
+    json_out: bool,
+    flags: tuple[str, ...] = (),
+    **arguments: object,
+) -> None:
+    """:func:`_door_read` for a scope the caller already resolved (None: every project).
 
-    from beakr_cli.mcp_render import render
+    ``flags`` are the options of this command that the door call does not carry
+    (``--all``), so a hint that continues the listing repeats them.
+    """
+    from beakr_sdk.sources import public_source
 
     with get_sdk() as sdk:
         result = sdk.knowledge.command(command, scope=scope, check=False, **arguments)
@@ -452,14 +467,21 @@ def _door_print(command: str, *, scope: str | None, json_out: bool, **arguments:
     if json_out:
         print_json(result)
     else:
-        sources = [public_source(r) for r in result.get("sources") or [] if isinstance(r, dict)]
+        sources = [
+            with_read_call(public_source(r), r)
+            for r in result.get("sources") or []
+            if isinstance(r, dict)
+        ]
         body = {
             "content": result_text(result),
             "coverage": result.get("coverage"),
             "sources": sources,
             "next": result.get("next"),
         }
-        sys.stdout.write(render("knowledge_base", body).rstrip() + "\n")
+        # The door names its next calls as an MCP client makes them; a terminal
+        # reads them as the `beakr kb ...` commands that do the same.
+        call = DoorCall(command, {**arguments, "scope": scope}, flags=flags)
+        sys.stdout.write(shell_reply("knowledge_base", body, call).rstrip() + "\n")
     if outcome.get("status") == "error":
         raise typer.Exit(1)
 
@@ -678,13 +700,13 @@ def log(
         if machine_output(revisions, json_out=json_out, lines=_revision_lines):
             return
 
-        columns = ["Rev", "Compiled By", "Summary", "Date"]
+        columns = ["Rev", "By", "Summary", "Date"]
         rows = []
         for r in revisions:
             rows.append(
                 [
                     str(r.get("revision", "")),
-                    r.get("compiled_by", "")[:30],
+                    revision_writer(r),
                     (r.get("summary", "") or "")[:50],
                     r.get("created_at", "")[:16] if r.get("created_at") else "",
                 ]
@@ -701,9 +723,8 @@ def _revision_lines(revisions: list[dict]) -> list[str]:
     lines = []
     for r in revisions:
         columns = [f"rev={r.get('revision', '')}", str(r.get("created_at") or "")[:16]]
-        by = r.get("editor_name") or r.get("compiled_by")
-        if by:
-            columns.append(f"by={cell(by)}")
+        # The person and their agent, not the storage stamp (`proposal:<uuid>`).
+        columns.append(f"by={cell(revision_writer(r), width=120)}")
         if r.get("summary"):
             columns.append(cell(r["summary"], width=200))
         lines.append("\t".join(columns))
@@ -1483,6 +1504,11 @@ def _auto_approved(result: object, reply: str) -> bool:
     return _AUTO_APPROVE_REPLY in reply
 
 
+def _staged_id(staged: object) -> bool:
+    """Whether a write's reply names the proposal it staged."""
+    return isinstance(staged, dict) and bool(staged.get("id"))
+
+
 def _stage_new_page(
     *,
     title: str,
@@ -1522,18 +1548,19 @@ def _stage_new_page(
         )
         reply = result_text(result) if isinstance(result, dict) else str(result or "")
         staged = result.get("proposal") if isinstance(result, dict) else None
-        proposal = (
-            sdk.knowledge.proposals.show(str(staged["id"]))
-            if isinstance(staged, dict) and staged.get("id")
-            else None
+        # The reply as a terminal reads it: `accept_proposal` is `beakr kb proposals accept`.
+        shown = shell_hint(
+            reply,
+            DoorCall("new", proposal_id=str(staged["id"]) if _staged_id(staged) else None),
         )
+        proposal = sdk.knowledge.proposals.show(str(staged["id"])) if _staged_id(staged) else None
     if proposal is None:
-        if not machine_output(result, json_out=json_out, lines=lambda r: reply.splitlines()):
-            console.print(reply, markup=False)
+        if not machine_output(result, json_out=json_out, lines=lambda r: shown.splitlines()):
+            console.print(shown, markup=False)
         return None, False
-    if reply:
+    if shown:
         (console if output_mode(json_out) == "human" else err_console).print(
-            reply, markup=False, highlight=False
+            shown, markup=False, highlight=False
         )
     return proposal, _auto_approved(result, reply)
 

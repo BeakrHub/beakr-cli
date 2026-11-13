@@ -43,9 +43,9 @@ Write up findings organized by theme, not by page. Include:
 - Gaps -- what the knowledge base does NOT cover
 - Temporal context -- when information was written, whether it may be stale
 
-### 9. Recommend
+### 9. Write back
 
-If research reveals gaps or stale pages, suggest specific knowledge base updates.
+Save what the research established with `knowledge_base_write`, without being asked: `add_finding` on the card each conclusion is about, citing the references you used. If it reveals gaps or stale pages, propose the specific edits. A write stages a proposal, so staging one needs no permission; accepting it is the user's, unless the result says auto-approve is on. Tell the user in one line what you saved.
 
 ## Cards or the original files
 

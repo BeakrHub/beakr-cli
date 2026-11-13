@@ -139,7 +139,7 @@ async def context(
     question: str = "",
     format: str = "markdown",
     budget_chars: ContextBudget = 8_000,
-) -> str:
+) -> str | dict[str, Any]:
     """Load onboarding context for this session: who the user is, the org and project
     profiles, their memories, what changed recently, relevant skills and entities.
 
@@ -156,6 +156,9 @@ async def context(
     """
     if format not in _CONTEXT_FORMATS:
         return f"Invalid format '{format}'. Use one of: {', '.join(_CONTEXT_FORMATS)}."
+    refusal = _budget_refusal(budget_chars)
+    if refusal is not None:
+        return refusal
     # The route takes a project id; agents pass the name list_projects printed.
     # Omitted, the context stays org-wide, as the tool says.
     project_id = await _project_by_name_or_id(project) if project.strip() else None
@@ -164,13 +167,45 @@ async def context(
             project_id=project_id,
             question=question or None,
             format=format,
-            budget_chars=max(MIN_CONTEXT_BUDGET, min(budget_chars, MAX_CONTEXT_BUDGET)),
+            budget_chars=budget_chars,
         )
     )
     content = str((data or {}).get("content") or "")
     if not content:
         return "No context available yet for this scope."
     return content
+
+
+#: The context call as the hosted server's refusal shows it (``shape_example`` in
+#: the engine's beakr/api/mcp_remote/argument_repair.py, over its ``context`` schema).
+_CONTEXT_SHAPE = (
+    'context takes {"project": <string>, "question": <string>, "format": "markdown", '
+    '"budget_chars": <integer>} (required: none; no other keys).'
+)
+
+
+def _budget_refusal(budget_chars: int) -> dict[str, Any] | None:
+    """The error for a ``budget_chars`` outside the declared bounds, or None.
+
+    The hosted server checks a call against the tool's input schema and refuses
+    500 with "500 is less than the minimum of 2000". This server declares the
+    same bounds without enforcing them in the schema, and used to raise or
+    lower the budget silently: a caller that asked for 500 characters got a
+    larger context and no word that its budget was not the one applied. Same
+    words as the hosted refusal, so one fix reads the same on both.
+    """
+    if budget_chars < MIN_CONTEXT_BUDGET:
+        problem = f"{budget_chars} is less than the minimum of {MIN_CONTEXT_BUDGET}"
+    elif budget_chars > MAX_CONTEXT_BUDGET:
+        problem = f"{budget_chars} is greater than the maximum of {MAX_CONTEXT_BUDGET}"
+    else:
+        return None
+    return {
+        "status": "error",
+        "error_code": "invalid_arguments",
+        "message": f"This call does not fit the context tool: {problem}.",
+        "fix": f"Send the call in the tool's shape: {_CONTEXT_SHAPE}",
+    }
 
 
 def _match_skill(skills: list[dict[str, Any]], ref: str) -> dict[str, Any] | None:
