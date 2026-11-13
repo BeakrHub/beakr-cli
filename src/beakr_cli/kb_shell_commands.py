@@ -2,10 +2,13 @@
 
 :func:`shell_command` turns one door call (command and arguments) into the
 ``beakr kb ...`` invocation for every command and option the CLI has, and into
-the generic door command (``beakr api knowledge run-wiki-command``, which takes
-every argument of every door command) for anything ``beakr kb`` has no flag
-for. A hint built from it therefore always runs, and never drops part of the
-call. :mod:`beakr_cli.kb_shell_hints` finds the calls in a reply's text.
+the generic door command (``beakr api knowledge run-wiki-command``) for
+anything ``beakr kb`` has no flag for: as that command's options where it has
+one for every argument, and otherwise as its ``--data '<json>'`` body, which
+carries any call. A hint built from it therefore always runs, and never drops
+part of the call. Every value is quoted for the shell, and one that opens with
+a dash is bound to its flag (``--after-title=-x``) or follows ``--``.
+:mod:`beakr_cli.kb_shell_hints` finds the calls in a reply's text.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from typing import Any
 __all__ = [
     "COMMANDS",
     "DOOR_COMMANDS",
+    "GENERIC_ONLY",
     "GENERIC_WRITE",
     "DoorCall",
     "Slot",
@@ -58,6 +62,11 @@ class DoorCall:
     #: Flags the command was run with that the door call does not carry (``--all``
     #: reads every project by sending no scope): a continuation must repeat them.
     flags: tuple[str, ...] = ()
+    #: The arguments that continue a cut reply, from its ``coverage``
+    #: (``continue_with``, else ``next_offset`` or ``next_cursor``). A
+    #: continuation is built from these and the call itself, not from the
+    #: reply's prose, which cannot carry every title (one with a double quote).
+    cursor: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)
@@ -121,10 +130,13 @@ COMMANDS: dict[str, _Spec] = {
             "parent": "--parent",
             "limit": "--limit",
             "after_title": "--after-title",
+            "after_page_id": "--after-page-id",
             **_PAGE_AUTHOR,
         },
         # `kb ls --after-title` continues only a listing filtered by author.
-        fits=lambda a: "after_title" not in a or any(key in a for key in _PAGE_AUTHOR),
+        fits=lambda a: (
+            not ({"after_title", "after_page_id"} & set(a)) or any(key in a for key in _PAGE_AUTHOR)
+        ),
     ),
     "sources": _Spec("kb sources", "page"),
     "hover": _Spec("kb hover", "page"),
@@ -186,6 +198,24 @@ COMMANDS: dict[str, _Spec] = {
     "query": _Spec("kb query", "sql", options={"cursor": "--cursor"}),
 }
 
+#: The arguments the door takes that ``beakr kb`` has no flag for, by command:
+#: a call carrying one is spelled as the generic door command. Listed so that a
+#: new door argument is a decision here, not a hint that silently stops running
+#: (``kb ls`` printed ``--after-page-id`` on the generic command, which has no
+#: such option: live check 2026-11-13). ``tests/test_cli_kb_shell_commands.py``
+#: holds every argument the engine accepts to this table or to ``COMMANDS``.
+GENERIC_ONLY: dict[str, frozenset[str]] = {
+    "ls": frozenset({"sort_by"}),
+    "grep": frozenset({"page_type", "output_mode", "target", "matches_per_page", "detail"}),
+    "sections": frozenset({"detail", "include_sources"}),
+    "log": frozenset({"limit"}),
+    "sources": frozenset({"limit", "after_title", "after_source_id"}),
+    "provenance": frozenset({"sources_per_section"}),
+    "links": frozenset({"relation", "page_type"}),
+    "timeline": frozenset({"include_approx", "include_children"}),
+    "rows": frozenset({"relation", "kind", "field_id", "regex"}),
+}
+
 #: Every command of the door, for finding a call in a hint.
 DOOR_COMMANDS = (
     *COMMANDS,
@@ -214,20 +244,28 @@ _GENERIC = "beakr api knowledge run-wiki-command"
 GENERIC_WRITE = "beakr api knowledge run-wiki-write"
 
 
-def shell_command(command: str, arguments: Mapping[str, Any] | None = None) -> str:
+def shell_command(
+    command: str, arguments: Mapping[str, Any] | None = None, *, flags: tuple[str, ...] = ()
+) -> str:
     """The ``beakr`` command that makes the door call ``command`` with ``arguments``.
 
     ``scope`` is the project (``--project``). A value may be a :class:`Slot`
     for an argument the hint names without a value; it prints as ``<name>``.
+    ``flags`` are options of the ``beakr kb`` command the door call does not
+    carry (:attr:`DoorCall.flags`); the generic command has none of them.
     """
     given = {key: value for key, value in (arguments or {}).items() if value is not None}
     spec = COMMANDS.get(command)
     if spec is None or not spec.fits(given):
         return _generic(command, given)
     words = [f"beakr {spec.path}"]
+    # A positional that opens with a dash goes last, after `--`: everything
+    # after `--` is positional, so no option may follow it.
+    last: list[str] = []
     if spec.positional is not None:
         if spec.positional in given:
-            words.append(_positional(given.pop(spec.positional)))
+            word = _positional(given.pop(spec.positional))
+            (last if word.startswith("-- ") else words).append(word)
         elif spec.required:
             words.append(str(Slot(spec.positional)))
     for key, value in given.items():
@@ -241,23 +279,59 @@ def shell_command(command: str, arguments: Mapping[str, Any] | None = None) -> s
             words.append(spec.switches[(key, value)])
         else:
             return _generic(command, {key: value for key, value in (arguments or {}).items()})
-    return " ".join(word for word in words if word)
+    return " ".join(word for word in (*words, *flags, *last) if word)
+
+
+def _generic_fields() -> dict[str, dict[str, Any]]:
+    """The options ``beakr api knowledge run-wiki-command`` has, by the door argument each sets."""
+    from beakr_cli.commands.api import operations
+
+    for entry in operations():
+        if entry["area"] == "knowledge" and entry["action"] == "run-wiki-command":
+            return {field["name"]: field for field in entry["body"]["fields"]}
+    return {}
+
+
+def _takes(field: dict[str, Any] | None, value: Any) -> bool:
+    """Whether the generic command's option for ``field`` can carry ``value``."""
+    if field is None:
+        return False
+    kind = field["type"]
+    if isinstance(value, Slot):
+        return kind in ("string", "integer")
+    if kind == "boolean":
+        return isinstance(value, bool)
+    if isinstance(value, (bool, dict, list)):
+        return False
+    if field.get("enum"):
+        return value in field["enum"]
+    if kind == "integer":
+        return isinstance(value, int)
+    return kind == "string"
 
 
 def _generic(command: str, arguments: Mapping[str, Any]) -> str:
-    """The door's own command, which takes every argument of every door command."""
+    """The door's own command, which takes every argument of every door command.
+
+    As options where the command has one for every argument of the call. It is
+    generated from the API contract this CLI was built with, so an argument the
+    door has gained since (``after_page_id``), a value outside an option's
+    choices, or a name that is not an identifier has no option: the whole call
+    then goes in ``--data`` as one quoted JSON body, which the command sends
+    as it is. Either way the printed command parses and nothing is dropped.
+    """
     given = {key: value for key, value in arguments.items() if value is not None}
     needed = _REQUIRED.get(command)
     if needed is not None and needed not in given:
         given = {needed: Slot(needed), **given}
-    # Argument and command names come from a reply's text: a name that is not a
-    # plain identifier never becomes a flag. The whole call goes in one quoted
-    # JSON body instead, so nothing in it reaches the shell unquoted.
-    unsafe_name = not _IDENTIFIER.fullmatch(command) or any(
-        not _IDENTIFIER.fullmatch(str(key)) for key in given
-    )
-    if unsafe_name or any(isinstance(value, (dict, list)) for value in given.values()):
-        body = json.dumps({"command": command, **given}, ensure_ascii=False, default=str)
+    fields = _generic_fields()
+    if not _takes(fields.get("command"), command) or not all(
+        # Argument and command names come from a reply's text: only a name the
+        # command really has an option for becomes a flag.
+        _IDENTIFIER.fullmatch(str(key)) and _takes(fields.get(key), value)
+        for key, value in given.items()
+    ):
+        body = json.dumps({"command": command, **given}, ensure_ascii=False, default=_json_slot)
         return f"{_GENERIC} --data {shlex.quote(body)}"
     words = [f"{_GENERIC} --command {command}"]
     for key, value in given.items():
@@ -267,6 +341,11 @@ def _generic(command: str, arguments: Mapping[str, Any]) -> str:
         else:
             words.append(_option(flag, value))
     return " ".join(words)
+
+
+def _json_slot(value: Any) -> str:
+    # In a JSON body a placeholder is a string value; the body is quoted whole.
+    return f"<{value.name}>" if isinstance(value, Slot) else str(value)
 
 
 def shell_word(value: Any) -> str:
@@ -282,5 +361,8 @@ def _positional(value: Any) -> str:
 
 
 def _option(flag: str, value: Any) -> str:
-    text = f"{flag} {shell_word(value)}"
+    # A value that opens with a dash would be read as another option: joined
+    # to its flag with `=`, it can only be the flag's value.
+    joiner = "=" if not isinstance(value, Slot) and str(value).startswith("-") else " "
+    text = f"{flag}{joiner}{shell_word(value)}"
     return f"[{text}]" if isinstance(value, Slot) and value.optional else text

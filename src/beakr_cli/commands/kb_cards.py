@@ -17,7 +17,7 @@ from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
 from beakr_cli.commands.kb import app as kb_app
-from beakr_cli.kb_shell_hints import DoorCall, shell_content
+from beakr_cli.kb_shell_hints import DoorCall, shell_content, with_cursor
 from beakr_cli.output import console, emit, err_console
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.proposal_view import staged_proposal_lines
@@ -87,6 +87,9 @@ def _print_result(result: dict[str, Any], *, json_out: bool, call: DoorCall) -> 
     write = call.command not in _READ_COMMANDS
     if isinstance(staged, dict) and staged.get("id"):
         call = DoorCall(call.command, call.arguments, proposal_id=str(staged["id"]))
+    if isinstance(result, dict):
+        # A cut listing continues from its structured cursor, not from its prose.
+        call = with_cursor(call, result.get("coverage"))
 
     def text_lines(r: dict[str, Any]) -> list[str]:
         text = shell_content(result_text(r), call, acknowledgement=write)

@@ -249,7 +249,7 @@ Each release lists the public API changes it supports, taken from the API change
   `--by`, `--via`, `--kind`, `--accepted-by`, `--since`, `--until` and `--offset`
   (`beakr kb log --by "Ali Chen" --via codex --since 2026-11-09`); `kb ls` takes
   `--created-by`, `--created-via`, `--created-since`, `--changed-by`,
-  `--changed-via`, `--changed-since` and `--after-title`
+  `--changed-via`, `--changed-since`, `--after-title` and `--after-page-id`
   (`beakr kb ls --changed-by me --changed-since 2026-11-09`). A filtered command
   reads the Knowledge command door and prints its reply, which opens with the
   filters applied and names the option that continues a cut listing. Without a
@@ -260,8 +260,14 @@ Each release lists the public API changes it supports, taken from the API change
   `beakr kb` now prints the `beakr` command that makes it
   (`beakr kb cat <id> --lines 5-533`, `beakr kb proposals ls ... --offset 1`,
   `beakr kb proposals accept <id>`, `beakr documents read <id>`), and
-  `beakr api knowledge run-wiki-command ...` for a call with no dedicated flag.
-  `--json` output and the MCP server's replies are unchanged.
+  `beakr api knowledge run-wiki-command ...` for a call with no dedicated flag
+  (as `--data '<json>'` when that command has no option for an argument).
+  The command that continues a cut listing is built from the call that was
+  made and the reply's `coverage` (`continue_with`, `next_offset`), so a title
+  holding quotes, a backtick or `$(...)` is passed whole and quoted for the
+  shell; a value that opens with a dash is written `--after-title=VALUE`. A
+  continuation whose value cannot be read from the reply is left as the door
+  wrote it. `--json` output and the MCP server's replies are unchanged.
 - A cited meeting note, email or Slack thread names the call that re-reads it.
   The stdio MCP server's Sources line ends `read with integrations
   command='call' tool='granola_get_note' arguments={...}`, as the hosted

@@ -172,6 +172,9 @@ def ls(
         "--after-title",
         help="Continue a filtered listing after this title (a reply names it).",
     ),
+    after_page_id: str | None = typer.Option(
+        None, "--after-page-id", help="With --after-title: the page id a reply names beside it."
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
@@ -187,7 +190,8 @@ def ls(
     revision; --changed-by, --changed-via and --changed-since test any one of
     its revisions. A filtered listing is the Knowledge door's `ls`: a flat list
     in title order (100 pages unless --limit, at most 500) that opens with the
-    filters applied; a cut one names the title to pass as --after-title.
+    filters applied; a cut one names the title to pass as --after-title, with
+    the page id to pass as --after-page-id when titles repeat.
     """
     filters = author.page_arguments(
         created_by=created_by,
@@ -208,15 +212,16 @@ def ls(
             cursor=cursor,
             envelope=envelope,
             after_title=after_title,
+            after_page_id=after_page_id,
             json_out=json_out,
             project=project,
             mine=mine,
         )
         return
-    if after_title:
+    if after_title or after_page_id:
         err_console.print(
-            "--after-title continues a listing filtered by author (--created-by, "
-            "--changed-via, ...); an unfiltered listing continues with --cursor."
+            "--after-title and --after-page-id continue a listing filtered by author "
+            "(--created-by, --changed-via, ...); an unfiltered listing continues with --cursor."
         )
         raise typer.Exit(EXIT_USAGE)
     mode = output_mode(json_out)
@@ -284,6 +289,7 @@ def _ls_by_author(
     cursor: str | None,
     envelope: bool,
     after_title: str | None,
+    after_page_id: str | None,
     json_out: bool,
     project: str | None,
     mine: bool,
@@ -321,6 +327,7 @@ def _ls_by_author(
         parent=parent_id,
         limit=limit,
         after_title=(after_title or "").strip() or None,
+        after_page_id=(after_page_id or "").strip() or None,
         **filters,
     )
 

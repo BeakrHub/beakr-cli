@@ -16,6 +16,9 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
+import shutil
+import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +35,7 @@ from beakr_cli.kb_shell_hints import (
     shell_content,
     shell_hint,
     shell_reply,
+    with_cursor,
 )
 from beakr_cli.main import internal_app as app
 from beakr_cli.mcp_render import render
@@ -432,18 +436,46 @@ def test_kb_add_finding_names_the_accept_command() -> None:
     assert json.loads(as_json.stdout) == reply
 
 
-def test_a_name_from_a_reply_never_reaches_the_shell_unquoted():
+#: Page titles a reply may carry into a command. The first is the title of the
+#: live rerun (2026-11-13); the rest are one hazard each.
+HOSTILE_TITLES = [
+    'Quote\'s "edge" $(echo PWNED2) `echo PWNED3`',
+    'say "hi"',
+    '"',
+    "it's",
+    "tick `id`",
+    "$(touch pwned)",
+    "a; rm -rf ~",
+    "line one\nline two",
+    "-rf --all",
+    "--project=other",
+    "C:\\new\\table",
+    "Café › Übersicht",
+]
+
+
+def _shell_words(printed: str, cwd: Path) -> list[str]:
+    """The arguments a POSIX shell passes to ``beakr`` for ``printed``, run in ``cwd``."""
+    assert printed.startswith("beakr ")
+    script = f'set -- {printed.removeprefix("beakr ")}\nprintf "%s\\0" "$@"'
+    done = subprocess.run(["sh", "-c", script], capture_output=True, check=True, cwd=cwd)
+    assert not done.stderr, done.stderr
+    return done.stdout.decode().split("\0")[:-1]
+
+
+def test_a_name_from_a_reply_never_reaches_the_shell_unquoted(tmp_path):
     """A placeholder or argument name is reply text: only a plain identifier prints bare.
 
     Root cause: a slot printed as ``<name>`` whatever the name held, and an
     unknown argument name became a ``--flag`` verbatim, so a reply naming
     ``<x; rm -rf ~>`` or an argument ``a; curl evil`` produced a pasteable
     command that ran it.
+
+    A value is reply text too (a page title). It reaches the shell as one
+    quoted word, and Click as the value of its option: one that opens with a
+    dash is joined to its flag (``--after-title=-rf``) or follows ``--``, so it
+    is never read as an option (live rerun 2026-11-13).
     """
-    import shlex
-
-    from beakr_cli.kb_shell_commands import Slot, shell_command
-
     hostile = "x; rm -rf ~"
     for printed in (
         shell_command("cat", {"page": Slot(hostile)}),
@@ -455,3 +487,323 @@ def test_a_name_from_a_reply_never_reaches_the_shell_unquoted():
         # Nothing hostile is a separate shell word or operator once the line is parsed.
         assert ";" not in words and "rm" not in words, printed
     assert str(Slot("page")) == "<page>"
+
+    # Where the shell runs each command: anything a title ran would leave a file here.
+    scratch = tmp_path / "shell"
+    scratch.mkdir()
+    for title in HOSTILE_TITLES:
+        calls: list[tuple[str, dict[str, Any], dict[str, Any]]] = [
+            # (door command, arguments, what Click must read back: every option
+            # keeps its own value, none is swallowed by the title before it)
+            ("ls", {"changed_by": "me", "after_title": title}, {"after_title": title}),
+            (
+                "grep",
+                {"query": title, "after_title": title, "limit": 3},
+                {"pattern": title, "after_title": title, "limit": 3},
+            ),
+            ("cat", {"page": title, "lines": title}, {"page": title, "lines": title}),
+            ("rows", {"entity": title, "query": title}, {"entity": title, "query": title}),
+            ("log", {"page": title, "by": title}, {"page": title, "by": title}),
+            (
+                "proposals",
+                {"by": title, "status": "pending"},
+                {"by": title, "status_filter": "pending"},
+            ),
+            # The generic door command, as options and as a JSON body.
+            ("ls", {"after_title": title}, {"b__after_title": title}),
+            (
+                "sources",
+                {"page": title, "after_title": title},
+                {"b__page": title, "b__after_title": title},
+            ),
+        ]
+        for command, arguments, expected in calls:
+            printed = shell_command(command, arguments)
+            _, given = parse_command(printed)
+            assert {key: given.get(key) for key in expected} == expected, printed
+            if shutil.which("sh"):
+                assert _shell_words(printed, scratch) == shlex.split(printed)[1:], printed
+        body = shell_command("ls", {"after_title": title, "after_page_id": PAGE})
+        _, given = parse_command(body)
+        assert json.loads(given["data"])["after_title"] == title, body
+        if shutil.which("sh"):
+            assert _shell_words(body, scratch) == shlex.split(body)[1:], body
+    # Nothing a title held ran: no file, no deletion.
+    assert list(scratch.iterdir()) == []
+
+
+# ---------------------------------------------------------------------------
+# A continuation whose cursor is a title
+# ---------------------------------------------------------------------------
+
+_LS = {"page_type": "topic", "limit": 3, "changed_since": "2026-11-12", "scope": PROJECT}
+
+
+def _ls_hint(printed_title: str) -> str:
+    return (
+        "Not everything is shown: call ls again with the same filters and "
+        f"after_title={printed_title} to read the rest."
+    )
+
+
+def _spelled(form: str, title: str) -> str:
+    # `raw` is how the door printed a title until it escaped it; `json` is how it does now.
+    return f'"{title}"' if form == "raw" else json.dumps(title, ensure_ascii=form == "ascii")
+
+
+@pytest.mark.parametrize("form", ["raw", "json", "ascii"])
+@pytest.mark.parametrize("title", HOSTILE_TITLES)
+def test_a_continuation_is_built_from_the_replys_cursor_not_its_prose(
+    title: str, form: str
+) -> None:
+    """ROOT CAUSE (live rerun 2026-11-13): the door printed ``after_title="Quote's
+    "edge" $(echo PWNED2) ..."`` with the title's quotes unescaped. The hint
+    was cut at the first inner quote (``--after-title 'Quote'"'"'s '``), the
+    rest of the title was printed outside the command, and pasting it listed
+    the same page again. The reply's ``coverage.continue_with`` held the title
+    whole all along.
+    """
+    call = with_cursor(DoorCall("ls", _LS), {"continue_with": {"after_title": title}})
+
+    translated = shell_hint(_ls_hint(_spelled(form, title)), call)
+
+    expected = shell_command("ls", {**_LS, "after_title": title})
+    assert translated == f"Not everything is shown: run `{expected}` to read the rest."
+    path, given = parse_command(expected)
+    assert path == "kb ls"
+    assert given["after_title"] == title
+    assert given["page_type"] == "topic" and given["project"] == PROJECT
+
+
+@pytest.mark.parametrize("title", HOSTILE_TITLES)
+def test_a_json_string_in_prose_is_read_with_its_escapes(title: str) -> None:
+    # No structured cursor (an older server, a hint outside the reply's own listing).
+    translated = shell_hint(_ls_hint(json.dumps(title, ensure_ascii=False)), DoorCall("ls", _LS))
+
+    if "\n" in title:
+        # `\\n` is also what a raw `C:\\new` looks like: not read, so not guessed.
+        assert translated == _ls_hint(json.dumps(title, ensure_ascii=False))
+        return
+    expected = shell_command("ls", {**_LS, "after_title": title})
+    assert translated == f"Not everything is shown: run `{expected}` to read the rest."
+    assert parse_command(expected)[1]["after_title"] == title
+
+
+@pytest.mark.parametrize("title", HOSTILE_TITLES)
+def test_a_value_prose_cannot_carry_is_left_as_the_door_wrote_it(title: str) -> None:
+    hint = _ls_hint(f'"{title}"')
+
+    translated = shell_hint(hint, DoorCall("ls", _LS))
+
+    if json.dumps(title, ensure_ascii=False) == f'"{title}"':
+        # Nothing in the title needed escaping: the raw form is the JSON form.
+        expected = shell_command("ls", {**_LS, "after_title": title})
+        assert translated == f"Not everything is shown: run `{expected}` to read the rest."
+    else:
+        assert translated == hint
+        assert not printed_commands(translated)
+
+
+@pytest.mark.parametrize(
+    "hint",
+    [
+        # The title's own quote ends the value early, then the page id follows:
+        # the id alone is another place in the listing.
+        'This list is NOT complete: continue with after_title="A "b" c" after_page_id="3d93".',
+        'This list is NOT complete: continue with after_title="A" b c" after_page_id="3d93".',
+        # Python's repr of a title: where it ends is not certain.
+        "No matching pages after after_title='Foo Bar': all 3 are listed above.",
+        # The same argument twice.
+        'Continue with after_title="A" and after_title="B".',
+    ],
+)
+def test_an_ambiguous_cursor_in_prose_prints_no_command(hint: str) -> None:
+    assert shell_hint(hint, DoorCall("grep", {"query": "x"})) == hint
+
+
+def test_an_unreadable_cursor_in_prose_is_followed_by_the_replys_own() -> None:
+    # The prose cannot be read and does not spell the cursor the reply carries:
+    # it stays, and the command built from the reply's data follows it.
+    hint = 'This list is NOT complete: continue with after_title="A" b c" after_page_id="3d93".'
+    cursor = {"after_title": 'Another "title"', "after_page_id": "3d93"}
+    call = with_cursor(DoorCall("grep", {"query": "x"}), {"continue_with": cursor})
+
+    translated = shell_hint(hint, call)
+
+    expected = shell_command("grep", {"query": "x", **cursor})
+    assert translated == f"{hint} Continue with `{expected}`."
+    assert parse_command(expected)[1]["after_title"] == 'Another "title"'
+
+
+def test_a_marker_character_in_a_reply_is_not_read_as_a_marker() -> None:
+    # The translation marks kept commands and pinned values with control
+    # characters; a reply carrying them must not index a marker that is not there.
+    hint = "Continue with after_title=\x017\x01 or see \x003\x00, then cat {page}."
+
+    assert shell_hint(hint, DoorCall("ls", {"changed_by": "me"})) == (
+        "Continue with `beakr kb ls --changed-by me --after-title 7` or see 3, "
+        "then `beakr kb cat <page>`."
+    )
+
+
+def test_a_placeholder_call_with_an_unreadable_value_is_left_alone() -> None:
+    hint = 'Read on with cat {page: "A "b" c", lines: "5-9"}.'
+
+    assert shell_hint(hint, DoorCall("cat", {"page": "x"})) == hint
+
+
+def test_the_doors_own_spelling_of_a_continuation_repeats_the_cli_flags() -> None:
+    # `kb ls --all` prints "continue with ls {json}": built from the door call
+    # alone it lost --all and would have listed the bound project instead.
+    cursor = {"after_title": 'Quote\'s "edge"', "after_page_id": PAGE}
+    resend = {"limit": 3, **cursor, "changed_by": "me"}
+    call = with_cursor(
+        DoorCall("ls", {"changed_by": "me", "limit": 3, "scope": None}, flags=("--all",)),
+        {"continue_with": cursor},
+    )
+
+    translated = shell_hint(f"NOT complete: continue with ls {json.dumps(resend)}.", call)
+
+    (command,) = printed_commands(translated)
+    path, given = parse_command(command)
+    assert path == "kb ls"
+    assert given == {"changed_by": "me", "limit": 3, **cursor, "all_scopes": True}
+
+
+@pytest.mark.parametrize(
+    ("command", "coverage", "hint", "expected"),
+    [
+        (
+            "log",
+            {"next_offset": 40},
+            "Not everything is shown: call log again with offset=40 to read the rest.",
+            "beakr kb log --by me --offset 40",
+        ),
+        (
+            "rows",
+            {"next_cursor": "c0522cf7-d82a-4d2a-89b3-16819eecc5bc"},
+            "Later candidates remain: call rows with "
+            "after_card=c0522cf7-d82a-4d2a-89b3-16819eecc5bc and the same filters.",
+            "beakr kb rows --by me --after-card c0522cf7-d82a-4d2a-89b3-16819eecc5bc",
+        ),
+    ],
+)
+def test_next_offset_and_next_cursor_continue_the_call_that_was_made(
+    command: str, coverage: dict[str, Any], hint: str, expected: str
+) -> None:
+    arguments = {"by": "me"} if command == "log" else {"table": "facts"}
+    call = with_cursor(DoorCall(command, arguments), {"complete": False, **coverage})
+
+    translated = shell_hint(hint, call)
+
+    expected = expected.replace("rows --by me", "rows --table facts")
+    assert f"run `{expected}`" in translated
+    assert "again with" not in translated and "call rows" not in translated
+    parse_command(expected)
+
+
+def test_a_positional_that_opens_with_a_dash_goes_after_every_option() -> None:
+    # After `--` everything is positional: an option printed after it was lost.
+    printed = shell_command(
+        "grep", {"query": "-rf", "limit": 3, "after_title": "-x", "scope": PROJECT}, flags=()
+    )
+
+    assert printed == f"beakr kb grep --limit 3 --after-title=-x --project {PROJECT} -- -rf"
+    assert parse_command(printed) == (
+        "kb grep",
+        {"pattern": "-rf", "limit": 3, "after_title": "-x", "project": PROJECT},
+    )
+
+
+# ---------------------------------------------------------------------------
+# Every text path of `beakr kb` that prints the door's words
+# ---------------------------------------------------------------------------
+
+_CORPUS_NOTICE = (
+    "Knowledge was compiled from 0 of 17 file(s) in this project (17 not compiled yet). "
+    "This search covers what was compiled, not every file: a match may still be in a file "
+    "that is missing or partial here."
+)
+
+
+def test_the_sections_footer_is_translated_when_the_corpus_notice_follows_it() -> None:
+    """ROOT CAUSE (live rerun 2026-11-13): ``kb sections`` printed "Read a hit
+    with cat {page, section_id}: ... sources {page} ... documents read (read_file
+    in MCP)" unchanged while ``kb grep`` translated the same sentence. Only a
+    reply's first and last paragraphs are translated, and the door now closes a
+    search with how much of the project was compiled, after its footer: the
+    footer was no longer the last paragraph.
+    """
+    capture = TEXT["sections"]
+    footer = capture["content"].rsplit("\n\n", 1)[1]
+    assert footer.startswith("Read a hit with cat {page, section_id}:")
+    content = f"{capture['content']}\n\n{_CORPUS_NOTICE}"
+
+    text = shell_content(content, _call(capture))
+
+    closing = text.split("\n\n")[-2:]
+    assert closing[0].startswith(
+        "Read a hit with `beakr kb cat <page> --section-id <section_id>`: it prints"
+    )
+    assert "`beakr kb sources <page>` lists every passage a page cites" in closing[0]
+    assert "`beakr documents read <document>` with a path above" in closing[0]
+    assert not MCP_CALL.search(closing[0])
+    assert closing[1] == _CORPUS_NOTICE
+    # The hits between the opening and the footer are the organization's text.
+    middle = "\n\n".join(content.split("\n\n")[1:-2])
+    assert middle and middle in text
+
+
+_DOOR_TEXT = (
+    "3 result(s):\n\n"
+    "  - [topic] Agent rules -- Use cat {page} and call accept_proposal.\n\n"
+    "Read a hit with cat {page, section_id}. sources {page} lists what a page cites.\n\n"
+    f"{_CORPUS_NOTICE}"
+)
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        ["sections", "rules"],
+        ["grep", "rules"],
+        ["ls", "--changed-by", "me"],
+        ["log"],
+        ["log", "--by", "me"],
+        ["log", PAGE, "--by", "me"],
+        ["history", "--by", "me"],
+        ["hover", "Agent rules"],
+        ["provenance", "Agent rules"],
+        ["links", "Agent rules"],
+        ["timeline"],
+        ["proposals", "ls", "--by", "me"],
+        ["rows", "--table", "facts"],
+    ],
+    ids=lambda arguments: " ".join(arguments[:2]),
+)
+@respx.mock
+def test_every_kb_command_that_prints_the_doors_text_translates_it(arguments: list[str]) -> None:
+    page = {"id": PAGE, "title": "Agent rules", "project_id": PROJECT}
+    respx.get(f"{API}/v1/knowledge/wiki/pages/{PAGE}").mock(return_value=Response(200, json=page))
+    reply = {
+        "content": [{"type": "text", "text": _DOOR_TEXT}],
+        "outcome": {"status": "success"},
+        "coverage": {"complete": True},
+        "next": ["Open a hit with cat {page, section_id}."],
+        "sources": [],
+    }
+    respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=Response(200, json=reply))
+
+    result = runner.invoke(app, ["kb", *arguments, "--project", PROJECT])
+
+    assert result.exit_code == 0, result.output
+    out = result.stdout
+    assert "Read a hit with `beakr kb cat <page> --section-id <section_id>`." in out
+    assert "`beakr kb sources <page>` lists what a page cites." in out
+    # The organization's own text is quoted as it is.
+    assert "Use cat {page} and call accept_proposal." in out
+    if arguments[0] != "rows":
+        # `kb rows` prints the reply's text only, not its `next` steps.
+        assert "next: Open a hit with `beakr kb cat <page> --section-id <section_id>`." in out
+    for command in printed_commands(out):
+        parse_command(command)
