@@ -1,5 +1,7 @@
 $ beakr session edit 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f --read 4dd25154-0d80-44ab-b4c2-167319bfacb4 --write 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
 > GET /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+> POST /v1/sessions/options
+  {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
 > PATCH /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
   {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
 [exit 0]
@@ -38,18 +40,24 @@ $ beakr session edit 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f --read 4dd25154-0d80-4
   "selected_at": "2026-11-08T17:00:00+00:00",
   "ended_at": null,
   "last_used_at": null,
-  "token": null
+  "token": null,
+  "mode": "picked",
+  "summary": "Picked session: reads Project Helios and Helios Assays; writes Project Helios and Helios Assays."
 }
 --- stderr
 
 
 $ beakr session edit 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f --read 4dd25154-0d80-44ab-b4c2-167319bfacb4 --write 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+> POST /v1/sessions/options
+  {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
 > PATCH /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
   {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
 [exit 0]
 --- stdout
 Session 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f (active)
+Picked session: reads Project Helios and Helios Assays; writes Project Helios and Helios Assays.
+Mode: picked (its projects were chosen at the start)
 Reads: Project Helios, Helios Assays
 Writes: Project Helios, Helios Assays
 Change at https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
@@ -58,6 +66,8 @@ Change at https://app.test/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
 
 $ beakr session edit 7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f --read 4dd25154-0d80-44ab-b4c2-167319bfacb4 --write 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
+> POST /v1/sessions/options
+  {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
 > PATCH /v1/sessions/7c1e2d3f-4a5b-4c6d-8e7f-9a0b1c2d3e4f
   {"read_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"], "write_project_ids": ["4dd25154-0d80-44ab-b4c2-167319bfacb4"]}
 [exit 0]

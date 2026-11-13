@@ -36,10 +36,12 @@ refuses lists that break a project boundary (``422 session_selection_invalid``,
 each reason on its own line). ``session_status`` says, from
 ``GET /v1/sessions/current/status``, where the session can still write and why.
 
-``session_scope`` shows the session's projects and may only drop them: it never
-adds one (checked here, and the API refuses a session token that tries with
-``403 session_widen_refused``). These tools are listed only while the server holds
-a session.
+``start_session`` and ``session_status`` are the engine's shared tools (their
+descriptions come from its tool surface) and are always listed; without a session
+they say so. ``session_scope`` shows the session's projects and may only drop
+them: it never adds one (checked here, and the API refuses a session token that
+tries with ``403 session_widen_refused``). It is this server's own, listed only
+while the server holds a session.
 """
 
 from __future__ import annotations
@@ -68,7 +70,7 @@ UNGATED_TOOLS = frozenset(
     }
 )
 #: Tools listed only while the server holds a session.
-SESSION_TOOLS = frozenset({SESSION_SCOPE_TOOL, SESSION_STATUS_TOOL, START_SESSION_TOOL})
+SESSION_TOOLS = frozenset({SESSION_SCOPE_TOOL})
 FORM_MAX_PROJECTS = 25
 READ_ALL = "read_all"
 WRITE_ALL = "write_all"
@@ -79,27 +81,6 @@ SESSION_SCOPE_DESCRIPTION = (
     "and writing a project, `drop_write` keeps reading it but stops writing), never add "
     "one. To add a project, give the person the session's picker link. Call it with no "
     "arguments to see the current scope."
-)
-
-
-SESSION_STATUS_DESCRIPTION = (
-    "Show this Beakr session's state without changing it: its mode (automatic, picked or "
-    "read everything), what it has read, where it can still write and why it can't write "
-    "elsewhere (a locked project it touched, a project that takes no content from others), "
-    "and its last boundary events. `trail=true` adds the session's read trail (newest "
-    "first). A write's own trail (`proposal_id`) is read by a person, not by the agent: the "
-    "tool says where. Call it before writing when unsure which project this session may "
-    "write."
-)
-
-
-START_SESSION_DESCRIPTION = (
-    "Choose this Beakr session's projects up front, before anything else: `read` and "
-    "`write` (project names or ids; a write project is also read) make it a picked session, "
-    "and `read_everything=true` reads every project you can read, locked ones included, and "
-    "writes nothing. Beakr refuses a choice that breaks a project boundary, with the reason, "
-    "and a session that has already read or written a project can't be chosen again. "
-    "Without it the session is automatic: the server tracks what it touches."
 )
 
 
@@ -318,7 +299,7 @@ async def _status_text(current: dict[str, Any]) -> str:
 
 
 async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str, Any] | str:
-    """The ``session_status`` tool (see :data:`SESSION_STATUS_DESCRIPTION`)."""
+    """The ``session_status`` tool (its description is the shared tool surface's)."""
     from beakr_cli import session_trail
     from beakr_cli.mcp_errors import ApiCallError, call_api
 
@@ -393,14 +374,15 @@ async def start_session(
     write: list[str] | None = None,
     read_everything: bool = False,
 ) -> dict[str, Any] | str:
-    """The ``start_session`` tool (see :data:`START_SESSION_DESCRIPTION`)."""
+    """The ``start_session`` tool (its description is the shared tool surface's)."""
     session = scope_session.ACTIVE
     if session is None:
         return _error(
             "session_unavailable",
             "This Beakr MCP server is not running in a session, so it works as you, outside a "
             "session.",
-            "Restart the Beakr MCP server without BEAKR_MCP_SESSIONS=off to work in a session.",
+            "Restart the Beakr MCP server without BEAKR_MCP_SESSIONS=off to work in a session, "
+            "or work without one.",
         )
     read = [r for r in read or [] if str(r).strip()]
     write = [w for w in write or [] if str(w).strip()]
@@ -492,8 +474,10 @@ def session_projects(session: scope_session.McpSession) -> list[dict[str, Any]]:
 
 
 def register(mcp: Any) -> None:
-    """Register ``session_scope``, ``session_status`` and ``start_session`` (listed only
-    while a session is held)."""
+    """Register ``start_session`` and ``session_status`` (the shared surface's), and
+    ``session_scope`` (listed only while a session is held)."""
+    from beakr_cli import tool_surface
+
     mcp.tool(
         name=SESSION_SCOPE_TOOL,
         description=SESSION_SCOPE_DESCRIPTION,
@@ -503,14 +487,14 @@ def register(mcp: Any) -> None:
     )(session_scope)
     mcp.tool(
         name=SESSION_STATUS_TOOL,
-        description=SESSION_STATUS_DESCRIPTION,
+        **tool_surface.tool_kwargs(SESSION_STATUS_TOOL),
         annotations=ToolAnnotations(
             readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True
         ),
     )(session_status)
     mcp.tool(
         name=START_SESSION_TOOL,
-        description=START_SESSION_DESCRIPTION,
+        **tool_surface.tool_kwargs(START_SESSION_TOOL),
         annotations=ToolAnnotations(
             readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True
         ),

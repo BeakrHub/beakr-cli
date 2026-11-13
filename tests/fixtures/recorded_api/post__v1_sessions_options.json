@@ -1,0 +1,50 @@
+{
+  "operation": "POST /v1/sessions/options",
+  "source": "synthesized from public-openapi.json (project boundaries, SelectionOptionsOut), values hand-edited",
+  "status": 200,
+  "content_type": "application/json",
+  "body": {
+    "valid": true,
+    "reasons": [],
+    "notes": [],
+    "projects": [
+      {
+        "id": "8b2f6c10-3d4e-4f5a-9b6c-7d8e9f0a1b2c",
+        "name": "Helios Assays",
+        "boundary": {
+          "content_out": "allowed",
+          "content_in": "allowed",
+          "preset": "internal",
+          "summary": "Helios Assays: internal. No boundary: sessions read and write it freely."
+        },
+        "in_read": false,
+        "in_write": false,
+        "can_read": true,
+        "read_reason": null,
+        "can_write": true,
+        "write_reason": null,
+        "write_note": null
+      },
+      {
+        "id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+        "name": "Project Helios",
+        "boundary": {
+          "content_out": "allowed",
+          "content_in": "allowed",
+          "preset": "internal",
+          "summary": "Project Helios: internal. No boundary: sessions read and write it freely."
+        },
+        "in_read": true,
+        "in_write": true,
+        "can_read": true,
+        "read_reason": null,
+        "can_write": true,
+        "write_reason": null,
+        "write_note": null
+      }
+    ],
+    "read_everything": {
+      "summary": "Reads every project you can read; writes nothing."
+    }
+  }
+}
