@@ -542,7 +542,7 @@ def _boundary_lines(project: dict[str, Any]) -> list[str]:
     """The project's boundary in plain words (``boundary.summary``), while boundaries are on."""
     boundary = project.get("boundary")
     if isinstance(boundary, dict) and boundary.get("summary"):
-        return [f"  {boundary['summary']}"]
+        return [f"  Boundary: {boundary['summary']}"]
     return []
 
 

@@ -367,44 +367,34 @@ def status_lines(status: dict[str, Any], *, events: int = 5) -> list[str]:
     """Session status (``GET /v1/sessions/.../status``) in plain words: the API's summary,
     what it read, where it can still write and why not elsewhere, then its last events.
 
-    The same lines for ``beakr session status`` and the ``session_status`` tool.
+    The same lines for ``beakr session status`` and the ``session_status`` tool, worded
+    as the engine's remote ``session_status`` tool words them.
     """
-    lines = [str(status.get("summary") or f"Session {status.get('session_id')}.")]
+    lines = [str(status.get("summary") or "")]
     read = _names_of(status.get("read_projects"))
-    lines.append(f"Read: {read or 'nothing yet'}")
-    if status.get("reads_everything"):
-        mode = mode_of(status)
-        lines.append(
-            "Can read: every project you can read"
-            + (", locked ones included" if mode == READ_EVERYTHING else "")
-        )
-    elif status.get("readable_projects"):
-        lines.append(f"Can read: {_names_of(status.get('readable_projects'))}")
+    lines.append(f"Read: {read or 'nothing yet'}.")
     write = status.get("write") if isinstance(status.get("write"), dict) else {}
     refused = [r for r in write.get("refused") or [] if isinstance(r, dict)]
-    if write.get("anywhere"):
-        except_ = _names_of(refused)
-        lines.append("Can write: any project" + (f", except {except_}" if except_ else ""))
+    if mode_of(status) == READ_EVERYTHING:
+        lines.append("Can write: nothing.")
+    elif write.get("anywhere"):
+        lines.append("Can write: any project you can read" + (", except:" if refused else "."))
     else:
-        writable = []
-        for project in write.get("projects") or []:
-            if not isinstance(project, dict):
-                continue
-            name = _project_name(project)
-            if project.get("outcome") == "held":
-                name += " (writes wait for its owners to approve)"
-            writable.append(name)
-        lines.append(f"Can write: {', '.join(writable) or 'nothing'}")
-    for project in refused:
-        reason = project.get("reason") or project.get("code") or "refused"
-        lines.append(f"Can't write: {_project_name(project)} ({reason})")
-    rows = [e for e in status.get("events") or [] if isinstance(e, dict)][:events]
-    if rows:
-        lines.append("Recent session events (newest first):")
-        for event in rows:
-            at = str(event.get("at") or "").replace("T", " ")[:19]
-            lines.append(f"  {at}  {event.get('summary') or event.get('op') or ''}".rstrip())
-    return lines
+        allowed = [
+            _project_name(p) + (" (held for its owners)" if p.get("outcome") == "held" else "")
+            for p in write.get("projects") or []
+            if isinstance(p, dict)
+        ]
+        lines.append(f"Can write: {', '.join(allowed) or 'nothing'}.")
+    for project in refused[:20]:
+        lines.append(f"Can't write {_project_name(project)}: {project.get('reason')}")
+    if len(refused) > 20:
+        lines.append(f"... and {len(refused) - 20} more it can't write.")
+    rows = [e for e in status.get("events") or [] if isinstance(e, dict) and e.get("summary")]
+    if rows[:events]:
+        lines.append("Recent:")
+        lines.extend(f"- {event['summary']}" for event in rows[:events])
+    return [line for line in lines if line]
 
 
 #: ``beakr session status`` where no session is in use.

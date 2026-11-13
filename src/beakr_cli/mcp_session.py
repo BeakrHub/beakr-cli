@@ -309,9 +309,11 @@ async def _status_text(current: dict[str, Any]) -> str:
     try:
         status = await call_api(lambda sdk: sdk.request("GET", "/v1/sessions/current/status"))
     except ApiCallError as exc:
-        if exc.fields.get("error_code") != NOT_PROVIDED_CODE:
-            raise
-        return scope_session.describe(current)
+        if exc.fields.get("error_code") == NOT_PROVIDED_CODE:
+            return scope_session.describe(current)
+        if exc.response.status_code == 404:
+            return NOT_IN_SESSION
+        raise
     return "\n".join(scope_session.status_lines(status))
 
 
@@ -404,9 +406,16 @@ async def start_session(
     write = [w for w in write or [] if str(w).strip()]
     if read_everything and (read or write):
         return _error(
-            "validation_error",
+            "invalid_arguments",
             "read_everything takes no project lists: it reads every project and writes none.",
-            "Pass read_everything=true alone, or read and write without it.",
+            "Pass read_everything alone, or read and write without it.",
+        )
+    if not (read_everything or read or write):
+        return _error(
+            "invalid_arguments",
+            "Pass the projects to read and write, or read_everything=true.",
+            "Call start_session with read (and write), or with read_everything=true. Without "
+            "start_session the session is automatic.",
         )
     try:
         await session.ensure_started()
@@ -418,12 +427,14 @@ async def start_session(
             read=read_ids, write=write_ids, read_everything=read_everything
         )
     except BeakrError as exc:
-        if exc.code == scope_session.SELECTION_INVALID and not isinstance(
-            exc, scope_session.SessionScopeError
-        ):
-            exc = scope_session.selection_invalid(exc)
+        reasons = [
+            str(r["message"]) for r in scope_session.selection_reasons(exc) if r.get("message")
+        ]
+        if len(reasons) > 1:
+            # Every reason, one per line, as the remote server says them.
+            return _error(str(exc.code), "\n".join(f"- {r}" for r in reasons), exc.fix)
         return _refused(exc)
-    lines = [f"Session started. {started.get('summary') or scope_session.describe(started)}"]
+    lines = [f"Session started. {started.get('summary') or ''}".strip()]
     lines.extend(scope_session.note_lines(started))
     if started.get("status") == "pending":
         lines.append(

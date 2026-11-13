@@ -548,17 +548,16 @@ session can still write and why:
 
 ```text
 Automatic session. It read Partner A, which keeps its content in, so it can write only to Partner A. Start a new session to work in another project.
-Read: Partner A
-Can read: every project you can read
-Can write: Partner A
-Can't write: Chemistry (This session read Partner A, so it can write only to Partner A.)
-Recent session events (newest first):
-  2026-11-13 21:04:11  Locked to Partner A by knowledge_base sections (scope Partner A).
+Read: Partner A.
+Can write: Partner A.
+Can't write Chemistry: This session read Partner A, so it can write only to Partner A.
+Recent:
+- Locked to Partner A by knowledge_base sections (scope Partner A).
 ```
 
 `beakr projects ls`, `beakr projects show` and `beakr mcp`'s `list_projects`
-show each project's boundary in plain words ("Partner A: siloed. Touching it
-locks this session's writes to it. ..."). A search that names no project skips
+show each project's boundary in plain words ("Boundary: Partner A: siloed.
+Touching it locks this session's writes to it. ..."). A search that names no project skips
 locked projects the session has not touched; name the project to search it.
 
 The request that locks a session says so, in Beakr's words: `beakr mcp` puts

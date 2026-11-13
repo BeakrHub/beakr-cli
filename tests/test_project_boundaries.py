@@ -520,14 +520,13 @@ def test_session_status_says_where_it_can_still_write(monkeypatch):
     assert _bearer(route) == f"Bearer {PERSON_KEY}"
     lines = result.output.splitlines()
     assert lines[0].startswith("Automatic session. It read Partner A")
-    assert "Read: Partner A" in lines
-    assert "Can read: every project you can read" in lines
-    assert "Can write: Partner A" in lines
-    assert (
-        "Can't write: Chemistry (This session read Partner A, so it can write only to Partner A.)"
-        in lines
-    )
-    assert any("Locked to Partner A by knowledge_base sections" in line for line in lines)
+    assert lines[1:] == [
+        "Read: Partner A.",
+        "Can write: Partner A.",
+        "Can't write Chemistry: This session read Partner A, so it can write only to Partner A.",
+        "Recent:",
+        "- Locked to Partner A by knowledge_base sections (scope Partner A).",
+    ]
 
 
 def test_status_lines_for_an_open_automatic_session():
@@ -549,8 +548,8 @@ def test_status_lines_for_an_open_automatic_session():
         )
     )
 
-    assert "Can write: any project, except Chemistry" in lines
-    assert "Can't write: Chemistry (Chemistry takes no content from other projects.)" in lines
+    assert "Can write: any project you can read, except:" in lines
+    assert "Can't write Chemistry: Chemistry takes no content from other projects." in lines
 
 
 def test_status_lines_say_a_held_project():
@@ -567,8 +566,15 @@ def test_status_lines_say_a_held_project():
         )
     )
 
-    assert "Can read: Partner A, Chemistry" in lines
-    assert "Can write: Partner A (writes wait for its owners to approve)" in lines
+    assert "Can write: Partner A (held for its owners)." in lines
+
+
+def test_status_lines_for_a_read_everything_session():
+    lines = scope_session.status_lines(
+        _status(mode="read_everything", write={"anywhere": False, "projects": [], "refused": []})
+    )
+
+    assert "Can write: nothing." in lines
 
 
 def test_session_status_outside_a_session_says_no_rules_apply():
@@ -796,15 +802,18 @@ def test_start_session_says_each_reason_on_its_own_line():
     refused = asyncio.run(mcp_session.start_session(read=[A], write=[CHEM]))
 
     assert refused["error_code"] == "session_selection_invalid"
-    assert refused["message"] == "Reason one.\nReason two."
+    assert refused["message"] == "- Reason one.\n- Reason two."
 
 
 def test_start_session_read_everything_takes_no_lists():
     _active(_session("automatic"))
 
     refused = asyncio.run(mcp_session.start_session(read=[A], read_everything=True))
+    assert refused["error_code"] == "invalid_arguments"
 
-    assert refused["error_code"] == "validation_error"
+    nothing = asyncio.run(mcp_session.start_session())
+    assert nothing["error_code"] == "invalid_arguments"
+    assert "read_everything=true" in nothing["message"]
 
 
 @respx.mock
@@ -850,7 +859,18 @@ def test_session_status_tool_reads_the_status_route():
 
     assert _bearer(route) == "Bearer bk_st_first"
     assert text.splitlines()[0].startswith("Automatic session. It read Partner A")
-    assert "Can't write: Chemistry (This session read Partner A" in text
+    assert "Can't write Chemistry: This session read Partner A" in text
+
+
+@respx.mock
+def test_session_status_tool_outside_a_session_on_the_server():
+    _active(_session("automatic"))
+    respx.get(f"{API}/v1/sessions/current").respond(json=_session("automatic"))
+    respx.get(f"{API}/v1/sessions/current/status").respond(
+        404, json=_refusal(404, "not_found", "This request is not in a session.")
+    )
+
+    assert asyncio.run(mcp_session.session_status()) == mcp_session.NOT_IN_SESSION
 
 
 def test_session_status_tool_without_a_session():
@@ -870,7 +890,7 @@ def test_list_projects_shows_each_boundary_in_an_automatic_session():
     result = asyncio.run(mcp.call_tool("list_projects", {}))
 
     text = result.content[0].text
-    assert f"  {SILOED}" in text and f"  {INTERNAL}" in text
+    assert f"  Boundary: {SILOED}" in text and f"  Boundary: {INTERNAL}" in text
 
 
 @respx.mock
@@ -885,8 +905,8 @@ def test_list_projects_shows_each_boundary_in_a_picked_session():
     result = asyncio.run(mcp.call_tool("list_projects", {}))
 
     text = result.content[0].text
-    assert f"Partner A (id: {A}) -- read and write\n  {SILOED}" in text
-    assert f"Chemistry (id: {CHEM}) -- read\n  {INTERNAL}" in text
+    assert f"Partner A (id: {A}) -- read and write\n  Boundary: {SILOED}" in text
+    assert f"Chemistry (id: {CHEM}) -- read\n  Boundary: {INTERNAL}" in text
 
 
 # --- Lock notices -------------------------------------------------------------------------
