@@ -2620,6 +2620,12 @@
    "body": {
     "fields": [
      {
+      "description": "log, proposals: who accepted it: a person, or auto-approve.",
+      "name": "accepted_by",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "rows: continue a capped card scan after this card.",
       "name": "after_card",
       "required": false,
@@ -2652,6 +2658,30 @@
      {
       "description": "rows: the field by name, alias or meaning; replies say which field.",
       "name": "attribute",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "log, proposals: the person behind it (who filed a proposal): a name, email, user id or me.",
+      "name": "by",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "ls: pages with a revision by this person.",
+      "name": "changed_by",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "ls: pages with a revision on or after this date.",
+      "name": "changed_since",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "ls: pages with a revision through this client or agent.",
+      "name": "changed_via",
       "required": false,
       "type": "string"
      },
@@ -2702,6 +2732,24 @@
       "name": "context_lines",
       "required": false,
       "type": "integer"
+     },
+     {
+      "description": "ls: pages this person created (their first revision).",
+      "name": "created_by",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "ls: pages created on or after this date.",
+      "name": "created_since",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "ls: pages created through this client or agent.",
+      "name": "created_via",
+      "required": false,
+      "type": "string"
      },
      {
       "description": "rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date).",
@@ -2795,6 +2843,12 @@
       "type": "boolean"
      },
      {
+      "description": "log, proposals: person, agent, beakr or system.",
+      "name": "kind",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "Max results. rows: rows per window (default 100, max 500). ls: pages per window (default 100, max 500). grep: pages per window (default 20, max 200). sources: source records per window (default 60, max 400). provenance: sections per window (default 12, max 200). Every window is ordered; use after_title (ls/grep/sources) or after_section (provenance) to continue past one.",
       "name": "limit",
       "required": false,
@@ -2836,7 +2890,7 @@
       "type": "string"
      },
      {
-      "description": "rows, proposals: rows to skip (continue a NOT ALL ROWS reply).",
+      "description": "rows, proposals, log: rows to skip (continue a NOT ALL ROWS reply).",
       "name": "offset",
       "required": false,
       "type": "integer"
@@ -2920,6 +2974,12 @@
       "type": "string"
      },
      {
+      "description": "log, proposals: from this date (YYYY-MM-DD, a UTC day) or ISO time.",
+      "name": "since",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "Sort order for ls: title (default tree), updated_at, created_at (newest first).",
       "enum": [
        "title",
@@ -2998,6 +3058,18 @@
      {
       "description": "With `help`: one command or action to describe instead of all of them.",
       "name": "topic",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "log, proposals: up to this date or ISO time, inclusive.",
+      "name": "until",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "log, proposals: client or agent prefix, any case (claude-code, codex, beakr-cli).",
+      "name": "via",
       "required": false,
       "type": "string"
      },

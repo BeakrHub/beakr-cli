@@ -672,6 +672,10 @@ beakr kb search "authentication flow"
 beakr documents search "who covers losses from defects"   # the original files, by meaning
 beakr kb sources "API Design"
 beakr kb log
+# History, proposals and listings filter by who wrote a change and through which agent
+beakr kb log --by "Ali Chen" --via codex --since 2026-11-09
+beakr kb proposals ls --via claude-code --accepted-by auto-approve
+beakr kb ls --changed-by me --changed-since 2026-11-09
 
 # Ask a question
 beakr research "what's our deploy process?"

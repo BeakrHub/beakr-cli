@@ -6728,6 +6728,33 @@
             "description": "How many items were skipped before this page.",
             "title": "Offset"
           },
+          "related": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a `grep` that matched nothing and shows entries related by meaning instead: what those entries are (`by`: meaning; `unit`: sections or pages; `returned`: how many are shown; `total` and `truncated` when the response budget left some out). They are not matches: `returned` and `total` stay 0. Absent otherwise.",
+            "title": "Related"
+          },
+          "requested_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The `limit` the call asked for, when it was above the command's maximum; `limit` is then the maximum that was applied. Absent otherwise.",
+            "title": "Requested Limit"
+          },
           "returned": {
             "anyOf": [
               {
@@ -23871,6 +23898,10 @@
                   }
                 ],
                 "properties": {
+                  "accepted_by": {
+                    "description": "log, proposals: who accepted it: a person, or auto-approve.",
+                    "type": "string"
+                  },
                   "after_card": {
                     "description": "rows: continue a capped card scan after this card.",
                     "type": "string"
@@ -23893,6 +23924,22 @@
                   },
                   "attribute": {
                     "description": "rows: the field by name, alias or meaning; replies say which field.",
+                    "type": "string"
+                  },
+                  "by": {
+                    "description": "log, proposals: the person behind it (who filed a proposal): a name, email, user id or me.",
+                    "type": "string"
+                  },
+                  "changed_by": {
+                    "description": "ls: pages with a revision by this person.",
+                    "type": "string"
+                  },
+                  "changed_since": {
+                    "description": "ls: pages with a revision on or after this date.",
+                    "type": "string"
+                  },
+                  "changed_via": {
+                    "description": "ls: pages with a revision through this client or agent.",
                     "type": "string"
                   },
                   "command": {
@@ -23934,6 +23981,18 @@
                   "context_lines": {
                     "description": "grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line.",
                     "type": "integer"
+                  },
+                  "created_by": {
+                    "description": "ls: pages this person created (their first revision).",
+                    "type": "string"
+                  },
+                  "created_since": {
+                    "description": "ls: pages created on or after this date.",
+                    "type": "string"
+                  },
+                  "created_via": {
+                    "description": "ls: pages created through this client or agent.",
+                    "type": "string"
                   },
                   "current_only": {
                     "description": "rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date).",
@@ -23998,6 +24057,10 @@
                     "description": "If true, ontology includes proposed page types as well as active types.",
                     "type": "boolean"
                   },
+                  "kind": {
+                    "description": "log, proposals: person, agent, beakr or system.",
+                    "type": "string"
+                  },
                   "limit": {
                     "description": "Max results. rows: rows per window (default 100, max 500). ls: pages per window (default 100, max 500). grep: pages per window (default 20, max 200). sources: source records per window (default 60, max 400). provenance: sections per window (default 12, max 200). Every window is ordered; use after_title (ls/grep/sources) or after_section (provenance) to continue past one.",
                     "type": "integer"
@@ -24030,7 +24093,7 @@
                     "type": "string"
                   },
                   "offset": {
-                    "description": "rows, proposals: rows to skip (continue a NOT ALL ROWS reply).",
+                    "description": "rows, proposals, log: rows to skip (continue a NOT ALL ROWS reply).",
                     "type": "integer"
                   },
                   "order_by": {
@@ -24083,6 +24146,10 @@
                   },
                   "section_id": {
                     "description": "cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take.",
+                    "type": "string"
+                  },
+                  "since": {
+                    "description": "log, proposals: from this date (YYYY-MM-DD, a UTC day) or ISO time.",
                     "type": "string"
                   },
                   "sort_by": {
@@ -24143,6 +24210,14 @@
                   },
                   "topic": {
                     "description": "With `help`: one command or action to describe instead of all of them.",
+                    "type": "string"
+                  },
+                  "until": {
+                    "description": "log, proposals: up to this date or ISO time, inclusive.",
+                    "type": "string"
+                  },
+                  "via": {
+                    "description": "log, proposals: client or agent prefix, any case (claude-code, codex, beakr-cli).",
                     "type": "string"
                   },
                   "view": {

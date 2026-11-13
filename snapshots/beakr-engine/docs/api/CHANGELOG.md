@@ -11,11 +11,73 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d43da83f4a9583b81afd04a3028e4e431077f1c75179d75117e6dc1c41611d39 changelog sha256=c7132c4ab5ee47a4bcce17fd1b4281868b16c4a1b1c92a0847aced145a66c2ea -->
+<!-- contract-stamp: public-openapi sha256=e9c8499ffbde9a24f13662273668a595c597b7321e98b99b0d202180358dad30 changelog sha256=608dff2308d1f85fb1bc8f9f7ffe287e1e79b656f648aeeddf690058879b3244 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/command` `log`, `proposals` and `ls` filter by who
+  wrote a change and through which agent. `log` (with or without `page`) and
+  `proposals` take, in any combination: `by`, a person given as a name, email
+  address, user id or `me` (for `log` the person behind the revision, for
+  `proposals` the person who filed it); `via`, a case-insensitive prefix of
+  the client or agent label the change was recorded with (`claude-code`,
+  `codex`, `chatgpt`, `beakr-mcp`, `beakr-cli`); `kind`, one of `person`,
+  `agent`, `beakr` or `system` as in a revision's `attribution`;
+  `accepted_by`, a person or `auto-approve`, for accepted proposals and the
+  revisions they produced; and `since` and `until`, each a date (`YYYY-MM-DD`,
+  the whole UTC day) or an ISO 8601 time, both inclusive. On `proposals`,
+  `since` and `until` bound when the proposal was filed, and `accepted_by`
+  lists accepted proposals whatever `status` is left at. `ls` takes
+  `created_by`, `created_via` and `created_since`, tested against a page's
+  first revision, and `changed_by`, `changed_via` and `changed_since`, tested
+  together against any one revision of the page; a filtered `ls` is a flat
+  listing in title order. `log` also takes `offset`. A filtered reply opens
+  with one `Filters:` line stating what was applied, and a reply that is cut
+  ends with the exact options that continue it, the filters included;
+  `coverage` reports `returned`, `complete` and `next_offset` as for other
+  listings. A person is resolved among the members of your organization you
+  can see: a name that several of them share is refused with
+  `person_ambiguous` and the matching people, and a name that matches none of
+  them is not an error, it lists nothing. A revision written from a proposal
+  you cannot open names no person or agent in `log`, so it matches no `by`,
+  `via` or `accepted_by`. Calls without these options answer as before. The
+  `knowledge_base` tool of both MCP servers takes the same options in
+  `arguments`.
+- `POST /v1/knowledge/wiki/command` `grep`: when nothing matches and the reply
+  shows pages found by meaning instead, those entries are no longer worded as
+  hits. The reply still opens with "0 exact matches for ...". Each entry is
+  labelled `related by meaning` (with `closeness: strong`, `moderate`,
+  `tangential` or `weak` where it is known) in place of `[match: ...]`, the
+  header reads "N section(s) related by meaning, on M page(s)", and
+  `output_mode: files_with_matches` and `count` list each page on a line that
+  starts `related by meaning:`. `output_mode: count` states "Count: 0 pages, 0
+  lines." `coverage` reports the literal search: `returned: 0`, `total: 0`,
+  `complete: true`, and the new `coverage.related` describes the entries shown
+  (`by`, `unit`: `sections` or `pages`, `returned`, plus `total` and
+  `truncated` when the response budget left some out). `next` leads with a
+  step saying nothing matched. A `grep` that matches nothing and shows nothing
+  else (`target: title`, `mode: regex`, or no related page either) now also
+  reports `returned: 0`, `total: 0`, `complete: true`.
+- `POST /v1/knowledge/wiki/command`: a `limit` above the command's maximum is
+  now stated. The text and `next` lead with one sentence ("limit was reduced
+  from 100 to 20 because search returns one ranked selection of at most 20
+  sections."), `coverage.limit` is the maximum that was applied and the new
+  `coverage.requested_limit` is the value sent. The maximums are unchanged:
+  `sections` 20; `grep` 200 pages, or 300 with `output_mode:
+  files_with_matches` or `count` or with `target: title`; `ls` 500; `rows` 500
+  (50 with `include_evidence`, 20 for `view: fields` and `view: groups`, 100
+  for `view: conflicts`); `links` 500; `log` without a `page` 50; `proposals`
+  200. The `knowledge_base` tool description states the `sections` maximum.
+- `POST /v1/knowledge/wiki/command` `ls`: a listing larger than its window is
+  now read from the database as that window and a count, instead of every
+  page in scope. The text and `coverage` are unchanged.
+- Hosted MCP connector sign-ins (claude.ai, ChatGPT and other clients signed in
+  through the browser that name no Beakr scope) now hold `projects:admin`, so
+  `create_project` and `add_project_member` work from the hosted MCP server
+  where they answered `403 insufficient_scope`. They still hold no other admin
+  scope and not `audit:read`. The person's role in each project decides every
+  call as before.
 - `POST /v1/knowledge/wiki/command` `sections` replies are fitted to the hits
   they show. The "Documents these sections cite:" list names only the
   documents of hits that are shown, and at most 24 of them. A hit longer than
