@@ -983,3 +983,37 @@ def test_a_refused_tool_call_keeps_the_apis_words():
     assert result.isError
     assert body["error_code"] == "session_locked_to_project"
     assert body["message"] == message and body["fix"] == fix
+
+
+# --- The per-session log --------------------------------------------------------------
+
+
+def test_trail_shows_boundary_events_beside_reads():
+    from beakr_cli.session_trail import render_trail
+
+    text = render_trail(
+        {
+            "data": [
+                {
+                    "at": "2026-11-13T21:04:11Z",
+                    "op": "boundary:locked",
+                    "projects": [_ref(A)],
+                    "items": [],
+                    "summary": "Locked to Partner A by knowledge_base sections (scope Partner A).",
+                },
+                {
+                    "at": "2026-11-13T21:00:00Z",
+                    "op": "boundary:started",
+                    "projects": [],
+                    "items": [],
+                    "summary": "Automatic session.",
+                },
+            ],
+            "has_more": False,
+        }
+    )
+
+    lines = text.splitlines()
+    assert "boundary:locked Partner A  Locked to Partner A by knowledge_base sections" in lines[1]
+    assert "boundary:started  Automatic session." in lines[2]
+    assert "no project" not in text

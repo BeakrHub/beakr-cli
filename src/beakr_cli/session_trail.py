@@ -77,12 +77,24 @@ def _items(read: dict[str, Any], limit: int = 3) -> str:
     return ", ".join(titles) + more
 
 
+#: The ``op`` prefix of a session's boundary events (project boundaries): its
+#: declaration, lock events and refusals, kept in the trail beside its reads.
+EVENT_OP_PREFIX = "boundary:"
+
+
 def read_line(read: dict[str, Any]) -> str:
-    """``2026-11-10 21:04:11  search  Pharma A, Pharma B  "assay results"  (3 items: ...)``."""
+    """``2026-11-10 21:04:11  search  Pharma A, Pharma B  "assay results"  (3 items: ...)``.
+
+    A boundary event (``boundary:locked``...) reads the same way, its ``summary`` saying
+    what happened and which call did it.
+    """
     at = str(read.get("at") or "").replace("T", " ")[:19]
     op = str(read.get("op") or "read")
-    projects = ", ".join(_name(p) for p in read.get("projects") or []) or "no project"
-    parts = [f"{at}  {op:<9} {projects}"]
+    event = op.startswith(EVENT_OP_PREFIX)
+    projects = ", ".join(_name(p) for p in read.get("projects") or []) or (
+        "" if event else "no project"
+    )
+    parts = [f"{at}  {op:<9} {projects}".rstrip()]
     summary = str(read.get("summary") or "").strip()
     if summary:
         parts.append(f"  {summary}")
