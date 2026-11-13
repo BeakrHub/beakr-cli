@@ -251,8 +251,8 @@ def _source_line(source: dict[str, Any]) -> str:
 #: Fields a provider tool's JSON carries for Ask's citation tokens. Ask cites an
 #: item by ``{{key}}``; an outside caller cannot (a write refuses the token with
 #: citation_not_citeable), so its copy of the result leaves them out and the
-#: Sources list names each item by title and url instead. Mirrors the hosted
-#: server's ``integration_results``.
+#: Sources list names each item by title and url instead (direct MCP audit,
+#: 2026-11-13: results told agents to "use each item's citation token inline").
 _TOKEN_FIELDS = frozenset({"cite", "citation", "USE_CITATION", "NOTE"})
 _TOKEN = re.compile(r"\s*\{\{[a-z_]+:[A-Za-z0-9_.:\-]+\}\}")
 
@@ -297,6 +297,8 @@ def sources_block(sources: list[Any]) -> str:
     if not records:
         return ""
     lines = [
+        # Not "by its source_ref": a write accepts that only for an item Knowledge
+        # already holds, and refused it for every item read here that it did not.
         f"Sources ({len(records)}). To cite one in a Knowledge write, pass it as a web "
         "source (its url, title and the passage you quote), or its source_ref once "
         "Knowledge holds the item:",

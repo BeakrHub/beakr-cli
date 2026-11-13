@@ -4,17 +4,78 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.6.0 (2026-11-12)
-
-### Client changes
-
-- `beakr kb cat PAGE --json` is now bounded: it prints the same
-  `{content, coverage, next, sources}` reply as every other Knowledge read
-  (and as `cat --section-id ... --json` already did), not the whole stored page
-  with every source. `beakr kb cat PAGE --raw` gives the old output.
+## beakr-cli 0.6.0 (2026-11-13)
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` `sections` replies are fitted to the hits
+  they show. The "Documents these sections cite:" list names only the
+  documents of hits that are shown, and at most 24 of them. A hit longer than
+  2,000 characters or 24 lines is shortened and ends with how many lines were
+  left out and the `cat {page, section_id}` call that reads the section. When
+  hits do not fit, each one left out is named on a line under "Not shown" with
+  its `page_id` and `section_id`, and the reply says that search returns one
+  ranked selection of at most 20 sections and does not page; it no longer
+  says to lower `limit`. A higher `limit` never shows fewer hits than a lower
+  one. `coverage` now carries `returned` (hits shown), `total` (hits
+  selected), `limit`, `complete` and `truncated` for `sections`.
+  `include_sources: false` leaves out the cited-documents list and the
+  `sources` records, and gives the hits that room; the hosted MCP server
+  sends it for `sources: "none"`. The closing line names a file reader only
+  when a shown hit cites a stored file; when the shown hits cite only
+  connected items it points at `sources {page}`. When a search has no strong
+  match and the query is a short run of ids or names (a ticket id, UUID, file
+  name, dotted or snake_case name, or a quoted string), `next` leads with the
+  exact `grep` call for the most specific one.
+- `POST /v1/knowledge/wiki/command` `sections` and `grep`: when one project
+  is in scope and some of its files are not compiled, compiled only in part
+  or failed, the text ends with a line saying so ("Knowledge was compiled
+  from 45 of 48 file(s) in this project ...") and `coverage.corpus` gives
+  `files_total`, `files_compiled`, `partial`, `failed` and `not_compiled`.
+  `coverage.complete` stays a statement about the result only. Nothing is
+  added when every file is compiled or the counts are not known.
+- `POST /v1/artifacts/read` pages a read addressed at a place. With a
+  ` › <unit>` (a page, paragraph, sheet or line range), `offset` now reads on
+  from that offset in the text the window indexed (the page, the sheet, or
+  the file), and `next_offset` is returned while that text holds more: send it
+  with the same reference. Before, `offset` was ignored for such a read and
+  `next_offset` was null. An `offset` sent with a cell range, which is
+  returned whole, answers `400 offset_not_applicable`. A reference that lists
+  several places (`book.xlsx › p. 2, p. 4 +1 more`) opens the first.
+- `POST /v1/artifacts/read` and `POST /v1/artifacts/download-url`: the
+  `400 not_a_file` refusal for a file read through a drive connection now says
+  so, with `source_kind` (`connected_file` or `connected_item`), `provider`
+  and `url` when known, and names what opens it. A connected file named by the
+  name a Sources line prints answers the same `400` for a caller who can reach
+  it; for anyone else it stays `404 not_found`.
+- `POST /v1/context` returns `truncated`: true when `budget_chars` shortened a
+  block or left one out. When the budget cannot hold every block, the
+  organization and project come first, then what `question` selects, then the
+  profile, with recent activity and past conversations last. A budget that
+  holds everything returns the blocks in the same order as before.
+- `POST /v1/knowledge/wiki/command` with `command: "query"` and no `scope` now
+  reads the projects the caller can read, as `rows` does. Before, it matched
+  no rows. A key restricted to some projects reads only those.
+- `POST /v1/knowledge/wiki/command` with `command: "rows"` and `group_by`:
+  a group's `numbers`, `sum`, `min` and `max` count only values that state a
+  quantity (`45 mg`, `$55 million`), not digits inside names or ids.
+- `POST /v1/knowledge/wiki/command` `cat` with `section_id` returns the section
+  as text: a header line (page id, section id, revision, page lines), the
+  section with each citation as a readable reference (`memo.pdf › p. 7`), and
+  one line per cited document. A citation that is not a verified quote from
+  its source says so after its reference: `(human asserted)`, `(unverified)`
+  or `(paraphrase)`. It used to return a JSON object with every citation
+  record; pass `ledger: true` to get that object.
+- `POST /v1/knowledge/wiki/command` `cat`: a reply cut to fit the response
+  size says so once, as the first `next` entry, with the size shown against
+  the full size and every section not shown. `coverage.continue_with` holds
+  the arguments of the `cat` call that continues exactly where the reply
+  stopped (`page` and `lines`, plus `scope` when the call gave one), and
+  `coverage` also carries `shown_chars`, `total_chars`, `revision`,
+  `lines_shown`, `lines_total` and `sections_not_shown`, all now part of the
+  documented `coverage` object. Through the MCP
+  servers `coverage.has_more` is true whenever `continue_with` is set;
+  `next_cursor` stays null.
 - `GET /v1/artifacts?thread_outputs=true` lists every file and document a
   chat produced, including ones not yet saved to a project. Each row's
   `saved_to_files` says whether project Files lists it. Files attached to a

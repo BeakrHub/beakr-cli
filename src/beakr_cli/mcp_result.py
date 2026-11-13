@@ -200,6 +200,11 @@ def file_read(data: dict[str, Any]) -> dict[str, Any]:
         position = f"{span}characters {start}-{end}" + (f" of {total}" if total else "")
         if not unit.get("found", True):
             hints.append("That place was not found in this version of the file; this is its start.")
+        if data.get("next_offset") is not None:
+            # The rest of this page or sheet, before the next one.
+            hints.append(
+                f"More of this place follows: call read_file with {where!r} and offset={end}."
+            )
         if data.get("next_reference"):
             hints.append(f"Next page: call read_file with {data['next_reference']!r}.")
     else:
