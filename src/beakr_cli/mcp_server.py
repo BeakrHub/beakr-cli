@@ -25,7 +25,7 @@ from beakr_cli.mcp_render import (
     SourceMode,
     organization_line,
 )
-from beakr_cli.mcp_tools_platform import _project_by_name_or_id
+from beakr_cli.mcp_tools_platform import PageLimit, _project_by_name_or_id
 from beakr_cli.updates import (
     CHECK_OFF,
     box_line,
@@ -439,7 +439,7 @@ _TOKEN_SOURCE_NOTE = (
 
 
 @mcp.tool(**tool_surface.tool_kwargs("list_projects"))
-async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
+async def list_projects(cursor: str = "", limit: PageLimit = 50) -> dict[str, Any]:
     """List projects in the organization, including the user's personal project.
 
     Pass a project's name or id as ``scope`` to any tool that takes a project:
@@ -450,11 +450,18 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         cursor: The next_cursor from the previous page's coverage.
         limit: Projects per page (1-50).
     """
-    from beakr_cli.mcp_tools_platform import _cursor, _page_of, _page_result, _page_size
+    from beakr_cli.mcp_tools_platform import (
+        _bounded_limit,
+        _cursor,
+        _noted,
+        _page_of,
+        _page_result,
+    )
 
+    page_size, reduced = _bounded_limit(limit)
     page = await _call_api(
         lambda sdk: sdk.api.projects.list_projects(
-            cursor=_cursor(cursor), limit=_page_size(limit), include_knowledge=True
+            cursor=_cursor(cursor), limit=page_size, include_knowledge=True
         )
     )
     rows, has_more, next_cursor = _page_of(page, "data", "projects")
@@ -471,7 +478,7 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
     # the same notice the hosted server appends.
     notice = knowledge_notice(rows[:50])
     return _page_result(
-        f"{listed}\n\n{notice}" if notice else listed,
+        _noted(f"{listed}\n\n{notice}" if notice else listed, reduced),
         tool="list_projects",
         returned=min(len(rows), 50),
         has_more=has_more,

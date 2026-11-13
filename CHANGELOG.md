@@ -6,6 +6,13 @@ Each release lists the public API changes it supports, taken from the API change
 
 ## beakr-cli 0.6.0 (2026-11-12)
 
+### Client changes
+
+- `beakr kb cat PAGE --json` is now bounded: it prints the same
+  `{content, coverage, next, sources}` reply as every other Knowledge read
+  (and as `cat --section-id ... --json` already did), not the whole stored page
+  with every source. `beakr kb cat PAGE --raw` gives the old output.
+
 ### Changes
 
 - `GET /v1/artifacts?thread_outputs=true` lists every file and document a

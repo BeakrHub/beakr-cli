@@ -12,8 +12,10 @@ an unbounded skill body or conversation list would crowd out the user's work.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 from uuid import UUID
+
+from pydantic import WithJsonSchema
 
 from beakr_cli import mcp_integration_results as integration_results
 from beakr_cli import mcp_result, tool_surface
@@ -30,6 +32,9 @@ MAX_TEXT_CHARS = 20_000
 MAX_LIST_ITEMS = 50
 #: Largest context budget a caller may request.
 MAX_CONTEXT_BUDGET = 20_000
+#: Smallest context budget the context route accepts (``ContextIn.budget_chars``,
+#: ``ge=2000``): it answers a smaller one with 422.
+MIN_CONTEXT_BUDGET = 2_000
 #: Messages accepted by one import call.
 MAX_IMPORT_MESSAGES = 2_000
 
@@ -57,8 +62,51 @@ def _cursor(cursor: str) -> str | None:
     return (cursor or "").strip() or None
 
 
-def _page_size(limit: int | None, default: int = MAX_LIST_ITEMS) -> int:
-    return max(1, min(int(limit or default), MAX_LIST_ITEMS))
+# The bounds each paged tool declares, the hosted server's (``_LIMIT`` in the
+# engine's beakr/api/mcp_remote/tools.py). They are stated in the schema but not
+# enforced by it: a ``Field(le=50)`` would refuse limit=100 before the tool ran,
+# and an agent that asks for too much is better served by the largest page and
+# a line saying so than by an error. ``WithJsonSchema`` declares without
+# validating; :func:`_bounded_limit` does the reducing.
+PageLimit = Annotated[
+    int,
+    WithJsonSchema(
+        {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": MAX_LIST_ITEMS,
+            "description": (
+                f"Rows per page, at most {MAX_LIST_ITEMS}. For more, pass the result's "
+                "next_cursor as cursor."
+            ),
+        }
+    ),
+]
+ContextBudget = Annotated[
+    int,
+    WithJsonSchema(
+        {"type": "integer", "minimum": MIN_CONTEXT_BUDGET, "maximum": MAX_CONTEXT_BUDGET}
+    ),
+]
+
+
+def _bounded_limit(
+    limit: int | None, *, default: int = MAX_LIST_ITEMS, maximum: int = MAX_LIST_ITEMS
+) -> tuple[int, str | None]:
+    """The page size to request and, when ``limit`` was over ``maximum``, a note saying so."""
+    requested = int(limit or default)
+    size = max(1, min(requested, maximum))
+    if requested <= maximum:
+        return size, None
+    return size, (
+        f"limit reduced from {requested} to {maximum}, the most one call returns; "
+        "continue from this result for more."
+    )
+
+
+def _noted(text: str, note: str | None) -> str:
+    """``text`` closed with the reduced-limit note, when there is one."""
+    return f"{text}\n\n[{note}]" if note else text
 
 
 def _expected_base_index(exc: ApiCallError) -> int | None:
@@ -90,7 +138,7 @@ async def context(
     project: str = "",
     question: str = "",
     format: str = "markdown",
-    budget_chars: int = 8_000,
+    budget_chars: ContextBudget = 8_000,
 ) -> str:
     """Load onboarding context for this session: who the user is, the org and project
     profiles, their memories, what changed recently, relevant skills and entities.
@@ -104,7 +152,7 @@ async def context(
         project: Project name or ID to focus on. Omit for org-wide context.
         question: The task or question, to rank what is included.
         format: markdown (default), claude_md, agents_md or json.
-        budget_chars: Approximate size of the result (max 20000).
+        budget_chars: Approximate size of the result (2000 to 20000).
     """
     if format not in _CONTEXT_FORMATS:
         return f"Invalid format '{format}'. Use one of: {', '.join(_CONTEXT_FORMATS)}."
@@ -116,7 +164,7 @@ async def context(
             project_id=project_id,
             question=question or None,
             format=format,
-            budget_chars=max(500, min(budget_chars, MAX_CONTEXT_BUDGET)),
+            budget_chars=max(MIN_CONTEXT_BUDGET, min(budget_chars, MAX_CONTEXT_BUDGET)),
         )
     )
     content = str((data or {}).get("content") or "")
@@ -152,7 +200,9 @@ def _skill_list(skills_: list[dict[str, Any]]) -> str:
     return "\n".join(lines)
 
 
-async def skills(skill: str = "", cursor: str = "", limit: int = MAX_LIST_ITEMS) -> dict[str, Any]:
+async def skills(
+    skill: str = "", cursor: str = "", limit: PageLimit = MAX_LIST_ITEMS
+) -> dict[str, Any]:
     """List the user's Beakr skills, or read one skill's SKILL.md.
 
     Use without arguments to see which team procedures exist (name, slug, one-line
@@ -166,14 +216,15 @@ async def skills(skill: str = "", cursor: str = "", limit: int = MAX_LIST_ITEMS)
         limit: Skills per page (1-50).
     """
     if not skill:
+        page_size, reduced = _bounded_limit(limit)
         page = await call_api(
             lambda sdk: sdk.api.skills.list_skills(
-                installed=True, cursor=_cursor(cursor), limit=_page_size(limit)
+                installed=True, cursor=_cursor(cursor), limit=page_size
             )
         )
         rows, has_more, next_cursor = _page_of(page, "data", "skills")
         return _page_result(
-            _skill_list(rows),
+            _noted(_skill_list(rows), reduced),
             tool="skills",
             returned=min(len(rows), MAX_LIST_ITEMS),
             has_more=has_more,
@@ -227,7 +278,7 @@ async def conversations_search(
     query: str = "",
     client: str = "",
     project: str = "",
-    limit: int = 10,
+    limit: PageLimit = 10,
     cursor: str = "",
 ) -> dict[str, Any]:
     """Search your past conversations: sessions imported from Claude Code, Codex or
@@ -252,7 +303,7 @@ async def conversations_search(
     project_id = await _project_by_name_or_id(project) if project.strip() else None
     if query and not client:
         return await _search_index(query, project_id=project_id, limit=limit, cursor=cursor)
-    page_size = _page_size(limit, default=10)
+    page_size, reduced = _bounded_limit(limit, default=10)
     page = await call_api(
         lambda sdk: sdk.api.conversations.list_conversations(
             client=client or None,
@@ -265,7 +316,7 @@ async def conversations_search(
     rows, has_more, next_cursor = _page_of(page, "data")
     rows = rows[:page_size]
     return _page_result(
-        _conversation_lines(rows),
+        _noted(_conversation_lines(rows), reduced),
         tool="conversations_search",
         returned=len(rows),
         has_more=has_more,
@@ -320,19 +371,20 @@ def conversation_hits_text(hits: list[dict[str, Any]], *, note: str | None = Non
 async def _search_index(
     query: str, *, project_id: str | None, limit: int, cursor: str
 ) -> dict[str, Any]:
+    page_size, reduced = _bounded_limit(limit, default=10, maximum=_SEARCH_LIMIT)
     page = await call_api(
         lambda sdk: sdk.api.conversations.search(
             q=query,
             project_id=project_id,
             match="any",
-            limit=max(1, min(limit, _SEARCH_LIMIT)),
+            limit=page_size,
             cursor=_cursor(cursor),
         )
     )
     hits, has_more, next_cursor = _page_of(page, "data")
     note = page.get("note") if isinstance(page, dict) else None
     return _page_result(
-        conversation_hits_text(hits, note=note if isinstance(note, str) else None),
+        _noted(conversation_hits_text(hits, note=note if isinstance(note, str) else None), reduced),
         tool="conversations_search",
         returned=len(hits),
         has_more=has_more,
@@ -455,7 +507,9 @@ async def import_conversation(
     )
 
 
-async def org_audit_log(limit: int = 25, before: str = "", cursor: str = "") -> dict[str, Any]:
+async def org_audit_log(
+    limit: PageLimit = 25, before: str = "", cursor: str = ""
+) -> dict[str, Any]:
     """Read the organization's audit trail (sign-ins, key and policy changes), newest first.
 
     Use when the user asks who changed access, created or revoked a key or
@@ -470,9 +524,10 @@ async def org_audit_log(limit: int = 25, before: str = "", cursor: str = "") -> 
     """
     # The SDK resolves the org the way requests run: the override, the CLI
     # sign-in's org, else the server's active org.
+    page_size, reduced = _bounded_limit(limit, default=25)
     page = await call_api(
         lambda sdk: sdk.org.audit.list(
-            limit=_page_size(limit, default=25),
+            limit=page_size,
             before=before or None,
             cursor=_cursor(cursor),
         )
@@ -489,7 +544,7 @@ async def org_audit_log(limit: int = 25, before: str = "", cursor: str = "") -> 
         else "No audit events."
     )
     return _page_result(
-        text,
+        _noted(text, reduced),
         tool="org_audit_log",
         returned=len(events),
         has_more=has_more,
@@ -506,8 +561,10 @@ _AMBIGUOUS_LISTED = 10
 async def read_file(
     artifact_id: str = "",
     path: str = "",
-    offset: int = 0,
-    limit: int = READ_FILE_CHARS,
+    offset: Annotated[int, WithJsonSchema({"type": "integer", "minimum": 0})] = 0,
+    limit: Annotated[
+        int, WithJsonSchema({"type": "integer", "minimum": 1, "maximum": READ_FILE_CHARS})
+    ] = READ_FILE_CHARS,
     project: str = "",
 ) -> str | dict[str, Any]:
     """A window of a document's extracted text, as the hosted read_file reads it.
@@ -532,7 +589,7 @@ async def read_file(
             "result's Sources.",
         )
     offset = max(0, int(offset or 0))
-    limit = max(1, min(int(limit or READ_FILE_CHARS), READ_FILE_CHARS))
+    limit, reduced = _bounded_limit(limit, default=READ_FILE_CHARS, maximum=READ_FILE_CHARS)
     # Sent only when named, so an unscoped read is the same request as before.
     scoped = {"project": await _project_id(project)} if project.strip() else {}
     try:
@@ -552,7 +609,10 @@ async def read_file(
         if status == 409:
             return _read_conflict(exc)
         raise
-    return mcp_result.file_read(dict(data or {}))
+    result = mcp_result.file_read(dict(data or {}))
+    if reduced:
+        result["content"] = _noted(str(result.get("content") or ""), reduced)
+    return result
 
 
 def _read_conflict(exc: ApiCallError) -> dict[str, Any]:
@@ -794,7 +854,7 @@ async def integrations(
     connector_id: str = "",
     provider: str = "",
     cursor: str = "",
-    limit: int | None = None,
+    limit: PageLimit | None = None,
 ) -> dict[str, Any]:
     """Read the caller's connected integrations with Beakr's read-only connector tools.
 
@@ -818,17 +878,18 @@ async def integrations(
     connector = (connector_id or "").strip() or None
     try:
         if command == "list":
+            page_size, reduced = _bounded_limit(limit)
             page = await call_api(
                 lambda sdk: sdk.api.integrations.list_integration_tools(
                     provider=(provider or "").strip() or None,
                     connector_id=connector,
                     cursor=_cursor(cursor),
-                    limit=_page_size(limit),
+                    limit=page_size,
                 )
             )
             rows, has_more, next_cursor = _page_of(page, "data")
             return _page_result(
-                integration_results.tool_list(rows),
+                _noted(integration_results.tool_list(rows), reduced),
                 tool="integrations",
                 returned=len(rows),
                 has_more=has_more,

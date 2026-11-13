@@ -51,10 +51,10 @@ def _envelope(rows: list[dict]) -> dict:
 
 
 @respx.mock
-def test_cat_by_id_prints_the_page_as_json():
+def test_cat_raw_by_id_exports_the_stored_page_as_json():
     route = respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
     respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(json=_envelope([]))
-    result = runner.invoke(app, ["kb", "cat", PAGE_ID, "--json"])
+    result = runner.invoke(app, ["kb", "cat", PAGE_ID, "--raw"])
     assert result.exit_code == 0, result.output
     assert route.called
     # The page, plus where each of its sources lives (none here).
@@ -81,7 +81,7 @@ def test_cat_by_title_resolves_through_by_title(terminal):
 # Root cause: the default `kb cat` printed the stored markdown, whose citations
 # are raw {{artifact:...}} tokens, while `--rev` read the door's `cat`, which
 # renders each as the reference a reader can follow. Every text read now goes
-# through the door; --json keeps the stored page record.
+# through the door, --json included; --raw exports the stored page record.
 @respx.mock
 @pytest.mark.parametrize("as_terminal", [True, False], ids=["terminal", "piped"])
 def test_cat_prints_readable_references_not_raw_tokens(monkeypatch, as_terminal):
@@ -103,7 +103,10 @@ def test_cat_prints_readable_references_not_raw_tokens(monkeypatch, as_terminal)
     assert "Pair for a week (handbook.pdf \u203a p. 2)." in result.stdout
     assert json.loads(door.calls.last.request.content) == {"command": "cat", "page": PAGE_ID}
     as_json = runner.invoke(app, ["kb", "cat", PAGE_ID, "--json"])
-    assert json.loads(as_json.stdout) == {**stored, "sources": []}
+    assert "{{artifact:" not in as_json.stdout
+    assert json.loads(as_json.stdout)["content"][0]["text"].startswith("Pair for a week")
+    raw = runner.invoke(app, ["kb", "cat", PAGE_ID, "--raw"])
+    assert json.loads(raw.stdout) == {**stored, "sources": []}
 
 
 # Root cause: a cut `cat` names how to continue (section_id=, source_offset=)
@@ -247,7 +250,7 @@ def test_cat_missing_page_fails():
 
 
 # ---------------------------------------------------------------------------
-# kb provenance
+# kb section-provenance (the REST rollup; `kb provenance` is the door read)
 # ---------------------------------------------------------------------------
 
 PROVENANCE = {
@@ -267,7 +270,7 @@ PROVENANCE = {
 def test_provenance_json_prints_the_rollup():
     respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
     route = respx.get(f"{PAGES}/{PAGE_ID}/section-provenance").respond(json=PROVENANCE)
-    result = runner.invoke(app, ["kb", "provenance", PAGE_ID, "--json"])
+    result = runner.invoke(app, ["kb", "section-provenance", PAGE_ID, "--json"])
     assert result.exit_code == 0, result.output
     assert route.called
     assert json.loads(result.stdout) == PROVENANCE["provenance"]
@@ -277,7 +280,7 @@ def test_provenance_json_prints_the_rollup():
 def test_provenance_renders_each_section_with_stance(terminal):
     respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
     respx.get(f"{PAGES}/{PAGE_ID}/section-provenance").respond(json=PROVENANCE)
-    result = runner.invoke(app, ["kb", "provenance", PAGE_ID])
+    result = runner.invoke(app, ["kb", "section-provenance", PAGE_ID])
     assert result.exit_code == 0, result.output
     assert "Intro" in result.stdout
     assert "support inline" in result.stdout
@@ -289,7 +292,7 @@ def test_provenance_renders_each_section_with_stance(terminal):
 def test_provenance_without_data_says_so(terminal):
     respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
     respx.get(f"{PAGES}/{PAGE_ID}/section-provenance").respond(json={"provenance": {}})
-    result = runner.invoke(app, ["kb", "provenance", PAGE_ID])
+    result = runner.invoke(app, ["kb", "section-provenance", PAGE_ID])
     assert result.exit_code == 0, result.output
     assert "No section provenance data." in result.stderr
 
@@ -624,7 +627,7 @@ def test_cat_a_slug_of_an_existing_title_still_resolves():
     respx.get(f"{PAGES}/p-kw").respond(json={**PAGE, "title": "Kestrel Widget"})
     respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(json=_envelope([]))
 
-    result = runner.invoke(app, ["kb", "cat", "kestrel-widget", "--json"])
+    result = runner.invoke(app, ["kb", "cat", "kestrel-widget", "--raw"])
 
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["title"] == "Kestrel Widget"
@@ -674,7 +677,7 @@ def test_cat_a_slug_resolves_through_the_servers_suggestions():
     respx.get(f"{PAGES}/by-title").mock(side_effect=by_title)
     respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(json=_envelope([]))
 
-    result = runner.invoke(app, ["kb", "cat", "kestrel-widget", "--json"])
+    result = runner.invoke(app, ["kb", "cat", "kestrel-widget", "--raw"])
 
     assert result.exit_code == 0, result.output
     assert json.loads(result.stdout)["title"] == "Kestrel Widget"

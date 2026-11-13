@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import re
 import sys
-from itertools import islice
 from pathlib import Path
 
+import click
 import typer
 from beakr_sdk.errors import BeakrError, NotFoundError
 from beakr_sdk.resources.knowledge import result_text
@@ -20,7 +20,7 @@ from beakr_cli.citations import (
     validate_proposal_sections,
 )
 from beakr_cli.cited_answer import print_research_result, research_lines
-from beakr_cli.compact import cell
+from beakr_cli.compact import cell, next_page_hint, print_compact
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
 from beakr_cli.output import (
     console,
@@ -105,6 +105,36 @@ def _project_id(*, project: str | None = None, mine: bool = False) -> str | None
 # ---------------------------------------------------------------------------
 
 
+#: Most pages one list request returns.
+_LS_PAGE_SIZE = 200
+
+
+def _list_pages(
+    sdk: object, *, limit: int | None, cursor: str | None, **filters: object
+) -> tuple[list[dict], str | None, bool]:
+    """Pages from ``cursor`` on, at most ``limit``: the rows, the next cursor, whether more exist.
+
+    Each request asks for no more than is still wanted, so the cursor a short
+    listing ends on continues exactly after its last row.
+    """
+    rows: list[dict] = []
+    while True:
+        size = min(limit - len(rows), _LS_PAGE_SIZE) if limit else _LS_PAGE_SIZE
+        page = sdk.knowledge.pages.list(limit=size, cursor=cursor, **filters)  # type: ignore[attr-defined]
+        batch = page_rows(page)
+        rows.extend(batch)
+        envelope = page if isinstance(page, dict) else {}
+        cursor = envelope.get("next_cursor") or None
+        has_more = bool(envelope.get("has_more", cursor is not None))
+        if not has_more or cursor is None or not batch or (limit and len(rows) >= limit):
+            break
+    if limit and len(rows) > limit:
+        # A server that returned more than was asked for: the cursor is past
+        # rows this listing drops, so it cannot continue the listing exactly.
+        return rows[:limit], None, True
+    return rows, cursor, has_more
+
+
 @app.command()
 def ls(
     page_type: str | None = typer.Option(None, "--type", "-t", help="Filter by page type."),
@@ -116,12 +146,32 @@ def ls(
         "-p",
         help="Filter to children of this page (title or UUID).",
     ),
-    limit: int | None = typer.Option(None, "--limit", "-n", help="Max pages to return."),
+    limit: int | None = typer.Option(
+        None, "--limit", "-n", min=1, help="Max pages to return (default: every page)."
+    ),
+    cursor: str | None = typer.Option(
+        None, "--cursor", help="Continue a listing cut by --limit (the cursor it named)."
+    ),
+    envelope: bool = typer.Option(
+        False,
+        "--envelope",
+        help="With --json: print {data, has_more, next_cursor} instead of the plain array.",
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """List knowledge base pages in the current scope."""
+    """List knowledge base pages in the current scope.
+
+    Without --limit every page is listed. With --limit a listing that stops
+    early says so on its last line and names the command that continues it
+    (the same command with --cursor). --json prints a plain array (the notice
+    goes to stderr); add --envelope for {data, has_more, next_cursor}.
+    """
+    mode = output_mode(json_out)
+    if envelope and mode != "json":
+        err_console.print("--envelope shapes the JSON output; add --json.")
+        raise typer.Exit(EXIT_USAGE)
     parent_page_id = None
     if parent:
         parent_data = _resolve_page(parent, project=project, mine=mine)
@@ -130,19 +180,15 @@ def ls(
 
     scope = _scope_params(project=project, mine=mine)
     with get_sdk() as sdk:
-        # Page through the list (at most 200 per request) up to --limit pages.
-        pages = list(
-            islice(
-                sdk.knowledge.pages.iter(
-                    project_id=scope.get("project_id"),
-                    page_type=page_type or None,
-                    roots_only=True if roots_only else None,
-                    parent_page_id=parent_page_id,
-                    page_size=min(limit, 200) if limit else 200,
-                    all_scopes=True if all_scopes else None,
-                ),
-                limit,
-            )
+        pages, next_cursor, has_more = _list_pages(
+            sdk,
+            limit=limit,
+            cursor=(cursor or "").strip() or None,
+            project_id=scope.get("project_id"),
+            page_type=page_type or None,
+            roots_only=True if roots_only else None,
+            parent_page_id=parent_page_id,
+            all_scopes=True if all_scopes else None,
         )
 
     if not pages and not all_scopes and "project_id" not in scope:
@@ -152,8 +198,35 @@ def ls(
             "No project is selected, so only organization-level pages are listed. "
             "Pass --project, bind this directory with `beakr init`, or use --all."
         )
-    if not machine_output(pages, json_out=json_out):
-        print_pages_table(pages)
+    continue_with = (
+        next_page_hint({"has_more": True, "next_cursor": next_cursor}) if next_cursor else None
+    )
+    notice = _incomplete_listing_notice(len(pages), continue_with) if has_more else None
+    if mode == "json":
+        if envelope:
+            print_json({"data": pages, "has_more": has_more, "next_cursor": next_cursor})
+            return
+        # The plain array scripts read; what it leaves out is said on stderr.
+        print_json(pages)
+        if notice:
+            err_console.print(notice, markup=False, highlight=False)
+        return
+    if mode == "compact":
+        print_compact(pages)
+        if notice:
+            sys.stdout.write(notice + "\n")
+        return
+    print_pages_table(pages)
+    if notice:
+        # Not wrapped: the command it names is copied whole.
+        console.print(notice, markup=False, highlight=False, soft_wrap=True)
+
+
+def _incomplete_listing_notice(shown: int, continue_with: str | None) -> str:
+    """The last line of a listing that stopped before the end of the list."""
+    if continue_with:
+        return f"Incomplete: {shown} pages listed and more exist. Continue with: {continue_with}"
+    return f"Incomplete: {shown} pages listed and more exist. Raise --limit to list them."
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +244,9 @@ def cat(
     lines: str | None = typer.Option(
         None, "--lines", help="Read only these lines, start-end or one line (a grep hit's line)."
     ),
+    outline: bool = typer.Option(
+        False, "--outline", help="The page's sections (title, id, size), not their text."
+    ),
     full: bool = typer.Option(
         False, "--full", help="Every source record with its excerpt, not one per document."
     ),
@@ -180,7 +256,17 @@ def cat(
         min=0,
         help="With --full: the first source record to return (a cut read names it).",
     ),
-    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    raw: bool = typer.Option(
+        False,
+        "--raw",
+        help=(
+            "Export the whole stored page record with every source as JSON, however "
+            "large (what --json printed before 0.6.0)."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", "-j", help="The bounded read as JSON: {content, coverage, next, sources}."
+    ),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
@@ -188,26 +274,34 @@ def cat(
 
     The text is the Knowledge door's `cat`, as the MCP tool shows it: each
     {{key}} citation is the name of what it cites, and the cited documents are
-    listed after it. A read cut to the response budget names how to continue
-    (section_id=, lines=, source_offset=); --section-id, --lines and
-    --source-offset take those. --json prints the stored page record and its
-    sources (the door's reply with --rev, --section-id, --lines or --full).
+    listed after it. A read cut to the response budget says so (Coverage) and
+    names how to continue (section_id=, lines=, source_offset=); --section-id,
+    --lines and --source-offset take those, and --outline lists the sections.
+    --json prints that same bounded read as {content, coverage, next, sources},
+    whichever options select it. --raw exports the whole stored page record and
+    all its sources as JSON instead, with no size bound.
     """
     if source_offset is not None and not full:
         err_console.print("--source-offset pages the records of a --full read; add --full.")
+        raise typer.Exit(EXIT_USAGE)
+    if raw and (rev is not None or section_id is not None or lines is not None or outline or full):
+        err_console.print(
+            "--raw exports the whole stored page; drop --rev, --section-id, --lines, "
+            "--outline and --full, or drop --raw for the bounded read."
+        )
         raise typer.Exit(EXIT_USAGE)
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
-    door_only = rev is not None or section_id is not None or lines is not None or full
-    if json_out and not door_only:
+    if raw:
         with get_sdk() as sdk:
             source_list = sdk.knowledge.pages.sources(str(page_data["id"]))
         print_json({**page_data, "sources": source_list})
         return
     # The stored markdown carries raw {{artifact:...}} tokens; the door's `cat`
-    # renders them as the references a reader can follow.
+    # renders them as the references a reader can follow, within one bounded
+    # reply. Every output mode reads it, so --json is the same data as the text.
     _door_read(
         "cat",
         project=project,
@@ -217,6 +311,7 @@ def cat(
         rev=rev,
         section_id=section_id,
         lines=lines,
+        outline=True if outline else None,
         detail="full" if full else None,
         source_offset=source_offset,
     )
@@ -236,6 +331,10 @@ def _door_read(
     (its citation tokens, filename, provider, the id ``read_file``/``beakr files
     download`` takes, one verbatim excerpt) -- the same text an agent gets from
     the ``knowledge_base`` tool. ``--json`` prints the door's reply unchanged.
+
+    The reply's ``coverage`` is passed to the renderer, which prints it whenever
+    the read is partial: a cut read is otherwise indistinguishable from a whole
+    one in text.
     """
     from beakr_sdk.sources import public_source
 
@@ -249,7 +348,12 @@ def _door_read(
         print_json(result)
     else:
         sources = [public_source(r) for r in result.get("sources") or [] if isinstance(r, dict)]
-        body = {"content": result_text(result), "sources": sources, "next": result.get("next")}
+        body = {
+            "content": result_text(result),
+            "coverage": result.get("coverage"),
+            "sources": sources,
+            "next": result.get("next"),
+        }
         sys.stdout.write(render("knowledge_base", body).rstrip() + "\n")
     if outcome.get("status") == "error":
         raise typer.Exit(1)
@@ -531,18 +635,139 @@ def _print_documents(source_list: list[dict]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# provenance
+# hover, links, timeline, provenance: the Knowledge door's graph and lineage reads
 # ---------------------------------------------------------------------------
+
+# Each is the door command of the same name, the one the MCP `knowledge_base`
+# tool runs, so a hint a read prints ("hover {page}", "links {page}
+# direction=out", "timeline {page}") is a command here too. `page` goes to the
+# door as given: it resolves a title, slug, UUID or `wiki:` key itself.
+
+
+@app.command()
+def hover(
+    page: str = typer.Argument(help="Page title, slug, UUID or wiki: key."),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """A page's type, summary, revision and counts: a cheap look before `kb cat`."""
+    _door_read("hover", project=project, mine=mine, json_out=json_out, page=page)
 
 
 @app.command()
 def provenance(
+    page: str = typer.Argument(help="Page title, slug, UUID or wiki: key."),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1, help="Max sections."),
+    after_section: str | None = typer.Option(
+        None, "--after-section", help="Continue after this section (as a cut reply names)."
+    ),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """Show each section's citations and their stance (support, qualifies, contradicts)."""
+    _door_read(
+        "provenance",
+        project=project,
+        mine=mine,
+        json_out=json_out,
+        page=page,
+        limit=limit,
+        after_section=after_section,
+    )
+
+
+@app.command()
+def links(
+    page: str = typer.Argument(help="Page title, slug, UUID or wiki: key."),
+    direction: str | None = typer.Option(
+        None,
+        "--direction",
+        "-d",
+        click_type=click.Choice(["in", "out"]),
+        help="in (default): pages that link to this one. out: the pages it links to.",
+    ),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1, help="Max links."),
+    offset: int | None = typer.Option(
+        None, "--offset", min=0, help="Links to skip (as a cut reply names)."
+    ),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """Show the pages that link to a page, or with --direction out the pages it links to."""
+    _door_read(
+        "links",
+        project=project,
+        mine=mine,
+        json_out=json_out,
+        page=page,
+        direction=direction,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.command()
+def timeline(
+    page: str | None = typer.Argument(
+        None, help="Only this page's dated events (title, slug, UUID or wiki: key)."
+    ),
+    query: str | None = typer.Option(
+        None, "--query", "-q", help="Keyword filter (section titles, page titles, content)."
+    ),
+    start_date: str | None = typer.Option(None, "--start", help="Start date YYYY-MM-DD."),
+    end_date: str | None = typer.Option(None, "--end", help="End date YYYY-MM-DD."),
+    page_type: str | None = typer.Option(None, "--type", "-t", help="Filter by page type."),
+    include_content: bool = typer.Option(
+        False,
+        "--content",
+        "-c",
+        help="Include section markdown content.",
+    ),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1, help="Max events."),
+    cursor: str | None = typer.Option(
+        None, "--cursor", help="Continue a cut timeline (the cursor a reply names)."
+    ),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """Dated events: one page's, or with no page every event in scope."""
+    _door_read(
+        "timeline",
+        project=project,
+        mine=mine,
+        json_out=json_out,
+        page=page,
+        timeline_query=query,
+        start_date=start_date,
+        end_date=end_date,
+        page_type=page_type,
+        include_content=True if include_content else None,
+        limit=limit,
+        cursor=cursor,
+    )
+
+
+# ---------------------------------------------------------------------------
+# The structured REST reads: unpublished (internal tree only)
+# ---------------------------------------------------------------------------
+
+# `kb provenance`, `kb links` and `kb timeline` are the Knowledge door's commands
+# above. These three return the REST routes' structured rows instead and are
+# registered in the full tree only (they are not in CORE_COMMANDS).
+
+
+@app.command("section-provenance")
+def section_provenance(
     page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Show section provenance rollups with inline citations and stance."""
+    """Section provenance as structured rollups (REST), with inline citations and stance."""
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
@@ -582,19 +807,14 @@ def provenance(
             )
 
 
-# ---------------------------------------------------------------------------
-# links (backlinks)
-# ---------------------------------------------------------------------------
-
-
 @app.command()
-def links(
+def backlinks(
     page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Show pages that link to this page."""
+    """Pages that link to this page, as structured rows (REST)."""
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
@@ -616,13 +836,8 @@ def links(
     print_table(columns, rows)
 
 
-# ---------------------------------------------------------------------------
-# timeline
-# ---------------------------------------------------------------------------
-
-
 @app.command()
-def timeline(
+def events(
     query: str | None = typer.Argument(
         None,
         help="Keyword filter (matches section titles, page titles, content).",
@@ -641,7 +856,7 @@ def timeline(
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Query temporal events across the knowledge base by date range and keyword."""
+    """Dated events as structured rows (REST), by date range and keyword."""
     project_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
         data = sdk.knowledge.pages.timeline(

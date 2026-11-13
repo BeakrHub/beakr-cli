@@ -1,43 +1,94 @@
-$ beakr kb links 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
-> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/backlinks?limit=200
+$ beakr kb links 'Project Helios' --direction out --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> POST /v1/knowledge/wiki/command
+  {"command": "links", "direction": "out", "page": "Project Helios", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-[
-  {
-    "id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
-    "summary": "The portfolio committee selected NW-217 as the Helios lead on 2026-09-30.",
-    "title": "Decision: Helios Lead Selection"
+{
+  "content": [
+    {
+      "text": "1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.\nKnowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.\n\n| entity | entity_type | attribute | value | when | sources | cite |\n| --- | --- | --- | --- | --- | --- | --- |\n| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |",
+      "type": "text"
+    }
+  ],
+  "coverage": {
+    "command": "rows",
+    "complete": true,
+    "limit": 100,
+    "next_offset": null,
+    "offset": 0,
+    "returned": 1,
+    "scope": {
+      "all_readable": false,
+      "project_ids": [
+        "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+      ]
+    },
+    "status": "success",
+    "total": 1
   },
-  {
-    "id": "e8b3f1c7-4d2a-4e9b-b6c0-1a5d7f3e9b28",
-    "summary": "NW-217, the thermostable lead compound of Project Helios.",
-    "title": "NW-217"
-  }
-]
+  "next": [
+    "Cite a row with its cite token; open its card with cat {page} for context.",
+    "Narrow with entity, attribute or page_type, or set current_only for facts."
+  ],
+  "outcome": {
+    "commit_ids": [],
+    "committed_page_ids": [],
+    "committed_revisions": {},
+    "error_code": null,
+    "protocol": "beakr.wiki_tool_outcome.v1",
+    "status": "success"
+  },
+  "sources": [
+    {
+      "citation_key": "wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877",
+      "name": "Helios HX-07 Solubility Card › Facts",
+      "section": {
+        "title": "Facts"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts"
+    }
+  ]
+}
 --- stderr
 
 
-$ beakr kb links 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
-> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/backlinks?limit=200
+$ beakr kb links 'Project Helios' --direction out --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/command
+  {"command": "links", "direction": "out", "page": "Project Helios", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃Title                          ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
-│Decision: Helios Lead Selection│
-│NW-217                         │
-└───────────────────────────────┘
+1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.
+Knowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.
+
+| entity | entity_type | attribute | value | when | sources | cite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |
+
+Sources (1 Knowledge page):
+- Helios HX-07 Solubility Card › Facts · source_ref beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts
+
+next: Cite a row with its cite token; open its card with cat {page} for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 
 
-$ beakr kb links 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
-> GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/backlinks?limit=200
+$ beakr kb links 'Project Helios' --direction out --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/command
+  {"command": "links", "direction": "out", "page": "Project Helios", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62	Decision: Helios Lead Selection
-e8b3f1c7-4d2a-4e9b-b6c0-1a5d7f3e9b28	NW-217
+1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.
+Knowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.
+
+| entity | entity_type | attribute | value | when | sources | cite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |
+
+Sources (1 Knowledge page):
+- Helios HX-07 Solubility Card › Facts · source_ref beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts
+
+next: Cite a row with its cite token; open its card with cat {page} for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 

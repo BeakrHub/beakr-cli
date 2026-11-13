@@ -333,5 +333,5 @@ def test_kb_cat_prints_the_page_then_its_sources():
     assert result.exit_code == 0, result.output
     assert "# Runtime\n\nBody (runtime.md)." in result.stdout
     assert "Q3 plan.pdf" in result.stdout
-    as_json = json.loads(runner.invoke(app, ["kb", "cat", PAGE_ID, "--json"]).stdout)
+    as_json = json.loads(runner.invoke(app, ["kb", "cat", PAGE_ID, "--raw"]).stdout)
     assert as_json["sources"][0]["citation_key"] == "artifact:v1-u1"
