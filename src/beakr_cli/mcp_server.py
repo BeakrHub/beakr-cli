@@ -39,15 +39,22 @@ from beakr_cli.updates import (
 )
 
 _INSTRUCTIONS_TEMPLATE = (
-    "Beakr is the team's organizational memory: decisions, processes, ownership and "
-    "dated events, so 'why did we do X' is one search away.\n\n"
-    "Answer questions about the user's org with citations. Knowledge reads four ways that "
-    "combine: by meaning (knowledge_base command='sections', for what you can describe), "
-    "as a file system (ls, cat, grep for pages, exact names and ids), as a graph (links, "
-    "hover, timeline: a record's parties, documents and events) and as a database ('rows': "
-    "every card's Facts, Connections and Findings, each row with its entity, entity_type, "
-    "table, field, value, When and sources; filter by page_type, entity and table). Find by "
-    "meaning or in the database, walk the graph, confirm in the original. Check the "
+    "Beakr is this organization's shared memory: what the team knows, decided and is "
+    "working on, with the source behind every claim. It holds Knowledge (a map of cards "
+    "for people, organizations, projects, decisions and events, each with dated Facts, "
+    "Connections and Findings), the original files, and live access to connected "
+    "services. Use it in both directions: read it before you answer or act on anything "
+    "about the organization, and write back what you learn so the next person or agent "
+    "starts from it.\n\n"
+    "READ with knowledge_base, narrowest read first, and cite what you use. A fact, a "
+    "count, the latest or largest, a comparison: command='rows' (every card's Facts, "
+    "Connections and Findings as one table, each row with its entity, entity_type, table, "
+    "field, value, When and sources; filter by page_type, entity and table; view='census' "
+    "for one field across every card). An exact name, id or phrase: command='grep'. "
+    "Something you can only describe: command='sections', a ranked selection of sections, "
+    "not a census; each hit is Knowledge's own text with the documents it cites. Read one "
+    "section with cat {page, section_id}; walk a record with links, hover and timeline "
+    "(its parties, documents and events) rather than searching again. Check the "
     "excerpt's fidelity before quoting it, and open the source when a deciding detail is "
     "missing. For 'every X', counts and superlatives use 'rows' or 'ls' (by page_type), "
     "then inspect coverage: rows holds only what was structured, and compilation, scan and "
@@ -65,15 +72,27 @@ _INSTRUCTIONS_TEMPLATE = (
     "decisive value in the file; when the file and a card disagree, the file wins. In a "
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
-    "available it gives one cited answer: quick by default (Knowledge and documents, "
-    "within 15 seconds); pass quick=false to also search connected services or for "
-    "exhaustive questions.{integrations}{start}\n\n"
+    "available it writes one cited answer for you: use it when you want an answer "
+    "composed from several sources, not for a lookup. It is quick by default (one search, "
+    "within 15 seconds); quick=false takes minutes and is for questions about connected "
+    "services.{integrations}{start}\n\n"
     "Scope: pass 'scope' (a project name or id) to work in one project, or omit it to read "
     "everything you can see; list_projects names them, the user's personal project "
     "included (project_type='personal').\n\n"
-    "Writes: when the conversation produces something durable (a decision with its "
-    "rationale, a process, an owner, a dated event), check with knowledge_base "
-    "command='sections' that it is not already captured, then offer to propose it. "
+    "WRITE BACK with knowledge_base_write, often and without being asked. This is half "
+    "of the job: Beakr knows only what is written to it, and what you worked out in this "
+    "session is gone when it ends unless you save it. What to write, before you finish a "
+    "task: a decision and its reason; an answer you assembled from several reads; a fact a "
+    "source states that no card holds yet; who owns something; a status change; a dated "
+    "event; a correction to something Knowledge has wrong; a cause you found and how it "
+    "was fixed. Skip one-off chatter and personal preferences. How: find the card with "
+    "knowledge_base grep or rows on the thing's name; if it exists add one row to it: "
+    "add_fact {page, attribute, value, when, evidence} for what a source states, "
+    "add_finding {page, date, kind, text, evidence} for what you concluded, decided or "
+    "learned, add_connection {page, relation, to, evidence} for how two things relate; if "
+    "it does not exist, create it with action 'new' and the most specific card type from "
+    "knowledge_base command='ontology', then add its rows. Then tell the user in one line "
+    "what you saved. Writing is safe: "
     "knowledge_base_write stages a PROPOSAL (page_type and sort_table apply at once): call "
     "accept_proposal only when the user "
     "asks to accept that proposal. If the result says auto-approve is on, Beakr applies it "
@@ -665,6 +684,13 @@ async def knowledge_base(
             out Knowledge pages the text already names. ``full``: every source
             with an excerpt, url and read_file id. ``none``: no list.
     """
+    if command == "sections" and sources == "none" and "include_sources" not in (arguments or {}):
+        # ``sources: "none"`` used to remove only this server's Sources list: the
+        # reply still carried the door's "Documents these sections cite:" legend,
+        # which took most of a search reply. The door leaves it out for
+        # ``include_sources: false`` and gives the hits the room; the hosted
+        # server sends the same field.
+        arguments = {**(arguments or {}), "include_sources": False}
     # check=False: a refusal the door reports in ``outcome`` is shown to the agent.
     result = _wiki_result(
         await _call_api(

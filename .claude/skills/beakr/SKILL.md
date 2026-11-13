@@ -5,9 +5,9 @@ description: "Access your organization's knowledge base, research questions with
 
 # Beakr Knowledge Base
 
-Beakr is the team's organizational memory. Teams write decisions, processes, ownership, and dated events here so that 6 months later the answer to "why did we do X" is one search away instead of lost in Slack archives or tribal knowledge.
+Beakr is the organization's shared memory: what the team knows, decided and is working on, with the source behind every claim. It holds Knowledge (a map of cards for people, organizations, projects, decisions and events, each with dated Facts, Connections and Findings), the original files, and live access to connected services.
 
-Use the Beakr MCP tools to search and read existing knowledge — and to add to it when the conversation produces something durable.
+Use it in both directions. Read it before you answer or act on anything about the organization. Write back what you learn before you finish, so the next person or agent starts from it: Beakr knows only what is written to it, and what you worked out in a session is gone when the session ends unless you save it.
 
 ## When to use
 
@@ -19,12 +19,12 @@ Use the Beakr MCP tools to search and read existing knowledge — and to add to 
 
 ## Proactive capture
 
-You are not just a read interface. When the conversation produces something durable, **propose adding it — don't wait to be asked**.
+You are not just a read interface. Writing back is half of the job. When the work produces something durable, **write it — don't wait to be asked**. A write stages a proposal that a person or the project's auto-approve decides, so writing is safe.
 
 **Capture when all of:**
 - **Durable**: would still matter in 6 months
 - **Shareable**: others would benefit, not just this user right now
-- **Not already in Beakr**: check with `knowledge_base` command `sections` first
+- **Not already in Beakr**: check with `knowledge_base` command `rows` or `grep` on the thing's name first
 - **In scope**: the user can write to it (their personal project, or a team project they belong to — confirm with `list_projects`)
 
 **Good candidates:**
@@ -33,7 +33,10 @@ You are not just a read interface. When the conversation produces something dura
 - Role / ownership assignments ("Alex owns billing")
 - Dated events: launches, hires, fundraising rounds, incidents
 - External relationships: investors, partners, key vendors
-- Recurring questions you just answered
+- An answer you just assembled from several reads
+- A fact a source states that no card holds yet
+- A correction to something Knowledge has wrong
+- A cause you found and how it was fixed
 
 **Skip:**
 - Debugging traces, transient state
@@ -41,11 +44,16 @@ You are not just a read interface. When the conversation produces something dura
 - Hot takes, speculation, "thinking out loud"
 - Anything the user clearly considers ephemeral
 
+**How:**
+1. Find the card: `knowledge_base` command `grep` or `rows` on the thing's name.
+2. If it exists, add one row: `add_fact {page, attribute, value, when, evidence}` for what a source states; `add_finding {page, date, kind, text, evidence}` for what you concluded, decided or learned; `add_connection {page, relation, to, evidence}` for how two things relate.
+3. If it does not exist, create it with action `new` and the most specific card type from `knowledge_base` command `ontology`, then add its rows.
+4. Evidence is the reference a read printed, or this conversation as a `conversation` source with `meta.excerpt`.
+5. Tell the user in one line what you saved.
+
 **Etiquette:**
-- **Surface the suggestion before writing**: "This decision about X seems worth capturing — want me to propose it for your wiki?"
-- Never auto-write. Always propose, always wait for explicit OK -- unless the write result says the user's auto-approve is on; then it is applied automatically, so do not ask them to approve it.
-- One capture offer per significant thread — don't pepper the user.
-- Cite the current session as a `conversation` source with `meta.excerpt` so it is traceable.
+- Write, then say what you wrote. Do not ask first: the proposal is the review step. Never call `accept_proposal` unless the user asks to accept that specific proposal, and do not ask for approval when the write result says auto-approve is on.
+- Batch what one task produced; don't pepper the user with a note per row.
 
 ## Tools
 
@@ -55,7 +63,7 @@ You are not just a read interface. When the conversation produces something dura
 | `knowledge_base_write` | Every change, chosen by `action`: `edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`, `sort_table`, `new`, `edit`, `find_replace`, `mv`, `archive`, `merge`, `copy`, `page_type`. Stages a proposal, with two exceptions that apply at once: `sort_table` only reorders a table, and a project or org `page_type` the verifier accepts is active at once; a global one is refused. On a project-map card use the three `add_*` actions to add one row or one dated finding, and `edit_rows` to change, merge or delete rows (Facts, Connections or Findings). A card's table rows change only through these actions: an `edit_section` or `edit` that would change one is refused, and `find_replace` changes the text around the rows and reports the row matches it left for `edit_rows`. A write to one section or row prints its proposal's id and `content_hash`. |
 | `documents` | Where available: `grep` and `read` over the original documents themselves, for exact wording a page does not carry. |
 | `read_file` | The original document a citation points at. Pass the citation's readable reference (`memo.pdf › p. 7`), the `path › place` from a Sources line (`deals/acme/memo.pdf › p. 7`), or the file id. It reads files and canvases only: for a connected item (Slack, email, calendar, Jira) use its excerpt and open its url. Long files come back in pieces (`offset`). |
-| `research` | When your client exposes it: one cited answer. Quick by default (one search of the knowledge base and documents, within 15 seconds); `quick=false` runs the full researcher (up to 150 seconds), which also reads connected services (Slack, Gmail, Calendar, Jira...): for questions about those services, exhaustive questions, or when a quick answer is thin. |
+| `research` | When your client exposes it: Beakr composes one cited answer for you. For a lookup (a fact, a count, a name, a status) read Knowledge yourself with `knowledge_base`: it is faster and shows the rows themselves. Quick by default (one search of the knowledge base and documents, within 15 seconds); `quick=false` runs the full researcher (up to 150 seconds), which also reads connected services (Slack, Gmail, Calendar, Jira...): use it for a question about those services, not to make an answer complete. |
 | `integrations` | Live reads of the user's connected services (Slack, Drive, Gmail, Jira, Notion, Benchling...), as the user, with the read-only tools Beakr's own agent uses: `command: list` names the tools you can call and their options, `describe` with `tool` gives one tool's schema, and `call` with `tool` runs it with its options in `arguments` (`connector_id` when a service is connected twice). A call ends with a Sources list whose `source_ref` a Knowledge write accepts as a citation. For what the organization already knows, the knowledge base comes first. |
 | `show_proposal` / `accept_proposal` / `dismiss_proposal` | Review a staged proposal, which names who filed it ("filed by Dana Reyes via claude-code/2.1"); accept only when the user explicitly asks, passing the `content_hash` the write or `show_proposal` printed as `reviewed_hash`. A proposal that changed since it was shown is refused; one that changes a card's table rows is not accepted without the hash. Where the organization or project requires a person to accept what agents write, `accept_proposal` is refused (`person_review_required`) and nothing is applied; the hosted server's `show_proposal` says "Needs a person to accept". Tell the user it waits for them to accept in Beakr, and do not retry. |
 | `list_projects` | Discover projects (including the personal one) to use as `scope`. |
@@ -78,7 +86,7 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 
 ## Reading evidence
 
-- **Start with `sections`.** Each hit shows the document passage (a verbatim excerpt) that supports it. Quote it directly; open the file only when the value you need is not in the excerpt.
+- **Start with the narrowest read.** `rows` for a fact, a count or a comparison; `grep` for an exact name or id; `sections` when you can only describe it. A `sections` hit is Knowledge's own text and names the documents it cites: read the section (`cat {page, section_id}`) or its source before you quote.
 - **Four ways to read, combined as the task needs.**
 
   | Mode | Commands | Use it for | It cannot |
@@ -104,11 +112,14 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 ## Quick decision tree
 
 ```
-User asks a question about their org, a fact, a decision or a page
-  → knowledge_base sections {query}; quote the excerpt, or cat {page, section_id} on the best hit
+User asks for a fact, a status, an owner or a value
+  → knowledge_base rows {table: facts, entity or attribute}; grep {query} for an exact name or id
 
-User asks a broad question and research is available
-  → research(query=...)   (quick by default; quick=false for connected services or every record)
+User asks something you can only describe
+  → knowledge_base sections {query}; then cat {page, section_id} on the best hit (a hit is Knowledge's own text: quote from the section or its source, not from the hit)
+
+User wants an answer composed from several sources, and research is available
+  → research(query=...)   (quick by default; quick=false only for questions about connected services)
 
 User asks for the most recent or largest X
   → knowledge_base rows {table: facts, page_type, attribute, order_by: when (or value), descending: true}; cat the top few, then their children for the executed documents

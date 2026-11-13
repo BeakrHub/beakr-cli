@@ -37,6 +37,12 @@
               "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
             ],
             "title": "Project Id"
+          },
+          "truncated": {
+            "default": false,
+            "description": "True when `budget_chars` shortened a block or left one out: a larger budget, or a `question` or `project_id` to focus it, returns more of what matters.",
+            "title": "Truncated",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5043,7 +5049,7 @@
                 "type": "null"
               }
             ],
-            "description": "Without a unit: the offset that continues this read",
+            "description": "The offset that continues this read with the same reference: through the file without a unit, or through the rest of the unit's page or sheet with one",
             "title": "Next Offset"
           },
           "next_reference": {
@@ -6627,6 +6633,20 @@
             "description": "True when everything that matched is shown; null when unknowable.",
             "title": "Complete"
           },
+          "continue_with": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a reply cut to its response budget: the arguments that continue it. For `cat`, the whole call's arguments (`page` as the page id, `lines` as the page line range not shown yet, `scope` when the call gave one); for a listing, the arguments to change in the same call. Null when nothing remains.",
+            "title": "Continue With"
+          },
           "limit": {
             "anyOf": [
               {
@@ -6639,6 +6659,32 @@
             "default": null,
             "description": "The most items to return.",
             "title": "Limit"
+          },
+          "lines_shown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the page lines shown whole, `first-last`; null when none is.",
+            "title": "Lines Shown"
+          },
+          "lines_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the page lines the call asked for, `first-last`.",
+            "title": "Lines Total"
           },
           "next_cursor": {
             "anyOf": [
@@ -6695,6 +6741,19 @@
             "description": "Items shown; null when not a counted list.",
             "title": "Returned"
           },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the page revision that was read.",
+            "title": "Revision"
+          },
           "scan_complete": {
             "anyOf": [
               {
@@ -6725,6 +6784,35 @@
             "$ref": "#/components/schemas/KnowledgeScope",
             "description": "The scope it applies to."
           },
+          "sections_not_shown": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the ids of the sections that start after the cut.",
+            "title": "Sections Not Shown"
+          },
+          "shown_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: characters of text shown, against `total_chars`.",
+            "title": "Shown Chars"
+          },
           "status": {
             "description": "success, empty or error.",
             "title": "Status",
@@ -6742,6 +6830,19 @@
             "default": null,
             "description": "Items that matched, when known.",
             "title": "Total"
+          },
+          "total_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: characters the uncut text holds.",
+            "title": "Total Chars"
           },
           "truncated": {
             "anyOf": [
@@ -20987,7 +21088,7 @@
     },
     "/v1/context": {
       "post": {
-        "description": "What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size, earlier blocks winning. `client` names the agent (`claude-code`, `codex`).",
+        "description": "What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size. When it cannot hold everything, the organization and project come first, then what `question` selects, then the profile, with activity and past conversations last, and `truncated` is true. `client` names the agent (`claude-code`, `codex`).",
         "operationId": "agent_context_v1_context_post",
         "requestBody": {
           "content": {

@@ -10,11 +10,11 @@ Call `list_projects` to understand the org structure, and `wiki_stats` (with `pr
 
 ### 2. Broad wiki search
 
-Run `knowledge_base` command `sections` with 2-3 phrasings -- it is semantic, so natural language works. Each hit carries the verbatim document passage that supports it: quote that rather than opening the file. Use `grep` for exact names, IDs, or phrases; if a literal `grep` misses, the wording may differ, so retry with `sections` rather than concluding the knowledge base lacks it. For "every X", counts and superlatives, list the population with `ls` (by `page_type`) or `rows` instead of extracting and grepping the documents.
+Run `knowledge_base` command `sections` with 2-3 phrasings -- it is semantic, so natural language works. Each hit is Knowledge's own text and names the documents it cites: read the section or its source before quoting. Use `grep` for exact names, IDs, or phrases; if a literal `grep` misses, the wording may differ, so retry with `sections` rather than concluding the knowledge base lacks it. For "every X", counts and superlatives, list the population with `ls` (by `page_type`) or `rows` instead of extracting and grepping the documents.
 
-### 3. Ask the researcher (when available)
+### 3. Ask the researcher (optional)
 
-If your client exposes `research`, call it with the question. It is quick by default: one search of the wiki and documents, and a cited answer within 15 seconds. Pass `quick=false` for the full researcher (up to 150 seconds), which also searches connected services: when the question is about Slack, email, calendar or Jira, needs every matching record, or the quick answer is thin or stopped early. Treat it as a starting map, not the final word.
+Your own reads come first: they are faster and show the rows and passages themselves. If your client exposes `research` and you want a composed answer to compare against, call it with the question. It is quick by default: one search of the wiki and documents, and a cited answer within 15 seconds. Pass `quick=false` only when the question is about Slack, email, calendar or Jira: the full researcher takes up to 150 seconds and reads those services. For every matching record use `rows` or `ls`, not the researcher. Treat its answer as a starting map, not the final word.
 
 ### 4. Deep read
 
