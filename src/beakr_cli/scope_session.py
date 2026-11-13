@@ -390,10 +390,10 @@ def status_lines(status: dict[str, Any], *, events: int = 5) -> list[str]:
         lines.append(f"Can't write {_project_name(project)}: {project.get('reason')}")
     if len(refused) > 20:
         lines.append(f"... and {len(refused) - 20} more it can't write.")
-    rows = [e for e in status.get("events") or [] if isinstance(e, dict) and e.get("summary")]
-    if rows[:events]:
+    rows = [e for e in status.get("events") or [] if isinstance(e, dict)]
+    if rows:
         lines.append("Recent:")
-        lines.extend(f"- {event['summary']}" for event in rows[:events])
+        lines.extend(f"- {event['summary']}" for event in rows[:events] if event.get("summary"))
     return [line for line in lines if line]
 
 
