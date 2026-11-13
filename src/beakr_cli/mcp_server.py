@@ -101,7 +101,8 @@ _INSTRUCTIONS_TEMPLATE = (
     "{{conversation:<label>}} after the claim it supports. Cite a source Knowledge has "
     "inline with the readable reference a read printed, in parentheses after the claim "
     "(memo.pdf \u203a p. 7, Page Title \u203a Section): Beakr stores it as that citation. "
-    "In answers to people cite inline the same way. Never invent Beakr's internal ids.\n\n"
+    "In answers to people cite inline the same way. Never invent Beakr's internal ids."
+    "{setup}\n\n"
     "Evidence: an excerpt marked (paraphrase) is the compiler's wording, (human asserted) "
     "was supplied by a person, and (unverified) was never checked against the source -- "
     "open the source before quoting one or resting a conclusion on it. 'at:' locates the "
@@ -138,7 +139,21 @@ def instructions(hidden: Collection[str] = ()) -> str:
             "live: command='list' for its read tools, then command='call'."
         )
     )
-    return _INSTRUCTIONS_TEMPLATE.replace("{integrations}", integrations).replace("{start}", start)
+    # Setting a project up, where the installation lets this credential create projects.
+    setup = (
+        ""
+        if "create_project" in hidden
+        else (
+            " To set a project up, with the person's agreement: create_project, then its "
+            "Knowledge profile with set_project_profile (entity types first), then "
+            "upload_files and add_project_member."
+        )
+    )
+    return (
+        _INSTRUCTIONS_TEMPLATE.replace("{integrations}", integrations)
+        .replace("{start}", start)
+        .replace("{setup}", setup)
+    )
 
 
 _INSTRUCTIONS = instructions()
@@ -1269,3 +1284,8 @@ workboard = _platform.workboard
 integrations = _platform.integrations
 discover_tools = _platform.discover_tools
 _platform.register_platform_tools(mcp)
+
+# Setting a project up: create it, its profile, its files and its people.
+from beakr_cli import mcp_tools_projects as _projects  # noqa: E402
+
+_projects.register(mcp)

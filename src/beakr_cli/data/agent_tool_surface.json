@@ -15,6 +15,11 @@
     "import_conversation",
     "org_audit_log",
     "integrations",
+    "create_project",
+    "set_project_profile",
+    "upload_files",
+    "upload_status",
+    "add_project_member",
     "beakr_version",
     "update_beakr"
   ],
@@ -57,7 +62,7 @@
       "tier": "eager"
     },
     {
-      "description": "Read the organization's Knowledge: the first step for any question about the organization. Pass the command as `command` and its options as a flat `arguments` object; `scope` (a project name or id) narrows the read to one project. There is no `search` command.\n\nUse the narrowest read that answers the question:\n- A fact, a count, the latest or largest, a comparison, as of a date: rows, every card's Facts, Connections and Findings as one table (entity, entity_type, table, field, value or to, When, sources). Filter by page_type, entity, attribute (match: exact, similar, meaning), to; order_by when or value; group_by; connected_to; as_of; view: census for one field across every card. It holds only what was structured: 0 rows means no card states it under that name, not that it is absent: confirm a count with ls or grep.\n- An exact name, id, number or phrase: grep (output_mode files_with_matches lists every page with the term, count counts them).\n- Something you can only describe: sections, a ranked selection, not a census. Each hit is Knowledge's own text with the documents it cites; [DISPUTED] marks one a later source contradicts.\n- One record: ls {page_type} lists them; hover, links {page, direction: out}, ls {parent} and timeline {page} walk its parties, documents and events: follow them, not a new search. cat {page, section_id} reads one section; outline: true lists a long page's sections.\n- Where a claim came from, how it changed: sources, provenance, blame; log, diff, show.\nConfirm a deciding detail in the original: sources {page} lists each cited passage and how to open it (read_file for a file; a Slack message, email or call note by the call on its entry). Quote from the source or a cited passage, not a search hit.\nListings (rows, ls, grep) show about 100 rows whatever the limit: page with offset, after_title or `next`.\nGuidance: command='help' {topic?}.\n\nCommand index (options go in `arguments`):\nFind pages: sections {query, page_type?, limit?}; grep {query, mode?, output_mode?, target?, after_title?, context_lines?, matches_per_page?, limit?} (mode: text, regex, semantic, history; output_mode: content, files_with_matches, count: listings give the exact total, paged by after_title, where results say 'in their prose'; target=title: page titles); completions {prefix} (find pages by title prefix); ls {parent?, page_type?, sort_by?, limit?} (sort_by: title|updated_at|created_at).\nRead: cat {page, section_id?, lines?, outline?, rev?, ledger?} (prefer section_id); hover {page} (edges, summary: triage).\nGraph: links {page, direction? (in|out), page_type?, relation?, limit?, offset?}; references {page}; timeline {page?, timeline_query?, start_date?, end_date?, include_content?, include_children?, cursor?}; rows {table: facts|connections|findings, page_type?, entity?, to?, attribute?, query?, start_date?, end_date?, current_only?, as_of?, connected_to?, match?, order_by?, descending?, limit?, offset?, include_evidence?, group_by?, regex?, view?, field_id?} (to: connections into a page; view: fields lists names; view: census, only entity and value, 300 rows a call: one field across all records); query {sql} (if enabled), e.g. sql: \"SELECT value, COUNT(DISTINCT entity) FROM facts WHERE field = 'Governing law' GROUP BY value\" (help: query); ontology {include_proposed?}; suggest_parent {page | title, content?}.\nTrust and lineage: provenance {page}; blame {page}; sources {page}.\nHistory: log {page?}; diff {page, rev, rev2?}; show {page, rev}.\nUtility: diagnostics {}; proposals {status?: pending|accepted|dismissed}; help {topic?}.\n`page` accepts a slug, title, UUID or citation key such as wiki:8f3a0c21. Each result ends with its Sources: per cited document, its path, every place cited in it (p. 7, sheet 2, B4:D9), the id documents read opens and its source_ref. Cite with the readable reference (memo.pdf \u203a p. 7), to people (linked when there is a url) and in writes (reference), or with the source_ref.",
+      "description": "Read the organization's Knowledge: the first step for any question about the organization. Pass the command as `command` and its options as a flat `arguments` object; `scope` (a project name or id) narrows the read to one project. There is no `search` command.\n\nUse the narrowest read that answers the question:\n- A fact, a count, the latest or largest, a comparison, as of a date: rows, every card's Facts, Connections and Findings as one table (entity, entity_type, table, field, value or to, When, sources). Filter by page_type, entity, attribute (match: exact, similar, meaning), to; order_by when or value; group_by; connected_to; as_of; view: census for one field across every card. It holds only what was structured: 0 rows means no card states it under that name, not that it is absent: confirm a count with ls or grep.\n- An exact name, id, number or phrase: grep (output_mode files_with_matches lists every page with the term, count counts them).\n- Something you can only describe: sections, a ranked selection, not a census. Each hit is Knowledge's own text with the documents it cites; [DISPUTED] marks one a later source contradicts.\n- One record: ls {page_type} lists them; hover, links {page, direction: out}, ls {parent} and timeline {page} walk its parties, documents and events: follow them, not a new search. cat {page, section_id} reads one section; outline: true lists a long page's sections.\n- Where a claim came from, how it changed: sources, provenance, blame; log, diff, show.\nConfirm a deciding detail in the original: sources {page} lists each cited passage and how to open it (read_file for a file; a Slack message, email or call note by the call on its entry). Quote from the source or a cited passage, not a search hit.\nListings (rows, ls, grep) show about 100 rows whatever the limit: page with offset, after_title or `next`. In a code cell print only the result's text.\nGuidance: command='help' {topic?}.\n\nCommand index (options go in `arguments`):\nFind pages: sections {query, page_type?, limit?}; grep {query, mode?, output_mode?, target?, after_title?, context_lines?, matches_per_page?, limit?} (mode: text, regex, semantic, history; output_mode: content, files_with_matches, count: listings give the exact total, paged by after_title, where results say 'in their prose'; target=title: page titles); completions {prefix} (find pages by title prefix); ls {parent?, page_type?, sort_by?, limit?} (sort_by: title|updated_at|created_at).\nRead: cat {page, section_id?, lines?, outline?, rev?} (prefer section_id); hover {page} (edges, summary: triage).\nGraph: links {page, direction? (in|out), page_type?, relation?, limit?, offset?}; references {page}; timeline {page?, timeline_query?, start_date?, end_date?, include_content?, include_children?, cursor?}; rows {table: facts|connections|findings, page_type?, entity?, to?, attribute?, query?, start_date?, end_date?, current_only?, as_of?, connected_to?, match?, order_by?, descending?, limit?, offset?, include_evidence?, group_by?, regex?, view?, field_id?} (to: connections into a page; view: fields lists names; view: census, only entity and value, 300 rows a call: one field across all records); query {sql} (if enabled), e.g. sql: \"SELECT value, COUNT(DISTINCT entity) FROM facts WHERE field = 'Governing law' GROUP BY value\" (help: query); ontology {include_proposed?}; suggest_parent {page | title, content?}.\nTrust and lineage: provenance {page}; blame {page}; sources {page}.\nHistory: log {page?}; diff {page, rev, rev2?}; show {page, rev}.\nUtility: diagnostics {}; proposals {status?: pending|accepted|dismissed}; help {topic?}.\n`page` accepts a slug, title, UUID or citation key such as wiki:8f3a0c21. Each result ends with its Sources: per cited document, its path, every place cited in it (p. 7, sheet 2, B4:D9), the id documents read opens and its source_ref. Cite with the readable reference (memo.pdf \u203a p. 7), to people (linked when there is a url) and in writes (reference), or with the source_ref.",
       "name": "knowledge_base",
       "surfaces": [
         "remote",
@@ -75,7 +80,7 @@
       "tier": "eager"
     },
     {
-      "description": "Read a file's text (PDF, Word, sheet, slides, text, or a canvas): the original a Knowledge citation points at. Use when you need the exact wording or a value the excerpt does not hold. Pass `artifact_id`: the file id (`read_file <id>` in a result's Sources, or location.file_id), a version id, a citation's reference (memo.pdf \u203a p. 7), or the file's path from a Sources line (deals/x/Closing/memo.docx). Add ' \u203a <unit>' (memo.pdf \u203a p. 7, book.xlsx \u203a sheet 2, B4:D9, notes.md \u203a lines 10-30) to get the window around that place. Pass `project` (a name or id) to open only a file in that project. Connected sources (Slack, email, calendar, Jira, and files read through a drive connection) are not stored as files: use the `fetch:` call knowledge_base sources prints for one, or its excerpt and url. Long files and long pages come back in pieces: pass the `offset` a reply gives, with the same reference, to continue.",
+      "description": "Read a file's text (PDF, Word, sheet, slides, text, or a canvas): the original a Knowledge citation points at. Use when you need the exact wording or a value the excerpt does not hold. Pass `artifact_id`: the file id (`read_file <id>` in a result's Sources, or location.file_id), a version id, a citation's reference (memo.pdf \u203a p. 7), or the file's path from a Sources line (deals/x/Closing/memo.docx). Add ' \u203a <unit>' (memo.pdf \u203a p. 7, book.xlsx \u203a sheet 2, B4:D9, notes.md \u203a lines 10-30) to get the window around that place. Pass `project` (a name or id) to open only a file in that project. Connected items (Slack, email, calendar, Jira) are not stored as files: use their excerpt and url. Long files come back in pieces: pass `offset` to continue.",
       "name": "read_file",
       "surfaces": [
         "remote",
@@ -111,7 +116,7 @@
       "tier": "eager"
     },
     {
-      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
+      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, project setup (create a project, write its profile, upload files, add members), and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
       "name": "discover_tools",
       "surfaces": [
         "remote",
@@ -212,6 +217,51 @@
     {
       "description": "Read the user's connected integrations (Slack, Google Drive, Gmail, Jira, Notion, Benchling and any others they connected) live, as the user, with the read-only tools Beakr's own agent uses. command='list' lists the tools you can call, one line each with its options, under the accounts they read (narrow with `provider` or `connector_id`); command='describe' with `tool` gives one tool's full description and input schema; command='call' with `tool` runs it, with the tool's own options in `arguments` and `connector_id` when the user has that integration connected twice. A call answers the tool's text and Sources naming each item with its url; cite one in a Knowledge write as a web source (url, title, quoted passage). Only reads: a tool that sends, creates or changes anything is refused. Use it for live or recent items in a connected service; for what the organization already knows, use research or knowledge_base first. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "integrations",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Create a Beakr project, for files and Knowledge on one subject. Ask the person first, and use an existing project (list_projects) when one fits. Then agree its Knowledge profile with the person and save it with set_project_profile, entity types first, before any upload; the result says when the organization requires one. Needs permission to create projects.",
+      "name": "create_project",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Write a project's Knowledge profile, which steers what Knowledge builds from its files. Agree it with the person first, entity types first: the kinds of things Knowledge should keep a page for (for example 'compound', 'lot', 'deviation'), with what one instance is and examples in extraction_guidance; then goals, focus areas and the core people, organizations and topics. A first profile needs entity_types. Fields left out keep their saved value; a list given replaces that list. Only the project's owners may write it. get_profile reads it back.",
+      "name": "set_project_profile",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Upload files into a project, after the person agrees. Knowledge compiles from them within a few minutes (knowledge=false keeps them out). On the beakr CLI's local MCP server pass `paths`: files or folders on this computer (absolute, or relative to the folder the server runs in). A folder keeps its subfolders, hidden files and credential files are refused, and it answers within about 40 seconds: a larger upload carries on in the background and upload_status reports it. The hosted MCP server cannot read the user's disk: pass `files`, a list of {name, text} or {name, content_base64}, with an optional `folder` to put them under, at most 20 files and about 3.5 MB of content in one call (the refusal names the exact limit). For anything larger, or a folder on disk, the hosted server uploads nothing: tell the user to run `beakr upload PATH --project NAME` in a terminal, or to add the files in the Beakr web app.",
+      "name": "upload_files",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Check an upload: pass the upload id upload_files gave. On the beakr CLI's local MCP server it reports an upload that was still running when upload_files answered: files sent, failed, and whether it has finished. On the hosted MCP server it reports one uploaded file: whether the upload completed, the file it created, and how far Beakr is with processing it.",
+      "name": "upload_status",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Add a person to a project, by email (or user id, or exact name). Someone already in the organization is added at once; anyone else is sent an invitation by email and joins on first sign-in, which only works for the organization's own sign-in domains. Without role, someone new joins as member and an existing member keeps theirs. Needs permission to manage the project's members. Ask the person before adding anyone.",
+      "name": "add_project_member",
       "surfaces": [
         "remote",
         "stdio"
