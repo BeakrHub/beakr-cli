@@ -11,6 +11,7 @@ call. :mod:`beakr_cli.kb_shell_hints` finds the calls in a reply's text.
 from __future__ import annotations
 
 import json
+import re
 import shlex
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
@@ -27,6 +28,10 @@ __all__ = [
 ]
 
 
+#: An argument or command name that is safe to print unquoted in a shell command.
+_IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+
+
 @dataclass(frozen=True)
 class Slot:
     """An argument a hint names without a value: ``{page}``, or ``{rev2?}`` when optional."""
@@ -35,7 +40,11 @@ class Slot:
     optional: bool = False
 
     def __str__(self) -> str:
-        return f"<{self.name}>"
+        # The name comes from a reply's text. Only a plain identifier prints bare;
+        # anything else is quoted, so a pasted command can never run what a reply
+        # put inside the placeholder.
+        shown = f"<{self.name}>"
+        return shown if _IDENTIFIER.fullmatch(self.name) else shlex.quote(shown)
 
 
 @dataclass(frozen=True)
@@ -241,7 +250,13 @@ def _generic(command: str, arguments: Mapping[str, Any]) -> str:
     needed = _REQUIRED.get(command)
     if needed is not None and needed not in given:
         given = {needed: Slot(needed), **given}
-    if any(isinstance(value, (dict, list)) for value in given.values()):
+    # Argument and command names come from a reply's text: a name that is not a
+    # plain identifier never becomes a flag. The whole call goes in one quoted
+    # JSON body instead, so nothing in it reaches the shell unquoted.
+    unsafe_name = not _IDENTIFIER.fullmatch(command) or any(
+        not _IDENTIFIER.fullmatch(str(key)) for key in given
+    )
+    if unsafe_name or any(isinstance(value, (dict, list)) for value in given.values()):
         body = json.dumps({"command": command, **given}, ensure_ascii=False, default=str)
         return f"{_GENERIC} --data {shlex.quote(body)}"
     words = [f"{_GENERIC} --command {command}"]

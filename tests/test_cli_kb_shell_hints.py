@@ -430,3 +430,28 @@ def test_kb_add_finding_names_the_accept_command() -> None:
     assert f"run `beakr kb proposals accept {PROPOSAL}` only when the user asks" in text.stdout
     assert "content_hash: 15e3" in text.stdout
     assert json.loads(as_json.stdout) == reply
+
+
+def test_a_name_from_a_reply_never_reaches_the_shell_unquoted():
+    """A placeholder or argument name is reply text: only a plain identifier prints bare.
+
+    Root cause: a slot printed as ``<name>`` whatever the name held, and an
+    unknown argument name became a ``--flag`` verbatim, so a reply naming
+    ``<x; rm -rf ~>`` or an argument ``a; curl evil`` produced a pasteable
+    command that ran it.
+    """
+    import shlex
+
+    from beakr_cli.kb_shell_commands import Slot, shell_command
+
+    hostile = "x; rm -rf ~"
+    for printed in (
+        shell_command("cat", {"page": Slot(hostile)}),
+        shell_command("cat", {"page": "p", f"lines; {hostile}": "1"}),
+        shell_command(f"cat; {hostile}", {"page": "p"}),
+    ):
+        words = shlex.split(printed)
+        assert words[0] == "beakr"
+        # Nothing hostile is a separate shell word or operator once the line is parsed.
+        assert ";" not in words and "rm" not in words, printed
+    assert str(Slot("page")) == "<page>"
