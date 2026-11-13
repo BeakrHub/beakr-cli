@@ -6519,7 +6519,7 @@
               }
             ],
             "default": null,
-            "description": "Who accepted the proposal, for one.",
+            "description": "The person who accepted the proposal, for one; null when auto-approve accepted it (see `auto_approved`).",
             "title": "Accepted By"
           },
           "agent": {
@@ -6534,6 +6534,19 @@
             "default": null,
             "description": "The agent as it declared itself (`X-Beakr-Agent`), e.g. `claude-code/2.1`.",
             "title": "Agent"
+          },
+          "auto_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when the filer's auto-approve setting accepted the proposal rather than a person.",
+            "title": "Auto Approved"
           },
           "client": {
             "anyOf": [

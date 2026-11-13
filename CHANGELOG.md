@@ -8,6 +8,51 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` `provenance`: a cited connected item (a
+  meeting note, an email or Slack thread, an issue) now carries the call that
+  reads it, as `sources`, `sections` and `cat` do: a `fetch: integrations
+  command='call' tool='...' arguments={...}` line under the entry and
+  `retrieval` on its source record, for a caller who has that connection. It
+  printed only the entry's `source_ref`. A stored file's entry is unchanged:
+  its `artifact_id:` line is the id the file reader takes.
+- `POST /v1/knowledge/wiki/command` `log` and `blame`, and
+  `GET /v1/knowledge/wiki/pages/{page_id}/revisions`: a revision written from
+  a proposal you cannot open (one another person filed) no longer prints its
+  stored identifier (`proposal:<id>`). Its `writer` reads `a proposal you
+  cannot open (<short id>), applied by <person>`, and `attribution.person` is
+  that person: the one the accept ran as, which the record of the change
+  already shows to every reader of the project. Where that record names nobody
+  the phrase stands alone. `log` with `by`, and
+  `ls` with `created_by` or `changed_by`, now find such a revision for the
+  person who applied it; the agent that filed the proposal and who accepted it
+  stay private to its filer, so it still matches no `via` or `accepted_by`.
+- `GET /v1/knowledge/wiki/pages/{page_id}/revisions` (and the `attribution` on
+  blame lines, section provenance and the activity log): a revision from a
+  proposal that auto-approve applied said it was accepted by the person who
+  filed it. `writer` now reads `accepted by auto-approve`, as the `log` command
+  does; `attribution.accepted_by` is null for it and the new
+  `attribution.auto_approved` is true. `accepted_by` still names the person
+  for a proposal a person accepted, where `auto_approved` is false.
+- `POST /v1/knowledge/wiki/command`: every string value a reply prints inside
+  a call it tells you to make is now a JSON string, so the printed call parses
+  back to exactly `coverage.continue_with`. This covers the cursors of `ls`
+  (in the text and in its `next` step), a `grep` listing, `sources` and
+  `provenance`, and the `query` a `rows` note suggests. A title or file name
+  holding a double quote or a backslash was printed unescaped
+  (`after_title="Quote's "edge" notes"`), so the value's end could not be
+  found; it now prints as `after_title="Quote's \"edge\" notes"`. Values
+  without those characters print as before, non-ASCII letters included.
+- `POST /v1/knowledge/wiki/write` `new` with a `scope` that names no project:
+  the refusal (`invalid_scope`) now ends its reason with a full stop before
+  `Available scopes:` and closes with what to do (pass one of the listed
+  scopes by exact name or id).
+- Hosted MCP server: a tool given a project name that matches no project you
+  can read (`wiki_stats`, `wiki_graph`, `context`, `workboard`, `get_profile`,
+  `documents`, `research`, and the project tools) now answers with
+  `error_code` `scope_not_found`, the message `No project you can read
+  matches '<name>'.` and a `fix` naming the closest projects, as the stdio
+  server does; a name several readable projects share answers
+  `scope_ambiguous` with their ids. It answered with a message alone.
 - `POST /v1/knowledge/wiki/command` `ls`: following the continuation a reply
   prints now reaches every page. A window is ordered by title in byte order
   (uppercase before lowercase, then non-ASCII letters), and `after_title` was
@@ -93,8 +138,9 @@ Each release lists the public API changes it supports, taken from the API change
   can see: a name that several of them share is refused with
   `person_ambiguous` and the matching people, and a name that matches none of
   them is not an error, it lists nothing. A revision written from a proposal
-  you cannot open names no person or agent in `log`, so it matches no `by`,
-  `via` or `accepted_by`. Calls without these options answer as before. The
+  you cannot open names only the person who applied it in `log`, so it matches
+  `by` for that person and no `via` or `accepted_by`. Calls without these
+  options answer as before. The
   `knowledge_base` tool of both MCP servers takes the same options in
   `arguments`.
 - `POST /v1/knowledge/wiki/command` `grep`: when nothing matches and the reply
