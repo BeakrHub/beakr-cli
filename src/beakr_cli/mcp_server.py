@@ -556,9 +556,8 @@ async def list_projects(cursor: str = "", limit: PageLimit = 50) -> dict[str, An
         lines.extend(_boundary_lines(p))
     projects = "\n".join(lines) if lines else "No projects found."
     listed = f"{await _organization_line()}\n\n{projects}"
-    if held and session is not None:
-        # Automatic or read everything: every project is listed, with where it can write.
-        listed += "\n\nThis session: " + " ".join(scope_session.lock_lines(session.session))
+    # Where the session can still write is session_status's to say, as on the hosted
+    # server: list_projects answers the same text on both.
     # Which listed projects' Knowledge is still building or has failed files,
     # the same notice the hosted server appends.
     notice = knowledge_notice(rows[:50])
