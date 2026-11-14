@@ -11,10 +11,82 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=3cd7fc89f946407a6aed56849675368f1d46c3a5ec11deb4bf0f259a97868356 changelog sha256=7f2b0d55ec9de575b07994b7d437d92cb21b83b4f73e817e71c44cf4683b31c1 -->
+<!-- contract-stamp: public-openapi sha256=4ada196f59cf99d96c212582131b90f0b36cf1adc8d3ca0730cdb7aad4fa90b3 changelog sha256=4695b265d62df76367262d5e155591e8da8f002883a2d2d0bb707f504fd6705e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `POST /v1/knowledge/wiki/command` `sections` with no `scope`: a strong match
+  in a small project you can read now reaches the ranking even when larger
+  projects hold more similar wording. When the search still left projects
+  unread, `next` says it sampled, and `next_calls` holds the same search with
+  `scope`.
+- `POST /v1/knowledge/wiki/command` `cat` with `outline`: the text is now the
+  outline as lines (each section's title, `section_id`, page lines and size,
+  then the page's edges), and the new `outline` field holds the same data.
+- `POST /v1/knowledge/wiki/command` `rows`, `sections` and `grep`: a file the
+  compiler skipped is no longer counted among the files Knowledge was compiled
+  from, and `coverage.corpus` gains `skipped`. An unscoped `sections` reply's
+  "Not shown" lines name each page's project when the results span projects.
+- `POST /v1/knowledge/wiki/command` `log` and `proposals`: the new `session`
+  option keeps the revisions and proposals whose recorded client session
+  starts with it.
+- `POST /v1/knowledge/wiki/command` `sources`: a document's size line counts
+  the file's own text for pages compiled from now on.
+
+- `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`,
+  `POST /v1/knowledge/documents`, `POST /v1/artifacts/read` and
+  `POST /v1/knowledge/research`: every response that suggests a next call now
+  carries `next_calls`, a list of `{tool, command, arguments, why}` in the
+  order of `next`. `arguments` is the whole call; a value you must fill is the
+  string `<name>` (for example `<page>`). A partial result's first entry is the
+  call that continues it. `next` is unchanged.
+- Knowledge reads (`POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/research`):
+  a connected item you can reach (a Slack channel, a file read through a
+  drive connection, an email, an issue) now has one `source_ref` on every
+  read, `beakr-source:v1:item:<item id>`, the same id its citation token
+  names. A message of a channel is named by its channel. Pass it to a
+  Knowledge write to cite the item where Knowledge already cites it.
+  `POST /v1/artifacts/read` answers it with `not_a_file`. References handed
+  out before still resolve.
+- `POST /v1/knowledge/documents` `read`, and `grep` with `path`: `document`
+  and `path` now take every reference `POST /v1/artifacts/read` takes: a
+  name with its place (`memo.md › para 15`), a path, a file id, a citation
+  token, a `source_ref` and a `source_ref` with its place. A place that is not
+  a line range answers the text around it, with the new `file` field. A
+  `read` that stops before the end of its document now carries `coverage`,
+  with `continue_with: {start_line}`.
+- `POST /v1/artifacts/read`: a connected item named by the place a Knowledge
+  read prints (`#deals › message 2026-03-04 14:02 UTC`) now answers
+  `not_a_file` naming the item, with `retrieval` and `next_calls` holding the
+  `integrations` call that re-reads it when you have that connection, where it
+  answered `not_found`. A cited paragraph (`notes.md › para 3`) now opens at
+  the paragraph's first character; a paragraph whose first sentence ended
+  early in it could open late or read as not found.
+- `POST /v1/knowledge/wiki/write`: a row write (`add_fact`, `add_connection`,
+  `add_finding`) or section write to a page your own `new` proposed and that
+  is not applied yet now answers the error code `page_pending`, with
+  `proposal_id` and `approval_state`, where it answered `page_not_found`.
+- `POST /v1/knowledge/wiki/command` `log`: an empty result under a filter
+  says no revision you can read matches the filters in that window, and its
+  `next` step says to widen `since` or `until` or drop a filter. A person given
+  by the start of a name now says which name it matched.
+- `POST /v1/knowledge/wiki/command` `ls`: a window after an `after_title`
+  cursor says where it sits (`Showing pages 31 to 60 of 211`). An `ls`
+  filtered by `created_by`, `changed_by` or their `via` and `since` options
+  prints each page's id.
+- `POST /v1/context`, `GET /v1/conversations/search`,
+  `POST /v1/integrations/tools/{tool_name}/call` and `POST /v1/knowledge/research`:
+  text no longer carries `{{...}}` citation tokens you cannot use, or notes
+  about files you cannot open. The research `answer` keeps exactly the tokens
+  its `sources` resolve.
+- `GET /v1/knowledge/wiki/pages/{page_id}/sources`: each source now carries
+  the `source_ref` and, for a connected item you have connected, the
+  `retrieval` call the `sources` command gives.
+- `filed_by.text` on proposals and the revisions `writer` now read as the
+  agent, the person and the surface: `Claude Code for Dana Reyes, via
+  beakr-mcp 0.6.0, session 332aa138`. A person's own write reads as the
+  person. The stored fields are unchanged.
 
 - `POST /v1/knowledge/wiki/command` `sources` and `provenance`: every line
   that prints a `source_ref` for a file you can open now prints the file's one

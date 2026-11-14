@@ -164,7 +164,9 @@ def version(
     from datetime import timedelta
 
     from beakr_cli import __version__
+    from beakr_cli.mcp_workspace import connected_line_now
     from beakr_cli.output import print_json
+    from beakr_cli.terminal_text import visible
     from beakr_cli.updates import (
         BOX_INSTRUCTIONS,
         CHECK_OFF,
@@ -179,8 +181,14 @@ def version(
     # asked. Either way say so, not "could not be checked".
     on_box = not offline and bundled_with_box(detect_install())
     check_off = not offline and not on_box and check_disabled()
+    # Which Beakr and organization the CLI's calls land in, as the MCP tools
+    # say it (sandbox run, 2026-11-14: `beakr version` did not). --offline
+    # asks nothing over the network.
+    connected = "" if offline else connected_line_now()
     if json_out:
         report: dict[str, object] = {"version": __version__}
+        if connected:
+            report["connected"] = connected
         if on_box:
             report.update(bundled_with_box=True, instructions=BOX_INSTRUCTIONS)
         elif check_off:
@@ -199,6 +207,9 @@ def version(
     # The first line stays machine-readable: `beakr update` parses it from the
     # upgraded binary to confirm what is now on PATH.
     print(f"beakr-cli {__version__}")
+    if connected:
+        # The organization's name is whatever its admin typed: shown, never obeyed.
+        print(visible(connected))
     if offline:
         return
     if on_box:
@@ -360,10 +371,12 @@ def research(
     with get_sdk() as sdk:
         data = public_research(sdk.knowledge.research(query, project_id=project_id, quick=quick))
 
-    if machine_output(data, json_out=json_out, lines=research_lines):
+    if machine_output(
+        data, json_out=json_out, lines=lambda answer: research_lines(answer, project_id)
+    ):
         return
 
-    print_research_result(data)
+    print_research_result(data, project_id)
 
 
 @internal_app.command()

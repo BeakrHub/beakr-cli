@@ -25,8 +25,10 @@ from typing import Any
 
 from rich.markup import escape
 
+from beakr_cli.kb_shell_commands import DoorCall
 from beakr_cli.mcp_render import SOURCES_CHARS
 from beakr_cli.output import console, print_markdown
+from beakr_cli.terminal_text import visible
 
 CITATION_TOKEN = re.compile(r"\{\{([^}]+)\}\}")
 
@@ -122,7 +124,21 @@ def _research_details(data: dict[str, Any]) -> list[str]:
     return lines
 
 
-def research_lines(data: dict[str, Any]) -> list[str]:
+def research_next(data: dict[str, Any], project: str | None = None) -> tuple[list[str], list[str]]:
+    """A research answer's next steps: its prose lines, and its ``Next:`` block.
+
+    The prose names calls as an MCP client makes them (``knowledge_base_write
+    action='add_finding'``, ``quick=false``). An answer that also sends them as
+    data (``next_calls``) prints the ``beakr`` commands instead, in the project
+    the research ran in (:func:`beakr_cli.kb_shell_hints.next_lines`).
+    """
+    from beakr_cli.kb_shell_hints import next_lines
+
+    prose, block = next_lines(data, DoorCall("research", {"scope": project}), tool="research")
+    return [visible(line) for line in prose], [visible(line) for line in block]
+
+
+def research_lines(data: dict[str, Any], project: str | None = None) -> list[str]:
     """A research answer for an agent: the text with its citations, then one
     line per cited source saying where it lives (no terminal formatting)."""
     from beakr_sdk.sources import public_source, source_where
@@ -139,8 +155,11 @@ def research_lines(data: dict[str, Any]) -> list[str]:
                 "sources:",
                 *numbered_citations(citations, separator="\t", text=str(data["text"])),
             ]
-        if data.get("next"):
-            lines += ["", "next:", *(str(hint) for hint in data["next"])]
+        prose, block = research_next(data, project)
+        if prose:
+            lines += ["", "next:", *prose]
+        if block:
+            lines += ["", *block]
         details = [f"{k}={data[k]}" for k in ("confidence", "gaps") if data.get(k)]
         if details:
             lines += ["", "\t".join(" ".join(str(d).split()) for d in details)]
@@ -162,7 +181,7 @@ def research_lines(data: dict[str, Any]) -> list[str]:
     return lines + _research_details(data)
 
 
-def print_research_result(data: dict[str, Any]) -> None:
+def print_research_result(data: dict[str, Any], project: str | None = None) -> None:
     """A ``POST /v1/knowledge/research`` answer: text, its sources, confidence, gaps.
 
     A current engine sends readable ``text`` with one ``citations`` record per
@@ -180,8 +199,12 @@ def print_research_result(data: dict[str, Any]) -> None:
             console.print("\n[bold]Sources:[/bold]")
             for line in numbered_citations(citations, text=str(data["text"])):
                 console.print(f"  {line}", highlight=False, markup=False, soft_wrap=True)
-        for hint in data.get("next") or []:
+        prose, block = research_next(data, project)
+        for hint in prose:
             console.print(f"\n{hint}", style="dim", highlight=False, markup=False)
+        if block:
+            # Not wrapped: a command is copied whole.
+            console.print("\n" + "\n".join(block), highlight=False, markup=False, soft_wrap=True)
     else:
         order: list[str] = []
         answer = number_citations(str(data.get("answer") or ""), order)

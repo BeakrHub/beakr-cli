@@ -69,6 +69,14 @@ from beakr_cli.kb_shell_commands import (
     is_write_action,
     shell_command,
 )
+from beakr_cli.kb_shell_next import (
+    NextStep,
+    json_note,
+    names_a_call,
+    next_block,
+    next_steps,
+    scoped_like,
+)
 from beakr_cli.kb_shell_sources import (
     marked_sources,
     place_commands,
@@ -81,6 +89,7 @@ __all__ = [
     "DoorCall",
     "Slot",
     "continuation",
+    "next_lines",
     "shell_acknowledgement",
     "shell_command",
     "shell_content",
@@ -416,8 +425,14 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
     def keep(command: str) -> str:
         # Out of reach of the later patterns, which would read a command's own
         # words (`--offset 50`, `cat`) as another call.
-        kept.append(f"`{command}`")
+        kept.append(f"`{command}`{json_note(command)}")
         return f"\x00{len(kept) - 1}\x00"
+
+    def here(command: str, arguments: Mapping[str, Any]) -> str:
+        # In the project (or across every project) the command that printed
+        # this hint ran in: pasted without it, the step read somewhere else.
+        given, flags = scoped_like(call, command, arguments)
+        return shell_command(command, given, flags=flags)
 
     def braces(match: re.Match[str]) -> str:
         first = _brace_arguments(match["first"])
@@ -433,17 +448,17 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
             # made with the cursor, and the flags the door never saw.
             out = keep(_continued(call))
         else:
-            out = keep(shell_command(match["command"], first))
+            out = keep(here(match["command"], first))
         for more in _MORE.finditer(match["more"]):
             arguments = _brace_arguments(more["body"])
             if arguments is None:
                 return match[0]
-            out += f"{more['joiner']} {keep(shell_command(match['command'], arguments))}"
+            out += f"{more['joiner']} {keep(here(match['command'], arguments))}"
         return out
 
     def ticked(match: re.Match[str]) -> str:
         arguments = _ticked_arguments(match["command"], match["rest"])
-        return match[0] if arguments is None else keep(shell_command(match["command"], arguments))
+        return match[0] if arguments is None else keep(here(match["command"], arguments))
 
     def structured(match: re.Match[str]) -> bool:
         """Whether this continuation names the reply's own cursor, which is data."""
@@ -465,9 +480,10 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
             # The reply says how to continue as data: the prose only placed it.
             again = _continued(call)
         else:
-            base = dict(call.arguments) if call is not None and same else {}
-            flags = call.flags if call is not None and same else ()
-            again = shell_command(command, {**base, **pairs}, flags=flags)
+            if call is not None and same:
+                again = shell_command(command, {**call.arguments, **pairs}, flags=call.flags)
+            else:
+                again = here(command, pairs)
         lead = match["lead"] or ""
         if match["command"]:
             lead = "run "
@@ -518,11 +534,9 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
         text = f"{text.rstrip()} Continue with {keep(again)}."
     text = _PROPOSAL_TOOL.sub(_guarded(proposal), text)
     text = _WRITE_TOOL.sub(_guarded(write), text)
-    text = _KNOWLEDGE_TOOL.sub(_guarded(lambda m: keep(shell_command(m["command"], {}))), text)
+    text = _KNOWLEDGE_TOOL.sub(_guarded(lambda m: keep(here(m["command"], {}))), text)
     text = _BARE_COMMAND.sub(
-        _guarded(
-            lambda m: keep(shell_command(m["command"], _BARE_ARGUMENTS.get(m["command"], {})))
-        ),
+        _guarded(lambda m: keep(here(m["command"], _BARE_ARGUMENTS.get(m["command"], {})))),
         text,
     )
     text = _DOCUMENTS.sub(_guarded(lambda m: keep(_DOCUMENT_COMMANDS[m["verb"]])), text)
@@ -537,6 +551,43 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
 # ---------------------------------------------------------------------------
 # A whole reply
 # ---------------------------------------------------------------------------
+
+
+def next_lines(
+    reply: Mapping[str, Any], call: DoorCall | None = None, *, tool: str = "knowledge_base"
+) -> tuple[list[str], list[str]]:
+    """A reply's next steps for a terminal: its prose lines, and its ``Next:`` block.
+
+    A reply with ``next_calls`` (:mod:`beakr_cli.kb_shell_next`) gets the block,
+    built from that structure, and keeps only the prose lines that name no
+    call; where the reply's ``coverage`` says how to read on and no step is
+    that command, it is added to the block. A reply without ``next_calls`` (an
+    older engine) gets its prose with each call it names translated
+    (:func:`shell_hint`) and no block, as before.
+
+    ``tool`` is the MCP tool the reply is from. Only the Knowledge door's
+    prose is translated: another tool's is printed as that tool wrote it.
+    """
+    prose = [str(hint) for hint in reply.get("next") or [] if str(hint)]
+    door = tool in ("knowledge_base", "knowledge_base_write")
+    if call is not None:
+        call = with_cursor(call, reply.get("coverage"))
+    again = continuation(call) if call is not None and tool != "knowledge_base_write" else None
+
+    def translate(hint: str) -> str:
+        return shell_hint(hint, call) if door else hint
+
+    steps = next_steps(reply.get("next_calls"), call, tool=tool.removesuffix("_write"))
+    if steps is None:
+        hints = [translate(hint) for hint in prose]
+        if door and again is not None and not any(again in hint for hint in hints):
+            # The reply says how to read on as data: the command is printed even
+            # where no next step spells it.
+            hints.append(f"Continue with `{again}`{json_note(again)}.")
+        return hints, []
+    if again is not None and not any(step.command == again for step in steps):
+        steps = [*steps, NextStep(again, "Read on from where this reply stopped.")]
+    return [translate(hint) for hint in prose if not names_a_call(hint)], next_block(steps)
 
 
 #: The door's own first line of a ``cat`` whose section has citation records it no
@@ -588,7 +639,7 @@ def shell_content(
 
 def _brief_note(call: DoorCall) -> str:
     """The line closing a brief Sources list, naming the flag that gives the whole one."""
-    flag = "--full" if call.command == "cat" else "--json"
+    flag = {"cat": "--full", "sections": "--sources full"}.get(call.command, "--json")
     return f"({flag} adds each document's excerpt, url and file id)"
 
 
@@ -612,15 +663,12 @@ def shell_reply(tool: str, body: Mapping[str, Any], call: DoorCall) -> str:
         acknowledgement=write,
         sources=body.get("sources"),
     )
-    hints = [shell_hint(str(hint), call) for hint in body.get("next") or [] if str(hint)]
-    again = continuation(call)
-    if again is not None and not any(again in hint for hint in hints):
-        # The reply says how to read on as data: the command is printed even
-        # where no next step spells it.
-        hints.append(f"Continue with `{again}`.")
+    hints, block = next_lines(body, call, tool=tool)
     records, placed = marked_sources(body.get("sources"))
     rendered = render_stored(tool, {**body, "content": shown, "next": hints, "sources": records})
     rendered = place_commands(rendered, placed)
+    if block:
+        rendered = "\n\n".join([rendered, "\n".join(block)])
     if not shown or not rendered.startswith(shown):
         return rendered
     tail = [

@@ -172,7 +172,7 @@ def test_generic_only_names_commands_that_have_a_kb_command() -> None:
     [
         # No option of the generic command: the contract it is built from predates them.
         ("ls", {"sort_by": "title", "after_page_id": PAGE_ID}),
-        ("grep", {"query": "NW-217", "target": "title"}),
+        ("grep", {"query": "NW-217", "matches_per_page": 3, "after_page_id": PAGE_ID}),
         # A value outside the option's choices.
         ("grep", {"query": "NW-217", "mode": "newer mode"}),
         # A command the generic `--command` does not list.

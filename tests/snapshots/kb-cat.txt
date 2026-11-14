@@ -288,8 +288,8 @@ Sources (2 documents):
 - helios-go-decision-memo.docx › block 1 · beakr documents read 8aa6da84-dc54-4aa5-9706-c1cc28e609b1 · source_ref beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1
   "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
 
-next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
-next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
+next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` (prints JSON) or `beakr kb links <page> --direction out --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` lists a group in full; `beakr kb timeline <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` gives this record's dated events.
+next: Check where a claim came from with `beakr kb provenance <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` or `beakr kb sources <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`.
 --- stderr
 
 
@@ -345,7 +345,7 @@ Sources (2 documents):
 - helios-go-decision-memo.docx › block 1 · beakr documents read 8aa6da84-dc54-4aa5-9706-c1cc28e609b1 · source_ref beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1
   "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
 
-next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
-next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
+next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` (prints JSON) or `beakr kb links <page> --direction out --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` lists a group in full; `beakr kb timeline <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` gives this record's dated events.
+next: Check where a claim came from with `beakr kb provenance <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` or `beakr kb sources <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`.
 --- stderr
 

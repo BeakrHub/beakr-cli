@@ -22,7 +22,6 @@ from beakr_cli import mcp_result, tool_surface
 from beakr_cli.capabilities import NOT_PROVIDED_CODE
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_workspace import workspace_prefix
-from beakr_cli.project_scope_names import closest_project_names
 from beakr_cli.scope import scope_params
 
 if TYPE_CHECKING:
@@ -756,56 +755,28 @@ async def _readable_projects() -> list[dict[str, Any]]:
     return projects
 
 
-def _project_label(project: dict[str, Any]) -> str:
-    """``Name (slug, id)``, as the hosted refusal names a candidate."""
-    slug = project.get("slug")
-    return f"{project.get('name')} ({f'{slug}, ' if slug else ''}{project.get('id')})"
-
-
-def _closest_projects(projects: list[dict[str, Any]], given: str) -> list[str]:
-    """The labels of the readable projects whose names are closest to ``given``.
-
-    The engine's matcher and cutoff (``project_scope_names``, a copy of its
-    file), so both servers suggest the same names for the same miss. This
-    server used a looser cutoff (0.4, over names and slugs) and offered names
-    the hosted one did not.
-    """
-    by_name: dict[str, dict[str, Any]] = {}
-    for project in projects:
-        by_name.setdefault(str(project.get("name") or ""), project)
-    names = closest_project_names(given, [name for name in by_name if name])
-    return [_project_label(by_name[name]) for name in names]
-
-
 async def _project_id(project: str) -> str:
-    """The id of the one readable project ``project`` names (id, slug or name).
+    """The id of the one readable project ``project`` names (id, name or slug).
 
-    An id is checked too: it must be a project the caller can read. Raises
-    :class:`ScopeNotFound` naming the closest projects otherwise.
+    An id is checked too: it must be a project the caller can read. A name is
+    resolved by the rule every ``beakr`` command uses
+    (:func:`beakr_cli.project_ref.pick_project`). Raises :class:`ScopeNotFound`
+    naming each candidate when several match, and the closest projects when
+    none does.
     """
-    from beakr_cli.project_ref import find_project
+    from beakr_cli.project_ref import ProjectNotResolved, pick_project
 
     given = project.strip()
     if given in _resolved_projects:
         return _resolved_projects[given]
     if _is_project_id(given):
         return await _checked_project_id(given)
-    projects = await _readable_projects()
-    named = [p for p in projects if str(p.get("name") or "").casefold() == given.casefold()]
-    if len(named) > 1:
-        # Names match whatever their case, so "test" and "TEST" each matched both
-        # and neither could be named (agent tester report, 2026-11-13): the one
-        # spelled exactly as asked is the one meant, as on the hosted server.
-        exact = [p for p in named if str(p.get("name") or "") == given]
-        if len(exact) != 1:
-            raise ScopeNotFound(
-                given, suggestions=[_project_label(p) for p in named], ambiguous=True
-            )
-        found: dict[str, Any] | None = exact[0]
-    else:
-        found = find_project(projects, given)
-    if found is None:
-        raise ScopeNotFound(given, suggestions=_closest_projects(projects, given))
+    try:
+        found = pick_project(await _readable_projects(), given)
+    except ProjectNotResolved as refused:
+        raise ScopeNotFound(
+            given, suggestions=refused.candidates, ambiguous=refused.ambiguous
+        ) from refused
     _resolved_projects[given] = str(found["id"])
     return _resolved_projects[given]
 

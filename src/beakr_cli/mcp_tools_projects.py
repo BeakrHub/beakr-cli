@@ -39,7 +39,12 @@ from beakr_sdk.resources._upload import (
 
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
-from beakr_cli.upload_path_policy import MAX_UPLOAD_BYTES, outside_link, refused_path
+from beakr_cli.upload_path_policy import (
+    MAX_UPLOAD_BYTES,
+    named_path_refusal,
+    outside_link,
+    refused_path,
+)
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -234,6 +239,12 @@ class _Item:
     path: Path
     root: Path | None
     size: int
+    #: For a file named by a relative path inside the working folder: the
+    #: folders it sits in there (``sub`` for ``sub/valve-note.txt``), recreated
+    #: in the project as a folder upload recreates its tree.
+    folder: Path | None = None
+    #: The path as the call named it, when that is not the absolute path sent.
+    given: str | None = None
 
 
 @dataclass
@@ -262,12 +273,13 @@ def _gather(paths: list[str]) -> tuple[list[_Item], list[dict[str, Any]]]:
     """The files to send, and the paths refused or skipped, with why."""
     items: list[_Item] = []
     skipped: list[dict[str, Any]] = []
+    cwd = Path.cwd()
     for given in paths:
         path = Path(str(given)).expanduser()
         if not path.is_absolute():
-            path = Path.cwd() / path
+            path = cwd / path
         # Before the path is looked at: a refused place is not even said to exist.
-        refused = _refused_path(path)
+        refused = _refused_path(path) or named_path_refusal(str(given), path, cwd)
         if refused:
             skipped.append({"path": str(given), "reason": f"not uploaded: {refused}"})
             continue
@@ -282,7 +294,7 @@ def _gather(paths: list[str]) -> tuple[list[_Item], list[dict[str, Any]]]:
                     continue
                 items.append(_Item(file_path, path, file_path.stat().st_size))
         else:
-            items.append(_Item(path, None, path.stat().st_size))
+            items.append(_named_file(str(given), path, cwd))
     kept = []
     for item in items:
         if item.size == 0:
@@ -292,19 +304,51 @@ def _gather(paths: list[str]) -> tuple[list[_Item], list[dict[str, Any]]]:
     return kept, skipped
 
 
+def _named_file(given: str, path: Path, cwd: Path) -> _Item:
+    """A file the call named, with the folders a relative path inside ``cwd`` gives it.
+
+    ``sub/valve-note.txt`` landed at the project's root as ``valve-note.txt``
+    (sandbox run, 2026-11-14), where a folder upload keeps each file's folders.
+    It now lands in ``sub``, as ``sub`` uploaded as a folder would put it.
+    """
+    item = _Item(path, None, path.stat().st_size)
+    if str(path) != given:
+        item.given = given
+    relative = Path(given)
+    if relative.is_absolute() or given.startswith("~"):
+        return item
+    try:
+        inside = path.resolve().relative_to(cwd.resolve())
+    except ValueError:
+        return item
+    if ".." not in relative.parts and inside.parent != Path("."):
+        item.folder = inside.parent
+    return item
+
+
+def _relative_dir(item: _Item) -> Path | None:
+    """The folder ``item`` lands in under the call's folder, or None for that folder itself."""
+    if item.root is not None:
+        return Path(item.root.name) / item.path.parent.relative_to(item.root)
+    return item.folder
+
+
 def _file_flow(upload: _Upload, item: _Item, folders: dict[Path, str | None], children: dict):
     """One file's upload, into its folder (recreated from a folder upload's tree)."""
     target = upload.folder_id
-    if item.root is not None:
-        relative_dir = Path(item.root.name) / item.path.parent.relative_to(item.root)
+    relative_dir = _relative_dir(item)
+    if relative_dir is not None:
         target = yield from _ensure_folder(relative_dir, folders, upload.project_id, children)
+    recorded = upload_relative_path(item.path, item.root)
+    if item.folder is not None:
+        recorded = (item.folder / item.path.name).as_posix()
     return (
         yield from upload_flow(
             item.path,
             project_id=upload.project_id,
             folder_id=target,
             ingest=upload.ingest,
-            relative_path=upload_relative_path(item.path, item.root),
+            relative_path=recorded,
         )
     )
 
@@ -349,6 +393,9 @@ async def _run_upload(upload: _Upload) -> None:
                     "path": str(item.path),
                     "file_id": artifact.get("id"),
                     "job_id": result.get("job_id"),
+                    "given": item.given,
+                    # Only a named file's: a folder upload's tree is the folder's own.
+                    "folder": item.folder,
                 }
             )
             upload.sent_bytes += item.size
@@ -410,9 +457,12 @@ async def upload_files(
             skipped=skipped,
         )
     if not items:
+        # Each path's own reason: "none can be uploaded" alone left the agent
+        # guessing which rule it met (sandbox run, 2026-11-14).
+        reasons = "; ".join(f"{row['path']}: {row['reason']}" for row in skipped[:20])
         return _error(
             "nothing_to_upload",
-            "None of the paths is a file that can be uploaded.",
+            f"Nothing was uploaded. {reasons}." if reasons else "Nothing was uploaded.",
             "Check the paths; hidden files, key and credential files and empty files are "
             "never uploaded from here.",
             skipped=skipped,
@@ -462,6 +512,22 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
     return f"Finished uploading {path.name} to {project_name} (file {artifact.get('id')})."
 
 
+def _sent_line(row: dict[str, Any]) -> str:
+    """One sent file: its name, where it landed, its id, and the file it was.
+
+    A path the call named some other way (``../notes/a.txt``, ``sub/b.txt``) is
+    followed by the absolute path that was read, so a file is never reported
+    under a name that does not say what it is.
+    """
+    name = Path(row["path"]).name
+    folder = row.get("folder")
+    where = f" (in folder {Path(folder).as_posix()}/)" if folder else ""
+    line = f"- {name}{where}: file {row['file_id']}"
+    if row.get("given"):
+        line += f" (read from {Path(row['path']).resolve()})"
+    return line
+
+
 def _size(count: float) -> str:
     for unit in ("bytes", "KB", "MB", "GB"):
         if count < 1024 or unit == "GB":
@@ -486,7 +552,7 @@ def _upload_text(upload: _Upload, *, skipped: list[dict[str, Any]] | None = None
             f"{upload.project_name} (upload {upload.id})."
         )
     for row in upload.sent[:50]:
-        lines.append(f"- {Path(row['path']).name}: file {row['file_id']}")
+        lines.append(_sent_line(row))
     if len(upload.sent) > 50:
         lines.append(f"- ... and {len(upload.sent) - 50} more")
     for row in upload.failed[:20]:
