@@ -1149,7 +1149,7 @@
      },
      {
       "default": 0,
-      "description": "Without a unit: the first character to return (at most 100,000,000; past the end of the text the window is empty). Ignored with a unit.",
+      "description": "Without a unit: the first character to return (at most 100,000,000). With a unit: the offset into its page, sheet or document that next_offset gave. At or past the end of the text the window is empty, start and end equal total_chars, and past_end is true.",
       "name": "offset",
       "required": false,
       "type": "integer"

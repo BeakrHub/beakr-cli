@@ -334,6 +334,16 @@ class TieredFastMCP(FastMCP):
             with session_notice.collecting() as notices:
                 result = await self._gated_call(name, arguments, agent)
             return _with_notices(result, notices)
+        except ToolError as exc:
+            # A raised error leaves as its message (the MCP library sends
+            # ``str(exc)`` as the reply's text), so it is shown the same way.
+            from beakr_cli.mcp_render import visible_controls
+
+            message = str(exc)
+            shown = visible_controls(message)
+            if shown == message:
+                raise
+            raise ToolError(shown) from exc
         finally:
             MCP_CLIENT_AGENT.reset(token)
 
@@ -425,7 +435,22 @@ class TieredFastMCP(FastMCP):
             return _error_result(mcp_call_shaping.compact_error(name, body))
         from beakr_cli.mcp_render import render
 
-        return CallToolResult(content=[TextContent(type="text", text=render(name, body))])
+        return CallToolResult(content=[_text_content(render(name, body))])
+
+
+def _text_content(text: str) -> TextContent:
+    """The one text block a tool call answers with, as it leaves this server.
+
+    Every reply and every error result passes through here, so this is where a
+    control, bidi or zero-width character in anything a tool printed (a title,
+    a file's text, a connected service's reply, an echoed argument) is shown as
+    a visible escape and never reaches a client's terminal as it was stored.
+    The hosted server's ``_text_content`` does the same with the same function
+    (``mcp_render.visible_controls``), so both servers send the same text.
+    """
+    from beakr_cli.mcp_render import visible_controls
+
+    return TextContent(type="text", text=visible_controls(text))
 
 
 def _with_notices(result: Any, notices: list[str]) -> Any:
@@ -434,17 +459,20 @@ def _with_notices(result: Any, notices: list[str]) -> Any:
 
     if not notices or not isinstance(result, CallToolResult):
         return result
+    # The notices lead, and the whole text leaves through _text_content, as on the
+    # hosted server (its escape changes nothing already escaped).
     content = list(result.content)
     if content and isinstance(content[0], TextContent):
-        content[0] = TextContent(type="text", text=prefixed(content[0].text, notices))
+        content[0] = _text_content(prefixed(content[0].text, notices))
     else:
-        content.insert(0, TextContent(type="text", text=prefixed("", notices)))
+        content.insert(0, _text_content(prefixed("", notices)))
     return result.model_copy(update={"content": content})
 
 
 def _error_result(body: dict[str, Any]) -> CallToolResult:
     """An error, once, as compact JSON text: ``{status, error_code, message, fix}``."""
+    # JSON already escapes everything but DEL, which ``visible_controls`` shows.
     return CallToolResult(
-        content=[TextContent(type="text", text=json.dumps(body, separators=(", ", ": ")))],
+        content=[_text_content(json.dumps(body, separators=(", ", ": ")))],
         isError=True,
     )

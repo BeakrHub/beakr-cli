@@ -94,6 +94,22 @@ SOURCE_MODE_KEY = "source_listing"
 #: reason as ``UPLOAD_PROVIDER``.
 CITE_HINT = "Cite what you use with its readable reference (memo.pdf \u203a p. 7)."
 
+#: Control, bidi and zero-width characters, shown as ``\\uXXXX`` in every text
+#: this module returns. Equals ``beakr.core.visible_controls`` (which has the
+#: root cause and why the escape is JSON's); repeated for the same standalone
+#: reason as ``UPLOAD_PROVIDER``. A carriage return in a ``\\r\\n`` line ending
+#: stays. The ``Coverage:`` line is JSON, so its escaped values parse back exact.
+_HIDDEN_CHARACTERS = re.compile(
+    "[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060\u2066-\u2069\ufeff]"
+    "|\r(?!\n)"
+)
+
+
+def visible_controls(text: str) -> str:
+    """``text`` with each control, bidi and zero-width character as ``\\uXXXX``."""
+    return _HIDDEN_CHARACTERS.sub(lambda match: f"\\u{ord(match.group(0)):04x}", text)
+
+
 #: A hint every refused Knowledge call carries; the message already says it.
 _GENERIC_FIXES = frozenset({"Correct the call as the message says and retry; nothing was read."})
 
@@ -138,7 +154,7 @@ def render(tool: str, body: dict[str, Any]) -> str:
         hints = [hint for hint in hints if hint != CITE_HINT]
     if hints:
         parts.append("\n".join(f"next: {hint}" for hint in hints))
-    return "\n\n".join(parts) if parts else "(no output)"
+    return visible_controls("\n\n".join(parts)) if parts else "(no output)"
 
 
 def error_text(
@@ -163,7 +179,8 @@ def error_text(
         compact["fix"] = resolved_fix
     if isinstance(request_id, str) and re.fullmatch(r"[A-Za-z0-9._:-]{1,128}", request_id):
         compact["request_id"] = request_id
-    return json.dumps(compact, separators=(", ", ": "))
+    # JSON already escapes everything but DEL, which ``visible_controls`` shows.
+    return visible_controls(json.dumps(compact, separators=(", ", ": ")))
 
 
 def body_error_text(body: dict[str, Any]) -> str:
