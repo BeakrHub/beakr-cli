@@ -8,9 +8,31 @@ it. This module holds what is kept here in the meantime.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
-__all__ = ["native_read_call", "with_read_call"]
+__all__ = ["READ_TOOLS", "native_read_call", "with_read_call"]
+
+#: Every provider read tool the API attaches to a cited item (the engine's
+#: ``native_source_fetch.NATIVE_FETCH_TOOLS``). A read call that exists only as
+#: text is turned into a command for these and no other tool
+#: (:func:`beakr_cli.kb_shell_sources.text_integration_calls`), so text shaped
+#: like a call can never name a tool that sends or changes something.
+READ_TOOLS = frozenset(
+    {
+        "granola_get_note",
+        "gmail_get_thread",
+        "gcalendar_get_event",
+        "github_get_issue",
+        "github_get_pull_request",
+        "github_get_file",
+        "slack_get_thread",
+        "slack_list_messages",
+        "linear_get_issue",
+    }
+)
+#: A tool or argument name: what the Sources line prints between quotes.
+_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 
 
 def native_read_call(retrieval: object) -> dict[str, Any] | None:
@@ -24,19 +46,23 @@ def native_read_call(retrieval: object) -> dict[str, Any] | None:
     the stdio server and ``beakr kb`` dropped the call and the line ended at the
     ``source_ref``. The rule is the hosted server's ``formatting.public_source``
     (a named tool, scalar arguments, nothing nested); the API has already
-    limited the tool to a known read.
+    limited the tool to a known read. The tool and each argument name must be
+    plain identifiers: the line prints the tool between quotes, and a name
+    holding a quote would end them.
     """
     if not isinstance(retrieval, dict):
         return None
     tool = retrieval.get("tool")
     arguments = retrieval.get("arguments")
-    if not isinstance(tool, str) or not tool or not isinstance(arguments, dict) or not arguments:
+    if not isinstance(tool, str) or not _NAME.fullmatch(tool):
+        return None
+    if not isinstance(arguments, dict) or not arguments:
         return None
     if "handle" in arguments:
         return None
     clean: dict[str, Any] = {}
     for name, value in arguments.items():
-        if not isinstance(name, str) or isinstance(value, bool):
+        if not isinstance(name, str) or not _NAME.fullmatch(name) or isinstance(value, bool):
             return None
         if not isinstance(value, (str, int)) or value == "":
             return None

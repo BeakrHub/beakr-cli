@@ -250,7 +250,8 @@ def test_a_cut_filtered_listing_names_a_continuation_that_runs() -> None:
     assert listing.exit_code == 0, listing.output
     commands = printed_commands(listing.stdout)
     continuations = [command for command in commands if "--after-page-id" in command]
-    assert len(continuations) == 2, listing.stdout  # the listing's last line, and `next`
+    # In `next` only: the listing's own last line is printed as the door wrote it.
+    assert len(continuations) == 1, listing.stdout
     for command in continuations:
         path, given = parse_command(command)
         assert path == "kb ls", command

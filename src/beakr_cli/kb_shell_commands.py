@@ -9,16 +9,28 @@ carries any call. A hint built from it therefore always runs, and never drops
 part of the call. Every value is quoted for the shell, and one that opens with
 a dash is bound to its flag (``--after-title=-x``) or follows ``--``.
 :mod:`beakr_cli.kb_shell_hints` finds the calls in a reply's text.
+
+A value is what someone else wrote (a page title, a cursor made of one), and
+the printed command is pasted into a shell, so:
+
+- a word prints bare only when every character of it is on a short list that
+  no shell reads specially (:func:`shell_quote`); the standard library's
+  quoting leaves ``=`` bare, and zsh runs ``=ls`` as ``/bin/ls``;
+- a value holding a control, bidirectional or zero-width character is not
+  printed at all (:class:`Unprintable`): the line a terminal shows for it would
+  not be the command it runs.
 """
 
 from __future__ import annotations
 
 import json
 import re
-import shlex
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
+from functools import cache
 from typing import Any
+
+from beakr_cli.terminal_text import unprintable
 
 __all__ = [
     "COMMANDS",
@@ -27,13 +39,32 @@ __all__ = [
     "GENERIC_WRITE",
     "DoorCall",
     "Slot",
+    "Unprintable",
+    "is_write_action",
     "shell_command",
+    "shell_quote",
     "shell_word",
 ]
 
 
 #: An argument or command name that is safe to print unquoted in a shell command.
 _IDENTIFIER = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
+#: The characters a word may print bare with: none of them is special to bash
+#: or zsh, at the start of a word or inside it. Not ``=`` (zsh expands ``=ls``
+#: to the path of ``ls``), not ``~``, no opening dash, nothing that globs,
+#: expands or separates.
+_BARE_WORD = re.compile(r"[A-Za-z0-9_./:@%+,][A-Za-z0-9_./:@%+,-]*")
+
+
+class Unprintable(ValueError):
+    """A value that cannot be printed in a command: it holds a character a terminal hides."""
+
+
+def shell_quote(text: str) -> str:
+    """``text`` as one shell word: bare when it is plainly safe, else in single quotes."""
+    if _BARE_WORD.fullmatch(text):
+        return text
+    return "'" + text.replace("'", "'\"'\"'") + "'"
 
 
 @dataclass(frozen=True)
@@ -48,7 +79,9 @@ class Slot:
         # anything else is quoted, so a pasted command can never run what a reply
         # put inside the placeholder.
         shown = f"<{self.name}>"
-        return shown if _IDENTIFIER.fullmatch(self.name) else shlex.quote(shown)
+        if unprintable(shown):
+            raise Unprintable(shown)
+        return shown if _IDENTIFIER.fullmatch(self.name) else shell_quote(shown)
 
 
 @dataclass(frozen=True)
@@ -244,6 +277,23 @@ _GENERIC = "beakr api knowledge run-wiki-command"
 GENERIC_WRITE = "beakr api knowledge run-wiki-write"
 
 
+@cache
+def _write_actions() -> frozenset[str]:
+    from beakr_cli.commands.api import operations
+
+    for entry in operations():
+        if entry["area"] == "knowledge" and entry["action"] == "run-wiki-write":
+            for body_field in entry["body"]["fields"]:
+                if body_field["name"] == "action":
+                    return frozenset(body_field.get("enum") or ())
+    return frozenset()
+
+
+def is_write_action(name: str) -> bool:
+    """Whether the write door has the action ``name`` (the vendored API contract's list)."""
+    return name in _write_actions()
+
+
 def shell_command(
     command: str, arguments: Mapping[str, Any] | None = None, *, flags: tuple[str, ...] = ()
 ) -> str:
@@ -253,8 +303,13 @@ def shell_command(
     for an argument the hint names without a value; it prints as ``<name>``.
     ``flags`` are options of the ``beakr kb`` command the door call does not
     carry (:attr:`DoorCall.flags`); the generic command has none of them.
+
+    Raises :class:`Unprintable` when the command or any name or value holds a
+    control, bidirectional or zero-width character: no command is printed for it.
     """
     given = {key: value for key, value in (arguments or {}).items() if value is not None}
+    if unprintable(command) or unprintable(given):
+        raise Unprintable(command)
     spec = COMMANDS.get(command)
     if spec is None or not spec.fits(given):
         return _generic(command, given)
@@ -278,7 +333,7 @@ def shell_command(
         elif isinstance(value, (str, bool)) and (key, value) in spec.switches:
             words.append(spec.switches[(key, value)])
         else:
-            return _generic(command, {key: value for key, value in (arguments or {}).items()})
+            return _generic(command, dict(arguments or {}))
     return " ".join(word for word in (*words, *flags, *last) if word)
 
 
@@ -320,7 +375,11 @@ def _generic(command: str, arguments: Mapping[str, Any]) -> str:
     then goes in ``--data`` as one quoted JSON body, which the command sends
     as it is. Either way the printed command parses and nothing is dropped.
     """
-    given = {key: value for key, value in arguments.items() if value is not None}
+    # `command` is the door's own field, never an argument of a call: one in a
+    # hint's arguments would replace the command this line names.
+    given = {
+        key: value for key, value in arguments.items() if value is not None and key != "command"
+    }
     needed = _REQUIRED.get(command)
     if needed is not None and needed not in given:
         given = {needed: Slot(needed), **given}
@@ -332,7 +391,7 @@ def _generic(command: str, arguments: Mapping[str, Any]) -> str:
         for key, value in given.items()
     ):
         body = json.dumps({"command": command, **given}, ensure_ascii=False, default=_json_slot)
-        return f"{_GENERIC} --data {shlex.quote(body)}"
+        return f"{_GENERIC} --data {shell_quote(body)}"
     words = [f"{_GENERIC} --command {command}"]
     for key, value in given.items():
         flag = "--project" if key == "scope" else "--" + key.replace("_", "-")
@@ -349,7 +408,12 @@ def _json_slot(value: Any) -> str:
 
 
 def shell_word(value: Any) -> str:
-    return str(value) if isinstance(value, Slot) else shlex.quote(str(value))
+    if isinstance(value, Slot):
+        return str(value)
+    text = str(value)
+    if unprintable(text):
+        raise Unprintable(text)
+    return shell_quote(text)
 
 
 def _positional(value: Any) -> str:
@@ -357,7 +421,7 @@ def _positional(value: Any) -> str:
         return f"[{value}]" if value.optional else str(value)
     text = str(value)
     # A value that opens with a dash would be read as an option.
-    return f"-- {shlex.quote(text)}" if text.startswith("-") else shlex.quote(text)
+    return f"-- {shell_word(text)}" if text.startswith("-") else shell_word(text)
 
 
 def _option(flag: str, value: Any) -> str:

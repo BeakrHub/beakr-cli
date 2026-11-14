@@ -23,7 +23,7 @@ from beakr_cli.cited_answer import print_research_result, research_lines
 from beakr_cli.commands import kb_author_filters as author
 from beakr_cli.compact import cell, next_page_hint, print_compact
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
-from beakr_cli.kb_shell_hints import DoorCall, shell_hint, shell_reply
+from beakr_cli.kb_shell_hints import DoorCall, shell_acknowledgement, shell_reply
 from beakr_cli.output import (
     console,
     err_console,
@@ -50,6 +50,7 @@ from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
 from beakr_cli.source_records import with_read_call
+from beakr_cli.terminal_text import visible
 
 app = typer.Typer(help="Interact with your Beakr knowledge base.")
 propose_app = typer.Typer(help="Create user-approved wiki write proposals.")
@@ -270,7 +271,7 @@ def ls(
     if mode == "compact":
         print_compact(pages)
         if notice:
-            sys.stdout.write(notice + "\n")
+            sys.stdout.write(visible(notice) + "\n")
         return
     print_pages_table(pages)
     if notice:
@@ -488,7 +489,9 @@ def _door_print(
         # The door names its next calls as an MCP client makes them; a terminal
         # reads them as the `beakr kb ...` commands that do the same.
         call = DoorCall(command, {**arguments, "scope": scope}, flags=flags)
-        sys.stdout.write(shell_reply("knowledge_base", body, call).rstrip() + "\n")
+        # The reply quotes what other people wrote: nothing in it reaches the
+        # terminal as a raw control, bidirectional or zero-width character.
+        sys.stdout.write(visible(shell_reply("knowledge_base", body, call).rstrip()) + "\n")
     if outcome.get("status") == "error":
         raise typer.Exit(1)
 
@@ -1556,13 +1559,15 @@ def _stage_new_page(
         reply = result_text(result) if isinstance(result, dict) else str(result or "")
         staged = result.get("proposal") if isinstance(result, dict) else None
         # The reply as a terminal reads it: `accept_proposal` is `beakr kb proposals accept`.
-        shown = shell_hint(
+        shown = shell_acknowledgement(
             reply,
             DoorCall("new", proposal_id=str(staged["id"]) if _staged_id(staged) else None),
         )
         proposal = sdk.knowledge.proposals.show(str(staged["id"])) if _staged_id(staged) else None
     if proposal is None:
-        if not machine_output(result, json_out=json_out, lines=lambda r: shown.splitlines()):
+        if not machine_output(
+            result, json_out=json_out, lines=lambda r: visible(shown).split("\n")
+        ):
             console.print(shown, markup=False)
         return None, False
     if shown:

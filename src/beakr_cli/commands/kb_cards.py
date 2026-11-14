@@ -17,11 +17,12 @@ from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
 from beakr_cli.commands.kb import app as kb_app
-from beakr_cli.kb_shell_hints import DoorCall, shell_content, with_cursor
+from beakr_cli.kb_shell_hints import DoorCall, continuation, shell_content, with_cursor
 from beakr_cli.output import console, emit, err_console
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.proposal_view import staged_proposal_lines
 from beakr_cli.sdk import get_sdk
+from beakr_cli.terminal_text import visible
 
 _FINDING_KINDS = ("result", "lesson", "decision", "question", "correction")
 _ROW_TABLES = ("facts", "connections", "findings")
@@ -81,8 +82,9 @@ def _print_result(result: dict[str, Any], *, json_out: bool, call: DoorCall) -> 
     # Piped, an agent reads the door's text too (the rows table, the staged
     # proposal), not a summary of the reply's fields. A staged write's content
     # hash follows it: `kb proposals accept --reviewed-hash` takes it back.
-    # The calls the text names (`call rows again with offset=50`, `call
-    # accept_proposal`) are printed as the `beakr` commands that make them.
+    # A write's reply names `accept_proposal` as the `beakr` command that runs
+    # it. A read's text is the organization's rows and is printed as it is; the
+    # command that reads on is built from the reply's `coverage` and follows it.
     staged = result.get("proposal") if isinstance(result, dict) else None
     write = call.command not in _READ_COMMANDS
     if isinstance(staged, dict) and staged.get("id"):
@@ -92,8 +94,12 @@ def _print_result(result: dict[str, Any], *, json_out: bool, call: DoorCall) -> 
         call = with_cursor(call, result.get("coverage"))
 
     def text_lines(r: dict[str, Any]) -> list[str]:
-        text = shell_content(result_text(r), call, acknowledgement=write)
-        return [*text.splitlines(), *staged_proposal_lines(r)]
+        # Escaped before it is cut into lines: a carriage return or a line
+        # separator in a row's text is not a line break of this output.
+        text = visible(shell_content(result_text(r), call, acknowledgement=write))
+        again = None if write else continuation(call)
+        more = [f"next: Continue with `{again}`."] if again else []
+        return [*text.split("\n"), *staged_proposal_lines(r), *more]
 
     emit(
         result,

@@ -20,14 +20,25 @@ Two layers:
   reply's hints name and replaces each with its command. ``--json`` output
   never passes through here.
 
-What is rewritten is bounded on purpose. A reply's ``content`` also quotes the
-organization's own pages and files, which may themselves mention ``cat {page}``
-or ``accept_proposal``; rewriting those would misquote them. So calls are
-translated in the ``next`` hints, in the ``Approval state`` line, in a write's
-acknowledgement, and in the opening and closing paragraphs of a listing, where
-the door puts its own notices. A page body (``cat``) is never touched. Sources
-lines get only the two exact forms they carry (``read_file <id>`` and the
-``integrations`` read call).
+What is translated is the door's guidance, and only where the reply says, by
+its structure, that the text is guidance (review 2026-11-13: a listing with no
+blank line had every line translated, so a page titled ``knowledge_base_write
+action='delete_page'`` printed as a command the door never suggested):
+
+- the reply's ``next`` steps (:func:`shell_hint`) and its ``coverage``, the
+  structured continuation (:func:`with_cursor`, :func:`continuation`);
+- a write's acknowledgement (:func:`shell_acknowledgement`), where the only
+  command ever printed is ``beakr kb proposals show|accept|dismiss`` for the
+  proposal that write staged;
+- the lines that open a cited source, built from the reply's source records
+  (:mod:`beakr_cli.kb_shell_sources`), never read out of a rendered line.
+
+A read's ``content`` is the organization's text (titles, hits, excerpts, page
+bodies) with the door's notices among it, and nothing in the text says which
+line is which: it is printed as the door wrote it. A ``next`` step can itself
+quote a title, so inside one a call is not read between double quotes, a write
+action or a provider tool must be one the vendored tool surface names, and a
+value holding a character a terminal hides prints no command at all.
 
 A continuation ("call ls again with after_title=...") is built from the call
 ``beakr kb`` made and the reply's structured ``coverage`` whenever the reply
@@ -44,8 +55,7 @@ from __future__ import annotations
 
 import json
 import re
-import shlex
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import replace
 from typing import Any
 
@@ -55,13 +65,23 @@ from beakr_cli.kb_shell_commands import (
     GENERIC_WRITE,
     DoorCall,
     Slot,
+    Unprintable,
+    is_write_action,
     shell_command,
-    shell_word,
+)
+from beakr_cli.kb_shell_sources import (
+    marked_sources,
+    place_commands,
+    source_lines,
+    text_integration_calls,
+    without_marks,
 )
 
 __all__ = [
     "DoorCall",
     "Slot",
+    "continuation",
+    "shell_acknowledgement",
     "shell_command",
     "shell_content",
     "shell_hint",
@@ -125,12 +145,6 @@ _PAIR_PARTS = re.compile(rf"(?<![\w-])(?P<key>{_KEY})=(?P<value>{_VALUE})")
 #: engine's ``kb_result_coverage._CURSOR_ARGUMENT``).
 _CURSOR_ARGUMENT = {"rows": "after_card"}
 
-_INTEGRATION_CALL = re.compile(
-    r"integrations command='call' tool='(?P<tool>\w+)' arguments=(?P<arguments>\{[^{}\n]*\})"
-)
-#: The door's older connector line: ``fetch: granola_get_note with note_id=not_1``.
-_FETCH_LINE = re.compile(r"^(?P<lead>\s*fetch: )(?P<tool>[a-z][a-z0-9_]*) with (?P<pairs>\w+=.+)$")
-_READ_LINE = re.compile(rf"^(?P<lead>\s*read: )read_file with artifact_id=(?P<id>{_UUID})$")
 _PROPOSAL_TOOL = re.compile(r"(?P<call>[Cc]all )?\b(?P<verb>show|accept|dismiss)_proposal\b")
 _KNOWLEDGE_TOOL = re.compile(rf"\bknowledge_base command='?(?P<command>{_NAMES})'?")
 _WRITE_TOOL = re.compile(r"\bknowledge_base_write action='(?P<action>\w+)'")
@@ -143,7 +157,7 @@ _DOCUMENT_COMMANDS = {
     "read": "beakr documents read <document>",
     "grep": "beakr documents grep <pattern>",
 }
-_BRIEF_NOTE = re.compile(r"sources='full' adds each document's excerpt, url and read_file id")
+_FILE_BY_ID = re.compile(rf"\bread_file (?P<id>{_UUID})\b")
 
 
 class _Unreadable(ValueError):
@@ -196,13 +210,17 @@ def _brace_arguments(body: str) -> dict[str, Any] | None:
     except ValueError:
         parsed = None
     if isinstance(parsed, dict):
-        return parsed
+        # `command` is the door's field for the command itself: arguments that
+        # carry one name another call than the hint does.
+        return None if "command" in parsed else parsed
     arguments: dict[str, Any] = {}
     for item in _split(body[1:-1]):
         match = _ITEM.fullmatch(item.strip())
         if match is None:
             return None
         name = match["name"]
+        if name == "command":
+            return None
         try:
             arguments[name] = (
                 Slot(name, optional=bool(match["optional"]))
@@ -221,6 +239,8 @@ def _ticked_arguments(command: str, rest: str) -> dict[str, Any] | None:
     arguments: dict[str, Any] = {}
     for token in rest.split():
         key, equals, value = token.partition("=")
+        if equals and key == "command":
+            return None
         if equals and re.fullmatch(r"[A-Za-z_]\w*", key):
             try:
                 arguments[key] = _literal(value)
@@ -275,6 +295,19 @@ def _continued(call: DoorCall) -> str:
     return shell_command(call.command, {**call.arguments, **(call.cursor or {})}, flags=call.flags)
 
 
+def continuation(call: DoorCall) -> str | None:
+    """The command that reads on from ``call``'s reply, when its ``coverage`` says how.
+
+    None when the reply carries no cursor, or one that cannot be printed.
+    """
+    if not call.cursor:
+        return None
+    try:
+        return _continued(call)
+    except Unprintable:
+        return None
+
+
 def _spellings(value: Any) -> list[str]:
     """How the door may print ``value`` after ``key=``: longest first."""
     if isinstance(value, bool) or not isinstance(value, (str, int)):
@@ -315,35 +348,64 @@ def _pin(text: str, call: DoorCall | None, pinned: list[tuple[Any, str]]) -> str
     return text
 
 
-def _sources(text: str, call: DoorCall | None) -> str:
-    """The exact forms a Sources line carries, as commands."""
+def _proposal_target(call: DoorCall | None) -> str:
+    """The proposal a write staged, when its id is one: else the placeholder.
 
-    def integration(match: re.Match[str]) -> str:
-        return f"beakr integrations call {match['tool']} --args {shlex.quote(match['arguments'])}"
-
-    text = _INTEGRATION_CALL.sub(integration, text)
-    text = re.sub(rf"\bread_file (?={_UUID})", "beakr documents read ", text)
-    flag = "--full" if call is not None and call.command == "cat" else "--json"
-    return _BRIEF_NOTE.sub(f"{flag} adds each document's excerpt, url and file id", text)
+    The id is printed bare after the verb, so it must be an id and nothing an
+    option parser or a shell could read another way.
+    """
+    staged = call.proposal_id if call is not None else None
+    return staged if staged and re.fullmatch(_UUID, staged) else str(Slot("proposal_id"))
 
 
-def _source_line(line: str, call: DoorCall | None) -> str:
-    """A ``fetch:`` or ``read:`` line of a source entry, as the command that opens it."""
-    fetch = _FETCH_LINE.match(line)
-    if fetch is not None and not fetch["tool"].startswith("integrations"):
-        pairs = re.split(r", (?=\w+=)", fetch["pairs"])
-        options = " ".join(f"--arg {shlex.quote(pair)}" for pair in pairs)
-        return f"{fetch['lead']}beakr integrations call {fetch['tool']} {options}"
-    read = _READ_LINE.match(line)
-    if read is not None:
-        return f"{read['lead']}beakr documents read {read['id']}"
-    if line.lstrip().startswith(("fetch: ", "read: ")):
-        return _sources(line, call)
-    return line
+def shell_acknowledgement(text: str, call: DoorCall | None = None) -> str:
+    """A write's reply with the proposal tools it names as the commands that run them.
+
+    The reply also quotes the page it changed and what the write said, so the
+    only command this prints is ``beakr kb proposals show|accept|dismiss`` for
+    the proposal this write staged: whatever a quoted title holds, no other
+    command can come of it.
+    """
+    target = _proposal_target(call)
+
+    def proposal(match: re.Match[str]) -> str:
+        command = f"`beakr kb proposals {match['verb']} {target}`"
+        return ("run " if match["call"] else "") + command
+
+    return _PROPOSAL_TOOL.sub(proposal, text)
+
+
+def _quoted(text: str, position: int) -> bool:
+    """Whether ``position`` is inside a double-quoted span of its line: a quoted title."""
+    quoted = escaped = False
+    for char in text[text.rfind("\n", 0, position) + 1 : position]:
+        if char == '"' and not escaped:
+            quoted = not quoted
+        # A backslash escapes the next character only, and only inside quotes.
+        escaped = quoted and char == "\\" and not escaped
+    return quoted
+
+
+def _guarded(translate: Callable[[re.Match[str]], str]) -> Callable[[re.Match[str]], str]:
+    """``translate``, except where the door is quoting or a value cannot be printed."""
+
+    def run(match: re.Match[str]) -> str:
+        if _quoted(match.string, match.start()):
+            return match[0]
+        try:
+            return translate(match)
+        except Unprintable:
+            return match[0]
+
+    return run
 
 
 def shell_hint(text: str, call: DoorCall | None = None) -> str:
-    """``text`` with every door call it names replaced by the command that makes it."""
+    """A ``next`` step with every door call it names replaced by the command that makes it.
+
+    For the door's guidance only (a reply's ``next``): never a listing, a page
+    body or any text the organization wrote.
+    """
     kept: list[str] = []
     pinned: list[tuple[Any, str]] = []
     cursor = dict(call.cursor) if call is not None and call.cursor else {}
@@ -393,7 +455,7 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
             key in cursor and cursor[key] == value for key, value in pairs.items()
         )
 
-    def continuation(match: re.Match[str]) -> str:
+    def continued(match: re.Match[str]) -> str:
         pairs = _pairs(match["pairs"], pinned)
         command = match["command"] or (call.command if call else None)
         if pairs is None or command is None:
@@ -430,32 +492,43 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
         )
         return not _UNREAD_PAIR.search(rest) and not (from_prose and '"' in rest)
 
+    target = _proposal_target(call)
+
     def proposal(match: re.Match[str]) -> str:
-        target = call.proposal_id if call is not None and call.proposal_id else Slot("proposal_id")
-        command = keep(f"beakr kb proposals {match['verb']} {shell_word(target)}")
+        command = keep(f"beakr kb proposals {match['verb']} {target}")
         return ("run " if match["call"] else "") + command
 
+    def write(match: re.Match[str]) -> str:
+        # Only an action the write door has: a name from anywhere else is not one.
+        if not is_write_action(match["action"]):
+            return match[0]
+        return keep(f"{GENERIC_WRITE} --action {match['action']}")
+
     text = _pin(text, call, pinned)
-    text = _TICKED_CALL.sub(ticked, text)
-    text = _BRACE_CALL.sub(braces, text)
+    text = _TICKED_CALL.sub(_guarded(ticked), text)
+    text = _BRACE_CALL.sub(_guarded(braces), text)
+    again = continuation(call) if call is not None else None
     if readable(text):
-        text = _CONTINUATION.sub(continuation, text)
-    elif call is not None and any(
+        text = _CONTINUATION.sub(_guarded(continued), text)
+    elif again is not None and any(
         re.search(rf"(?<![\w-]){re.escape(key)}=", text) for key in cursor
     ):
         # The prose names the cursor in a way that cannot be read, and the reply
         # carries it as data: the prose stays, the command follows it.
-        text = f"{text.rstrip()} Continue with {keep(_continued(call))}."
-    text = _PROPOSAL_TOOL.sub(proposal, text)
-    text = _WRITE_TOOL.sub(lambda m: keep(f"{GENERIC_WRITE} --action {m['action']}"), text)
-    text = _KNOWLEDGE_TOOL.sub(lambda m: keep(shell_command(m["command"], {})), text)
+        text = f"{text.rstrip()} Continue with {keep(again)}."
+    text = _PROPOSAL_TOOL.sub(_guarded(proposal), text)
+    text = _WRITE_TOOL.sub(_guarded(write), text)
+    text = _KNOWLEDGE_TOOL.sub(_guarded(lambda m: keep(shell_command(m["command"], {}))), text)
     text = _BARE_COMMAND.sub(
-        lambda m: keep(shell_command(m["command"], _BARE_ARGUMENTS.get(m["command"], {}))),
+        _guarded(
+            lambda m: keep(shell_command(m["command"], _BARE_ARGUMENTS.get(m["command"], {})))
+        ),
         text,
     )
-    text = _DOCUMENTS.sub(lambda m: keep(_DOCUMENT_COMMANDS[m["verb"]]), text)
-    text = _sources(text, call)
-    text = re.sub(r"\bread_file\b", lambda m: keep(_DOCUMENT_COMMANDS["read"]), text)
+    text = _DOCUMENTS.sub(_guarded(lambda m: keep(_DOCUMENT_COMMANDS[m["verb"]])), text)
+    text = text_integration_calls(text, keep, skip=_quoted)
+    text = _FILE_BY_ID.sub(_guarded(lambda m: keep(f"beakr documents read {m['id']}")), text)
+    text = re.sub(r"\bread_file\b", _guarded(lambda m: keep(_DOCUMENT_COMMANDS["read"])), text)
     # A pinned value no command took stays as the door spelled it.
     text = re.sub(r"\x01(\d+)\x01", lambda m: pinned[int(m[1])][1], text)
     return re.sub(r"\x00(\d+)\x00", lambda m: kept[int(m[1])], text)
@@ -465,67 +538,74 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
 # A whole reply
 # ---------------------------------------------------------------------------
 
-#: Commands whose ``content`` is the organization's own text from end to end.
-_BODY_COMMANDS = frozenset({"cat", "blame"})
-#: How much of a project's files a search could reach: the door appends it to
-#: ``sections`` and ``grep`` (the engine's ``kb_read_v2/corpus_coverage.py``).
-#: Not the line ``rows`` prints about the same counts, which closes a table.
-_CORPUS_NOTICE = re.compile(
-    r"Knowledge was compiled from \d+ of \d+ file\(s\) in this project \(.*\)\. "
-    r"This search covers what was compiled"
-)
 
+def shell_content(
+    text: str, call: DoorCall, *, acknowledgement: bool = False, sources: Any = None
+) -> str:
+    """A reply's ``content`` for a terminal.
 
-def shell_content(text: str, call: DoorCall, *, acknowledgement: bool = False) -> str:
-    """A reply's ``content`` with the door's own notices translated, quoted text left alone.
-
-    ``acknowledgement`` is a write's reply, which is the door's words throughout.
+    ``acknowledgement`` is a write's reply: :func:`shell_acknowledgement`. A
+    read's content is the organization's text and is printed as the door wrote
+    it, except a ``fetch:`` or ``read:`` line that one of the reply's
+    ``sources`` records accounts for whole, which is replaced by the command
+    built from that record.
     """
-    if call.command in _BODY_COMMANDS:
-        return text
-    lines = [_source_line(line, call) for line in text.split("\n")]
     if acknowledgement:
-        return "\n".join(shell_hint(line, call) for line in lines)
-    blank = [index for index, line in enumerate(lines) if not line.strip()]
-    first_end = blank[0] if blank else len(lines)
-    last_start = blank[-1] + 1 if blank else 0
-    # The door's statement about the corpus closes a search after its footer,
-    # so the paragraph before it is the door's closing notice too.
-    while len(blank) > 1 and all(
-        _CORPUS_NOTICE.match(line) for line in lines[last_start:] if line.strip()
-    ):
-        blank.pop()
-        last_start = blank[-1] + 1
-    return "\n".join(
-        shell_hint(line, call) if index < first_end or index >= last_start else line
-        for index, line in enumerate(lines)
-    )
+        return shell_acknowledgement(text, call)
+    known = source_lines(sources)
+    if not known:
+        return text
+    lines = []
+    for line in text.split("\n"):
+        body = line.lstrip()
+        command = known.get(body)
+        lines.append(line[: len(line) - len(body)] + command if command else line)
+    return "\n".join(lines)
+
+
+def _brief_note(call: DoorCall) -> str:
+    """The line closing a brief Sources list, naming the flag that gives the whole one."""
+    flag = "--full" if call.command == "cat" else "--json"
+    return f"({flag} adds each document's excerpt, url and file id)"
 
 
 def shell_reply(tool: str, body: Mapping[str, Any], call: DoorCall) -> str:
     """A door reply as terminal text: :func:`beakr_cli.mcp_render.render`, with commands.
 
     ``tool`` is ``knowledge_base`` for a read and ``knowledge_base_write`` for a
-    write, whose whole text is the door's acknowledgement.
+    write, whose content is the door's acknowledgement. The Sources list is
+    rendered from records that carry a stand-in where a file id or a tool
+    stands, and each is then replaced by the command built from the record.
     """
-    from beakr_cli.mcp_render import render
+    from beakr_cli.mcp_render import _BRIEF_NOTE, render
 
+    write = tool == "knowledge_base_write"
+    # A stand-in holds a NUL: none anywhere in the reply, so none can be forged.
+    body = without_marks(dict(body))
     call = with_cursor(call, body.get("coverage"))
     shown = shell_content(
         str(body.get("content") or "").rstrip(),
         call,
-        acknowledgement=tool == "knowledge_base_write",
+        acknowledgement=write,
+        sources=body.get("sources"),
     )
     hints = [shell_hint(str(hint), call) for hint in body.get("next") or [] if str(hint)]
-    rendered = render(tool, {**body, "content": shown, "next": hints})
+    again = continuation(call)
+    if again is not None and not any(again in hint for hint in hints):
+        # The reply says how to read on as data: the command is printed even
+        # where no next step spells it.
+        hints.append(f"Continue with `{again}`.")
+    records, placed = marked_sources(body.get("sources"))
+    rendered = render(tool, {**body, "content": shown, "next": hints, "sources": records})
+    rendered = place_commands(rendered, placed)
     if not shown or not rendered.startswith(shown):
         return rendered
     tail = [
-        line
-        if line.startswith(("Coverage: ", "next: "))
-        else shell_hint(line, call)
-        if line.startswith("Approval state")
-        else _sources(line, call)
+        _brief_note(call)
+        if line == _BRIEF_NOTE
+        else shell_acknowledgement(line, call)
+        if write and line.startswith("Approval state")
+        else line
         for line in rendered[len(shown) :].split("\n")
     ]
     return shown + "\n".join(tail)

@@ -27,7 +27,7 @@ import respx
 from httpx import Response
 from typer.testing import CliRunner
 
-from beakr_cli.kb_shell_commands import COMMANDS
+from beakr_cli.kb_shell_commands import COMMANDS, Unprintable
 from beakr_cli.kb_shell_hints import (
     DoorCall,
     Slot,
@@ -121,18 +121,15 @@ def test_a_cut_proposal_listing_names_offset_as_a_flag() -> None:
     content = shell_content(capture["content"], _call(capture))
     hints = [shell_hint(hint, _call(capture)) for hint in capture["next"]]
 
-    expected = (
-        f"beakr kb proposals ls --status accepted --project {PROJECT} --limit 1 --offset 1 --by me"
-    )
-    assert f"continue with `{expected}`." in content.splitlines()[-1]
-    assert parse_command(expected) == (
+    # The listing is the organization's text: printed as the door wrote it.
+    assert content == capture["content"]
+    # "call proposals again with offset=1" in `next` is the same listing, whole.
+    again = printed_commands(hints[0])
+    assert len(again) == 1
+    assert parse_command(again[0]) == (
         "kb proposals ls",
         {"status_filter": "accepted", "project": PROJECT, "limit": 1, "offset": 1, "by": "me"},
     )
-    # "call proposals again with offset=1" is the same listing, whole.
-    again = printed_commands(hints[0])
-    assert len(again) == 1
-    assert parse_command(again[0]) == parse_command(expected)
     assert hints[1] == (
         "Review one with `beakr kb proposals show <proposal_id>`, then "
         "`beakr kb proposals accept <proposal_id>` or `beakr kb proposals dismiss <proposal_id>`."
@@ -168,12 +165,17 @@ def test_graph_and_search_hints_name_the_kb_commands(name: str, expected: list[s
         assert f"`{command}`" in hints
 
 
-def test_the_doors_other_spelling_of_a_call_is_translated_in_a_listing_trailer() -> None:
-    # grep's trailer says `cat <page> section_id=<id>`, in backticks.
-    text = shell_content(TEXT["grep_hit"]["content"], _call(TEXT["grep_hit"]))
+def test_the_doors_other_spelling_of_a_call_is_translated_in_a_next_step() -> None:
+    # The door also writes a call as `cat <page> section_id=<id>`, in backticks.
+    hint = (
+        "Read a hit with `cat <page> section_id=<id>`. Use `sections` to search by meaning, "
+        "or find a page by title prefix with `completions`."
+    )
+
+    text = shell_hint(hint, _call(TEXT["grep_hit"]))
 
     assert "Read a hit with `beakr kb cat <page> --section-id <id>`." in text
-    assert "Use `beakr kb sections <query>` to search by meaning." in text
+    assert "Use `beakr kb sections <query>` to search by meaning" in text
     assert (
         "by title prefix with `beakr api knowledge run-wiki-command --command completions "
         "--prefix <prefix>`."
@@ -182,26 +184,39 @@ def test_the_doors_other_spelling_of_a_call_is_translated_in_a_listing_trailer()
 
 def test_a_connected_source_line_names_the_integrations_command() -> None:
     capture = TEXT["sources_door"]
-    text = shell_content(capture["content"], _call(capture))
+    # The reply's records carry each call as data; the line only places it.
+    slack = {"channel_id": "C04K10YTMN0", "thread_ts": "1742744865.524899"}
+    note = {"note_id": "not_LiveRf00000001"}
+    sources = [
+        {"retrieval": {"tool": "slack_get_thread", "arguments": slack}},
+        {"retrieval": {"tool": "granola_get_note", "arguments": note}},
+    ]
+
+    text = shell_content(capture["content"], _call(capture), sources=sources)
 
     fetch = [line.strip() for line in text.splitlines() if line.strip().startswith("fetch: ")]
     assert fetch == [
-        "fetch: beakr integrations call slack_get_thread --arg channel_id=C04K10YTMN0 "
-        "--arg thread_ts=1742744865.524899",
-        "fetch: beakr integrations call granola_get_note --arg note_id=not_LiveRf00000001",
+        "fetch: beakr integrations call slack_get_thread --args "
+        '\'{"channel_id": "C04K10YTMN0", "thread_ts": "1742744865.524899"}\'',
+        "fetch: beakr integrations call granola_get_note "
+        '--args \'{"note_id": "not_LiveRf00000001"}\'',
     ]
-    for line in fetch:
+    for line, arguments in zip(fetch, (slack, note), strict=True):
         path, given = parse_command(line.removeprefix("fetch: "))
-        assert path == "integrations call" and given["arg"]
-    # The same call as the engine prints it for an outside caller, and as a Sources line.
+        assert path == "integrations call"
+        assert json.loads(given["args_json"]) == arguments
+    # The same call as the engine prints it for an outside caller.
     outside = (
         "     fetch: integrations command='call' tool='granola_get_note' "
         'arguments={"note_id": "not_LiveRf00000001"}'
     )
-    assert shell_content(outside, _call(capture)) == (
+    assert shell_content(outside, _call(capture), sources=sources) == (
         "     fetch: beakr integrations call granola_get_note "
         '--args \'{"note_id": "not_LiveRf00000001"}\''
     )
+    # A line no record accounts for is the door's text, not a command.
+    assert shell_content(capture["content"], _call(capture)) == capture["content"]
+    assert shell_content(outside, _call(capture), sources=sources[:1]) == outside
 
 
 # ---------------------------------------------------------------------------
@@ -349,9 +364,7 @@ def test_quoted_page_text_is_never_rewritten() -> None:
     middle = "3 hits\n\n1. Rules\n   Use cat {page} and read_file.\n\nRead a hit with cat {page}."
 
     assert shell_content(page, DoorCall("cat", {"page": "Agent rules"})) == page
-    listing = shell_content(middle, DoorCall("sections", {"query": "rules"}))
-    assert "   Use cat {page} and read_file." in listing
-    assert listing.endswith("Read a hit with `beakr kb cat <page>`.")
+    assert shell_content(middle, DoorCall("sections", {"query": "rules"})) == middle
 
 
 def test_the_stdio_mcp_reply_keeps_the_mcp_form() -> None:
@@ -410,7 +423,8 @@ def test_kb_sections_prints_the_command_that_reads_a_cited_note() -> None:
         "integrations call",
         {"tool": "granola_get_note", "args_json": '{"note_id": "not_LiveRf00000001"}'},
     )
-    assert "read_file" not in result.stdout
+    # In the Sources list every way to open a document is a command.
+    assert "read_file" not in result.stdout.split("\nSources (", 1)[1]
 
 
 @respx.mock
@@ -492,6 +506,11 @@ def test_a_name_from_a_reply_never_reaches_the_shell_unquoted(tmp_path):
     scratch = tmp_path / "shell"
     scratch.mkdir()
     for title in HOSTILE_TITLES:
+        if "\n" in title:
+            # A value holding a line break prints no command (see the review tests).
+            with pytest.raises(Unprintable):
+                shell_command("cat", {"page": title})
+            continue
         calls: list[tuple[str, dict[str, Any], dict[str, Any]]] = [
             # (door command, arguments, what Click must read back: every option
             # keeps its own value, none is swallowed by the title before it)
@@ -565,8 +584,14 @@ def test_a_continuation_is_built_from_the_replys_cursor_not_its_prose(
     """
     call = with_cursor(DoorCall("ls", _LS), {"continue_with": {"after_title": title}})
 
-    translated = shell_hint(_ls_hint(_spelled(form, title)), call)
+    hint = _ls_hint(_spelled(form, title))
+    translated = shell_hint(hint, call)
 
+    if "\n" in title:
+        # A second line inside a value: no command is printed for it at all.
+        assert not printed_commands(translated)
+        assert translated == hint
+        return
     expected = shell_command("ls", {**_LS, "after_title": title})
     assert translated == f"Not everything is shown: run `{expected}` to read the rest."
     path, given = parse_command(expected)
@@ -708,7 +733,7 @@ def test_a_positional_that_opens_with_a_dash_goes_after_every_option() -> None:
         "grep", {"query": "-rf", "limit": 3, "after_title": "-x", "scope": PROJECT}, flags=()
     )
 
-    assert printed == f"beakr kb grep --limit 3 --after-title=-x --project {PROJECT} -- -rf"
+    assert printed == f"beakr kb grep --limit 3 --after-title='-x' --project {PROJECT} -- '-rf'"
     assert parse_command(printed) == (
         "kb grep",
         {"pattern": "-rf", "limit": 3, "after_title": "-x", "project": PROJECT},
@@ -726,32 +751,22 @@ _CORPUS_NOTICE = (
 )
 
 
-def test_the_sections_footer_is_translated_when_the_corpus_notice_follows_it() -> None:
-    """ROOT CAUSE (live rerun 2026-11-13): ``kb sections`` printed "Read a hit
-    with cat {page, section_id}: ... sources {page} ... documents read (read_file
-    in MCP)" unchanged while ``kb grep`` translated the same sentence. Only a
-    reply's first and last paragraphs are translated, and the door now closes a
-    search with how much of the project was compiled, after its footer: the
-    footer was no longer the last paragraph.
+def test_a_listing_is_printed_as_the_door_wrote_it_and_its_next_step_is_the_command() -> None:
+    """ROOT CAUSE (review 2026-11-13): the paragraphs that open and close a
+    listing were translated as the door's notices, by where they sat. A listing
+    with no blank line was translated on every line, hits and titles included,
+    so a page titled like a call printed as a command the door never suggested.
+    Nothing in a listing's text says which line is the door's: it is printed as
+    it came, and the same guidance reaches the terminal as a command through
+    the reply's ``next``.
     """
     capture = TEXT["sections"]
-    footer = capture["content"].rsplit("\n\n", 1)[1]
-    assert footer.startswith("Read a hit with cat {page, section_id}:")
     content = f"{capture['content']}\n\n{_CORPUS_NOTICE}"
 
-    text = shell_content(content, _call(capture))
-
-    closing = text.split("\n\n")[-2:]
-    assert closing[0].startswith(
-        "Read a hit with `beakr kb cat <page> --section-id <section_id>`: it prints"
-    )
-    assert "`beakr kb sources <page>` lists every passage a page cites" in closing[0]
-    assert "`beakr documents read <document>` with a path above" in closing[0]
-    assert not MCP_CALL.search(closing[0])
-    assert closing[1] == _CORPUS_NOTICE
-    # The hits between the opening and the footer are the organization's text.
-    middle = "\n\n".join(content.split("\n\n")[1:-2])
-    assert middle and middle in text
+    assert shell_content(content, _call(capture)) == content
+    hints = " ".join(shell_hint(hint, _call(capture)) for hint in capture["next"])
+    assert "Open a hit with `beakr kb cat <page> --section-id <section_id>`" in hints
+    assert not MCP_CALL.search(hints)
 
 
 _DOOR_TEXT = (
@@ -782,7 +797,9 @@ _DOOR_TEXT = (
     ids=lambda arguments: " ".join(arguments[:2]),
 )
 @respx.mock
-def test_every_kb_command_that_prints_the_doors_text_translates_it(arguments: list[str]) -> None:
+def test_every_kb_command_that_prints_the_doors_text_translates_its_next_steps(
+    arguments: list[str],
+) -> None:
     page = {"id": PAGE, "title": "Agent rules", "project_id": PROJECT}
     respx.get(f"{API}/v1/knowledge/wiki/pages/{PAGE}").mock(return_value=Response(200, json=page))
     reply = {
@@ -798,10 +815,8 @@ def test_every_kb_command_that_prints_the_doors_text_translates_it(arguments: li
 
     assert result.exit_code == 0, result.output
     out = result.stdout
-    assert "Read a hit with `beakr kb cat <page> --section-id <section_id>`." in out
-    assert "`beakr kb sources <page>` lists what a page cites." in out
-    # The organization's own text is quoted as it is.
-    assert "Use cat {page} and call accept_proposal." in out
+    # The reply's text holds the organization's own words: printed as it came.
+    assert out.startswith(_DOOR_TEXT)
     if arguments[0] != "rows":
         # `kb rows` prints the reply's text only, not its `next` steps.
         assert "next: Open a hit with `beakr kb cat <page> --section-id <section_id>`." in out

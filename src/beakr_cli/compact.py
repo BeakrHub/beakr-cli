@@ -21,6 +21,8 @@ import sys
 from collections.abc import Callable, Iterable
 from typing import Any
 
+from beakr_cli.terminal_text import visible
+
 #: Keys that identify an object, most specific first.
 ID_KEYS = (
     "id",
@@ -330,5 +332,7 @@ def print_compact(
     if next_hint:
         out.append(f"next: {next_hint}")
     if out:
-        sys.stdout.write("\n".join(out) + "\n")
+        # Text for a pipe is read by an agent and shown in a terminal after it:
+        # no raw control, bidirectional or zero-width character from the server.
+        sys.stdout.write(visible("\n".join(out)) + "\n")
     sys.stdout.flush()
