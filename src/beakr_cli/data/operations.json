@@ -4553,13 +4553,13 @@
    "body": {
     "fields": [
      {
-      "description": "A change to a project's boundary (``beakr/services/project_boundaries.py``). A key left out keeps its value.",
+      "description": "A change to a project's boundary: a key left out keeps its value.",
       "name": "boundary",
       "required": false,
       "type": "object"
      },
      {
-      "description": "Boundary preset: one of `internal`, `siloed`, `leadership`.",
+      "description": "A preset to set the boundary from, instead of `boundary`.",
       "enum": [
        "internal",
        "siloed",
@@ -5420,13 +5420,13 @@
    "body": {
     "fields": [
      {
-      "description": "A change to a project's boundary (``beakr/services/project_boundaries.py``). A key left out keeps its value.",
+      "description": "A change to a project's boundary: a key left out keeps its value.",
       "name": "boundary",
       "required": false,
       "type": "object"
      },
      {
-      "description": "Boundary preset: one of `internal`, `siloed`, `leadership`.",
+      "description": "Set the boundary from a preset, instead of `boundary`.",
       "enum": [
        "internal",
        "siloed",
@@ -6255,6 +6255,12 @@
      {
       "description": "A new label; empty clears it.",
       "name": "label",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "`automatic`: the server tracks what the session touches instead of chosen lists. Only while it has touched nothing, and not where the organization's session mode is must_pick (`422 session_mode_must_pick`).",
+      "name": "mode",
       "required": false,
       "type": "string"
      },

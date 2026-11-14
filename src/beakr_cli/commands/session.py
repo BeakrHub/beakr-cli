@@ -826,6 +826,11 @@ def edit(
     read_all: bool = _read_all_opt,
     write_all: bool = _write_all_opt,
     read_everything: bool = _read_everything_opt,
+    automatic: bool = typer.Option(
+        False,
+        "--automatic",
+        help="Make it automatic: Beakr tracks what it touches instead of chosen lists.",
+    ),
     remember: bool | None = typer.Option(
         None,
         "--remember/--no-remember",
@@ -837,8 +842,9 @@ def edit(
 
     --read/--write (or --read-all/--write-all) replace the lists, checked first against
     the projects' boundaries; --read-everything makes it read every project and write
-    none. Without them, at a terminal, the picker opens with the current choice. An
-    automatic or read-everything session that has touched a project can't be changed
+    none; --automatic makes Beakr track what it touches instead (not where every
+    session must pick). Without them, at a terminal, the picker opens with the
+    current choice. A session that has touched a project can't change its mode
     (409 session_already_started).
     """
     scope_session.refuse_inside_conversation("beakr session edit", "Change a session's projects")
@@ -846,6 +852,7 @@ def edit(
         **{
             "--read/--write": bool(read or write or read_all or write_all),
             "--read-everything": read_everything,
+            "--automatic": automatic,
         }
     )
     chosen = _session_id(session_id)
@@ -853,7 +860,7 @@ def edit(
         current = sdk.request("GET", f"/v1/sessions/{chosen}")
         where = f"on the session's page ({current.get('picker_url')})"
         lists: tuple[list[str], list[str]] | None
-        if read_everything:
+        if read_everything or automatic:
             lists = None
         elif read_all or write_all:
             lists = _every(sdk, read, write, read_all=read_all, write_all=write_all, where=where)
@@ -873,6 +880,8 @@ def edit(
         body: dict[str, Any] = {}
         if read_everything:
             body["read_everything"] = True
+        elif automatic:
+            body["mode"] = scope_session.AUTOMATIC
         elif lists is not None:
             check_selection(sdk, *lists)
             body["read_project_ids"], body["write_project_ids"] = lists
@@ -880,7 +889,8 @@ def edit(
             body["remember_folder"] = remember
         if not body:
             raise typer.BadParameter(
-                "give --read/--write, --read-all/--write-all, --read-everything or --remember",
+                "give --read/--write, --read-all/--write-all, --read-everything, --automatic or "
+                "--remember",
                 param_hint="--read",
             )
         session = sdk.request("PATCH", f"/v1/sessions/{chosen}", json=body)

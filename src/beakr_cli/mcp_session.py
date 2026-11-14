@@ -281,16 +281,23 @@ NOT_PICKED = "session_not_picked"
 NOT_IN_SESSION = "This connection is not in a session: it works as you, and no session rules apply."
 
 
-async def _status_text(current: dict[str, Any]) -> str:
-    """``GET /v1/sessions/current/status`` in plain words; an engine without the route
-    (its bare 404) gets the session's own description."""
+def _call_api() -> Any:
+    """The API call the tools make (``mcp_tools_platform.call_api``, read when called)."""
+    from beakr_cli import mcp_tools_platform
+
+    return mcp_tools_platform.call_api
+
+
+async def _status_text(current: dict[str, Any] | None) -> str:
+    """``GET /v1/sessions/current/status`` in plain words. Not in a session (404): said
+    so; an engine without the route (its bare 404) gets the session's own description."""
     from beakr_cli.capabilities import NOT_PROVIDED_CODE
-    from beakr_cli.mcp_errors import ApiCallError, call_api
+    from beakr_cli.mcp_errors import ApiCallError
 
     try:
-        status = await call_api(lambda sdk: sdk.request("GET", "/v1/sessions/current/status"))
+        status = await _call_api()(lambda sdk: sdk.request("GET", "/v1/sessions/current/status"))
     except ApiCallError as exc:
-        if exc.fields.get("error_code") == NOT_PROVIDED_CODE:
+        if exc.fields.get("error_code") == NOT_PROVIDED_CODE and current is not None:
             return scope_session.describe(current)
         if exc.response.status_code == 404:
             return NOT_IN_SESSION
@@ -305,7 +312,9 @@ async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str
 
     session = scope_session.ACTIVE
     if session is None:
-        return NOT_IN_SESSION
+        # Without a session of its own (BEAKR_MCP_SESSIONS=off), the API answers for the
+        # agent conversation this server's requests name, if any.
+        return await _status_text(None)
     try:
         await session.ensure_started()
         current = await session.refresh()
@@ -376,14 +385,6 @@ async def start_session(
 ) -> dict[str, Any] | str:
     """The ``start_session`` tool (its description is the shared tool surface's)."""
     session = scope_session.ACTIVE
-    if session is None:
-        return _error(
-            "session_unavailable",
-            "This Beakr MCP server is not running in a session, so it works as you, outside a "
-            "session.",
-            "Restart the Beakr MCP server without BEAKR_MCP_SESSIONS=off to work in a session, "
-            "or work without one.",
-        )
     read = [r for r in read or [] if str(r).strip()]
     write = [w for w in write or [] if str(w).strip()]
     if read_everything and (read or write):
@@ -399,6 +400,8 @@ async def start_session(
             "Call start_session with read (and write), or with read_everything=true. Without "
             "start_session the session is automatic.",
         )
+    if session is None:
+        return await _declare_conversation(read, write, read_everything=read_everything)
     try:
         await session.ensure_started()
         read_ids: list[str] | None = None
@@ -423,6 +426,68 @@ async def start_session(
             f"Show the user this link to choose the projects: {started.get('picker_url') or ''}"
         )
     return "\n".join(lines)
+
+
+async def _declare_conversation(
+    read: list[str], write: list[str], *, read_everything: bool
+) -> dict[str, Any] | str:
+    """``start_session`` without a session of this server's own (``BEAKR_MCP_SESSIONS=off``):
+    the agent conversation's, by its id, as the remote server declares it."""
+    from beakr_cli.mcp_errors import ApiCallError
+    from beakr_cli.mcp_tools_platform import _project_by_name_or_id
+    from beakr_cli.sdk import MCP_CLIENT_NAME
+
+    agent = scope_session.agent_session_id()
+    if not agent:
+        return _error(
+            "session_unavailable",
+            "This connection has no agent session id (X-Beakr-Session), so it works as you, "
+            "outside a session.",
+            "Set BEAKR_SESSION for this MCP server (or let the client set its conversation id), "
+            "or work without a session.",
+        )
+    body: dict[str, Any] = {"agent_session": agent, "client_name": MCP_CLIENT_NAME}
+    if read_everything:
+        body["read_everything"] = True
+    else:
+        write_ids = [str(await _project_by_name_or_id(ref)) for ref in write]
+        read_ids = [str(await _project_by_name_or_id(ref)) for ref in read]
+        body["read_project_ids"] = list(dict.fromkeys([*read_ids, *write_ids]))
+        body["write_project_ids"] = write_ids
+    try:
+        started = await _call_api()(lambda sdk: sdk.request("POST", "/v1/sessions", json=body))
+    except ApiCallError as exc:
+        reasons = [
+            str(r["message"])
+            for r in ((_details(exc.response) or {}).get("reasons") or [])
+            if isinstance(r, dict) and r.get("message")
+        ]
+        if len(reasons) > 1:
+            return _error(
+                str(exc.fields.get("error_code")),
+                "\n".join(f"- {r}" for r in reasons),
+                exc.fields.get("fix"),
+            )
+        raise
+    started = started if isinstance(started, dict) else {}
+    lines = [f"Session started. {started.get('summary') or ''}".strip()]
+    lines.extend(scope_session.note_lines(started))
+    return "\n".join(lines)
+
+
+def _details(response: Any) -> dict[str, Any] | None:
+    """The error envelope's ``details`` (or FastAPI's ``detail``) of a refused call."""
+    try:
+        body = response.json()
+    except ValueError:
+        return None
+    if not isinstance(body, dict):
+        return None
+    error = body.get("error")
+    if isinstance(error, dict) and isinstance(error.get("details"), dict):
+        return error["details"]
+    detail = body.get("detail")
+    return detail if isinstance(detail, dict) else None
 
 
 async def _resolve_lists(

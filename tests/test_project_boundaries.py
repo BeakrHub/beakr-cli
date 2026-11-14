@@ -382,6 +382,17 @@ def test_edit_read_everything_sends_the_mode():
 
 
 @respx.mock
+def test_edit_automatic_sends_the_mode():
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
+    patched = respx.patch(f"{API}/v1/sessions/{SID}").respond(json=_session("automatic"))
+
+    result = runner.invoke(app, ["session", "edit", SID, "--automatic"])
+
+    assert result.exit_code == 0, result.output
+    assert _body(patched) == {"mode": "automatic"}
+
+
+@respx.mock
 def test_edit_checks_the_options_first():
     respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
     respx.post(OPTIONS).respond(json=_invalid())
@@ -843,10 +854,29 @@ def test_start_session_after_touching_a_project_is_refused_without_a_conversatio
     assert not patched.called
 
 
-def test_start_session_without_a_session_says_it_works_as_you():
+def test_start_session_without_a_conversation_id_says_it_works_as_you(monkeypatch):
+    for name in ("BEAKR_SESSION", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID"):
+        monkeypatch.delenv(name, raising=False)
+
     refused = asyncio.run(mcp_session.start_session(read=[A]))
 
     assert refused["error_code"] == "session_unavailable"
+    assert refused["message"] == (
+        "This connection has no agent session id (X-Beakr-Session), so it works as you, "
+        "outside a session."
+    )
+
+
+@respx.mock
+def test_start_session_without_a_held_session_declares_the_conversations(conversation):
+    # BEAKR_MCP_SESSIONS=off: the conversation's session, by its id, as the remote does.
+    declared = respx.post(f"{API}/v1/sessions").respond(201, json=_session("read_everything"))
+
+    text = asyncio.run(mcp_session.start_session(read_everything=True))
+
+    body = _body(declared)
+    assert body["agent_session"] == CONVERSATION and body["read_everything"] is True
+    assert text.startswith("Session started. Read-everything session")
 
 
 @respx.mock
@@ -873,7 +903,11 @@ def test_session_status_tool_outside_a_session_on_the_server():
     assert asyncio.run(mcp_session.session_status()) == mcp_session.NOT_IN_SESSION
 
 
-def test_session_status_tool_without_a_session():
+@respx.mock
+def test_session_status_tool_without_a_held_session():
+    respx.get(f"{API}/v1/sessions/current/status").respond(
+        404, json=_refusal(404, "not_found", "This request is not in a session.")
+    )
     assert asyncio.run(mcp_session.session_status()) == mcp_session.NOT_IN_SESSION
 
 
