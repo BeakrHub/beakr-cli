@@ -522,7 +522,11 @@ Each release lists the public API changes it supports, taken from the API change
     project leaves out the locked projects the session has not touched. Getting a
     download link (`GET /v1/artifacts/versions/{version_id}/download-url`,
     `POST /v1/artifacts/download-url`) is now a read of the file's project too.
-    The MCP `wiki_graph` tool takes `confirm_lock`.
+    The MCP `wiki_graph` tool takes `confirm_lock`. A project-restricted API key
+    and an end-user token can call these reads too, confined to their own
+    projects as a page read is: the graph and timeline, for one, answer only from
+    the credential's projects, and naming another project, or focusing the graph
+    on its page, is refused or not found.
   - Refused inside any session, joined by `X-Beakr-Session` or with a session
     token, with `403 session_route_unavailable` (`message` says what and why,
     `fix` how to call it instead): a write's read trail
