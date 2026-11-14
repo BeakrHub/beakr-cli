@@ -8,10 +8,6 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
-- `GET /v1/knowledge/rows`: each row's `citations` now name a file you can
-  open by `beakr-source:v1:file:<file id>` and a connected item you can reach
-  by `beakr-source:v1:item:<item id>`, the references Knowledge reads give
-  them.
 - `POST /v1/knowledge/wiki/command` `sections` with no `scope`: a strong match
   in a small project you can read now reaches the ranking even when larger
   projects hold more similar wording. When the search still left projects

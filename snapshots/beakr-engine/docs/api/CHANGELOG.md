@@ -11,15 +11,11 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4ada196f59cf99d96c212582131b90f0b36cf1adc8d3ca0730cdb7aad4fa90b3 changelog sha256=dcdb0ebc85eabea89e6772f0f6d2433dd0455c6515c8287e5566478936a1898f -->
+<!-- contract-stamp: public-openapi sha256=4ada196f59cf99d96c212582131b90f0b36cf1adc8d3ca0730cdb7aad4fa90b3 changelog sha256=4695b265d62df76367262d5e155591e8da8f002883a2d2d0bb707f504fd6705e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `GET /v1/knowledge/rows`: each row's `citations` now name a file you can
-  open by `beakr-source:v1:file:<file id>` and a connected item you can reach
-  by `beakr-source:v1:item:<item id>`, the references Knowledge reads give
-  them.
 - `POST /v1/knowledge/wiki/command` `sections` with no `scope`: a strong match
   in a small project you can read now reaches the ranking even when larger
   projects hold more similar wording. When the search still left projects
