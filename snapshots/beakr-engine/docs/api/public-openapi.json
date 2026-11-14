@@ -5130,6 +5130,24 @@
       "FileReadOut": {
         "description": "One window of a file's extracted text.",
         "properties": {
+          "agent_written": {
+            "default": false,
+            "description": "True when Beakr wrote this file (a workflow output, an Ask notebook or an agent's document), as documents read marks it",
+            "title": "Agent Written",
+            "type": "boolean"
+          },
+          "agent_written_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With agent_written: why it is not a source, and what to cite instead (the sentence documents read gives)",
+            "title": "Agent Written Note"
+          },
           "end": {
             "description": "One past the last character of the window",
             "title": "End",
@@ -24476,7 +24494,7 @@
                     "type": "string"
                   },
                   "section_id": {
-                    "description": "cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take.",
+                    "description": "cat and provenance. cat: read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. provenance: that one section's citations, in the same shape.",
                     "type": "string"
                   },
                   "since": {

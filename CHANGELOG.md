@@ -8,6 +8,49 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/artifacts/read`: a file with no extracted text of its own whose
+  bytes are not text (an Ask notebook, or any other format Beakr indexes
+  without a stored extraction) now reads as the text `POST
+  /v1/knowledge/documents` `read` gives it, line for line; it answered
+  `no_readable_text`. The new `agent_written` and `agent_written_note` fields
+  say when Beakr wrote the file, with the sentence `documents` `read` gives.
+- `POST /v1/artifacts/read` and `POST /v1/artifacts/download-url`: a
+  same-name label (`<name> · id <8 hex>`, `<name> · <date>`) now finds its
+  file however many files share the name; it answered `ambiguous_reference`
+  when more than 50 did. An `ambiguous_reference` refusal now says how many
+  files the reference names (the new `total` field), that those beyond the
+  listed 20 are not shown, lists the most recently updated first, and says
+  how to name one; `next_calls` holds a `read_file` call for each of the
+  first ten, with the request's `project`.
+- `POST /v1/knowledge/documents` `read` and `grep`: an `ambiguous_reference`
+  refusal says the same, lists the most recently updated first, and its
+  `next_calls` hold one `documents` call per listed document.
+- `POST /v1/knowledge/wiki/command` `provenance`: the new `section_id` option
+  returns that one section's citations, in the same shape; it was refused as
+  an option `provenance` does not take.
+- `POST /v1/knowledge/wiki/command` `sources`: `next_calls` now names the read
+  of each of the first five sources the reply lists, in listing order, one per
+  document: `read_file` with `artifact_id` set to the source's reference and
+  the first place cited in it (`memo.pdf › p. 7`), or, for a connected item,
+  the `integrations` call its `retrieval` gives, exactly. The placeholder
+  calls remain only when no listed source has a call, and the `read_file` one
+  now names its argument `artifact_id` (it named `reference`, which
+  `read_file` does not take). Every `next_calls` entry has a non-empty `why`.
+- `POST /v1/knowledge/wiki/command` (`log`, `blame`, `sources`, `provenance`)
+  and `POST /v1/knowledge/wiki/write`: who wrote something reads the same way
+  everywhere. A person's own write through a client with no agent names the
+  person first and the client as the way it came: `Dana Reyes, via
+  beakr-cli 0.6.0, session 7f3c21d0` (it read `beakr-cli/0.6.0 for Dana
+  Reyes`). A write from a hosted MCP client recorded under its client
+  metadata URL reads as the client's name (`Claude (claude.ai) for Dana
+  Reyes, via the hosted MCP server`). A revision Beakr compiled reads `Beakr
+  compiler (gpt-6-luna) for Dana Reyes, from a source sent via beakr-cli
+  0.6.0` (it read `gpt-6-luna (for Dana Reyes via beakr-cli/0.6.0)`). The
+  stored values and the `by`, `via`, `kind` and `session` filters are
+  unchanged.
+- `GET /v1/knowledge/wiki/pages/{page_id}/revisions`: `writer` is now set for
+  a revision Beakr wrote (a compile or a maintenance run), in the words above;
+  it was `null`.
 - `POST /v1/knowledge/wiki/command` `sections` with no `scope`: a strong match
   in a small project you can read now reaches the ranking even when larger
   projects hold more similar wording. When the search still left projects
