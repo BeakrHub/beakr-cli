@@ -570,14 +570,14 @@ def _brief_note(call: DoorCall) -> str:
 
 
 def shell_reply(tool: str, body: Mapping[str, Any], call: DoorCall) -> str:
-    """A door reply as terminal text: :func:`beakr_cli.mcp_render.render`, with commands.
+    """A door reply as terminal text: :func:`beakr_cli.mcp_render.render_stored`, with commands.
 
     ``tool`` is ``knowledge_base`` for a read and ``knowledge_base_write`` for a
     write, whose content is the door's acknowledgement. The Sources list is
     rendered from records that carry a stand-in where a file id or a tool
     stands, and each is then replaced by the command built from the record.
     """
-    from beakr_cli.mcp_render import _BRIEF_NOTE, render
+    from beakr_cli.mcp_render import _BRIEF_NOTE, render_stored
 
     write = tool == "knowledge_base_write"
     # A stand-in holds a NUL: none anywhere in the reply, so none can be forged.
@@ -596,7 +596,7 @@ def shell_reply(tool: str, body: Mapping[str, Any], call: DoorCall) -> str:
         # where no next step spells it.
         hints.append(f"Continue with `{again}`.")
     records, placed = marked_sources(body.get("sources"))
-    rendered = render(tool, {**body, "content": shown, "next": hints, "sources": records})
+    rendered = render_stored(tool, {**body, "content": shown, "next": hints, "sources": records})
     rendered = place_commands(rendered, placed)
     if not shown or not rendered.startswith(shown):
         return rendered

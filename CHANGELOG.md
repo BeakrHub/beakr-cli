@@ -478,6 +478,22 @@ Each release lists the public API changes it supports, taken from the API change
   compiler-written excerpt is marked `(paraphrase)` in the full list, and
   `sources='none'` no longer leaves a `next` step that says to cite from the
   list it left out.
+- The stdio MCP server shows control characters in a reply as escapes, as the
+  hosted server does. A control character other than a newline, a tab or the
+  carriage return of a `\r\n` line ending, DEL, a line or paragraph separator,
+  a bidi control or a zero-width character in any tool's reply or error (a
+  page title, a file's text, a connected service's reply, an echoed argument)
+  is sent as `\uXXXX` (ESC as `\u001b`), so it cannot recolour or overwrite a
+  line in a client that prints the reply in a terminal, or make the text a
+  person reviews differ from the text an agent acts on. The escape is JSON's
+  own, so a value copied from a printed call sends the original character.
+  Ordinary text, accents and non-Latin scripts included, is unchanged, and so
+  is what `beakr kb` prints in a terminal.
+- The MCP `read_file` tool answers an offset or a place past the end of a
+  file's text with the route's own statement of it (the text's length and the
+  last offset), in place of an empty window or `That place was not found in
+  this version of the file; this is its start.` over the file's first
+  characters.
 
 ## beakr-cli 0.5.0 (2026-11-10)
 
