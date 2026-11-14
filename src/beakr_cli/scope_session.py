@@ -1416,7 +1416,7 @@ class McpSession:
         self.replaced_from: str | None = None
         #: The agent conversation whose session the person ended: it is not replaced.
         self.ended_conversation: str | None = None
-        #: That session's id, for ``session_status`` to show it.
+        #: That session's id.
         self.ended_session_id: str | None = None
         #: Start with the folder's remembered projects. Off once the person ended a
         #: session: its replacement reaches nothing until they choose again.
@@ -1681,30 +1681,6 @@ class McpSession:
             code=SESSION_ENDED,
             fix="Retry; if it keeps failing, restart the Beakr MCP server.",
         )
-
-    async def ended_record(self) -> dict[str, Any] | None:
-        """The conversation's ended session, read with the person's own credential.
-
-        By the id this server held, else (it started after the session ended: the API
-        refused to start another, ``409 session_ended``) among the person's sessions
-        by the conversation's id. None when neither finds it.
-        """
-        async with self._person() as person:
-            if self.ended_session_id:
-                return await person.request("GET", f"/v1/sessions/{self.ended_session_id}")
-            if not self.agent:
-                return None
-            found = None
-            async for row in person.paginate("/v1/sessions", include_ended=True):
-                if row.get("agent_session") == self.agent:
-                    found = row
-                    break
-            return found
-
-    async def ended_trail(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        """A trail of the ended session, read with the person's own credential."""
-        async with self._person() as person:
-            return await person.request("GET", path, params=params)
 
     async def name_client(self, agent: str | None) -> None:
         """Label the session with the MCP client once it is known (a label is no widening)."""

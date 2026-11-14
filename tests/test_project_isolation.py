@@ -688,49 +688,58 @@ _TRAIL = {
 }
 
 
+_ENDED_MESSAGE = (
+    "The session for agent conversation conv-123 has ended, and a conversation id starts "
+    "only one session."
+)
+_ENDED_FIX = "Start a new agent conversation (a new X-Beakr-Session id) to start a new session."
+
+
 @respx.mock
-def test_session_status_still_answers_after_the_person_ended_the_session():
-    """Reads and writes are refused; session_status says what it was and how to go on."""
+def test_session_status_after_the_person_ended_the_session_is_the_apis_answer():
+    """As the hosted server answers it (contract section 7): the API's 409 session_ended
+    for the conversation, asked as the person with the conversation's id."""
     held = _active(_session("locked", touched=(A,)))
     respx.get(f"{API}/v1/sessions/current").respond(
         401, json={"error": {"code": "invalid_token", "message": "ended", "fix": None}}
     )
-    record = respx.get(f"{API}/v1/sessions/{SID}").respond(json=_ended())
-    trail = respx.get(f"{API}/v1/sessions/{SID}/trail").respond(json=_TRAIL)
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_ended())
+    status = respx.get(f"{API}/v1/sessions/current/status").respond(
+        409, json=_refusal(409, "session_ended", _ENDED_MESSAGE, _ENDED_FIX)
+    )
 
-    text = asyncio.run(mcp_session.session_status(trail=True))
+    refused = asyncio.run(mcp_session.session_status(trail=True))
 
-    assert isinstance(text, str), text
-    assert f"Session {SID} (ended)" in text
-    assert "Ended at 2026-11-11 21:30:00." in text
-    assert "start a new Claude Code conversation" in text
-    assert "Touched: Pharma A" in text
-    assert '"assay results"' in text
-    # Read as the person: the session's own token no longer works.
-    assert record.calls.last.request.headers["authorization"] == f"Bearer {PERSON_KEY}"
-    assert trail.calls.last.request.headers["authorization"] == f"Bearer {PERSON_KEY}"
+    assert refused == {
+        "status": "error",
+        "error_code": "session_ended",
+        "message": _ENDED_MESSAGE,
+        "fix": _ENDED_FIX,
+    }
+    request = status.calls.last.request
+    assert request.headers["authorization"] == f"Bearer {PERSON_KEY}"
+    assert request.headers["x-beakr-session"] == CONVERSATION
     assert held.state is None
     # Asked again, it answers the same way without the token.
-    again = asyncio.run(mcp_session.session_status())
-    assert isinstance(again, str) and "(ended)" in again
+    assert asyncio.run(mcp_session.session_status())["error_code"] == "session_ended"
 
 
 @respx.mock
-def test_session_status_finds_an_ended_session_the_server_never_held(conversation):
+def test_session_status_for_an_ended_session_the_server_never_held(conversation):
     """beakr mcp started after the conversation's session ended (409 on start)."""
     held = McpSession(folder=None, agent=CONVERSATION)
     scope_session.ACTIVE = held
     respx.post(f"{API}/v1/sessions").respond(
         409, json=_refusal(409, "session_ended", "This agent session has ended.")
     )
-    respx.get(f"{API}/v1/sessions").respond(
-        json={"data": [_session(agent="other"), _ended()], "has_more": False}
+    respx.get(f"{API}/v1/sessions/current/status").respond(
+        409, json=_refusal(409, "session_ended", _ENDED_MESSAGE, _ENDED_FIX)
     )
 
-    text = asyncio.run(mcp_session.session_status())
+    refused = asyncio.run(mcp_session.session_status())
 
-    assert isinstance(text, str), text
-    assert f"Session {SID} (ended)" in text and "new Claude Code conversation" in text
+    assert refused["error_code"] == "session_ended"
+    assert refused["message"] == _ENDED_MESSAGE and refused["fix"] == _ENDED_FIX
 
 
 @respx.mock

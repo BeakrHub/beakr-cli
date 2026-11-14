@@ -321,9 +321,9 @@ async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str
     except BeakrError as exc:
         if exc.code != scope_session.SESSION_ENDED:
             return _refused(exc)
-        # Ended (the person ended it on the web): reads and writes are refused, but
-        # the session is still described, with its trail, read as the person.
-        return await _ended_status(session, exc, trail=trail, proposal_id=proposal_id)
+        # Ended (the person ended it on the web): the API's own answer for the
+        # conversation, as the hosted server gives it (contract section 7).
+        return await _ended_status(session, exc)
     try:
         lines = [await _status_text(current)]
     except ApiCallError as exc:
@@ -346,36 +346,24 @@ async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str
 
 
 async def _ended_status(
-    session: scope_session.McpSession, ended: BeakrError, *, trail: bool, proposal_id: str
+    session: scope_session.McpSession, ended: BeakrError
 ) -> dict[str, Any] | str:
-    """``session_status`` for a session that ended: what it was, its trail, how to go on."""
-    from beakr_cli import session_trail
+    """``session_status`` for a conversation whose session ended: the API's refusal
+    (``409 session_ended``), asked as the person for the conversation's id, so the agent
+    reads what the hosted server's ``session_status`` answers."""
+    from beakr_cli.sdk import MCP_CLIENT_NAME, get_async_sdk
 
-    try:
-        record = await session.ended_record()
-    except BeakrError:
-        record = None
-    if not record:
+    agent = session.agent or session.ended_conversation
+    if not agent:
         return _refused(ended)
-    lines = [scope_session.describe(record)]
-    reads: list[tuple[str, dict[str, Any] | None, Any]] = []
-    if trail:
-        reads.append(
-            (
-                session_trail.trail_path(str(record.get("id"))),
-                {"limit": session_trail.DEFAULT_LIMIT},
-                session_trail.render_trail,
-            )
-        )
-    for path, params, render in reads:
-        try:
-            lines.append(render(await session.ended_trail(path, params)))
-        except BeakrError as exc:
-            lines.append(f"Read trail not available: {exc.message}")
-    if proposal_id.strip():
-        # As for an open session: never with the person's key on the agent's behalf.
-        lines.append(session_trail.write_trail_as_person(proposal_id.strip()))
-    return "\n\n".join(lines)
+    try:
+        async with get_async_sdk(
+            client_name=MCP_CLIENT_NAME, scoped=False, agent_session=agent
+        ) as person:
+            status = await person.request("GET", "/v1/sessions/current/status")
+    except BeakrError as exc:
+        return _refused(exc)
+    return "\n".join(scope_session.status_lines(status))
 
 
 async def start_session(

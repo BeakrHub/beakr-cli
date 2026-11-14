@@ -146,7 +146,11 @@ def get_sdk(
 
 
 def get_async_sdk(
-    *, client_name: str = MCP_CLIENT_NAME, timeout: float = 170.0, scoped: bool = True
+    *,
+    client_name: str = MCP_CLIENT_NAME,
+    timeout: float = 170.0,
+    scoped: bool = True,
+    agent_session: str | None = None,
 ) -> AsyncPrivateBeakr:
     """The async client for the stdio MCP server.
 
@@ -159,7 +163,9 @@ def get_async_sdk(
     While the server holds a session (:mod:`beakr_cli.scope_session`), requests
     carry its token, confined to the projects the person chose; the API then
     labels the writes with the session itself. ``scoped=False`` uses the person's
-    own credential, for starting, renewing and choosing the session.
+    own credential, for starting, renewing and choosing the session;
+    ``agent_session`` then names the agent conversation (``X-Beakr-Session``), so
+    the API answers for that conversation's session as the hosted server's calls do.
     """
     from beakr_cli import scope_session
 
@@ -171,6 +177,6 @@ def get_async_sdk(
         agent=_agent(),
         run=run,
         timeout=timeout,
-        session=session_header(scoped=scoped),
+        session=agent_session or session_header(scoped=scoped),
         default_headers=dict(_CLI_HEADERS),
     )
