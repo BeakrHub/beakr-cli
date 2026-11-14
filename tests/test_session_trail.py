@@ -245,18 +245,25 @@ def test_an_ended_sessions_status_never_reads_a_writes_trail_with_the_persons_ke
     held.ended_conversation = "conv-1"
     held.ended_session_id = SID
     monkeypatch.setattr(scope_session, "ACTIVE", held)
-    respx.get(f"{API}/v1/sessions/{SID}").respond(
-        json={"id": SID, "status": "ended", "mode": "auto_lock", "agent_session": "conv-1"}
+    respx.get(f"{API}/v1/sessions/current/status").respond(
+        409,
+        json={
+            "error": {
+                "code": "session_ended",
+                "message": "The session for agent conversation conv-1 has ended.",
+                "fix": "Start a new agent conversation.",
+            }
+        },
     )
     write = respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
         json=_WRITE_TRAIL
     )
 
-    text = asyncio.run(mcp_session.session_status(proposal_id=PROPOSAL))
+    refused = asyncio.run(mcp_session.session_status(proposal_id=PROPOSAL))
 
-    assert isinstance(text, str) and "(ended)" in text
+    # The API's own answer, as the hosted server gives it; no trail is read for it.
+    assert refused["error_code"] == "session_ended"
     assert not write.called
-    assert f"beakr kb proposals show {PROPOSAL} --trail" in text
 
 
 @respx.mock
