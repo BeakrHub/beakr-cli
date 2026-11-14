@@ -11,11 +11,61 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=7ed0b99fd951c05d59de750b2be4d555fe4bddc62ae02eedcd6d7f224b1f40a3 changelog sha256=4708df03b574a9d93f0b5b99ce75bcf7599532ad681294a456fc9254a7d3becf -->
+<!-- contract-stamp: public-openapi sha256=3cd7fc89f946407a6aed56849675368f1d46c3a5ec11deb4bf0f259a97868356 changelog sha256=7f2b0d55ec9de575b07994b7d437d92cb21b83b4f73e817e71c44cf4683b31c1 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/command` `sources` and `provenance`: every line
+  that prints a `source_ref` for a file you can open now prints the file's one
+  reference, `beakr-source:v1:file:<file id>`, the same one the reply's source
+  records and every other read give it. The entry line of `sources` printed
+  the reference of one stored citation, and `provenance` one per cited
+  passage, so one reply named one file by two or more references. The place
+  of each passage is on its own line, as before (`memo.pdf › block 2`). A file
+  you cannot open and a connected item keep the stored citation's reference.
+  References handed out before still resolve.
+- `POST /v1/artifacts/read`: an `offset` at or past the end of the text, and
+  a place that lies past the end of the file (`chars 20000-21000` of a
+  15,896-character file, a line range or a page beyond the last), now answer
+  an empty `text` with `start` and `end` equal to `total_chars`, the new
+  `past_end` true and the new `note` saying how long the text is (its
+  characters, lines or pages, and for an offset the last valid one). An offset
+  past the end answered a range the file does not have (`start` and `end`
+  both 20000 of 15,896), and a place past the end answered the start of the
+  file with `unit.found` false. `unit.found` is still false for such a place.
+  A place that is merely absent (a block the file does not hold) still answers
+  the start of the file, and a cited passage whose recorded position went
+  stale is still found by its quote.
+- `POST /v1/knowledge/documents` `search` and `grep`: `coverage.truncated` is now always
+  present, false when the reply's size budget cut nothing. It appeared only
+  when a page was cut.
+- `POST /v1/knowledge/wiki/command`: control characters in a reply's text and
+  `next` steps are now shown as `\uXXXX` escapes: the C0 and C1 controls
+  other than newline, tab and the carriage return of a `\r\n` line ending,
+  DEL, the line and paragraph separators, the bidirectional controls and the
+  zero-width characters. A page title holding an escape sequence or a
+  right-to-left override was sent as stored. The escape is the JSON escape of
+  the character, so a continuation the text prints
+  (`after_title="..."`) still parses back to the exact value.
+  `coverage.continue_with` and the `sources` records are unchanged and exact.
+  The hosted MCP server shows the same characters escaped in every tool
+  reply and error, the `Coverage:` line included, which still parses back to
+  the exact values.
+- `GET /v1/knowledge/wiki/pages/{page_id}/revisions` and
+  `GET /v1/knowledge/wiki/pages/{page_id}` (and blame lines): `compiled_by` (and
+  `last_compiled_by`) for a revision written from a proposal you cannot open
+  is now `proposal:<first eight characters of its id>`, the short id `writer`
+  prints, in place of the full id. A proposal you can open keeps
+  `proposal:<id>`, and every other value is unchanged. The `show` command and
+  `grep` with `mode: history` print the same short form.
+- `POST /v1/knowledge/wiki/command` `query`: a query grouped by a Facts
+  `value` now says when a row that lists several values counted in more than
+  one group, as `rows` with `group_by: value` does. Its `Applied:` line gains
+  `1 of the 4 row(s) list several values ("A; B"), each of which another row
+  states on its own, and count once in each of those groups, so the groups'
+  rows add up to 5, not 4`. Nothing is added when no row lists several
+  values.
 - `POST /v1/knowledge/wiki/command` `provenance`: a cited connected item (a
   meeting note, an email or Slack thread, an issue) now carries the call that
   reads it, as `sources`, `sections` and `cat` do: a `fetch: integrations

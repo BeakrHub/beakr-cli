@@ -34,6 +34,11 @@ in step by the engine's parity test, which renders every stdio result both ways.
 No ``outputSchema`` is declared, so no client expects ``structuredContent``
 (the MCP spec requires it whenever a schema is declared). Errors are the same
 one block: ``{status, error_code, message, fix}`` as compact JSON.
+
+A control, bidi or zero-width character in the text is shown as ``\\uXXXX``
+(:func:`visible_controls`), as the hosted server shows it. That is the MCP
+form, not the terminal's: ``beakr kb`` renders with :func:`render_stored` and
+shows such characters its own way (:mod:`beakr_cli.terminal_text`).
 """
 
 from __future__ import annotations
@@ -96,9 +101,36 @@ SOURCE_MODE_KEY = "source_listing"
 #: ``kb_result_coverage._OUTSIDE_DEFAULT_NEXT``, as the hosted renderer repeats it).
 CITE_HINT = "Cite what you use with its readable reference (memo.pdf \u203a p. 7)."
 
+#: Control, bidi and zero-width characters, shown as ``\\uXXXX`` in every text
+#: an MCP client receives. The hosted renderer's ``_HIDDEN_CHARACTERS`` (the
+#: engine's ``beakr.core.visible_controls`` has the root cause and why the
+#: escape is JSON's); ``tests/test_mcp_visible_controls.py`` holds the two
+#: together. A carriage return in a ``\\r\\n`` line ending stays. The
+#: ``Coverage:`` line is JSON, so its escaped values parse back exact.
+_HIDDEN_CHARACTERS = re.compile(
+    "[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u061c\u200b-\u200f\u2028-\u202e\u2060\u2066-\u2069\ufeff]"
+    "|\r(?!\n)"
+)
+
+
+def visible_controls(text: str) -> str:
+    """``text`` with each control, bidi and zero-width character as ``\\uXXXX``."""
+    return _HIDDEN_CHARACTERS.sub(lambda match: f"\\u{ord(match.group(0)):04x}", text)
+
 
 def render(tool: str, body: dict[str, Any]) -> str:
-    """The one text block a tool's result is sent as."""
+    """The one text block a tool's result is sent as, as the hosted ``render`` returns it."""
+    return visible_controls(render_stored(tool, body))
+
+
+def render_stored(tool: str, body: dict[str, Any]) -> str:
+    """:func:`render` before its characters are shown: the text as it was stored.
+
+    For ``beakr kb``, which places commands in the text by stand-ins that hold
+    a NUL and then shows hidden characters as a terminal does
+    (:func:`beakr_cli.terminal_text.visible`). Nothing an MCP client receives
+    is built from this.
+    """
     text = str(body.get("content") or "").rstrip()
     parts = [text] if text else []
     proposal = body.get("proposal")
