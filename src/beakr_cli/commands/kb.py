@@ -9,7 +9,7 @@ from pathlib import Path
 
 import click
 import typer
-from beakr_sdk.errors import BeakrError, NotFoundError
+from beakr_sdk.errors import BeakrError, KnowledgeCommandError, NotFoundError
 from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
@@ -22,7 +22,7 @@ from beakr_cli.citations import (
 from beakr_cli.cited_answer import print_research_result, research_lines
 from beakr_cli.commands import kb_author_filters as author
 from beakr_cli.compact import cell, next_page_hint, print_compact
-from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
+from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE, exit_code_for
 from beakr_cli.kb_shell_hints import DoorCall, next_lines, shell_acknowledgement, shell_reply
 from beakr_cli.output import (
     console,
@@ -606,7 +606,15 @@ def _door_print(
         # terminal as a raw control, bidirectional or zero-width character.
         sys.stdout.write(visible(shell_reply("knowledge_base", body, call).rstrip()) + "\n")
     if outcome.get("status") == "error":
-        raise typer.Exit(1)
+        # The refusal's own exit code, as a checked call gets it: a bad argument is a
+        # usage error (2), a missing page 4. Every refusal exited 1.
+        refusal = KnowledgeCommandError(
+            result_text(result) or "Knowledge command failed.",
+            code=outcome.get("error_code") or "command_error",
+            status=200,
+            result=result,
+        )
+        raise typer.Exit(exit_code_for(refusal))
 
 
 @app.command()
