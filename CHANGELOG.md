@@ -14,34 +14,79 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
 - Project isolation, for organizations whose projects must not write into one
   another (each part is available where the organization has it turned on;
   `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
+  - Project boundaries: each project has a `boundary` of `content_out`
+    (`allowed` or `locked`) and `content_in` (`allowed`, `owner_approves` or
+    `blocked`), returned on project responses (`GET /v1/projects`,
+    `GET /v1/projects/{project_id}`, `POST /v1/projects`,
+    `PATCH /v1/projects/{project_id}`) with its `preset` (`internal`, `siloed`,
+    `leadership` or `custom`), the project's own `stored` values,
+    `raised_by_minimum`, a plain-words `summary` and `can_change`.
+    `PATCH /v1/projects/{project_id}` and `POST /v1/projects` take `boundary` or
+    `boundary_preset`; changing it needs an owner or admin of the project, or an
+    organization admin, signed in or with their key with `proposals:accept`
+    (`403 person_required` otherwise, `403 forbidden` for anyone else), and a
+    boundary below the organization's minimum answers
+    `422 boundary_below_minimum`. Project responses also carry the deprecated
+    `cross_project_guard` and `cross_project_guard_override` (`content_in` as
+    `allow`, `hold` or `refuse`), and `GET` and `PUT
+    /v1/projects/{project_id}/cross-project-guard` read and set `content_in` in
+    those words.
   - Settings: `GET /v1/organizations/{org_id}/project-isolation` returns the organization's
-    `session_mode` (`picker` or `auto_lock`), `auto_lock_counts_search_results`,
-    `agent_writes_require_session` and `cross_project_guard` (`allow`, `hold` or
-    `refuse`). `PUT /v1/organizations/{org_id}/project-isolation` changes them; it needs an
+    `session_mode` (`automatic` or `must_pick`), `default_boundary` (what new
+    projects start with), `minimum_boundary` (a floor every project is raised
+    to, or `null`), `agent_writes_require_session` and the `presets`.
+    `PUT /v1/organizations/{org_id}/project-isolation` changes them; it needs an
     organization admin signed in, or their key with `proposals:accept`, and
-    answers `404 feature_not_enabled` for a part that is not turned on.
-    `GET` and `PUT /v1/projects/{project_id}/cross-project-guard` read and set
-    one project's own guard (`override`; `null` follows the organization), with
-    the organization's (`org_default`) and the one that applies (`effective`);
-    setting it needs an owner or admin of the project. Project responses
-    (`GET /v1/projects`, `GET /v1/projects/{project_id}`) carry
-    `cross_project_guard` and `cross_project_guard_override`.
+    answers `404 feature_not_enabled` for a part that is not turned on. The
+    retired `cross_project_guard` and `auto_lock_counts_search_results`, and the
+    session modes `picker` and `auto_lock`, answer `422 setting_retired` naming
+    what replaced them. The response still carries the deprecated
+    `cross_project_guard`, `auto_lock_counts_search_results` (always true) and
+    `available.session_auto_lock` (always false).
   - One session per agent conversation: a request with a person's API key and
     `X-Beakr-Session: <conversation id>`, and no session token, runs inside that
     person's session for the conversation, started on its first request, so an
     MCP server, its subagents and CLI calls in one conversation share it.
     `POST /v1/sessions` with `agent_session` returns that session, or starts it.
     A conversation id whose session has ended answers `409 session_ended`.
-  - Auto-lock: in `auto_lock` the first project a session reads or writes
-    becomes its project. Writing another project answers
-    `403 session_locked_to_project`; once it reads a second project the session
-    is read-only, and every write answers `403 session_read_only`, naming the
-    projects it read. Reads keep working. An unscoped search counts the
-    projects its results come from while `auto_lock_counts_search_results` is
-    true. Choosing an auto-lock session's projects answers
-    `session_mode_auto_lock`. Session responses carry `mode`, `agent_session`,
-    `lock_state` (`open`, `locked` or `read_only`), `write_project`,
-    `touched_projects`, `read_only_at` and `read_only_reason`.
+  - Session modes: a session is `automatic` (it reads every project the person
+    can, and the server tracks what it touches), `picked` (its
+    `read_project_ids` and `write_project_ids` chosen) or `read_everything`
+    (`POST /v1/sessions` with `read_everything: true`: every project, and no
+    writes). In a `must_pick` organization a session with nothing chosen is
+    pending. `PATCH /v1/sessions/{session_id}` with `mode: "automatic"` makes an
+    untouched session automatic, except in a `must_pick` organization
+    (`422 session_mode_must_pick`). Lists that break a boundary answer `422 session_selection_invalid`
+    with every `reasons` entry; an `owner_approves` project in the lists comes
+    back in `notes`. Choosing the lists or mode of a session that has already
+    read or written a project answers `409 session_already_started`. Session
+    responses carry `mode`, `agent_session`, `lock_state` (`open`, `locked` or
+    `read_only`), `write_project`, `touched_projects`,
+    `read_touched_projects`, `read_only_at`, `read_only_reason`, `summary` and
+    `notes`.
+  - The rules: once a session touches a `locked` project it may write only
+    there (`403 session_locked_to_project`), and after two it is read-only
+    (`403 session_read_only`, also every write of a `read_everything` session).
+    A write into a `blocked` project from a session that read another project
+    answers `403 cross_project_write_refused`; into an `owner_approves` one it is
+    held. A write anywhere, a person's included, that cites, moves or copies a
+    `locked` project's content into another project answers
+    `403 project_content_locked`. A search that names no project leaves out the
+    `locked` projects the session has not touched, except in `read_everything`;
+    every project its results come from counts as read. The response of the
+    request that locked the session carries `X-Beakr-Session-Notice` and
+    `X-Beakr-Session-Lock`, and the Knowledge operations
+    (`POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`) also
+    `session_notice`.
+  - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
+    they are valid and, for each project the person can read, whether it can be
+    added to read or to write, with the reason when not.
+    `GET /v1/sessions/current/status` and `GET /v1/sessions/{session_id}/status`
+    return where a session stands: its mode and lock, what it has read, where it
+    may still write (`write`) and why not elsewhere, and its latest `events`
+    (rows of its trail, newest first).
+    The session's lock events, refusals and start are also in its trail
+    (`GET /v1/sessions/{session_id}/trail`, `op` `boundary:<kind>`).
   - A request in a session (a session token, or a key with `X-Beakr-Session`)
     that must name a project and names none answers
     `403 session_project_required`, with the session's `session_id` and a `fix`:
@@ -55,18 +100,16 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   - With `agent_writes_require_session`, a Knowledge or file write made with a
     person's API key or token outside a session answers `403 session_required`,
     with a `fix` saying how to start one. Service-account keys are exempt.
-  - Cross-project guard: a write into a project that cites a source from another
-    project, moves or copies content from one, or comes from a session that read
-    one, answers `403 cross_project_write_refused` under `refuse`. Under `hold`
-    the proposal is staged with `cross_project_hold` (its `reason` names the
-    projects) and `needs_project_admin_to_accept: true`: only an owner or admin
-    of the project, signed in or with a `proposals:accept` key, may accept it,
-    anyone else gets `403 cross_project_owner_required`, and it is never
-    auto-approved. Each project in the hold lists the sources `cited` from it,
-    and on proposal reads `can_accept` says whether the caller may accept it.
-    The write response's `proposal` carries the same `cross_project_hold` and
+  - A held write: the proposal is staged with `cross_project_hold` (its
+    `reason` names the projects) and `needs_project_admin_to_accept: true`:
+    only an owner or admin of the project, signed in or with a
+    `proposals:accept` key, may accept it, anyone else gets
+    `403 cross_project_owner_required`, and it is never auto-approved. Each
+    project in the hold lists the sources `cited` from it, and on proposal reads
+    `can_accept` says whether the caller may accept it. The write response's
+    `proposal` carries the same `cross_project_hold` and
     `needs_project_admin_to_accept`. A write that commits without a proposal is
-    allowed under `hold` only for an owner or admin of the project.
+    allowed into an `owner_approves` project only for an owner or admin of it.
   - Reading a project's name or metadata (`GET /v1/projects`,
     `GET /v1/projects/{project_id}`) never counts as reading it.
     `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
@@ -2011,6 +2054,23 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
 
 ### CLI and SDK
 
+- **Project boundaries.** `beakr session start` takes `--read A,B --write A`
+  (checked first with `POST /v1/sessions/options`; a choice that breaks a
+  boundary is refused with each reason, exit 2), `--read-everything` and
+  `--automatic`, and prints the session's one line; inside an agent conversation
+  it declares that conversation's own session. `beakr session edit` takes
+  `--read-everything` and `--automatic`. `beakr session status` says where a
+  session can still write and why. `beakr projects ls` and `show` print each
+  project's boundary in plain words, and `beakr projects boundary show|set`
+  reads and changes it. `beakr org isolation set` takes `--default-boundary`,
+  `--default-out`/`--default-in`, `--minimum-out`/`--minimum-in` and
+  `--no-minimum`; `--session-mode auto_lock|picker`, `--guard` and
+  `--count-search-results` are deprecated for one release (sent as their
+  replacements, or ignored), and so is `beakr projects guard`. `beakr mcp`
+  explains the two rules and the three session modes, adds `start_session` and
+  answers `session_status` from the status route as the hosted server does,
+  lists each project's boundary, and puts the API's lock notice
+  (`Session: ...`) above a tool result; commands print it on stderr.
 - **Accept the proposal you reviewed.** `beakr kb proposals show` prints the
   proposal's content hash, and `beakr kb proposals accept --reviewed-hash HASH`
   applies it only if it is unchanged since (a changed proposal exits 5 and
