@@ -140,7 +140,11 @@ COMMANDS: dict[str, _Spec] = {
             "lines": "--lines",
             "source_offset": "--source-offset",
         },
-        switches={("outline", True): "--outline", ("detail", "full"): "--full"},
+        switches={
+            ("outline", True): "--outline",
+            ("detail", "full"): "--full",
+            ("ledger", True): "--ledger",
+        },
         # --source-offset pages the records of a --full read.
         fits=lambda a: "source_offset" not in a or a.get("detail") == "full",
     ),

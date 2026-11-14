@@ -539,6 +539,28 @@ def shell_hint(text: str, call: DoorCall | None = None) -> str:
 # ---------------------------------------------------------------------------
 
 
+#: The door's own first line of a ``cat`` whose section has citation records it no
+#: longer cites (``Citation records: ... cat {page, section_id, ledger: true} ...``).
+_LEDGER_HEADER = re.compile(
+    r"^Citation records: [^\n]*\bcat \{page, section_id, ledger: true\} returns them "
+    r"with their trust fields\.$"
+)
+
+
+def _ledger_header(text: str, call: DoorCall) -> str:
+    """A ``cat`` reply's ledger line with the ``beakr kb cat ... --ledger`` command it names.
+
+    Only that first line, which the door writes; the page's own text below it is
+    printed as written.
+    """
+    if call.command != "cat":
+        return text
+    first, newline, rest = text.partition("\n")
+    if not _LEDGER_HEADER.match(first):
+        return text
+    return shell_hint(first, call) + newline + rest
+
+
 def shell_content(
     text: str, call: DoorCall, *, acknowledgement: bool = False, sources: Any = None
 ) -> str:
@@ -552,6 +574,7 @@ def shell_content(
     """
     if acknowledgement:
         return shell_acknowledgement(text, call)
+    text = _ledger_header(text, call)
     known = source_lines(sources)
     if not known:
         return text

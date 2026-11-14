@@ -474,6 +474,24 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **`beakr kb` reads do not repeat the pages they name.** Sources leaves out the
+  Knowledge pages the reply's text already names, as the MCP tools' default list
+  does; a `kb sections` reply listed every hit page again (a third of the reply).
+  Each document keeps its excerpt and its `beakr documents read` command.
+- **A project name two projects share is refused.** `--project <name>` (every
+  command that takes one) exits 2 naming both projects' ids, as the MCP tools refuse
+  it (`scope_ambiguous`); it used to read the first one silently. So do
+  `beakr projects show`, `archive`, `rm` and `projects members`, where `rm` and
+  `archive` acted on the first of the two. An id or slug still picks one. An empty `beakr kb ls` says "No Knowledge pages here yet."
+- **`beakr kb cat --ledger` and a readable `--outline`.** `--ledger` adds the
+  citation records the text no longer cites, with their trust fields, and the
+  door's "cat {page, section_id, ledger: true}" line names that command. `--outline`
+  prints the page's sections (id, size, citations, lines) and its edges as lines,
+  not the door's JSON (`--json` still prints it).
+- **The MCP server's reduced-limit note is the hosted server's.** A paged tool given
+  a `limit` over its maximum opens with "Repaired this call: reduced `limit` from N
+  to M, the most rows one page holds; ...", word for word as the hosted server says
+  it (`read_file`'s character limit keeps its own note).
 - `beakr kb log`, `beakr kb proposals ls` and `beakr kb ls` filter by who wrote a
   change and through which agent. `kb log [page]` and `kb proposals ls` take
   `--by`, `--via`, `--kind`, `--accepted-by`, `--since`, `--until` and `--offset`

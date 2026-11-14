@@ -272,6 +272,9 @@ def ls(
         print_compact(pages)
         if notice:
             sys.stdout.write(visible(notice) + "\n")
+        elif not pages:
+            # An empty project printed nothing at all, which reads as a failed call.
+            sys.stdout.write("note: No Knowledge pages here yet.\n")
         return
     print_pages_table(pages)
     if notice:
@@ -361,6 +364,11 @@ def cat(
     full: bool = typer.Option(
         False, "--full", help="Every source record with its excerpt, not one per document."
     ),
+    ledger: bool = typer.Option(
+        False,
+        "--ledger",
+        help="Also the citation records the text no longer cites, with their trust fields.",
+    ),
     source_offset: int | None = typer.Option(
         None,
         "--source-offset",
@@ -395,10 +403,12 @@ def cat(
     if source_offset is not None and not full:
         err_console.print("--source-offset pages the records of a --full read; add --full.")
         raise typer.Exit(EXIT_USAGE)
-    if raw and (rev is not None or section_id is not None or lines is not None or outline or full):
+    if raw and (
+        rev is not None or section_id is not None or lines is not None or outline or full or ledger
+    ):
         err_console.print(
             "--raw exports the whole stored page; drop --rev, --section-id, --lines, "
-            "--outline and --full, or drop --raw for the bounded read."
+            "--outline, --full and --ledger, or drop --raw for the bounded read."
         )
         raise typer.Exit(EXIT_USAGE)
     page_data = _resolve_page(page, project=project, mine=mine)
@@ -424,6 +434,7 @@ def cat(
         lines=lines,
         outline=True if outline else None,
         detail="full" if full else None,
+        ledger=True if ledger else None,
         source_offset=source_offset,
     )
 
@@ -454,6 +465,51 @@ def _door_read(
     )
 
 
+def _outline_text(content: str) -> str:
+    """A ``cat --outline`` reply (the door's JSON outline) as lines a person reads; the
+    text as it came when it is not that JSON."""
+    try:
+        data = json.loads(content)
+    except ValueError:
+        return content
+    if not isinstance(data, dict) or not isinstance(data.get("sections"), list):
+        return content
+    head = str(data.get("title") or "")
+    facts = [str(data[k]) for k in ("page_type",) if data.get(k)]
+    if data.get("revision") is not None:
+        facts.append(f"revision {data['revision']}")
+    lines = [head + (f" ({', '.join(facts)})" if facts else "")]
+    if data.get("summary"):
+        lines.append(str(data["summary"]))
+    lines.append(f"Sections ({len(data['sections'])}):")
+    for section in data["sections"]:
+        if not isinstance(section, dict):
+            continue
+        sizes = [
+            f"{section['chars']} chars" if section.get("chars") is not None else "",
+            f"{section['citations']} citations" if section.get("citations") is not None else "",
+            f"lines {section['lines']}" if section.get("lines") else "",
+        ]
+        lines.append(
+            f"- {section.get('title') or section.get('section_id')} "
+            f"(section_id {section.get('section_id')}): {', '.join(s for s in sizes if s)}"
+        )
+    edges = data.get("edges") if isinstance(data.get("edges"), dict) else {}
+    if edges:
+        linked = edges.get("linked_from")
+        linked_text = (
+            ", ".join(f"{k} {v}" for k, v in linked.items()) if isinstance(linked, dict) else ""
+        )
+        parts = [
+            f"parent {edges['parent']}" if edges.get("parent") else "no parent",
+            f"{edges.get('children') or 0} children",
+            f"linked from {linked_text}" if linked_text else "",
+            f"links to {edges.get('links_to') or 0}",
+        ]
+        lines.append("Edges: " + "; ".join(p for p in parts if p))
+    return "\n".join(lines)
+
+
 def _door_print(
     command: str,
     *,
@@ -475,13 +531,21 @@ def _door_print(
     if json_out:
         print_json(result)
     else:
+        from beakr_cli.mcp_render import _page_named_in
+
+        content = result_text(result)
+        if command == "cat" and arguments.get("outline"):
+            content = _outline_text(content)
+        # The Knowledge pages the text already names are left out of Sources, as the
+        # MCP tools' default list leaves them out: a sections reply listed every hit
+        # page again, a third of the reply. Documents keep their excerpt and command.
         sources = [
             with_read_call(public_source(r), r)
             for r in result.get("sources") or []
-            if isinstance(r, dict)
+            if isinstance(r, dict) and not _page_named_in(r, content)
         ]
         body = {
-            "content": result_text(result),
+            "content": content,
             "coverage": result.get("coverage"),
             "sources": sources,
             "next": result.get("next"),

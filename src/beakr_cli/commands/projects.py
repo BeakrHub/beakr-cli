@@ -11,7 +11,7 @@ from rich.markup import escape
 from beakr_cli.commands import model_refusals, project_knowledge, project_profile
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import CAPTURE_FIELD, LEARNING_FIELD, read_binding, write_binding
-from beakr_cli.project_ref import find_project, project_ref_callback
+from beakr_cli.project_ref import find_project, project_ref_callback, refuse_same_named
 from beakr_cli.prompts import confirm_or_require_yes, prompt_choice, require_interactive
 from beakr_cli.sdk import get_sdk
 
@@ -74,7 +74,9 @@ def create_project(
 
 
 def _resolve_project_ref(sdk: Any, ref: str) -> dict[str, Any]:
-    project = find_project(sdk.projects.list(), ref)
+    projects = sdk.projects.list()
+    refuse_same_named(projects, ref, param_hint="PROJECT")
+    project = find_project(projects, ref)
     if project is None:
         err_console.print(f"Project not found: {ref}", markup=False)
         raise typer.Exit(4)

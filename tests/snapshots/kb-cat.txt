@@ -282,19 +282,11 @@ Sources cited above:
 
 Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which documents read (read_file in MCP) opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
 
-Sources (2 documents, 8 Knowledge pages):
+Sources (2 documents):
 - helios-program-charter.pdf › block 1, block 2, block 3, block 4 · beakr documents read 681a744d-e4f9-4ef3-948a-30ab33d6ce01 · source_ref beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01
   "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
 - helios-go-decision-memo.docx › block 1 · beakr documents read 8aa6da84-dc54-4aa5-9706-c1cc28e609b1 · source_ref beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1
   "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
-- Project Helios · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7
-- Project Helios › Budget · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_budget
-- Project Helios › Charter · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_charter
-- Project Helios › Lead decision · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_lead_decision
-- Project Helios › Success criterion · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_success_criterion
-- Dana Whitfield · source_ref beakr-source:v1:wiki:43a3cac9-1c1f-44f9-b438-cdd7ba7a5731
-- Maja Lindqvist · source_ref beakr-source:v1:wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301
-- Northwind Biosciences · source_ref beakr-source:v1:wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f
 
 next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
 next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
@@ -347,19 +339,11 @@ Sources cited above:
 
 Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which documents read (read_file in MCP) opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
 
-Sources (2 documents, 8 Knowledge pages):
+Sources (2 documents):
 - helios-program-charter.pdf › block 1, block 2, block 3, block 4 · beakr documents read 681a744d-e4f9-4ef3-948a-30ab33d6ce01 · source_ref beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01
   "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
 - helios-go-decision-memo.docx › block 1 · beakr documents read 8aa6da84-dc54-4aa5-9706-c1cc28e609b1 · source_ref beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1
   "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
-- Project Helios · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7
-- Project Helios › Budget · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_budget
-- Project Helios › Charter · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_charter
-- Project Helios › Lead decision · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_lead_decision
-- Project Helios › Success criterion · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_success_criterion
-- Dana Whitfield · source_ref beakr-source:v1:wiki:43a3cac9-1c1f-44f9-b438-cdd7ba7a5731
-- Maja Lindqvist · source_ref beakr-source:v1:wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301
-- Northwind Biosciences · source_ref beakr-source:v1:wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f
 
 next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
 next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
