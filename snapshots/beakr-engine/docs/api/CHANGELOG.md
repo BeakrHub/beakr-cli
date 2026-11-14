@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=3332e6d79ad35f746d6f482c583cc233b85a6e71af613cc2ad578174d1804a02 -->
+<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=38530709774d178d20b91a2d0e08f33ddf7669eb972a2e9d77240235439eca75 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -532,7 +532,11 @@ The first public version.
     project leaves out the locked projects the session has not touched. Getting a
     download link (`GET /v1/artifacts/versions/{version_id}/download-url`,
     `POST /v1/artifacts/download-url`) is now a read of the file's project too.
-    The MCP `wiki_graph` tool takes `confirm_lock`.
+    The MCP `wiki_graph` tool takes `confirm_lock`. A project-restricted API key
+    and an end-user token can call these reads too, confined to their own
+    projects as a page read is: the graph and timeline, for one, answer only from
+    the credential's projects, and naming another project, or focusing the graph
+    on its page, is refused or not found.
   - Refused inside any session, joined by `X-Beakr-Session` or with a session
     token, with `403 session_route_unavailable` (`message` says what and why,
     `fix` how to call it instead): a write's read trail
