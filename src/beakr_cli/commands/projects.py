@@ -11,7 +11,7 @@ from rich.markup import escape
 from beakr_cli.commands import model_refusals, project_knowledge, project_profile
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import CAPTURE_FIELD, LEARNING_FIELD, read_binding, write_binding
-from beakr_cli.project_ref import find_project, project_ref_callback
+from beakr_cli.project_ref import ProjectNotResolved, pick_project, project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, prompt_choice, require_interactive
 from beakr_cli.sdk import get_sdk
 
@@ -74,11 +74,22 @@ def create_project(
 
 
 def _resolve_project_ref(sdk: Any, ref: str) -> dict[str, Any]:
-    project = find_project(sdk.projects.list(), ref)
-    if project is None:
-        err_console.print(f"Project not found: {ref}", markup=False)
-        raise typer.Exit(4)
-    return project
+    """The one project ``ref`` names (:func:`beakr_cli.project_ref.pick_project`).
+
+    Several matches is a usage error (exit 2) naming each candidate; none is
+    not found (exit 4) with the closest names.
+    """
+    try:
+        return pick_project(list(sdk.projects.list() or []), ref)
+    except ProjectNotResolved as refused:
+        if refused.ambiguous:
+            err_console.print(str(refused), markup=False, highlight=False, soft_wrap=True)
+            raise typer.Exit(2) from refused
+        hint = f" Did you mean: {'; '.join(refused.candidates)}?" if refused.candidates else ""
+        err_console.print(
+            f"Project not found: {ref}.{hint}", markup=False, highlight=False, soft_wrap=True
+        )
+        raise typer.Exit(4) from refused
 
 
 @app.command("show")
@@ -221,13 +232,10 @@ def init_command(
         if create:
             chosen = sdk.projects.create(create)
         else:
-            projects = sdk.projects.list()
             if project:
-                chosen = find_project(projects, project)
-                if chosen is None:
-                    err_console.print(f"Project not found: {project}", markup=False)
-                    raise typer.Exit(4)
+                chosen = _resolve_project_ref(sdk, project)
             else:
+                projects = sdk.projects.list()
                 if not projects:
                     err_console.print("No projects yet. Use --create NAME.")
                     raise typer.Exit(1)
