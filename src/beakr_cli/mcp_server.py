@@ -25,8 +25,10 @@ from beakr_cli.mcp_render import (
     SourceMode,
     organization_line,
 )
-from beakr_cli.mcp_tools_platform import _project_by_name_or_id
+from beakr_cli.mcp_tools_platform import PageLimit, _project_by_name_or_id
+from beakr_cli.mcp_workspace import connected_line as _connected_line
 from beakr_cli.proposal_view import held_line
+from beakr_cli.source_records import with_read_call
 from beakr_cli.updates import (
     CHECK_OFF,
     box_line,
@@ -40,15 +42,22 @@ from beakr_cli.updates import (
 )
 
 _INSTRUCTIONS_TEMPLATE = (
-    "Beakr is the team's organizational memory: decisions, processes, ownership and "
-    "dated events, so 'why did we do X' is one search away.\n\n"
-    "Answer questions about the user's org with citations. Knowledge reads four ways that "
-    "combine: by meaning (knowledge_base command='sections', for what you can describe), "
-    "as a file system (ls, cat, grep for pages, exact names and ids), as a graph (links, "
-    "hover, timeline: a record's parties, documents and events) and as a database ('rows': "
-    "every card's Facts, Connections and Findings, each row with its entity, entity_type, "
-    "table, field, value, When and sources; filter by page_type, entity and table). Find by "
-    "meaning or in the database, walk the graph, confirm in the original. Check the "
+    "Beakr is this organization's shared memory: what the team knows, decided and is "
+    "working on, with the source behind every claim. It holds Knowledge (a map of cards "
+    "for people, organizations, projects, decisions and events, each with dated Facts, "
+    "Connections and Findings), the original files, and live access to connected "
+    "services. Use it in both directions: read it before you answer or act on anything "
+    "about the organization, and write back what you learn so the next person or agent "
+    "starts from it.\n\n"
+    "READ with knowledge_base, narrowest read first, and cite what you use. A fact, a "
+    "count, the latest or largest, a comparison: command='rows' (every card's Facts, "
+    "Connections and Findings as one table, each row with its entity, entity_type, table, "
+    "field, value, When and sources; filter by page_type, entity and table; view='census' "
+    "for one field across every card). An exact name, id or phrase: command='grep'. "
+    "Something you can only describe: command='sections', a ranked selection of sections, "
+    "not a census; each hit is Knowledge's own text with the documents it cites. Read one "
+    "section with cat {page, section_id}; walk a record with links, hover and timeline "
+    "(its parties, documents and events) rather than searching again. Check the "
     "excerpt's fidelity before quoting it, and open the source when a deciding detail is "
     "missing. For 'every X', counts and superlatives use 'rows' or 'ls' (by page_type), "
     "then inspect coverage: rows holds only what was structured, and compilation, scan and "
@@ -61,20 +70,32 @@ _INSTRUCTIONS_TEMPLATE = (
     "when it is known (deals/acme/memo.pdf \u203a p. 7), and each Sources "
     "line names where a document lives and every place cited in it: read_file with that "
     "path \u203a place or a file id opens the original there. A cited message, email, "
-    "event or comment is dated by its own time, and its url opens that item when the "
-    "connector gives one. Check a "
+    "event or comment is dated by its own time: re-read it with the exact `integrations` "
+    "call its source line gives (its url opens it for a person). Check a "
     "decisive value in the file; when the file and a card disagree, the file wins. In a "
     "code cell (Codex), print "
     "only the result's text and make one Knowledge call per cell. Where 'research' is "
-    "available it gives one cited answer: quick by default (Knowledge and documents, "
-    "within 15 seconds); pass quick=false to also search connected services or for "
-    "exhaustive questions.{integrations}{start}\n\n"
+    "available it writes one cited answer for you: use it when you want an answer "
+    "composed from several sources, not for a lookup. It is quick by default (one search, "
+    "within 15 seconds); quick=false takes minutes and is for questions about connected "
+    "services.{integrations}{start}\n\n"
     "Scope: pass 'scope' (a project name or id) to work in one project, or omit it to read "
     "everything you can see; list_projects names them, the user's personal project "
     "included (project_type='personal').\n\n"
-    "Writes: when the conversation produces something durable (a decision with its "
-    "rationale, a process, an owner, a dated event), check with knowledge_base "
-    "command='sections' that it is not already captured, then offer to propose it. "
+    "WRITE BACK with knowledge_base_write, often and without being asked. This is half "
+    "of the job: Beakr knows only what is written to it, and what you worked out in this "
+    "session is gone when it ends unless you save it. What to write, before you finish a "
+    "task: a decision and its reason; an answer you assembled from several reads; a fact a "
+    "source states that no card holds yet; who owns something; a status change; a dated "
+    "event; a correction to something Knowledge has wrong; a cause you found and how it "
+    "was fixed. Skip one-off chatter and personal preferences. How: find the card with "
+    "knowledge_base grep or rows on the thing's name; if it exists add one row to it: "
+    "add_fact {page, attribute, value, when, evidence} for what a source states, "
+    "add_finding {page, date, kind, text, evidence} for what you concluded, decided or "
+    "learned, add_connection {page, relation, to, evidence} for how two things relate; if "
+    "it does not exist, create it with action 'new' and the most specific card type from "
+    "knowledge_base command='ontology', then add its rows. Then tell the user in one line "
+    "what you saved. Writing is safe: "
     "knowledge_base_write stages a PROPOSAL (page_type and sort_table apply at once): call "
     "accept_proposal only when the user "
     "asks to accept that proposal. If the result says auto-approve is on, Beakr applies it "
@@ -367,8 +388,9 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
 
     The one shape the SDK, the CLI and this server share (``beakr_sdk.sources``),
     plus what a Knowledge read adds to name its citations readably: every place
-    the text cites in the document (``cited_places``) and the name it uses for
-    it when that is not ``filename`` (``reference``), as the hosted server's
+    the text cites in the document (``cited_places``), the name it uses for it
+    when that is not ``filename`` (``reference``) and the call that re-reads a
+    connected item (``retrieval``), as the hosted server's
     ``formatting.public_source`` keeps them.
     """
     item = _shared_public_source(source, citation_key=citation_key)
@@ -377,7 +399,7 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
         item["cited_places"] = places
     if source.get("reference"):
         item["reference"] = str(source["reference"])
-    return item
+    return with_read_call(item, source)
 
 
 def _wiki_result(result: dict) -> dict:
@@ -460,7 +482,7 @@ _TOKEN_SOURCE_NOTE = (
 
 
 @mcp.tool(**tool_surface.tool_kwargs("list_projects"))
-async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
+async def list_projects(cursor: str = "", limit: PageLimit = 50) -> dict[str, Any]:
     """List projects in the organization, including the user's personal project.
 
     Pass a project's name or id as ``scope`` to any tool that takes a project:
@@ -472,7 +494,13 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         limit: Projects per page (1-50).
     """
     from beakr_cli import scope_session
-    from beakr_cli.mcp_tools_platform import _cursor, _page_of, _page_result, _page_size
+    from beakr_cli.mcp_tools_platform import (
+        _bounded_limit,
+        _cursor,
+        _noted,
+        _page_of,
+        _page_result,
+    )
 
     session = scope_session.ACTIVE
     held = session is not None and session.state is not None
@@ -480,9 +508,10 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
         # A session reaches only the projects the person chose for it; listing the
         # organization's projects is not open to its token.
         return await _session_projects_result()
+    page_size, reduced = _bounded_limit(limit)
     page = await _call_api(
         lambda sdk: sdk.api.projects.list_projects(
-            cursor=_cursor(cursor), limit=_page_size(limit), include_knowledge=True
+            cursor=_cursor(cursor), limit=page_size, include_knowledge=True
         )
     )
     rows, has_more, next_cursor = _page_of(page, "data", "projects")
@@ -502,7 +531,7 @@ async def list_projects(cursor: str = "", limit: int = 50) -> dict[str, Any]:
     # the same notice the hosted server appends.
     notice = knowledge_notice(rows[:50])
     return _page_result(
-        f"{listed}\n\n{notice}" if notice else listed,
+        _noted(f"{listed}\n\n{notice}" if notice else listed, reduced),
         tool="list_projects",
         returned=min(len(rows), 50),
         has_more=has_more,
@@ -711,6 +740,13 @@ async def knowledge_base(
             out Knowledge pages the text already names. ``full``: every source
             with an excerpt, url and read_file id. ``none``: no list.
     """
+    if command == "sections" and sources == "none" and "include_sources" not in (arguments or {}):
+        # ``sources: "none"`` used to remove only this server's Sources list: the
+        # reply still carried the door's "Documents these sections cite:" legend,
+        # which took most of a search reply. The door leaves it out for
+        # ``include_sources: false`` and gives the hits the room; the hosted
+        # server sends the same field.
+        arguments = {**(arguments or {}), "include_sources": False}
     # check=False: a refusal the door reports in ``outcome`` is shown to the agent.
     result = _wiki_result(
         await _call_api(
@@ -1184,11 +1220,16 @@ async def beakr_version() -> str:
     from datetime import timedelta
 
     info = detect_install()
+    # Where this server's calls land, as the hosted tool says it; left out when
+    # the API could not say (mcp_workspace).
+    connected = await _connected_line()
     if await asyncio.to_thread(bundled_with_box, info):
         # Upgraded with the installation, so PyPI's latest release says nothing about it.
-        return box_line(__version__)
+        return "\n".join(filter(None, [box_line(__version__), connected]))
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
     lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
+    if connected:
+        lines.append(connected)
     if check_disabled():
         lines.append(CHECK_OFF)
     elif status.latest is None:

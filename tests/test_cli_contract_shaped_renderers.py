@@ -56,11 +56,11 @@ def test_kb_links_lists_the_backlink_rows(terminal):
             "next_cursor": None,
         }
     )
-    result = runner.invoke(app, ["kb", "links", PAGE_ID])
+    result = runner.invoke(app, ["kb", "backlinks", PAGE_ID])
     assert result.exit_code == 0, result.output
     assert "Hiring Plan" in result.stdout
 
-    as_json = runner.invoke(app, ["kb", "links", PAGE_ID, "--json"])
+    as_json = runner.invoke(app, ["kb", "backlinks", PAGE_ID, "--json"])
     assert as_json.exit_code == 0, as_json.output
     assert json.loads(as_json.stdout) == [
         {"id": "p-1", "title": "Hiring Plan", "summary": "Who we hire."}

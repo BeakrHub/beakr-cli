@@ -102,14 +102,13 @@ def test_the_fixture_covers_every_command_and_action_this_server_documents() -> 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("command", sorted(CASES["reads"]))
 async def test_read_returns_the_rest_payload_in_the_hosted_shape(command: str) -> None:
-    # sources='full' is the hosted rendering; the stdio default is the brief list.
+    # Neither call names a ``sources`` mode: both servers default to the brief list.
     await _replay(
         "knowledge_base",
         "command",
         "/v1/knowledge/wiki/command",
         command,
         CASES["reads"][command],
-        {"sources": "full"},
     )
 
 

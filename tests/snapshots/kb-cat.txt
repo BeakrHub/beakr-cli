@@ -1,79 +1,234 @@
 $ beakr kb cat 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
 > GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+> POST /v1/knowledge/wiki/command
+  {"command": "cat", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
 {
-  "ancestors": [
+  "content": [
     {
-      "id": "c41e8a26-93d7-4b5f-a2e8-6f1d0b7c3a95",
-      "page_id": "c41e8a26-93d7-4b5f-a2e8-6f1d0b7c3a95",
-      "page_type": "topic",
-      "title": "Programs"
+      "text": "# Project Helios\nKB page ID: 227f8f01-a013-4a2f-b769-3d50f7891fa7\nPath: Project Helios (root)\nType: project | Rev: 1 | Created: 2026-11-14 | Updated: 2026-11-14 | Sources: 7 | Wiki: Synthetic KB 223deaf9 (project id d086ec71-ad6c-440d-becd-6d0ff7745ec8)\nChildren: Decision: Helios Lead Selection, Helios HX-01 Thermal Stability Screen, Helios HX-02 Buffer Blocking Optimization, Helios HX-03 Signal Artifact Characterization, Helios HX-04 Dose Response in Primary Cells, Helios HX-05 Scale-up Feasibility (Draft), Helios Q2 2024 Review\nLinked from (3 pages, by type):\n  person (2): Dana Whitfield, Maja Lindqvist\n  organization (1): Northwind Biosciences\nLinks to: Dana Whitfield\n\n[section_id=sec_charter]\n## Charter\n\nThe program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery (helios-program-charter.pdf › block 1). It is headed by [[Dana Whitfield]] (helios-program-charter.pdf › block 2).\n\n[section_id=sec_budget]\n## Budget\n\nFiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee (helios-program-charter.pdf › block 3).\n\n[section_id=sec_success_criterion]\n## Success criterion\n\nA lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius (helios-program-charter.pdf › block 4).\n\n[section_id=sec_lead_decision]\n## Lead decision  [2024-09-09]\n\nThe portfolio committee approved NW-217 as the lead on 9 September 2024 (helios-go-decision-memo.docx › block 1).\n\nSection date metadata:\n- sec_lead_decision (Lead decision): event_start=2024-09-09; date_precision=day\n\n---\nSources cited above:\n  - [artifact:upload:synthetic_kb] helios-go-decision-memo.docx\n  - [artifact:upload:synthetic_kb] helios-program-charter.pdf\n\nNote: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which documents read (read_file in MCP) opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.",
+      "type": "text"
     }
   ],
-  "breadcrumb": "Programs",
-  "children": [
-    {
-      "id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
-      "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
-      "page_type": "decision",
-      "title": "Decision: Helios Lead Selection"
-    }
+  "coverage": {
+    "command": "cat",
+    "complete": null,
+    "limit": null,
+    "next_offset": null,
+    "offset": null,
+    "returned": null,
+    "scope": {
+      "all_readable": false,
+      "project_ids": [
+        "d086ec71-ad6c-440d-becd-6d0ff7745ec8"
+      ]
+    },
+    "status": "success",
+    "total": null
+  },
+  "next": [
+    "Walk its edges rather than searching again: open a child (its documents) or a Linked from page with cat; links {page, page_type} or {page, direction: out} lists a group in full; timeline {page} gives this record's dated events.",
+    "Check where a claim came from with provenance {page} or sources {page}."
   ],
-  "content": "# Project Helios\n\n<!-- sec:sec_charter -->\n## Charter\n\nThe program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-1}} It is headed by [[Dana Whitfield]].{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-2}}\n\n<!-- sec:sec_budget -->\n## Budget\n\nFiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-3}}\n\n<!-- sec:sec_success_criterion -->\n## Success criterion\n\nA lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius.{{artifact:8f6f9e00-7e50-4199-8443-dc7977d167d6-document-block-4}}\n\n<!-- sec:sec_lead_decision -->\n## Lead decision  [2024-09-09]\n\nThe portfolio committee approved NW-217 as the lead on 9 September 2024.{{artifact:bb4de0e9-1f4e-4c2e-88aa-efcd4352de0c-document-block-1}}\n",
-  "created_at": "2026-08-21T10:12:00Z",
-  "group_id": "48f926e5-01b4-4d4a-9361-f7767c810e8e",
-  "id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
-  "last_compiled_by": "system",
-  "links": {},
-  "page_type": "project",
-  "parent_page_id": "c41e8a26-93d7-4b5f-a2e8-6f1d0b7c3a95",
-  "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
-  "revision": 7,
-  "sections": {},
-  "source_count": 4,
-  "summary": "Northwind's program to select a thermostable lead from the NW-200 series; NW-217 is the current lead.",
-  "tags": [
-    "thermostability"
-  ],
-  "title": "Project Helios",
-  "updated_at": "2026-09-30T17:02:00Z",
+  "outcome": {
+    "commit_ids": [],
+    "committed_page_ids": [],
+    "committed_revisions": {},
+    "error_code": null,
+    "protocol": "beakr.wiki_tool_outcome.v1",
+    "status": "success"
+  },
   "sources": [
     {
-      "source_ref": "beakr-source:v1:8e1f3a5c-7d9b-4b2e-8f04-6a1c3e5d7b92",
-      "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
-      "name": "helios-charter.pdf",
-      "filename": "helios-charter.pdf",
-      "provider": "upload",
-      "source_kind": "artifact",
-      "stance": "support",
-      "location": {
-        "file_id": "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13"
-      },
-      "evidence": {
-        "locator": "pages 2-3"
-      },
+      "citation_key": "wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7",
+      "name": "Project Helios",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7"
+    },
+    {
+      "citation_key": "wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7-s9cc384ff",
+      "name": "Project Helios › Budget",
       "section": {
-        "id": "sec_facts"
+        "title": "Budget"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_budget"
+    },
+    {
+      "citation_key": "wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7-s568f3ba1",
+      "name": "Project Helios › Charter",
+      "section": {
+        "title": "Charter"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_charter"
+    },
+    {
+      "citation_key": "wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7-s828d3c15",
+      "name": "Project Helios › Lead decision",
+      "section": {
+        "date_precision": "day",
+        "event_start": "2024-09-09",
+        "title": "Lead decision"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_lead_decision"
+    },
+    {
+      "citation_key": "wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7-sd0c033cb",
+      "name": "Project Helios › Success criterion",
+      "section": {
+        "title": "Success criterion"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_success_criterion"
+    },
+    {
+      "citation_key": "wiki:43a3cac9-1c1f-44f9-b438-cdd7ba7a5731",
+      "name": "Dana Whitfield",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:43a3cac9-1c1f-44f9-b438-cdd7ba7a5731"
+    },
+    {
+      "citation_key": "wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301",
+      "name": "Maja Lindqvist",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301"
+    },
+    {
+      "citation_key": "wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f",
+      "name": "Northwind Biosciences",
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f"
+    },
+    {
+      "citation_key": "artifact:6acb0370-5697-4ef1-8b29-53344af88dd2",
+      "filename": "helios-program-charter.pdf",
+      "location": {
+        "display_path": "helios-program-charter.pdf",
+        "file_id": "681a744d-e4f9-4ef3-948a-30ab33d6ce01"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+      "status": {
+        "changed_since_cited": false
       }
     },
     {
-      "source_ref": "beakr-source:v1:2c7e9a14-5b3d-4f81-a6c2-8d0e4f6b1a39",
-      "citation_key": "artifact:6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
-      "name": "NW-217 Accelerated Stability Report",
-      "filename": "NW-217 Accelerated Stability Report",
-      "provider": "upload",
-      "source_kind": "artifact",
-      "stance": "contradicts",
+      "citation_key": "artifact:b4898382-bd48-4fb1-bc9c-3588904feef4",
+      "filename": "helios-go-decision-memo.docx",
       "location": {
-        "file_id": "6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37"
+        "display_path": "helios-go-decision-memo.docx",
+        "file_id": "8aa6da84-dc54-4aa5-9706-c1cc28e609b1"
       },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1",
+      "status": {
+        "changed_since_cited": false
+      }
+    },
+    {
+      "citation_key": "artifact:6acb0370-5697-4ef1-8b29-53344af88dd2-document-block-1",
       "evidence": {
-        "locator": "page 7"
+        "excerpt": "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
       },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+        "display_path": "helios-program-charter.pdf",
+        "file_id": "681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+        "unit_locator": "block 1"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+      "status": {
+        "changed_since_cited": false
+      }
+    },
+    {
+      "citation_key": "artifact:6acb0370-5697-4ef1-8b29-53344af88dd2-document-block-2",
+      "evidence": {
+        "excerpt": "Dr. Dana Whitfield is appointed principal investigator and accountable owner of the Helios program."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+        "display_path": "helios-program-charter.pdf",
+        "file_id": "681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+        "unit_locator": "block 2"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+      "status": {
+        "changed_since_cited": false
+      }
+    },
+    {
+      "citation_key": "artifact:6acb0370-5697-4ef1-8b29-53344af88dd2-document-block-3",
+      "evidence": {
+        "excerpt": "The program budget for fiscal 2024 is USD 2.4 million, reviewed quarterly by the portfolio committee."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+        "display_path": "helios-program-charter.pdf",
+        "file_id": "681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+        "unit_locator": "block 3"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+      "status": {
+        "changed_since_cited": false
+      }
+    },
+    {
+      "citation_key": "artifact:6acb0370-5697-4ef1-8b29-53344af88dd2-document-block-4",
+      "evidence": {
+        "excerpt": "Success criterion: a lead retaining at least 80 percent activity after 14 days at 40 degrees Celsius."
+      },
+      "filename": "helios-program-charter.pdf",
+      "location": {
+        "display_path": "helios-program-charter.pdf",
+        "file_id": "681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+        "unit_locator": "block 4"
+      },
+      "name": "helios-program-charter.pdf",
+      "provider": "upload",
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01",
+      "status": {
+        "changed_since_cited": false
+      }
+    },
+    {
+      "citation_key": "artifact:b4898382-bd48-4fb1-bc9c-3588904feef4-document-block-1",
+      "evidence": {
+        "excerpt": "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
+      },
+      "filename": "helios-go-decision-memo.docx",
+      "location": {
+        "display_path": "helios-go-decision-memo.docx",
+        "file_id": "8aa6da84-dc54-4aa5-9706-c1cc28e609b1",
+        "unit_locator": "block 1"
+      },
+      "name": "helios-go-decision-memo.docx",
+      "provider": "upload",
       "section": {
-        "id": "sec_facts"
+        "date_precision": "day",
+        "event_start": "2024-09-09"
+      },
+      "source_kind": "rag",
+      "source_ref": "beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1",
+      "status": {
+        "changed_since_cited": false
       }
     }
   ]
@@ -88,31 +243,31 @@ $ beakr kb cat 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 [exit 0]
 --- stdout
 # Project Helios
-KB page ID: 9d08f9fb-ac64-4094-a3e1-24c25bc01480
+KB page ID: 227f8f01-a013-4a2f-b769-3d50f7891fa7
 Path: Project Helios (root)
-Type: project | Rev: 1 | Created: 2026-10-14 | Updated: 2026-10-14 | Sources: 7 | Wiki: Synthetic KB 003085a3 (project id 2c5cd7a8-2225-4170-b71d-b49fd1bb4b9b)
+Type: project | Rev: 1 | Created: 2026-11-14 | Updated: 2026-11-14 | Sources: 7 | Wiki: Synthetic KB 223deaf9 (project id d086ec71-ad6c-440d-becd-6d0ff7745ec8)
 Children: Decision: Helios Lead Selection, Helios HX-01 Thermal Stability Screen, Helios HX-02 Buffer Blocking Optimization, Helios HX-03 Signal Artifact Characterization, Helios HX-04 Dose Response in Primary Cells, Helios HX-05 Scale-up Feasibility (Draft), Helios Q2 2024 Review
 Linked from (3 pages, by type):
   person (2): Dana Whitfield, Maja Lindqvist
   organization (1): Northwind Biosciences
 Links to: Dana Whitfield
 
-<!-- sec:sec_charter -->
+[section_id=sec_charter]
 ## Charter
 
 The program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery (helios-program-charter.pdf › block 1). It is headed by [[Dana Whitfield]] (helios-program-charter.pdf › block 2).
 
-<!-- sec:sec_budget -->
+[section_id=sec_budget]
 ## Budget
 
 Fiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee (helios-program-charter.pdf › block 3).
 
-<!-- sec:sec_success_criterion -->
+[section_id=sec_success_criterion]
 ## Success criterion
 
 A lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius (helios-program-charter.pdf › block 4).
 
-<!-- sec:sec_lead_decision -->
+[section_id=sec_lead_decision]
 ## Lead decision  [2024-09-09]
 
 The portfolio committee approved NW-217 as the lead on 9 September 2024 (helios-go-decision-memo.docx › block 1).
@@ -125,24 +280,24 @@ Sources cited above:
   - [artifact:upload:synthetic_kb] helios-go-decision-memo.docx
   - [artifact:upload:synthetic_kb] helios-program-charter.pdf
 
-Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which read_file opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
+Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which documents read (read_file in MCP) opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
 
 Sources (2 documents, 8 Knowledge pages):
-- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · read_file bbcc04f9-a0ba-4d86-a5b3-911a43c5139a · source_ref beakr-source:v1:5047ddc4-1775-4f71-8c48-4fcd488ee840
+- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · beakr documents read 681a744d-e4f9-4ef3-948a-30ab33d6ce01 · source_ref beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01
   "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
-- helios-go-decision-memo.docx › block 1 · read_file fc6ec327-a862-48fd-b445-7bdf4f1121e2 · source_ref beakr-source:v1:b0d1df17-ce40-4c6c-9445-dd44fcf684d4
+- helios-go-decision-memo.docx › block 1 · beakr documents read 8aa6da84-dc54-4aa5-9706-c1cc28e609b1 · source_ref beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1
   "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
-- Project Helios · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480
-- Project Helios › Budget · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_budget
-- Project Helios › Charter · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_charter
-- Project Helios › Lead decision · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_lead_decision
-- Project Helios › Success criterion · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_success_criterion
-- Dana Whitfield · source_ref beakr-source:v1:wiki:36800931-7856-4645-97ab-b9a2eff4b92d
-- Maja Lindqvist · source_ref beakr-source:v1:wiki:2609a4fa-cdb2-449a-b3ac-07746866c8e4
-- Northwind Biosciences · source_ref beakr-source:v1:wiki:7e825a5b-2165-45de-8501-bd9f1e013e99
+- Project Helios · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7
+- Project Helios › Budget · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_budget
+- Project Helios › Charter · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_charter
+- Project Helios › Lead decision · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_lead_decision
+- Project Helios › Success criterion · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_success_criterion
+- Dana Whitfield · source_ref beakr-source:v1:wiki:43a3cac9-1c1f-44f9-b438-cdd7ba7a5731
+- Maja Lindqvist · source_ref beakr-source:v1:wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301
+- Northwind Biosciences · source_ref beakr-source:v1:wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f
 
-next: Follow an edge with links, references or timeline.
-next: Check where a claim came from with provenance {page} or sources {page}.
+next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
+next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
 --- stderr
 
 
@@ -153,31 +308,31 @@ $ beakr kb cat 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 [exit 0]
 --- stdout
 # Project Helios
-KB page ID: 9d08f9fb-ac64-4094-a3e1-24c25bc01480
+KB page ID: 227f8f01-a013-4a2f-b769-3d50f7891fa7
 Path: Project Helios (root)
-Type: project | Rev: 1 | Created: 2026-10-14 | Updated: 2026-10-14 | Sources: 7 | Wiki: Synthetic KB 003085a3 (project id 2c5cd7a8-2225-4170-b71d-b49fd1bb4b9b)
+Type: project | Rev: 1 | Created: 2026-11-14 | Updated: 2026-11-14 | Sources: 7 | Wiki: Synthetic KB 223deaf9 (project id d086ec71-ad6c-440d-becd-6d0ff7745ec8)
 Children: Decision: Helios Lead Selection, Helios HX-01 Thermal Stability Screen, Helios HX-02 Buffer Blocking Optimization, Helios HX-03 Signal Artifact Characterization, Helios HX-04 Dose Response in Primary Cells, Helios HX-05 Scale-up Feasibility (Draft), Helios Q2 2024 Review
 Linked from (3 pages, by type):
   person (2): Dana Whitfield, Maja Lindqvist
   organization (1): Northwind Biosciences
 Links to: Dana Whitfield
 
-<!-- sec:sec_charter -->
+[section_id=sec_charter]
 ## Charter
 
 The program exists to find a thermostable lead from the NW-200 scaffold series for oral delivery (helios-program-charter.pdf › block 1). It is headed by [[Dana Whitfield]] (helios-program-charter.pdf › block 2).
 
-<!-- sec:sec_budget -->
+[section_id=sec_budget]
 ## Budget
 
 Fiscal 2024 funding is USD 2.4 million, reviewed each quarter by the portfolio committee (helios-program-charter.pdf › block 3).
 
-<!-- sec:sec_success_criterion -->
+[section_id=sec_success_criterion]
 ## Success criterion
 
 A lead must keep at least 80 percent of its activity after two weeks at 40 degrees Celsius (helios-program-charter.pdf › block 4).
 
-<!-- sec:sec_lead_decision -->
+[section_id=sec_lead_decision]
 ## Lead decision  [2024-09-09]
 
 The portfolio committee approved NW-217 as the lead on 9 September 2024 (helios-go-decision-memo.docx › block 1).
@@ -190,23 +345,23 @@ Sources cited above:
   - [artifact:upload:synthetic_kb] helios-go-decision-memo.docx
   - [artifact:upload:synthetic_kb] helios-program-charter.pdf
 
-Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which read_file opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
+Note: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which documents read (read_file in MCP) opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 5 source record(s) are NOT shown here -- run `sources Project Helios` or `provenance Project Helios` for those. Open the original before quoting or before resting a conclusion on it.
 
 Sources (2 documents, 8 Knowledge pages):
-- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · read_file bbcc04f9-a0ba-4d86-a5b3-911a43c5139a · source_ref beakr-source:v1:5047ddc4-1775-4f71-8c48-4fcd488ee840
+- helios-program-charter.pdf › block 1, block 2, block 3, block 4 · beakr documents read 681a744d-e4f9-4ef3-948a-30ab33d6ce01 · source_ref beakr-source:v1:file:681a744d-e4f9-4ef3-948a-30ab33d6ce01
   "Project Helios is chartered to identify a thermostable lead from the NW-200 scaffold series for oral delivery."
-- helios-go-decision-memo.docx › block 1 · read_file fc6ec327-a862-48fd-b445-7bdf4f1121e2 · source_ref beakr-source:v1:b0d1df17-ce40-4c6c-9445-dd44fcf684d4
+- helios-go-decision-memo.docx › block 1 · beakr documents read 8aa6da84-dc54-4aa5-9706-c1cc28e609b1 · source_ref beakr-source:v1:file:8aa6da84-dc54-4aa5-9706-c1cc28e609b1
   "On 9 September 2024 the portfolio committee approved NW-217 as the Helios lead candidate."
-- Project Helios · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480
-- Project Helios › Budget · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_budget
-- Project Helios › Charter · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_charter
-- Project Helios › Lead decision · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_lead_decision
-- Project Helios › Success criterion · source_ref beakr-source:v1:wiki:9d08f9fb-ac64-4094-a3e1-24c25bc01480#sec_success_criterion
-- Dana Whitfield · source_ref beakr-source:v1:wiki:36800931-7856-4645-97ab-b9a2eff4b92d
-- Maja Lindqvist · source_ref beakr-source:v1:wiki:2609a4fa-cdb2-449a-b3ac-07746866c8e4
-- Northwind Biosciences · source_ref beakr-source:v1:wiki:7e825a5b-2165-45de-8501-bd9f1e013e99
+- Project Helios · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7
+- Project Helios › Budget · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_budget
+- Project Helios › Charter · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_charter
+- Project Helios › Lead decision · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_lead_decision
+- Project Helios › Success criterion · source_ref beakr-source:v1:wiki:227f8f01-a013-4a2f-b769-3d50f7891fa7#sec_success_criterion
+- Dana Whitfield · source_ref beakr-source:v1:wiki:43a3cac9-1c1f-44f9-b438-cdd7ba7a5731
+- Maja Lindqvist · source_ref beakr-source:v1:wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301
+- Northwind Biosciences · source_ref beakr-source:v1:wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f
 
-next: Follow an edge with links, references or timeline.
-next: Check where a claim came from with provenance {page} or sources {page}.
+next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
+next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
 --- stderr
 

@@ -18,7 +18,7 @@ The source documents behind a page, each with the other pages that draw on it. A
 knowledge_base(command="sources", arguments={"page": "API Design"})
 ```
 
-Structured results carry `source_ref`, filename, provider, URL/path, excerpt, and locator for each source. Reuse `source_ref` when citing that source in a write.
+Each source carries its `source_ref`, filename, provider, URL or path, excerpt and locator, and a connected item carries the call that re-reads it. Reuse `source_ref` when citing that source in a write, or pass it to `read_file`.
 
 ### provenance
 Per-section citation rollups with stance. The most useful view for judging a claim.
@@ -41,7 +41,7 @@ Each citation carries a stance:
 - `(unverified)` was never checked against the source.
 - "source changed since cited" means the source has a newer version than the one the claim was checked against.
 
-Open the source (its `url`) before quoting a paraphrase or unverified excerpt, or before resting a conclusion on it.
+Open the source before quoting a paraphrase or unverified excerpt, or before resting a conclusion on it: a file with `read_file` (its reference, `source_ref` or file id); a connected item (a meeting note, an email, a Slack thread) with the `integrations` call its Sources line prints (`read with integrations command='call' tool=... arguments={...}`), made as printed. A `url` is for a person to open.
 
 ## When to use
 

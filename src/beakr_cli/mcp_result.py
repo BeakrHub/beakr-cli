@@ -117,9 +117,13 @@ def finish(result: Any, *, tool: str, cut_hint: str | None = None) -> dict[str, 
     coverage.setdefault("next_cursor", None)
     # A window that says where the next one starts has more after it: a Knowledge
     # read reports ``next_offset`` and no ``has_more``, which read as "no more".
+    # So does a reply cut to a budget, which names the call that continues it
+    # (``continue_with``) and has no cursor: ``next_cursor`` stays None.
     coverage.setdefault(
         "has_more",
-        coverage["next_cursor"] is not None or coverage.get("next_offset") is not None,
+        coverage["next_cursor"] is not None
+        or coverage.get("next_offset") is not None
+        or coverage.get("continue_with") is not None,
     )
     coverage.setdefault("complete", not coverage["has_more"])
     hints = [str(hint) for hint in body.get("next") or []]
@@ -196,6 +200,11 @@ def file_read(data: dict[str, Any]) -> dict[str, Any]:
         position = f"{span}characters {start}-{end}" + (f" of {total}" if total else "")
         if not unit.get("found", True):
             hints.append("That place was not found in this version of the file; this is its start.")
+        if data.get("next_offset") is not None:
+            # The rest of this page or sheet, before the next one.
+            hints.append(
+                f"More of this place follows: call read_file with {where!r} and offset={end}."
+            )
         if data.get("next_reference"):
             hints.append(f"Next page: call read_file with {data['next_reference']!r}.")
     else:

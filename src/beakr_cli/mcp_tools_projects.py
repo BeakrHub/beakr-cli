@@ -24,7 +24,6 @@ far; ``upload_status`` reports the rest.
 from __future__ import annotations
 
 import asyncio
-import fnmatch
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -42,6 +41,7 @@ from beakr_sdk.resources._upload import (
 from beakr_cli import scope_session
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
+from beakr_cli.upload_path_policy import MAX_UPLOAD_BYTES, outside_link, refused_path
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -51,39 +51,6 @@ UPLOAD_WAIT_SECONDS = 40.0
 #: Files one ``upload_files`` call takes; a larger tree is `beakr upload` in a terminal.
 MAX_UPLOAD_FILES = 500
 
-#: Folders never uploaded from, wherever they sit: credential stores, settings, git's own.
-_SECRET_DIRECTORIES = frozenset(
-    {
-        ".ssh",
-        ".aws",
-        ".azure",
-        ".gnupg",
-        ".kube",
-        ".docker",
-        ".beakr",
-        ".config",
-        ".git",
-        ".password-store",
-        ".terraform",
-    }
-)
-#: File names never uploaded: keys, keystores and credential files.
-_SECRET_NAMES = (
-    "*.pem",
-    "*.key",
-    "*.p12",
-    "*.pfx",
-    "*.jks",
-    "*.keystore",
-    "*.kdbx",
-    "*.ovpn",
-    "id_rsa*",
-    "id_dsa*",
-    "id_ecdsa*",
-    "id_ed25519*",
-    "credentials",
-    "credentials.json",
-)
 #: Refusals that stop an upload: every later file would meet the same one.
 _STOPPING_CODES = frozenset(
     {
@@ -372,29 +339,8 @@ def _profile_saved_text(profile: dict[str, Any], project: dict[str, Any], *, cre
 
 
 def _refused_path(path: Path) -> str | None:
-    """Why ``path`` may not be uploaded by an agent, or None.
-
-    Credential stores, a home folder's hidden folders (``~/.config``, ``~/.local``...),
-    hidden files (``.env``, ``.netrc``) and key files stay on the computer, whichever
-    path names them: the given one and the one a symlink leads to. A hidden folder
-    elsewhere (a checkout under ``~/work/.worktrees``) is an ordinary place.
-    """
-    home = Path.home()
-    for candidate in (path, path.resolve()):
-        for part in candidate.parts:
-            if part in _SECRET_DIRECTORIES:
-                return f"it is inside {part}, which holds credentials or settings"
-        if candidate.name.startswith("."):
-            return f"{candidate.name} is a hidden file"
-        try:
-            below_home = candidate.relative_to(home).parts
-        except ValueError:
-            below_home = ()
-        if below_home and below_home[0].startswith("."):
-            return f"~/{below_home[0]} holds settings and credentials"
-        if any(fnmatch.fnmatch(candidate.name.lower(), pattern) for pattern in _SECRET_NAMES):
-            return f"{candidate.name} looks like a key or credential file"
-    return None
+    """Why an agent may not upload ``path``, or None (:mod:`beakr_cli.upload_path_policy`)."""
+    return refused_path(path)
 
 
 @dataclass
@@ -436,16 +382,17 @@ def _gather(paths: list[str]) -> tuple[list[_Item], list[dict[str, Any]]]:
         path = Path(str(given)).expanduser()
         if not path.is_absolute():
             path = Path.cwd() / path
-        if not path.exists():
-            skipped.append({"path": str(given), "reason": "no such file or folder"})
-            continue
+        # Before the path is looked at: a refused place is not even said to exist.
         refused = _refused_path(path)
         if refused:
             skipped.append({"path": str(given), "reason": f"not uploaded: {refused}"})
             continue
+        if not path.exists():
+            skipped.append({"path": str(given), "reason": "no such file or folder"})
+            continue
         if path.is_dir():
             for file_path in iter_folder_files(path):
-                refused = _refused_path(file_path)
+                refused = outside_link(file_path, path) or _refused_path(file_path)
                 if refused:
                     skipped.append({"path": str(file_path), "reason": f"not uploaded: {refused}"})
                     continue
@@ -591,6 +538,16 @@ async def upload_files(
             "never uploaded from here.",
             skipped=skipped,
         )
+    total_bytes = sum(item.size for item in items)
+    if total_bytes > MAX_UPLOAD_BYTES:
+        return _error(
+            "upload_too_large",
+            f"{_size(total_bytes)} in {len(items)} files is more than one call uploads "
+            f"({_size(MAX_UPLOAD_BYTES)}).",
+            "Upload fewer files or one subfolder a call, or ask the person to run "
+            f"`beakr upload PATH --project {project_id}` in a terminal, which has no such limit.",
+            skipped=skipped,
+        )
     upload = _Upload(
         id=f"up_{uuid.uuid4().hex[:12]}",
         project_id=project_id,
@@ -598,7 +555,7 @@ async def upload_files(
         folder_id=folder_id.strip() or None,
         ingest=knowledge,
         items=items,
-        total_bytes=sum(item.size for item in items),
+        total_bytes=total_bytes,
     )
     _UPLOADS[upload.id] = upload
     # Not the call's own task: a client that gives up on the call (Codex after 60
@@ -636,11 +593,11 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
     return f"Finished uploading {path.name} to {project_name} (file {artifact.get('id')})."
 
 
-def _size(count: int) -> str:
+def _size(count: float) -> str:
     for unit in ("bytes", "KB", "MB", "GB"):
         if count < 1024 or unit == "GB":
             return f"{count} {unit}" if unit == "bytes" else f"{count:.1f} {unit}"
-        count /= 1024  # type: ignore[assignment]
+        count /= 1024
     return str(count)
 
 

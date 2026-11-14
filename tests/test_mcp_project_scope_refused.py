@@ -21,6 +21,7 @@ import respx
 from httpx import Response
 from mcp import types
 
+from beakr_cli import mcp_tools_platform
 from beakr_cli.mcp_server import mcp
 
 API = "https://api.example.com"
@@ -38,6 +39,8 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.real_project_refs]
 def api(monkeypatch):
     monkeypatch.setenv("BEAKR_API_URL", API)
     monkeypatch.setenv("BEAKR_API_KEY", "test-token")
+    # A name resolved for one test must not answer for the next.
+    monkeypatch.setattr(mcp_tools_platform, "_resolved_projects", {})
 
 
 def _projects() -> respx.Route:
@@ -174,3 +177,90 @@ async def test_get_profile_without_a_project_says_what_to_pass() -> None:
     assert body["error_code"] == "invalid_arguments"
     assert body["message"] == "A project profile needs the project: pass project_id."
     assert "requires profile_type='org'" not in result.content[0].text
+
+
+# -- names that differ only by case ----------------------------------------------
+
+# Root cause (agent tester report, 2026-11-13): names match whatever their
+# case, so with projects "test" and "TEST" each name matched both and neither
+# could be named; the hosted server now takes the one spelled exactly as asked,
+# and this server refused both as ambiguous, listing ids without slugs.
+
+LOWER = "11111111-1111-4111-8111-111111111111"
+UPPER = "22222222-2222-4222-8222-222222222222"
+CASED = [
+    {"id": LOWER, "name": "test", "slug": "test"},
+    {"id": UPPER, "name": "TEST", "slug": "test-2"},
+    {"id": SCIENCE, "name": "Science Ingest 018", "slug": "science-ingest-018"},
+]
+
+
+def _listing(projects: list[dict[str, Any]]) -> None:
+    respx.get(f"{API}/v1/projects").mock(
+        return_value=Response(200, json={"data": projects, "has_more": False})
+    )
+
+
+@pytest.mark.parametrize(("name", "project_id"), [("test", LOWER), ("TEST", UPPER)])
+@respx.mock
+async def test_a_name_in_its_own_case_selects_that_project(name: str, project_id: str) -> None:
+    _listing(CASED)
+    stats = respx.get(f"{API}/v1/knowledge/stats").mock(return_value=Response(200, json={}))
+
+    result = await _call("wiki_stats", {"project": name})
+
+    assert not result.isError, result.content
+    assert stats.calls.last.request.url.params["project_id"] == project_id
+
+
+@respx.mock
+async def test_a_name_in_neither_case_is_refused_naming_each_candidate() -> None:
+    _listing(CASED)
+    reads = respx.route(path__regex=r"^/v1/knowledge/").mock(return_value=Response(200, json={}))
+
+    result = await _call("wiki_stats", {"project": "Test"})
+
+    assert result.isError
+    # The hosted server's refusal, word for word (project_not_resolved).
+    assert json.loads(result.content[0].text) == {
+        "status": "error",
+        "error_code": "scope_ambiguous",
+        "message": "More than one project you can read is named 'Test'.",
+        "fix": f"Pass one of these projects' ids: test (test, {LOWER}); TEST (test-2, {UPPER}).",
+    }
+    assert not reads.called
+
+
+@respx.mock
+async def test_two_projects_spelled_alike_stay_ambiguous() -> None:
+    _listing([CASED[0], {"id": UPPER, "name": "test"}])
+
+    result = await _call("wiki_stats", {"project": "test"})
+
+    body = json.loads(result.content[0].text)
+    assert body["error_code"] == "scope_ambiguous"
+    assert body["fix"] == f"Pass one of these projects' ids: test (test, {LOWER}); test ({UPPER})."
+
+
+@respx.mock
+async def test_a_miss_suggests_the_names_the_hosted_server_suggests() -> None:
+    # The engine's matcher: names only, compared without quotes, similarity at
+    # least 0.6. "Sci" reaches no name at 0.6 but is contained in one; "tset"
+    # is close to both "test" and "TEST", which are one name to the matcher.
+    # "tart" is 0.5 from "test": this server's old cutoff (0.4, slugs included)
+    # offered it, the hosted server offers nothing.
+    _listing(CASED)
+
+    contained = json.loads((await _call("wiki_stats", {"project": "Sci"})).content[0].text)
+    close = json.loads((await _call("wiki_stats", {"project": "tset"})).content[0].text)
+    loose = json.loads((await _call("wiki_stats", {"project": "tart"})).content[0].text)
+
+    label = f"Science Ingest 018 (science-ingest-018, {SCIENCE})"
+    assert contained == {
+        "status": "error",
+        "error_code": "scope_not_found",
+        "message": "No project you can read matches 'Sci'.",
+        "fix": f"Did you mean: {label}? Pass its id or exact name.",
+    }
+    assert close["fix"] == f"Did you mean: TEST (test-2, {UPPER})? Pass its id or exact name."
+    assert loose["fix"] == "Pass a project id or exact name from list_projects."

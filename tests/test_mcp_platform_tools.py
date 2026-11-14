@@ -34,7 +34,7 @@ async def test_context_posts_and_identifies_as_mcp() -> None:
         return_value=httpx.Response(200, json={"content": "# You\nPlatform lead"})
     )
 
-    text = await context(project=PROJECT_ID, question="billing", budget_chars=999_999)
+    text = await context(project=PROJECT_ID, question="billing", budget_chars=20_000)
 
     assert "Platform lead" in text
     request = route.calls.last.request
@@ -86,7 +86,8 @@ async def test_a_validation_refusal_keeps_the_field_and_its_text() -> None:
             ]
         },
     )
-    result = await mcp_server.mcp.call_tool("context", {"budget_chars": 600})
+    # In range for this server, so the call reaches the API (which refuses it here).
+    result = await mcp_server.mcp.call_tool("context", {"budget_chars": 2600})
     text = result.content[0].text
     assert result.isError
     assert "budget_chars: Input should be greater than or equal to 2000" in text

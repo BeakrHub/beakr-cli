@@ -119,9 +119,11 @@ async def test_call_sends_the_tools_arguments_and_lists_its_sources() -> None:
         "arguments": {"channel_id": "C1", "limit": 5},
         "connector_id": CONNECTOR,
     }
-    assert text.startswith("Assay plate 7 is done {{slack:ab12cd34}}")
+    # Ask's citation token is left out: an outside caller cannot cite by it.
+    assert text.startswith("Assay plate 7 is done")
+    assert "{{" not in text
     assert (
-        "- {{slack:ab12cd34}} #assays message · https://slack.example/archives/C1/p1 "
+        "- #assays message · https://slack.example/archives/C1/p1 "
         "· source_ref beakr-source:v1:key:c2xhY2s6YWIxMmNkMzQ"
     ) in text
 

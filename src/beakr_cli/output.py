@@ -14,9 +14,29 @@ from rich.console import Console
 from rich.markdown import Markdown
 from rich.markup import escape
 from rich.table import Table
+from rich.text import Text
 
-console = Console()
-err_console = Console(stderr=True)
+from beakr_cli.terminal_text import visible
+
+
+class _TerminalConsole(Console):
+    """A console that never writes a character a terminal hides or obeys.
+
+    What the CLI prints holds text other people wrote (a page title, an
+    excerpt, a file name). Rich passes an escape sequence, a bidirectional
+    override or a zero-width character through to the terminal, where it can
+    erase or restyle the line it sits on; every string printed here shows them
+    as their escapes instead (:func:`beakr_cli.terminal_text.visible`). Rich's
+    own styling is added after this and is untouched; ``--json`` output is
+    written by :func:`print_json`, not here.
+    """
+
+    def render_str(self, text: str, **options: Any) -> Text:
+        return super().render_str(visible(text), **options)
+
+
+console = _TerminalConsole()
+err_console = _TerminalConsole(stderr=True)
 
 
 def is_piped() -> bool:
@@ -32,7 +52,7 @@ def print_json(data: Any) -> None:
 
 
 def print_markdown(text: str) -> None:
-    console.print(Markdown(text))
+    console.print(Markdown(visible(text)))
 
 
 def print_table(
