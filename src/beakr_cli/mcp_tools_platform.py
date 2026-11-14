@@ -93,22 +93,37 @@ ContextBudget = Annotated[
 
 
 def _bounded_limit(
-    limit: int | None, *, default: int = MAX_LIST_ITEMS, maximum: int = MAX_LIST_ITEMS
+    limit: int | None,
+    *,
+    default: int = MAX_LIST_ITEMS,
+    maximum: int = MAX_LIST_ITEMS,
+    rows: bool = True,
 ) -> tuple[int, str | None]:
-    """The page size to request and, when ``limit`` was over ``maximum``, a note saying so."""
+    """The page size to request and, when ``limit`` was over ``maximum``, a note saying so.
+
+    A paged tool's note is the hosted server's repair note word for word
+    (``argument_repair._clamp_page_size``); ``rows=False`` (read_file's characters)
+    keeps this server's own.
+    """
     requested = int(limit or default)
     size = max(1, min(requested, maximum))
     if requested <= maximum:
         return size, None
+    if not rows:
+        return size, (
+            f"[limit reduced from {requested} to {maximum}, the most one call returns; "
+            "continue from this result for more.]"
+        )
     return size, (
-        f"limit reduced from {requested} to {maximum}, the most one call returns; "
-        "continue from this result for more."
+        f"Repaired this call: reduced `limit` from {requested} to {maximum}, the most rows "
+        "one page holds; pass the result's next_cursor as `cursor` for the rows after these."
     )
 
 
 def _noted(text: str, note: str | None) -> str:
-    """``text`` closed with the reduced-limit note, when there is one."""
-    return f"{text}\n\n[{note}]" if note else text
+    """``text`` under the reduced-limit note, when there is one, as the hosted server
+    puts its repair note above the result (``argument_repair``)."""
+    return f"{note}\n\n{text}" if note else text
 
 
 def _expected_base_index(exc: ApiCallError) -> int | None:
@@ -630,7 +645,9 @@ async def read_file(
             "result's Sources.",
         )
     offset = max(0, int(offset or 0))
-    limit, reduced = _bounded_limit(limit, default=READ_FILE_CHARS, maximum=READ_FILE_CHARS)
+    limit, reduced = _bounded_limit(
+        limit, default=READ_FILE_CHARS, maximum=READ_FILE_CHARS, rows=False
+    )
     # Sent only when named, so an unscoped read is the same request as before.
     scoped = {"project": await _project_id(project)} if project.strip() else {}
     try:
@@ -652,7 +669,8 @@ async def read_file(
         raise
     result = mcp_result.file_read(dict(data or {}))
     if reduced:
-        result["content"] = _noted(str(result.get("content") or ""), reduced)
+        # Closed with the note, as before: the hosted server repairs only paged limits.
+        result["content"] = f"{result.get('content') or ''}\n\n{reduced}"
     return result
 
 

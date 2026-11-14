@@ -44,6 +44,14 @@ def find_project(projects: list[dict[str, Any]], ref: str) -> dict[str, Any] | N
     return None
 
 
+def same_named(projects: list[dict[str, Any]], ref: str) -> list[dict[str, Any]]:
+    """The projects named ``ref`` (case-insensitive) when no id or slug is ``ref``."""
+    if any(str(p.get(key) or "") == ref for p in projects for key in ("id", "slug")):
+        return []
+    lowered = ref.casefold()
+    return [p for p in projects if str(p.get("name") or "").casefold() == lowered]
+
+
 def close_matches(projects: list[dict[str, Any]], ref: str, limit: int = 3) -> list[str]:
     """``Name (slug, id)`` for the projects whose name or slug is nearest ``ref``."""
     by_word: dict[str, dict[str, Any]] = {}
@@ -80,6 +88,16 @@ def resolve_project_ref(ref: str, *, param_hint: str = "--project") -> str:
 
     with get_sdk() as sdk:
         projects = list(sdk.projects.list() or [])
+    named = same_named(projects, ref)
+    if len(named) > 1:
+        # Two projects share the name: picking one silently read the wrong project (the
+        # MCP tools refuse it as scope_ambiguous and name both).
+        listed = "; ".join(f"{p.get('name')} ({p.get('id')})" for p in named)
+        raise typer.BadParameter(
+            f"{len(named)} projects are named {ref!r}: {listed}. Pass the project's id or "
+            "slug instead.",
+            param_hint=param_hint,
+        )
     found = find_project(projects, ref)
     if found is None:
         suggestions = close_matches(projects, ref)
