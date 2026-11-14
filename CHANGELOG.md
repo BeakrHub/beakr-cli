@@ -474,6 +474,10 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **A `beakr kb` read the Knowledge door refuses exits with the refusal's code.**
+  A bad argument (`beakr kb log --kind robot`, `--since yesterday`, the door's
+  `invalid_arguments`) exits 2, a usage error, and a missing page 4, as a checked
+  call does; every refusal exited 1. The message is unchanged.
 - **`beakr kb` reads do not repeat the pages they name.** Sources leaves out the
   Knowledge pages the reply's text already names, as the MCP tools' default list
   does; a `kb sections` reply listed every hit page again (a third of the reply).
