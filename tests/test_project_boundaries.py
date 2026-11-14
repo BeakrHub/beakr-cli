@@ -732,6 +732,16 @@ def test_projects_guard_is_deprecated_but_works():
 # --- beakr mcp: instructions, start_session, session_status, list_projects ---------------
 
 
+def test_instructions_say_how_to_cite_an_outside_record_and_end_with_the_boundaries():
+    from beakr_cli.mcp_server import BOUNDARIES_INSTRUCTIONS, instructions
+
+    text = instructions()
+    assert "{source_type: external_record, url, title, meta: {system, record_id, excerpt}}" in (
+        text
+    )
+    assert text.endswith(BOUNDARIES_INSTRUCTIONS)
+
+
 def test_instructions_explain_the_two_rules_and_three_modes():
     from beakr_cli.mcp_server import BOUNDARIES_INSTRUCTIONS, instructions
 
