@@ -1051,3 +1051,62 @@ def test_trail_shows_boundary_events_beside_reads():
     assert "boundary:locked Partner A  Locked to Partner A by knowledge_base sections" in lines[1]
     assert "boundary:started  Automatic session." in lines[2]
     assert "no project" not in text
+
+
+# --- On the installed entry point ------------------------------------------------------
+
+
+def test_the_boundary_commands_are_on_the_installed_entry_point():
+    """``beakr session status`` was written but not in CORE_COMMANDS: the installed CLI
+    answered "No such command 'status'" while every test here ran the full tree."""
+    from beakr_cli.main import app as published
+
+    for argv in (
+        ["session", "status", "--help"],
+        ["session", "start", "--help"],
+        ["projects", "boundary", "show", "--help"],
+        ["projects", "boundary", "set", "--help"],
+    ):
+        result = runner.invoke(published, argv)
+        assert result.exit_code == 0, (argv, result.output)
+    start = " ".join(runner.invoke(published, ["session", "start", "--help"]).output.split())
+    for flag in ("--read", "--write", "--read-everything", "--automatic"):
+        assert flag in start
+    edit = " ".join(runner.invoke(published, ["session", "edit", "--help"]).output.split())
+    assert "--read-everything" in edit and "--automatic" in edit
+    assert "status" in runner.invoke(published, ["session", "--help"]).output
+
+
+def test_session_status_runs_on_the_installed_entry_point():
+    from beakr_cli.main import app as published
+
+    result = runner.invoke(published, ["session", "status"])
+
+    assert result.exit_code == 0, result.output
+    assert scope_session.NOT_IN_SESSION in _text(result)
+
+
+def test_every_session_and_boundary_command_is_published():
+    from beakr_cli.command_surface import CORE_COMMANDS
+    from beakr_cli.main import internal_app
+
+    def tree(group, prefix=""):
+        import typer.main
+
+        command = typer.main.get_command(group)
+        names = set()
+
+        def walk(cmd, path):
+            subs = getattr(cmd, "commands", None)
+            if subs:
+                for name, sub in subs.items():
+                    walk(sub, f"{path} {name}".strip())
+            else:
+                names.add(path)
+
+        walk(command, prefix)
+        return names
+
+    full = tree(internal_app)
+    wanted = {n for n in full if n.startswith(("session ", "projects boundary ", "org isolation "))}
+    assert wanted and wanted <= set(CORE_COMMANDS), sorted(wanted - set(CORE_COMMANDS))

@@ -48,6 +48,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "keys scopes",
         # Sessions: limit a shell or agent to the projects you choose.
         "session start",
+        "session status",
         "session show",
         "session trail",
         "session ls",
@@ -110,7 +111,10 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "projects members add",
         "projects members rm",
         "projects members invite",
-        # A project's cross-project guard (an owner or admin of the project).
+        # A project's boundary (an owner or admin of the project, or an org admin).
+        "projects boundary show",
+        "projects boundary set",
+        # Deprecated for one release: the guard is the boundary's content in now.
         "projects guard show",
         "projects guard set",
         # Files
