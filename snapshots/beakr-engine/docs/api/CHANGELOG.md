@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=f26203e30b9ce2639d1101146b65e33e712f9cbabdd140292482576056cab1c8 -->
+<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=3332e6d79ad35f746d6f482c583cc233b85a6e71af613cc2ad578174d1804a02 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -521,6 +521,27 @@ The first public version.
     and a credential that can read only that project. A `picked` session gets no
     lock notice either (its log and status still record the lock). The session's
     log records one `boundary:held` event per held project.
+  - More reads follow a session's rules. A session token can now call them, and a
+    request joined to a session by `X-Beakr-Session` gets the session's rules on
+    them (before, it ran as the plain key): the Knowledge graph and timeline, a
+    page's links, history and exports, card rows, entities and conflicts, recent
+    changes, ingestion events, a proposal's conflict, the activity feed, and a
+    file's preview and parsed pages. Each is confined to the session's projects;
+    naming a project, or reading a page, file or proposal, is a read of its
+    project (held, confirmed and locked like any read); and one that names no
+    project leaves out the locked projects the session has not touched. Getting a
+    download link (`GET /v1/artifacts/versions/{version_id}/download-url`,
+    `POST /v1/artifacts/download-url`) is now a read of the file's project too.
+    The MCP `wiki_graph` tool takes `confirm_lock`.
+  - Refused inside any session, joined by `X-Beakr-Session` or with a session
+    token, with `403 session_route_unavailable` (`message` says what and why,
+    `fix` how to call it instead): a write's read trail
+    (`GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail`,
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail`), which
+    shows what was read in other projects, and three views of the web app (a
+    project's Knowledge status, suggested projects for a file, a folder's delete
+    preview).
   - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
     they are valid and, for each project the person can read, whether it can be
     added to read or to write, with the reason when not.

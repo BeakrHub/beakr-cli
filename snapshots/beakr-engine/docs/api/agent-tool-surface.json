@@ -10,6 +10,7 @@
     "read_file",
     "research",
     "workboard",
+    "wiki_graph",
     "documents",
     "get_profile",
     "show_proposal",
