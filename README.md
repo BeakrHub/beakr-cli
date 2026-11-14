@@ -934,8 +934,9 @@ disagree.
 
 ### The Python SDK dependency
 
-`pyproject.toml` requires `beakr-sdk>=0.1.0,<0.2` from PyPI, and `uv.lock` pins
-the release CI tests against. To take a newer SDK release:
+`pyproject.toml` requires `beakr-sdk>=0.2.0,<0.4` from PyPI, and `uv.lock` pins
+the release CI tests against. A self-hosted release installs this CLI with the
+self-hosted SDK wheel (0.3.0) instead, which the upper bound admits. To take a newer SDK release:
 
 ```bash
 uv lock --upgrade-package beakr-sdk
@@ -981,6 +982,10 @@ beakr kb search "authentication flow"
 beakr documents search "who covers losses from defects"   # the original files, by meaning
 beakr kb sources "API Design"
 beakr kb log
+# History, proposals and listings filter by who wrote a change and through which agent
+beakr kb log --by "Ali Chen" --via codex --since 2026-11-09
+beakr kb proposals ls --via claude-code --accepted-by auto-approve
+beakr kb ls --changed-by me --changed-since 2026-11-09
 
 # Ask a question
 beakr research "what's our deploy process?"

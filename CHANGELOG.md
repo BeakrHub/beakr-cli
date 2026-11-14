@@ -4,18 +4,432 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.5.0 (unreleased)
-
-The self-hosted line: everything in the published beakr-cli 0.5.0, plus the
-self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit>`.
+## beakr-cli 0.6.0 (2026-11-13)
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` `sources` and `provenance`: every line
+  that prints a `source_ref` for a file you can open now prints the file's one
+  reference, `beakr-source:v1:file:<file id>`, the same one the reply's source
+  records and every other read give it. The entry line of `sources` printed
+  the reference of one stored citation, and `provenance` one per cited
+  passage, so one reply named one file by two or more references. The place
+  of each passage is on its own line, as before (`memo.pdf › block 2`). A file
+  you cannot open and a connected item keep the stored citation's reference.
+  References handed out before still resolve.
+- `POST /v1/artifacts/read`: an `offset` at or past the end of the text, and
+  a place that lies past the end of the file (`chars 20000-21000` of a
+  15,896-character file, a line range or a page beyond the last), now answer
+  an empty `text` with `start` and `end` equal to `total_chars`, the new
+  `past_end` true and the new `note` saying how long the text is (its
+  characters, lines or pages, and for an offset the last valid one). An offset
+  past the end answered a range the file does not have (`start` and `end`
+  both 20000 of 15,896), and a place past the end answered the start of the
+  file with `unit.found` false. `unit.found` is still false for such a place.
+  A place that is merely absent (a block the file does not hold) still answers
+  the start of the file, and a cited passage whose recorded position went
+  stale is still found by its quote.
+- `POST /v1/knowledge/documents` `search` and `grep`: `coverage.truncated` is now always
+  present, false when the reply's size budget cut nothing. It appeared only
+  when a page was cut.
+- `POST /v1/knowledge/wiki/command`: control characters in a reply's text and
+  `next` steps are now shown as `\uXXXX` escapes: the C0 and C1 controls
+  other than newline, tab and the carriage return of a `\r\n` line ending,
+  DEL, the line and paragraph separators, the bidirectional controls and the
+  zero-width characters. A page title holding an escape sequence or a
+  right-to-left override was sent as stored. The escape is the JSON escape of
+  the character, so a continuation the text prints
+  (`after_title="..."`) still parses back to the exact value.
+  `coverage.continue_with` and the `sources` records are unchanged and exact.
+  The hosted MCP server shows the same characters escaped in every tool
+  reply and error, the `Coverage:` line included, which still parses back to
+  the exact values.
+- `GET /v1/knowledge/wiki/pages/{page_id}/revisions` and
+  `GET /v1/knowledge/wiki/pages/{page_id}` (and blame lines): `compiled_by` (and
+  `last_compiled_by`) for a revision written from a proposal you cannot open
+  is now `proposal:<first eight characters of its id>`, the short id `writer`
+  prints, in place of the full id. A proposal you can open keeps
+  `proposal:<id>`, and every other value is unchanged. The `show` command and
+  `grep` with `mode: history` print the same short form.
+- `POST /v1/knowledge/wiki/command` `query`: a query grouped by a Facts
+  `value` now says when a row that lists several values counted in more than
+  one group, as `rows` with `group_by: value` does. Its `Applied:` line gains
+  `1 of the 4 row(s) list several values ("A; B"), each of which another row
+  states on its own, and count once in each of those groups, so the groups'
+  rows add up to 5, not 4`. Nothing is added when no row lists several
+  values.
+- `POST /v1/knowledge/wiki/command` `provenance`: a cited connected item (a
+  meeting note, an email or Slack thread, an issue) now carries the call that
+  reads it, as `sources`, `sections` and `cat` do: a `fetch: integrations
+  command='call' tool='...' arguments={...}` line under the entry and
+  `retrieval` on its source record, for a caller who has that connection. It
+  printed only the entry's `source_ref`. A stored file's entry is unchanged:
+  its `artifact_id:` line is the id the file reader takes.
+- `POST /v1/knowledge/wiki/command` `log` and `blame`, and
+  `GET /v1/knowledge/wiki/pages/{page_id}/revisions`: a revision written from
+  a proposal you cannot open (one another person filed) no longer prints its
+  stored identifier (`proposal:<id>`). Its `writer` reads `a proposal you
+  cannot open (<short id>), applied by <person>`, and `attribution.person` is
+  that person: the one the accept ran as, which the record of the change
+  already shows to every reader of the project. Where that record names nobody
+  the phrase stands alone. `log` with `by`, and
+  `ls` with `created_by` or `changed_by`, now find such a revision for the
+  person who applied it; the agent that filed the proposal and who accepted it
+  stay private to its filer, so it still matches no `via` or `accepted_by`.
+- `GET /v1/knowledge/wiki/pages/{page_id}/revisions` (and the `attribution` on
+  blame lines, section provenance and the activity log): a revision from a
+  proposal that auto-approve applied said it was accepted by the person who
+  filed it. `writer` now reads `accepted by auto-approve`, as the `log` command
+  does; `attribution.accepted_by` is null for it and the new
+  `attribution.auto_approved` is true. `accepted_by` still names the person
+  for a proposal a person accepted, where `auto_approved` is false.
+- `POST /v1/knowledge/wiki/command`: every string value a reply prints inside
+  a call it tells you to make is now a JSON string, so the printed call parses
+  back to exactly `coverage.continue_with`. This covers the cursors of `ls`
+  (in the text and in its `next` step), a `grep` listing, `sources` and
+  `provenance`, and the `query` a `rows` note suggests. A title or file name
+  holding a double quote or a backslash was printed unescaped
+  (`after_title="Quote's "edge" notes"`), so the value's end could not be
+  found; it now prints as `after_title="Quote's \"edge\" notes"`. Values
+  without those characters print as before, non-ASCII letters included.
+- `POST /v1/knowledge/wiki/write` `new` with a `scope` that names no project:
+  the refusal (`invalid_scope`) now ends its reason with a full stop before
+  `Available scopes:` and closes with what to do (pass one of the listed
+  scopes by exact name or id).
+- Hosted MCP server: a tool given a project name that matches no project you
+  can read (`wiki_stats`, `wiki_graph`, `context`, `workboard`, `get_profile`,
+  `documents`, `research`, and the project tools) now answers with
+  `error_code` `scope_not_found`, the message `No project you can read
+  matches '<name>'.` and a `fix` naming the closest projects, as the stdio
+  server does; a name several readable projects share answers
+  `scope_ambiguous` with their ids. It answered with a message alone.
+- Source records (`sources` on `POST /v1/knowledge/wiki/command`, `citations`
+  and `sources` on `POST /v1/knowledge/research`, `results` on
+  `POST /v1/knowledge/documents` `search`): a file you can open now has one
+  `source_ref`, `beakr-source:v1:file:<file id>`, on every read. Before, the
+  same file and page could come back under different references: it named
+  whichever stored citation or search hit a read happened to hold, so two
+  cards citing one page, or a `sections` read and a research answer, gave
+  different values. The place cited is `location.unit_locator` and the passage
+  is `citation_key`, as before. `POST /v1/artifacts/read` and
+  `POST /v1/artifacts/download-url` take the new reference, and with
+  ` › <unit>` after it (`... › p. 7`) the read opens that place; without one it
+  opens the start of the file. A Knowledge write citing it cites the document
+  as a whole, or the place named after it; cite `citation_key` (as `key`) or
+  the readable reference to cite one passage. It is refused with
+  `citation_not_citeable` under the same rule as a file id: only your own
+  upload or a file Knowledge already cites. Every reference handed out before
+  still resolves. Connected items (Slack, email, calendar, issues), Knowledge
+  pages, and a file cited on a page you can read but cannot open yourself keep
+  the references they had.
+- `POST /v1/knowledge/wiki/command` `rows` with `group_by: value`, and `query`
+  with `GROUP BY value`: a Facts value is counted in several groups only when
+  it lists values. Every value was cut at `; `, so one sentence holding a
+  semicolon was counted as several values (73 rows gave 80 groups). A value
+  now counts in each part's group only when every part is a value another row
+  of the same read states on its own; otherwise it is one group. When a row
+  counts in several groups, the reply says how many rows do and what the
+  groups' rows add up to, so the group counts reconcile with the rows read.
+- `POST /v1/knowledge/documents` `search`: a hit's `match` label now follows
+  the printed order. The search orders by meaning and wording together and
+  labelled each hit by meaning alone, so a `moderate` hit could print above a
+  `strong` one; a hit's `match` is now never better than that of a hit printed
+  above it. `sections` labels are unchanged.
+- Source records: a place is printed as `chars A-B` only when the citation
+  records that span in the file's own text. Citations compiled before spans
+  were recorded that way printed offsets that count an internal annotated copy
+  of the file, so a place could read past the end of the file (`chars
+  827-1236` of a 767-character file). Such a citation now names its document
+  without a character place; reading its `citation_key` token with
+  `POST /v1/artifacts/read` opens the cited passage.
+- `POST /v1/knowledge/documents` `grep` and `search`: `coverage` also carries
+  `command`, `returned`, `limit`, `offset` and, when the reply's size budget
+  cut the page short, `truncated`, with the meanings they have on a Knowledge
+  read's `coverage`, so one reader handles both. Every earlier field stays. A
+  `search` reply cut by its size budget now sets `coverage.next_offset` and
+  `coverage.continue_with` to the first document not shown; they named the end
+  of the ranked page, which skipped the documents in between.
+- `POST /v1/knowledge/wiki/command` `diagnostics`: findings are grouped by
+  what they are, most severe first (broken links, unparseable card tables,
+  rows with no evidence, prose with no citation, disputed sections, orphan
+  pages), each with the call that opens it and each group with the write
+  action that fixes it. An index page's entries, and list items or rows that
+  open with a link to another page, are no longer reported as uncited claims:
+  they are counted apart as navigation that needs no citation.
+- `POST /v1/knowledge/wiki/command` with no `scope` reads every project the
+  caller can read, and its replies named pages by title alone. When the pages
+  of a `sections`, `grep`, `ls`, `rows`, `timeline`, `links`, `references` or
+  `log` reply belong to more than one project, the reply now opens with the
+  projects it spans, each with its id (the value `scope` takes), every
+  reference to a page is followed by `[project: <name>]` unless its line
+  already names the project, and `coverage.projects` lists each project's `id`
+  and `name`. A reply within one project is unchanged. Only projects the
+  caller can read are named; a project-restricted key is told only of its own.
+- `POST /v1/knowledge/wiki/command`: the `ambiguous_page` refusal, for a title
+  that names a page in several projects, now lists each candidate with its
+  project name and id, its page id and the call that opens it
+  (`cat {"page": "<page id>"}` for a refused `cat`). A project-restricted key
+  is no longer told, above a page it opened by title, the names and page ids
+  of same-titled pages in the key owner's other projects.
+- `POST /v1/knowledge/wiki/command` and `POST /v1/knowledge/wiki/write`
+  `scope`: a project name spelled in its own case now selects that project
+  when another project's name differs only by case (`test` and `TEST`); both
+  were refused as ambiguous. A name that still matches several projects is
+  refused with `scope_ambiguous`, which now names each candidate
+  (`"<name>" (id <project id>)`) and says to pass the id.
+- `POST /v1/knowledge/wiki/command` `sources`: the reply states what it
+  counts. Its header reads `N distinct source(s) with M cited passage(s)` (it
+  gave the number of citation records as the number of sources), where M is
+  the passages the list prints under the sources: a source's own citation
+  record is its entry line and is not counted as a passage. A closing line
+  says how many sources and passages are shown of how many and, when some are
+  not, the call that shows the rest, and `coverage` carries the same account:
+  `returned` and `total` count distinct sources, `complete` says whether all
+  are listed, and `continue_with` holds `after_title` and `after_source_id`.
+  `limit` still counts citation records (one per passage and one for a source
+  cited as a whole); a window now ends at the end of a source, so following the
+  cursor no longer skips the remaining passages of a source the limit fell
+  inside. Following the cursor lists every source exactly once: the closing
+  line and the `next` step print the cursor as JSON strings that parse back to
+  `continue_with` (a title holding a quote read back short and listed the same
+  source again), a source is placed once by the earliest title among its
+  citations, a source with no title has a cursor that continues after it, and
+  the cursor is compared exactly as printed, leading and trailing spaces
+  included. A reply cut to fit the response budget names the whole title and
+  id of the last source it kept.
+- `POST /v1/knowledge/wiki/command`: two different sources that share a name
+  (two meeting notes with one title) are cited by a name that tells them
+  apart, `<name> · <date>` when each has its own date and `<name> · id
+  <first 8 characters of its id>` otherwise, and each record in `sources`
+  carries that name as `reference`. Both MCP servers list them as two Sources
+  entries; they were one.
+- `POST /v1/knowledge/wiki/command`: no reply contains a `{{...}}` citation
+  token, a `` section marker or another HTML comment, in its
+  text, its `next` steps or its `sources` records. `cat`, `blame` and
+  `timeline` printed section markers, and a token was left where a reply
+  indented the line it was on, where it was triple-braced, and in `sources`
+  excerpts. Where a reply prints a page's own lines (`cat`, `blame`, `show`,
+  `diff`), a section marker reads `[section_id=<id>]`, the id `cat {page,
+  section_id}` takes, on the same line. Text inside a fenced or inline code
+  span is returned as written.
+- `POST /v1/knowledge/wiki/command` `rows`: a partial reply says both limits:
+  `limit` asks for at most 500 rows a call (100 by default, 300 with `view:
+  census`, 50 with `include_evidence`), and one reply holds about 100 rows
+  whatever `limit` is, so a large table is read by paging with `offset`.
+  `help` and `help {topic: "rows"}` state the same numbers. `help` now ends
+  with a `next` step a caller can take; it told callers to cite with a token.
+- `POST /v1/knowledge/documents`: the notes under a spreadsheet's summary name
+  the commands that read its rows (`read` for the first 50 rows of each sheet,
+  `grep` for every row). They said to use a spreadsheet parser, which an API
+  or MCP caller does not have.
+- `POST /v1/context` (JSON): the response gains `workspace`, the deployment
+  that answered (`environment`: `production`, `sandbox`, `eval`, `test` or
+  `local`) and the organization the call acted in (`organization.name` and
+  `organization.slug`; `organization` is null if it cannot be read), so an
+  agent connected to the wrong environment or
+  organization can tell from its first call. The hosted MCP server's `context`
+  and `beakr_version` tools print it; `beakr_version` there no longer says to
+  run a terminal command, and a read made with `sources: "none"` no longer ends
+  with a step that says to cite from the list it left out.
+- `POST /v1/knowledge/wiki/command` `ls`: following the continuation a reply
+  prints now reaches every page. A window is ordered by title in byte order
+  (uppercase before lowercase, then non-ASCII letters), and `after_title` was
+  compared in another order, so pages whose titles start with a lowercase or
+  accented letter could be on no window; a listing filtered with `created_by`
+  or `changed_by` lost pages the same way. Titles can repeat across projects:
+  when a window ends between two pages with the same title, the reply prints
+  `after_page_id` beside `after_title`; send both, and keep sending the
+  `after_page_id` each later reply prints. `after_page_id` without
+  `after_title`, or one that is not a page id, is refused with
+  `invalid_arguments`. A partial `ls` now sets `coverage.continue_with` to the
+  arguments to change (`after_title`, and `after_page_id` when printed), and
+  its first `next` step names them; before, `next` said to raise `limit`. A
+  date-sorted `ls` (`sort_by: updated_at` or `created_at`) has no cursor: its
+  reply and `coverage.continue_with` (`{"sort_by": "title"}`) say to page the
+  title-ordered listing from its start. Both MCP servers report `has_more:
+  true` for such a window.
+- `POST /v1/knowledge/wiki/command` `sources`, `sections`, `cat` and
+  `provenance`: the `fetch:` line under a cited connected item (a meeting
+  note, an email or Slack thread, an issue) is now the call an API, CLI, SDK
+  or MCP caller can make, `integrations command='call' tool='...'
+  arguments={...}`, for the caller's own connection. It named the provider
+  tool alone (`granola_get_note with note_id=...`), which is not callable
+  outside Beakr. The `next` step of `sources` says to make that call as
+  written.
+- `POST /v1/knowledge/wiki/command` `log` with no filter now names each writer
+  as a filtered `log` does: the person, the client or agent, and for a
+  revision from a proposal who accepted it (`auto-approve` where it was
+  applied automatically). It printed stored identifiers (`human:<user id>`,
+  `api:<user id>:<client>`) and, for an auto-approved proposal, the person who
+  filed it as the one who accepted it. It is also paged like a filtered `log`:
+  20 revisions by default, 50 at most, with `offset`, `coverage.next_offset`
+  and a final line giving the call that continues it.
+- `POST /v1/knowledge/wiki/command` `proposals` with `by`, `via`, `kind`,
+  `since` or `until` that matches nothing now says which status it read
+  (`pending` unless `status` is given) and prints the call that lists the
+  accepted proposals with the same filters. Its `next` step no longer suggests
+  checking a page name.
+- `POST /v1/knowledge/wiki/command`: the `unknown_command` message lists the
+  commands the caller can run, `help` included, and `query` where it is
+  enabled for the organization.
+- `POST /v1/knowledge/wiki/command` and `POST /v1/knowledge/wiki/write`: a
+  `scope` that names no project you can read (`scope_not_found`) now says what
+  to do: list the projects you can read and pass one of their names or ids,
+  or leave `scope` out. A read carries it in `next`, a write at the end of its
+  text. The answer is the same for a project that does not exist and one you
+  cannot read.
+- `POST /v1/knowledge/documents` `read` and `grep`: a file with no indexed
+  text is reported as having no readable text yet. The message no longer
+  names `artifact_download`, which is not available through the API, the CLI
+  or either MCP server.
+- The hosted MCP server's `wiki_stats` and `wiki_graph` accept a project name
+  in `project`, as their schema says; a name was refused with `bad_request`.
+  A name that matches no project you can read is refused in the same words
+  whether or not such a project exists.
+- The `knowledge_base_write` tool description and `action: help` (both MCP
+  servers; `POST /v1/knowledge/wiki/write` `help`) now describe approval the
+  way the result does: a write is a proposal, applied at once where the
+  project's auto-approve is on, otherwise when a person accepts it, and
+  staging one needs no permission first. They said nothing is written until a
+  person approves.
+- `POST /v1/knowledge/wiki/command` `log`, `proposals` and `ls` filter by who
+  wrote a change and through which agent. `log` (with or without `page`) and
+  `proposals` take, in any combination: `by`, a person given as a name, email
+  address, user id or `me` (for `log` the person behind the revision, for
+  `proposals` the person who filed it); `via`, a case-insensitive prefix of
+  the client or agent label the change was recorded with (`claude-code`,
+  `codex`, `chatgpt`, `beakr-mcp`, `beakr-cli`); `kind`, one of `person`,
+  `agent`, `beakr` or `system` as in a revision's `attribution`;
+  `accepted_by`, a person or `auto-approve`, for accepted proposals and the
+  revisions they produced; and `since` and `until`, each a date (`YYYY-MM-DD`,
+  the whole UTC day) or an ISO 8601 time, both inclusive. On `proposals`,
+  `since` and `until` bound when the proposal was filed, and `accepted_by`
+  lists accepted proposals whatever `status` is left at. `ls` takes
+  `created_by`, `created_via` and `created_since`, tested against a page's
+  first revision, and `changed_by`, `changed_via` and `changed_since`, tested
+  together against any one revision of the page; a filtered `ls` is a flat
+  listing in title order. `log` also takes `offset`. A filtered reply opens
+  with one `Filters:` line stating what was applied, and a reply that is cut
+  ends with the exact options that continue it, the filters included;
+  `coverage` reports `returned`, `complete` and `next_offset` as for other
+  listings. A person is resolved only among the people the history
+  being read already names to you (who wrote or accepted a revision of the
+  pages read, or filed or decided a proposal listed), never among the
+  organization's members: a name that several of them share is refused with
+  `person_ambiguous` and their names, and anyone else (a name nobody has, a
+  colleague who wrote nothing there, a user id) is not an error, it lists
+  nothing. The `Filters:` line says a person back as you typed it. A revision written from a proposal
+  you cannot open names only the person who applied it in `log`, so it matches
+  `by` for that person and no `via` or `accepted_by`. Calls without these
+  options answer as before. The
+  `knowledge_base` tool of both MCP servers takes the same options in
+  `arguments`.
+- `POST /v1/knowledge/wiki/command` `grep`: when nothing matches and the reply
+  shows pages found by meaning instead, those entries are no longer worded as
+  hits. The reply still opens with "0 exact matches for ...". Each entry is
+  labelled `related by meaning` (with `closeness: strong`, `moderate`,
+  `tangential` or `weak` where it is known) in place of `[match: ...]`, the
+  header reads "N section(s) related by meaning, on M page(s)", and
+  `output_mode: files_with_matches` and `count` list each page on a line that
+  starts `related by meaning:`. `output_mode: count` states "Count: 0 pages, 0
+  lines." `coverage` reports the literal search: `returned: 0`, `total: 0`,
+  `complete: true`, and the new `coverage.related` describes the entries shown
+  (`by`, `unit`: `sections` or `pages`, `returned`, plus `total` and
+  `truncated` when the response budget left some out). `next` leads with a
+  step saying nothing matched. A `grep` that matches nothing and shows nothing
+  else (`target: title`, `mode: regex`, or no related page either) now also
+  reports `returned: 0`, `total: 0`, `complete: true`.
+- `POST /v1/knowledge/wiki/command`: a `limit` above the command's maximum is
+  now stated. The text and `next` lead with one sentence ("limit was reduced
+  from 100 to 20 because search returns one ranked selection of at most 20
+  sections."), `coverage.limit` is the maximum that was applied and the new
+  `coverage.requested_limit` is the value sent. The maximums are unchanged:
+  `sections` 20; `grep` 200 pages, or 300 with `output_mode:
+  files_with_matches` or `count` or with `target: title`; `ls` 500; `rows` 500
+  (50 with `include_evidence`, 20 for `view: fields` and `view: groups`, 100
+  for `view: conflicts`); `links` 500; `log` without a `page` 50; `proposals`
+  200. The `knowledge_base` tool description states the `sections` maximum.
+- `POST /v1/knowledge/wiki/command` `ls`: a listing larger than its window is
+  now read from the database as that window and a count, instead of every
+  page in scope. The text and `coverage` are unchanged.
+- Hosted MCP connector sign-ins (claude.ai, ChatGPT and other clients signed in
+  through the browser that name no Beakr scope) now hold `projects:admin`, so
+  `create_project` and `add_project_member` work from the hosted MCP server
+  where they answered `403 insufficient_scope`. They still hold no other admin
+  scope and not `audit:read`. The person's role in each project decides every
+  call as before.
+- `POST /v1/knowledge/wiki/command` `sections` replies are fitted to the hits
+  they show. The "Documents these sections cite:" list names only the
+  documents of hits that are shown, and at most 24 of them. A hit longer than
+  2,000 characters or 24 lines is shortened and ends with how many lines were
+  left out and the `cat {page, section_id}` call that reads the section. When
+  hits do not fit, each one left out is named on a line under "Not shown" with
+  its `page_id` and `section_id`, and the reply says that search returns one
+  ranked selection of at most 20 sections and does not page; it no longer
+  says to lower `limit`. A higher `limit` never shows fewer hits than a lower
+  one. `coverage` now carries `returned` (hits shown), `total` (hits
+  selected), `limit`, `complete` and `truncated` for `sections`.
+  `include_sources: false` leaves out the cited-documents list and the
+  `sources` records, and gives the hits that room; the hosted MCP server
+  sends it for `sources: "none"`. The closing line names a file reader only
+  when a shown hit cites a stored file; when the shown hits cite only
+  connected items it points at `sources {page}`. When a search has no strong
+  match and the query is a short run of ids or names (a ticket id, UUID, file
+  name, dotted or snake_case name, or a quoted string), `next` leads with the
+  exact `grep` call for the most specific one.
+- `POST /v1/knowledge/wiki/command` `sections` and `grep`: when one project
+  is in scope and some of its files are not compiled, compiled only in part
+  or failed, the text ends with a line saying so ("Knowledge was compiled
+  from 45 of 48 file(s) in this project ...") and `coverage.corpus` gives
+  `files_total`, `files_compiled`, `partial`, `failed` and `not_compiled`.
+  `coverage.complete` stays a statement about the result only. Nothing is
+  added when every file is compiled or the counts are not known.
+- `POST /v1/artifacts/read` pages a read addressed at a place. With a
+  ` › <unit>` (a page, paragraph, sheet or line range), `offset` now reads on
+  from that offset in the text the window indexed (the page, the sheet, or
+  the file), and `next_offset` is returned while that text holds more: send it
+  with the same reference. Before, `offset` was ignored for such a read and
+  `next_offset` was null. An `offset` sent with a cell range, which is
+  returned whole, answers `400 offset_not_applicable`. A reference that lists
+  several places (`book.xlsx › p. 2, p. 4 +1 more`) opens the first.
+- `POST /v1/artifacts/read` and `POST /v1/artifacts/download-url`: the
+  `400 not_a_file` refusal for a file read through a drive connection now says
+  so, with `source_kind` (`connected_file` or `connected_item`), `provider`
+  and `url` when known, and names what opens it. A connected file named by the
+  name a Sources line prints answers the same `400` for a caller who can reach
+  it; for anyone else it stays `404 not_found`.
+- `POST /v1/context` returns `truncated`: true when `budget_chars` shortened a
+  block or left one out. When the budget cannot hold every block, the
+  organization and project come first, then what `question` selects, then the
+  profile, with recent activity and past conversations last. A budget that
+  holds everything returns the blocks in the same order as before.
+- `POST /v1/knowledge/wiki/command` with `command: "query"` and no `scope` now
+  reads the projects the caller can read, as `rows` does. Before, it matched
+  no rows. A key restricted to some projects reads only those.
+- `POST /v1/knowledge/wiki/command` with `command: "rows"` and `group_by`:
+  a group's `numbers`, `sum`, `min` and `max` count only values that state a
+  quantity (`45 mg`, `$55 million`), not digits inside names or ids.
+- `POST /v1/knowledge/wiki/command` `cat` with `section_id` returns the section
+  as text: a header line (page id, section id, revision, page lines), the
+  section with each citation as a readable reference (`memo.pdf › p. 7`), and
+  one line per cited document. A citation that is not a verified quote from
+  its source says so after its reference: `(human asserted)`, `(unverified)`
+  or `(paraphrase)`. It used to return a JSON object with every citation
+  record; pass `ledger: true` to get that object.
+- `POST /v1/knowledge/wiki/command` `cat`: a reply cut to fit the response
+  size says so once, as the first `next` entry, with the size shown against
+  the full size and every section not shown. `coverage.continue_with` holds
+  the arguments of the `cat` call that continues exactly where the reply
+  stopped (`page` and `lines`, plus `scope` when the call gave one), and
+  `coverage` also carries `shown_chars`, `total_chars`, `revision`,
+  `lines_shown`, `lines_total` and `sections_not_shown`, all now part of the
+  documented `coverage` object. Through the MCP
+  servers `coverage.has_more` is true whenever `continue_with` is set;
+  `next_cursor` stays null.
 - `DELETE /v1/projects/{project_id}` no longer requires step-up MFA, even
   when the organization requires it for sensitive actions. Project deletion
   permissions still apply. Keys and tokens remain blocked with
   `403 session_required` in organizations requiring enterprise SSO.
-
 - Project isolation, for organizations whose projects must not write into one
   another (each part is available where the organization has it turned on;
   `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
@@ -189,210 +603,6 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   session. The person can also ask the client to reuse a selection for the
   folder it runs in (`remember_folder`). Available where the organization has
   sessions enabled.
-- `beakr mcp` runs in a session: it starts one when it starts (with your
-  credential), makes every tool call with the session's token, renews the token
-  before it expires and ends the session when it exits. Until you choose the
-  session's projects its tools answer with the picker link; a client that
-  supports MCP form elicitation (Claude Code, Codex) shows the choice in chat.
-  The new `session_scope` tool shows the session's projects and can only drop
-  them. A choice you ask to remember for a folder is kept in its
-  `.beakr/project.json` and starts the next session there. On an installation
-  without sessions, or with `BEAKR_MCP_SESSIONS=off`, it works as before.
-- `beakr session start|show|ls|edit|end|forget`: limit a shell to the projects you
-  choose (`eval "$(beakr session start --env)"`, a checkbox picker or
-  `--read`/`--write`). Commands in that shell send the session's token; the
-  token stays in `~/.beakr/sessions` (0600) and only the session id is in
-  `BEAKR_SCOPE_SESSION`.
-- Commands that write into a project run in a session, so one project's
-  knowledge is not filed in another by mistake: `upload`, `files upload|rm|approve`,
-  `kb add-fact|add-connection|add-finding|edit-rows`, `kb propose ...`,
-  `kb proposals accept|dismiss`, `projects profile set|edit|setup`,
-  `projects retry`, `interviews link send`, `conversations import`, `compound` and
-  the `beakr api` operations that write Knowledge or files. Reads are not
-  limited. Outside `BEAKR_SCOPE_SESSION`, the first write in a terminal (or agent
-  session) opens the checkbox picker, or, not at a terminal, prints the picker
-  link and waits up to 5 minutes for the choice (exit 6 with the link and the
-  session id if nobody chooses); the terminal keeps the session for its next
-  writes. A project the session may not write is refused by name with how to
-  add it (exit 3). Session hooks never ask or wait: in an open session they
-  capture only into a project it may write (else they skip and log why), and
-  with none open they capture into the folder's bound project as before.
-  Service accounts and installations without sessions work as before.
-- In a shell whose session has ended (`BEAKR_SCOPE_SESSION`), commands say so and
-  how to leave it (`unset BEAKR_SCOPE_SESSION`, or `beakr session start`) instead
-  of suggesting `beakr auth login`; a write there is refused the same way. A
-  session whose token alone expired is renewed for the next command. The
-  `beakr session` commands resolve project names with your own credential, so
-  `beakr session start -r NAME` works there. A project name the session does not
-  read, but you can, is named as outside the session with how to add it, and the
-  API's `session_write_scope` refusal names projects instead of their ids.
-- Every session picker offers "all": `r all` / `w all` in the terminal picker
-  (`r none` / `w none` clear a column), `beakr session start|edit --read-all` /
-  `--write-all`, and "Read all projects" / "Write all projects (also reads them)"
-  at the top of `beakr mcp`'s in-chat form, above the per-project rows. Write all
-  also reads every project. "All" is the projects you can see when you choose,
-  sent as the lists: a project created later is not added. A session names at
-  most 200 projects; with more, the pickers say so and point to the session's
-  page. With more than 25 projects the in-chat form offers only Read all and
-  Write all, and the link for a custom choice.
-- `beakr mcp` recovers when you end its session on the web page. Every tool call
-  used to fail with `401` and the `beakr auth login` hint until the server was
-  restarted. Now the server checks with your own credential: an ended (or
-  deleted) session is replaced by a new one without projects, and the tool call
-  answers with the in-chat form or the picker link, saying "The previous Beakr
-  session was ended; choose projects for a new one." The folder's remembered
-  choice is not reused for it. A session whose token only expired is renewed and
-  the call made once more. A refused session token never suggests
-  `beakr auth login`.
-- Project isolation in `beakr mcp` and the CLI. Where the installation has agent
-  sessions, `beakr mcp`, its subagents and the `beakr` commands an agent runs in
-  one Claude Code or Codex conversation share one session (`agent_session`, the
-  conversation's id), so a Bash call or subagent cannot step outside it; without
-  them each starts its own session as before. Where the organization is in
-  `auto_lock` mode nothing asks: `beakr mcp` answers at once, the write gate
-  writes without the picker or the wait, a remembered folder choice is not sent,
-  and the CLI's reads in an agent conversation run in the session too. Picker
-  mode is unchanged. A write a locked or read-only session may not make is
-  refused by name before it is sent (exit 3), with the fix that works there: a
-  new agent conversation (a conversation's session is never started again once
-  it ends), or `beakr session end <id>` for a terminal's. `session_required` and
-  the cross-project guard's refusals exit 3 with what to do; a write the guard
-  held is a normal result, "Held for approval by an owner or admin of Pharma B",
-  in `knowledge_base_write`, `show_proposal`, `kb propose ...` and
-  `kb proposals show`. `beakr session show` prints the mode, the locked project,
-  read-only and the touched projects (also when piped), and finds the agent
-  conversation's session without an id; `beakr session end` says when the session
-  was a conversation's. The new read-only `session_status` tool shows the same to
-  the agent; `session_scope` does not narrow an auto_lock session. When the person
-  ends an agent conversation's session, `beakr mcp` no longer replaces it: the
-  agent is told to start a new conversation.
-- The `beakr api` operation that compiles a file's Knowledge
-  (`POST /v1/artifacts/{artifact_id}/knowledge`) runs with the session's token, so
-  it counts in the session (and satisfies `agent_writes_require_session`); it used
-  to send your own credential. `beakr files approve` (and the approve operation)
-  sends your own key and no `X-Beakr-Session`, so it is joined to no session: only
-  a person approves a file, and the API refuses a session token there
-  (`403 person_review_required`), so an agent's session never approves its own
-  files. A held write names the sources it cited from each other project and,
-  where the reader may accept it (`can_accept`), says so; a write reply that already
-  says it was held is not said twice.
-- Inside an agent conversation (an agent conversation id is known: Claude Code,
-  Codex, Cursor or `BEAKR_SESSION`), `beakr session show`, `trail` and `ls` read
-  only the conversation's own session, through its own session token, and never
-  name another (exit 3, "Inside an agent conversation, `beakr session` reads only
-  this conversation's session"); `beakr session end` of another session is refused,
-  and ending its own still works. They used to act with the person's own key, which
-  reads every session of theirs unredacted, a read trail's other projects included.
-  Commands typed with `!` in Claude Code share the agent's environment, so they are
-  confined the same way. From a plain terminal the commands act as the person, as
-  before. A person's own acts that could widen the agent's reach are refused there
-  too (exit 3, "... in the web app or a terminal outside the agent conversation"):
-  `beakr session start` (with or without `--env`), `beakr session edit` (any
-  session, its own included: an agent narrows only by ending it), `beakr org
-  isolation set`, `beakr org read-trail set`, `beakr projects guard set`,
-  `beakr kb agent-review set` and `beakr files approve` (and its `beakr api`
-  operation). These rely on the conversation id in the environment: an agent that
-  clears those variables is not stopped by the CLI. The lock guards against
-  mistakes, not a determined agent.
-- An upload into a project whose agent review policy holds agent uploads for a
-  person (`agent_uploads_need_a_person`) now says so: `beakr upload` and `beakr mcp`'s
-  `upload_files` answer "Stored. A person must approve it before it's added to
-  Knowledge (Files → the file → Approve, or `beakr files approve <id>`)." instead
-  of promising Knowledge "in the background, usually within a few minutes". Each
-  uploaded file's own `knowledge_status` says so (`waiting_for_person`, up to 20
-  files read), which also works inside an agent session, where the policy read
-  (`GET /v1/knowledge/agent-review`) is refused to the session's token; the policy
-  is the fallback when no file says so yet. Where neither can be read, the upload
-  says what it said before.
-- `beakr mcp`'s `upload_files` no longer refuses the first write of an open
-  auto-lock session ("It may write: none" with a picker link): an open session
-  reports no write list, and its first write locks it to that project. A locked
-  session uploads into its own project, and its refusal of another one (or a
-  read-only session's) is worded as the API's (`session_locked_to_project`,
-  `session_read_only`), without a picker link. `create_project` says what an
-  auto-lock session may do with the new project. The CLI's write gate and
-  `upload_files` share one rule (`scope_session.may_write`).
-- `beakr kb proposals accept` (and `kb propose ... --accept`) from a plain
-  terminal is the person's own review: it is sent with their key and no session,
-  even in a shell session or a terminal that kept one, and starts no session. The
-  API treats any request inside a session as an agent's, which may not accept where
-  a person must, nor accept a held proposal. Inside an agent conversation it stays
-  the agent's, in the conversation's session, for the API to decide.
-- Wording: a locked session's refusal no longer reads "nothing was written. To fix:
-  To write Pharma B: End it ..." (the project is named in the message; the fix says
-  only what to do). A write's read trail refused with `read_trail_forbidden` as well as
-  `insufficient_scope` is said the same way inside a session (read it as a person),
-  and outside any session as "You can't see the read trail of write <id>: only the
-  person who filed it, an owner or admin of its project, or an organization admin
-  can."
-- `403 session_project_required` (a call in a session that must name a project
-  named none; it used to answer `insufficient_scope`): the CLI says "Name one of
-  the session's projects with --project (`beakr session show` lists them)" (exit 3),
-  and `beakr mcp`'s tools say to pass `scope` with one of the session's projects
-  (`session_status` lists them), not that the key lacks a scope. It also stops an
-  `upload_files` batch, as the other session refusals do.
-- `beakr projects profile setup` no longer starts a session: it uses (and checks)
-  one already open in the shell, terminal or agent conversation, and otherwise
-  runs as before, so its one-turn runs leave no empty sessions behind. A bare
-  `beakr session show` after `beakr session end` in a terminal that kept the
-  session says "This terminal's session <id> ended at <time>. Start a new one
-  with `beakr session start`." and exits 0, instead of a usage error.
-- No agent hooks on self-hosted: a self-hosted build refuses `beakr hooks install`
-  (Claude Code and Codex) and `beakr setup --hooks` with "Agent hooks are not
-  available on this deployment." (exit 1), and `beakr setup` never offers them.
-  `beakr context --hook` and `beakr compound --hook` (what a separately installed
-  Beakr Claude Code plugin's hooks run) exit 0 at once and send no request, so no
-  hook opens or captures a session. `beakr hooks uninstall` still works. Sessions
-  need no hooks: `beakr mcp` keys the conversation's session itself.
-- On a self-hosted build `beakr codex` is refused too ("`beakr codex` is not
-  available on this deployment.", exit 1), before it touches AGENTS.md or starts
-  Codex, and so are the capture opt-ins that would do nothing there,
-  `beakr hooks capture on` and `beakr init --capture` (`capture off` and `status`
-  still work). `beakr compound --from-codex-sessions` still imports Codex sessions
-  by hand.
-- `session_status` and `beakr session show` still answer for a session the person
-  ended: that it ended and when, what it touched, its read trail (`trail=true`),
-  and to start a new Claude Code conversation for a new session. Reads and writes
-  in it stay refused, and `beakr mcp` no longer tries to start it again.
-- Where the deployment turned Ask off, `beakr ask` says "Ask is turned off on
-  this deployment." (exit 3; `--json` keeps the API's `ask_disabled` code)
-  instead of the API's refusal. `session_required` is told apart by its message:
-  project isolation's "write inside a session" gets the session fix, and the
-  web app's "do it in a signed-in browser" keeps its own hint, no longer both.
-- Shell sessions work where the installation has agent sessions. Every CLI
-  client now names its `X-Beakr-Session` itself: the agent conversation's id
-  (`BEAKR_SESSION`, `CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`,
-  `CURSOR_CONVERSATION_ID`) or none, never the Python SDK's own per-client
-  `sdk-python-<random>` id. With that id the API joined each command to a
-  throwaway session, so after `beakr session start --env`, `beakr session show`
-  answered `404` and an upload said the shell's session had ended. The person's
-  own credential (the session commands, starting, renewing and checking a
-  session) sends no session header even in an agent conversation. "This shell's
-  session has ended" is said only when the person's own credential, sent with no
-  session header, finds the session gone; any other `404` is shown as it is.
-- Read trails: `beakr session trail [SESSION_ID]` prints a session's reads, newest
-  first (op, projects, summary, the items each returned; `--limit`, `--cursor`,
-  `--json`), and finds this shell's, terminal's or agent conversation's session
-  without an id. `beakr kb proposals show --trail` adds the write's trail: the
-  reads its session made before filing it, grouped by project (the write's own
-  first, other projects marked, sources outside Beakr last). `session_status`
-  takes `trail=true` for the session's own trail. A write's trail is read by a
-  person only (it can list other projects' reads, and the API refuses it to a
-  session token): `session_status` with `proposal_id` says where to read it
-  instead of failing with `403 insufficient_scope`, and never reads it with the
-  person's own key on the agent's behalf; `beakr kb proposals show --trail` run
-  in a session shows the proposal with that line in place of the trail (exit 0).
-- Project isolation settings from the CLI: `beakr org isolation show|set`
-  (`--session-mode auto_lock|picker`, `--require-session/--no-require-session`,
-  `--guard allow|hold|refuse`, `--count-search-results/--no-count-search-results`;
-  only the options given are sent), `beakr org read-trail show|set --days N` and
-  `beakr projects guard show|set PROJECT allow|hold|refuse|default`. They always
-  send your own credential and no `X-Beakr-Session`, never a session token, and
-  none is an MCP tool, so an agent cannot loosen its own guard. A loosening change
-  (a less strict guard, `--no-require-session`, `--no-count-search-results`, a
-  shorter read trail) asks first, or needs `--yes` without a terminal. A part not
-  turned on is refused before anything is sent with the flag to turn on (exit 4),
-  and a caller who may not change it (`can_change: false`) is refused (exit 3).
 - `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
@@ -415,11 +625,362 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
+- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
+  source's compiled Knowledge contributions. For an uploaded file use
+  `source_type` `artifact` with the version UUID as `source_id`, and undo
+  versions newest first to remove a whole file's contribution. Requires
+  `kb:write`; a project-restricted credential must supply an allowed
+  `project_id`. File bytes are not deleted. Later edits can prevent a complete
+  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
+  deleting files: a `blocked` result can include applied changes, and HTTP 200
+  is not proof that every contribution was removed. An unknown source returns
+  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
+
+### Organization administration
+
+- Enterprise single sign-on state on organizations: `GET /v1/organizations`,
+  `GET /v1/organizations/{org_id}` and `GET /v1/me/organization` return
+  `sso_required`, `sso_satisfied` (whether the calling session meets the
+  requirement; always `true` when none is required), and, when single sign-on
+  is required, `enterprise_sso_connection_id` (the identity provider's
+  connection id, not a Beakr UUID) and `sso_provider`. A web session that has
+  not signed in through a required connection is refused with `403` and
+  `detail.error_type: enterprise_sso_required`; keys and tokens are not
+  sessions and keep their own scopes, but in an organization that requires
+  single sign-on they answer `403 session_required` to every action that needs
+  step-up (creating service-account keys or service accounts, changing
+  roles or the authentication policy), and to project deletion independently
+  of the step-up setting.
+
+### CLI and SDK
+
+- `beakr kb log`, `beakr kb proposals ls` and `beakr kb ls` filter by who wrote a
+  change and through which agent. `kb log [page]` and `kb proposals ls` take
+  `--by`, `--via`, `--kind`, `--accepted-by`, `--since`, `--until` and `--offset`
+  (`beakr kb log --by "Ali Chen" --via codex --since 2026-11-09`); `kb ls` takes
+  `--created-by`, `--created-via`, `--created-since`, `--changed-by`,
+  `--changed-via`, `--changed-since`, `--after-title` and `--after-page-id`
+  (`beakr kb ls --changed-by me --changed-since 2026-11-09`). A filtered command
+  reads the Knowledge command door and prints its reply, which opens with the
+  filters applied and names the option that continues a cut listing. Without a
+  filter the three commands read and print as before.
+- `beakr kb` prints each next step as a command. The Knowledge door names the
+  next call the way an MCP client makes it (`cat {page, lines}`, `proposals
+  {"offset": 1}`, `call accept_proposal`, `read_file <id>`); the text output of
+  `beakr kb` now prints the `beakr` command that makes it
+  (`beakr kb cat <id> --lines 5-533`, `beakr kb proposals ls ... --offset 1`,
+  `beakr kb proposals accept <id>`, `beakr documents read <id>`), and
+  `beakr api knowledge run-wiki-command ...` for a call with no dedicated flag
+  (as `--data '<json>'` when that command has no option for an argument).
+  The command that continues a cut listing is built from the call that was
+  made and the reply's `coverage` (`continue_with`, `next_offset`), so a title
+  holding quotes, a backtick or `$(...)` is passed whole and quoted for the
+  shell; a value that opens with a dash is written `--after-title=VALUE`. A
+  continuation whose value cannot be read from the reply is left as the door
+  wrote it. `--json` output and the MCP server's replies are unchanged.
+- A cited meeting note, email or Slack thread names the call that re-reads it.
+  The stdio MCP server's Sources line ends `read with integrations
+  command='call' tool='granola_get_note' arguments={...}`, as the hosted
+  server's does, and `beakr kb` prints it as `beakr integrations call ...`.
+- The MCP `context` tool refuses a `budget_chars` outside 2000 to 20000 with
+  `invalid_arguments`, as the hosted server does, instead of changing it
+  silently.
+- `beakr kb log <page>` without a filter names who wrote each revision and
+  through which agent (`by=Dana Reyes via codex/1.4 (proposal 179c343c,
+  accepted by auto-approve)`) instead of the stored stamp
+  (`by=proposal:<uuid>`).
+- The stdio MCP server says where its calls land, as the hosted server does.
+  `context` (markdown) opens with `Connected to: Beakr <environment>,
+  organization "<name>" (slug <slug>).`, read from the reply's `workspace`, and
+  `beakr_version` prints the same line under the installed version: the
+  organization from `GET /v1/me/organization`, the environment from the
+  context route. What cannot be read is left out, and the line is dropped
+  when nothing can; a `claude_md`, `agents_md` or `json` context is unchanged.
+- A project named in its own case is that project on the stdio MCP server when
+  another's name differs only by case (`test` and `TEST`); both were refused.
+  A name that still matches several is refused as `scope_ambiguous` naming
+  each candidate with its slug and id, and a name that matches none suggests
+  the names the hosted server suggests (the engine's matcher, similarity 0.6
+  over names; it was 0.4 over names and slugs).
+- The Sources list closing a stdio MCP result lists a source once per
+  identity, not per display name: two meeting notes with one title are two
+  lines, each told apart by the name the text uses, its date or a short id. A
+  compiler-written excerpt is marked `(paraphrase)` in the full list, and
+  `sources='none'` no longer leaves a `next` step that says to cite from the
+  list it left out.
+- The stdio MCP server shows control characters in a reply as escapes, as the
+  hosted server does. A control character other than a newline, a tab or the
+  carriage return of a `\r\n` line ending, DEL, a line or paragraph separator,
+  a bidi control or a zero-width character in any tool's reply or error (a
+  page title, a file's text, a connected service's reply, an echoed argument)
+  is sent as `\uXXXX` (ESC as `\u001b`), so it cannot recolour or overwrite a
+  line in a client that prints the reply in a terminal, or make the text a
+  person reviews differ from the text an agent acts on. The escape is JSON's
+  own, so a value copied from a printed call sends the original character.
+  Ordinary text, accents and non-Latin scripts included, is unchanged, and so
+  is what `beakr kb` prints in a terminal.
+- The MCP `read_file` tool answers an offset or a place past the end of a
+  file's text with the route's own statement of it (the text's length and the
+  last offset), in place of an empty window or `That place was not found in
+  this version of the file; this is its start.` over the file's first
+  characters.
+
+- `beakr mcp` runs in a session: it starts one when it starts (with your
+  credential), makes every tool call with the session's token, renews the token
+  before it expires and ends the session when it exits. Until you choose the
+  session's projects its tools answer with the picker link; a client that
+  supports MCP form elicitation (Claude Code, Codex) shows the choice in chat.
+  The new `session_scope` tool shows the session's projects and can only drop
+  them. A choice you ask to remember for a folder is kept in its
+  `.beakr/project.json` and starts the next session there. On an installation
+  without sessions, or with `BEAKR_MCP_SESSIONS=off`, it works as before.
+
+- `beakr session start|show|ls|edit|end|forget`: limit a shell to the projects you
+  choose (`eval "$(beakr session start --env)"`, a checkbox picker or
+  `--read`/`--write`). Commands in that shell send the session's token; the
+  token stays in `~/.beakr/sessions` (0600) and only the session id is in
+  `BEAKR_SCOPE_SESSION`.
+
+- Commands that write into a project run in a session, so one project's
+  knowledge is not filed in another by mistake: `upload`, `files upload|rm|approve`,
+  `kb add-fact|add-connection|add-finding|edit-rows`, `kb propose ...`,
+  `kb proposals accept|dismiss`, `projects profile set|edit|setup`,
+  `projects retry`, `interviews link send`, `conversations import`, `compound` and
+  the `beakr api` operations that write Knowledge or files. Reads are not
+  limited. Outside `BEAKR_SCOPE_SESSION`, the first write in a terminal (or agent
+  session) opens the checkbox picker, or, not at a terminal, prints the picker
+  link and waits up to 5 minutes for the choice (exit 6 with the link and the
+  session id if nobody chooses); the terminal keeps the session for its next
+  writes. A project the session may not write is refused by name with how to
+  add it (exit 3). Session hooks never ask or wait: in an open session they
+  capture only into a project it may write (else they skip and log why), and
+  with none open they capture into the folder's bound project as before.
+  Service accounts and installations without sessions work as before.
+
+- In a shell whose session has ended (`BEAKR_SCOPE_SESSION`), commands say so and
+  how to leave it (`unset BEAKR_SCOPE_SESSION`, or `beakr session start`) instead
+  of suggesting `beakr auth login`; a write there is refused the same way. A
+  session whose token alone expired is renewed for the next command. The
+  `beakr session` commands resolve project names with your own credential, so
+  `beakr session start -r NAME` works there. A project name the session does not
+  read, but you can, is named as outside the session with how to add it, and the
+  API's `session_write_scope` refusal names projects instead of their ids.
+
+- Every session picker offers "all": `r all` / `w all` in the terminal picker
+  (`r none` / `w none` clear a column), `beakr session start|edit --read-all` /
+  `--write-all`, and "Read all projects" / "Write all projects (also reads them)"
+  at the top of `beakr mcp`'s in-chat form, above the per-project rows. Write all
+  also reads every project. "All" is the projects you can see when you choose,
+  sent as the lists: a project created later is not added. A session names at
+  most 200 projects; with more, the pickers say so and point to the session's
+  page. With more than 25 projects the in-chat form offers only Read all and
+  Write all, and the link for a custom choice.
+
+- `beakr mcp` recovers when you end its session on the web page. Every tool call
+  used to fail with `401` and the `beakr auth login` hint until the server was
+  restarted. Now the server checks with your own credential: an ended (or
+  deleted) session is replaced by a new one without projects, and the tool call
+  answers with the in-chat form or the picker link, saying "The previous Beakr
+  session was ended; choose projects for a new one." The folder's remembered
+  choice is not reused for it. A session whose token only expired is renewed and
+  the call made once more. A refused session token never suggests
+  `beakr auth login`.
+
+- Project isolation in `beakr mcp` and the CLI. Where the installation has agent
+  sessions, `beakr mcp`, its subagents and the `beakr` commands an agent runs in
+  one Claude Code or Codex conversation share one session (`agent_session`, the
+  conversation's id), so a Bash call or subagent cannot step outside it; without
+  them each starts its own session as before. Where the organization is in
+  `auto_lock` mode nothing asks: `beakr mcp` answers at once, the write gate
+  writes without the picker or the wait, a remembered folder choice is not sent,
+  and the CLI's reads in an agent conversation run in the session too. Picker
+  mode is unchanged. A write a locked or read-only session may not make is
+  refused by name before it is sent (exit 3), with the fix that works there: a
+  new agent conversation (a conversation's session is never started again once
+  it ends), or `beakr session end <id>` for a terminal's. `session_required` and
+  the cross-project guard's refusals exit 3 with what to do; a write the guard
+  held is a normal result, "Held for approval by an owner or admin of Pharma B",
+  in `knowledge_base_write`, `show_proposal`, `kb propose ...` and
+  `kb proposals show`. `beakr session show` prints the mode, the locked project,
+  read-only and the touched projects (also when piped), and finds the agent
+  conversation's session without an id; `beakr session end` says when the session
+  was a conversation's. The new read-only `session_status` tool shows the same to
+  the agent; `session_scope` does not narrow an auto_lock session. When the person
+  ends an agent conversation's session, `beakr mcp` no longer replaces it: the
+  agent is told to start a new conversation.
+
+- The `beakr api` operation that compiles a file's Knowledge
+  (`POST /v1/artifacts/{artifact_id}/knowledge`) runs with the session's token, so
+  it counts in the session (and satisfies `agent_writes_require_session`); it used
+  to send your own credential. `beakr files approve` (and the approve operation)
+  sends your own key and no `X-Beakr-Session`, so it is joined to no session: only
+  a person approves a file, and the API refuses a session token there
+  (`403 person_review_required`), so an agent's session never approves its own
+  files. A held write names the sources it cited from each other project and,
+  where the reader may accept it (`can_accept`), says so; a write reply that already
+  says it was held is not said twice.
+
+- Inside an agent conversation (an agent conversation id is known: Claude Code,
+  Codex, Cursor or `BEAKR_SESSION`), `beakr session show`, `trail` and `ls` read
+  only the conversation's own session, through its own session token, and never
+  name another (exit 3, "Inside an agent conversation, `beakr session` reads only
+  this conversation's session"); `beakr session end` of another session is refused,
+  and ending its own still works. They used to act with the person's own key, which
+  reads every session of theirs unredacted, a read trail's other projects included.
+  Commands typed with `!` in Claude Code share the agent's environment, so they are
+  confined the same way. From a plain terminal the commands act as the person, as
+  before. A person's own acts that could widen the agent's reach are refused there
+  too (exit 3, "... in the web app or a terminal outside the agent conversation"):
+  `beakr session start` (with or without `--env`), `beakr session edit` (any
+  session, its own included: an agent narrows only by ending it), `beakr org
+  isolation set`, `beakr org read-trail set`, `beakr projects guard set`,
+  `beakr kb agent-review set` and `beakr files approve` (and its `beakr api`
+  operation). These rely on the conversation id in the environment: an agent that
+  clears those variables is not stopped by the CLI. The lock guards against
+  mistakes, not a determined agent.
+
+- An upload into a project whose agent review policy holds agent uploads for a
+  person (`agent_uploads_need_a_person`) now says so: `beakr upload` and `beakr mcp`'s
+  `upload_files` answer "Stored. A person must approve it before it's added to
+  Knowledge (Files → the file → Approve, or `beakr files approve <id>`)." instead
+  of promising Knowledge "in the background, usually within a few minutes". Each
+  uploaded file's own `knowledge_status` says so (`waiting_for_person`, up to 20
+  files read), which also works inside an agent session, where the policy read
+  (`GET /v1/knowledge/agent-review`) is refused to the session's token; the policy
+  is the fallback when no file says so yet. Where neither can be read, the upload
+  says what it said before.
+
+- `beakr mcp`'s `upload_files` no longer refuses the first write of an open
+  auto-lock session ("It may write: none" with a picker link): an open session
+  reports no write list, and its first write locks it to that project. A locked
+  session uploads into its own project, and its refusal of another one (or a
+  read-only session's) is worded as the API's (`session_locked_to_project`,
+  `session_read_only`), without a picker link. `create_project` says what an
+  auto-lock session may do with the new project. The CLI's write gate and
+  `upload_files` share one rule (`scope_session.may_write`).
+
+- `beakr kb proposals accept` (and `kb propose ... --accept`) from a plain
+  terminal is the person's own review: it is sent with their key and no session,
+  even in a shell session or a terminal that kept one, and starts no session. The
+  API treats any request inside a session as an agent's, which may not accept where
+  a person must, nor accept a held proposal. Inside an agent conversation it stays
+  the agent's, in the conversation's session, for the API to decide.
+
+- Wording: a locked session's refusal no longer reads "nothing was written. To fix:
+  To write Pharma B: End it ..." (the project is named in the message; the fix says
+  only what to do). A write's read trail refused with `read_trail_forbidden` as well as
+  `insufficient_scope` is said the same way inside a session (read it as a person),
+  and outside any session as "You can't see the read trail of write <id>: only the
+  person who filed it, an owner or admin of its project, or an organization admin
+  can."
+
+- `403 session_project_required` (a call in a session that must name a project
+  named none; it used to answer `insufficient_scope`): the CLI says "Name one of
+  the session's projects with --project (`beakr session show` lists them)" (exit 3),
+  and `beakr mcp`'s tools say to pass `scope` with one of the session's projects
+  (`session_status` lists them), not that the key lacks a scope. It also stops an
+  `upload_files` batch, as the other session refusals do.
+
+- `beakr projects profile setup` no longer starts a session: it uses (and checks)
+  one already open in the shell, terminal or agent conversation, and otherwise
+  runs as before, so its one-turn runs leave no empty sessions behind. A bare
+  `beakr session show` after `beakr session end` in a terminal that kept the
+  session says "This terminal's session <id> ended at <time>. Start a new one
+  with `beakr session start`." and exits 0, instead of a usage error.
+
+- No agent hooks on self-hosted: a self-hosted build refuses `beakr hooks install`
+  (Claude Code and Codex) and `beakr setup --hooks` with "Agent hooks are not
+  available on this deployment." (exit 1), and `beakr setup` never offers them.
+  `beakr context --hook` and `beakr compound --hook` (what a separately installed
+  Beakr Claude Code plugin's hooks run) exit 0 at once and send no request, so no
+  hook opens or captures a session. `beakr hooks uninstall` still works. Sessions
+  need no hooks: `beakr mcp` keys the conversation's session itself.
+
+- On a self-hosted build `beakr codex` is refused too ("`beakr codex` is not
+  available on this deployment.", exit 1), before it touches AGENTS.md or starts
+  Codex, and so are the capture opt-ins that would do nothing there,
+  `beakr hooks capture on` and `beakr init --capture` (`capture off` and `status`
+  still work). `beakr compound --from-codex-sessions` still imports Codex sessions
+  by hand.
+
+- `session_status` and `beakr session show` still answer for a session the person
+  ended: that it ended and when, what it touched, its read trail (`trail=true`),
+  and to start a new Claude Code conversation for a new session. Reads and writes
+  in it stay refused, and `beakr mcp` no longer tries to start it again.
+
+- Where the deployment turned Ask off, `beakr ask` says "Ask is turned off on
+  this deployment." (exit 3; `--json` keeps the API's `ask_disabled` code)
+  instead of the API's refusal. `session_required` is told apart by its message:
+  project isolation's "write inside a session" gets the session fix, and the
+  web app's "do it in a signed-in browser" keeps its own hint, no longer both.
+
+- Shell sessions work where the installation has agent sessions. Every CLI
+  client now names its `X-Beakr-Session` itself: the agent conversation's id
+  (`BEAKR_SESSION`, `CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`,
+  `CURSOR_CONVERSATION_ID`) or none, never the Python SDK's own per-client
+  `sdk-python-<random>` id. With that id the API joined each command to a
+  throwaway session, so after `beakr session start --env`, `beakr session show`
+  answered `404` and an upload said the shell's session had ended. The person's
+  own credential (the session commands, starting, renewing and checking a
+  session) sends no session header even in an agent conversation. "This shell's
+  session has ended" is said only when the person's own credential, sent with no
+  session header, finds the session gone; any other `404` is shown as it is.
+
+- Read trails: `beakr session trail [SESSION_ID]` prints a session's reads, newest
+  first (op, projects, summary, the items each returned; `--limit`, `--cursor`,
+  `--json`), and finds this shell's, terminal's or agent conversation's session
+  without an id. `beakr kb proposals show --trail` adds the write's trail: the
+  reads its session made before filing it, grouped by project (the write's own
+  first, other projects marked, sources outside Beakr last). `session_status`
+  takes `trail=true` for the session's own trail. A write's trail is read by a
+  person only (it can list other projects' reads, and the API refuses it to a
+  session token): `session_status` with `proposal_id` says where to read it
+  instead of failing with `403 insufficient_scope`, and never reads it with the
+  person's own key on the agent's behalf; `beakr kb proposals show --trail` run
+  in a session shows the proposal with that line in place of the trail (exit 0).
+
+- Project isolation settings from the CLI: `beakr org isolation show|set`
+  (`--session-mode auto_lock|picker`, `--require-session/--no-require-session`,
+  `--guard allow|hold|refuse`, `--count-search-results/--no-count-search-results`;
+  only the options given are sent), `beakr org read-trail show|set --days N` and
+  `beakr projects guard show|set PROJECT allow|hold|refuse|default`. They always
+  send your own credential and no `X-Beakr-Session`, never a session token, and
+  none is an MCP tool, so an agent cannot loosen its own guard. A loosening change
+  (a less strict guard, `--no-require-session`, `--no-count-search-results`, a
+  shorter read trail) asks first, or needs `--yes` without a terminal. A part not
+  turned on is refused before anything is sent with the flag to turn on (exit 4),
+  and a caller who may not change it (`can_change: false`) is refused (exit 3).
+
+## beakr-cli 0.5.0 (2026-11-10)
+
+### Client changes
+
 - **Research is quick by default.** `beakr research`, `beakr kb research` and the
   MCP `research` tool answer within 15 seconds from one search of Knowledge and
   documents unless told otherwise. `--deep` (MCP: `quick=false`) runs the full
   researcher, which takes up to 150 seconds and also reads connected services.
   The MCP tool description and server instructions tell agents when to turn it off.
+- Built on `beakr-sdk` 0.2.0.
+- Every MCP tool that takes a project reads `scope`, `project` and `project_id` as
+  the same argument. Before, the name differed by tool, and `context`,
+  `conversations_search`, `import_conversation` and `workboard` refused `scope`.
+- `knowledge_base` and `research` results end with a brief Sources list by
+  default: one line per document with the places cited, leaving out Knowledge
+  pages the text already names. `sources="full"` gives the previous full list
+  with excerpts, urls and file ids; `sources="none"` leaves it out.
+- `show_proposal` gives a summary, decided proposals say who decided them and
+  when, and a proposal only a person may accept says "Needs a person to accept".
+- `conversations_search` says how well each hit matches (strong, moderate,
+  tangential or weak) and warns first when none is a strong match.
+- `wiki_graph` counts pages as pages and source documents as documents ("the N
+  most linked-to pages of <total>, L links among them, citing M source
+  documents") and lists every page it shows; `wiki_stats` labels what it counts.
+- `beakr kb rows --current-only` and `--as-of` say they read Connections too.
+- Exports accept numbered sources: a Sources appendix plus a superscript number
+  after each cited claim.
+
+### Changes
+
 - `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
   owner when the newest turn failed without an answer: `run_id`, a `reason`
   (`server_update` when a server update interrupted the run, `failed` otherwise)
@@ -510,6 +1071,18 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   answer carries `match_strength` (`strong`, `moderate`, `tangential` or `weak`,
   the best result's band) and, when no result is a strong match, a `note` saying
   the knowledge base may not cover the question; each of its results carries
+  `relevance`. A keyword answer carries none of these. The operation is limited
+  to 120 requests a minute per caller.
+
+## beakr-cli 0.4.0 (2026-10-25)
+
+### Changes
+
+- `GET /v1/knowledge/wiki/search` ranks pages by meaning when no page matches
+  every word of the query, instead of answering with no results. A meaning-ranked
+  answer carries `match_strength` (`strong`, `moderate` or `weak`, the best
+  result's band) and, when even the best result is weak, a `note` saying the
+  knowledge base may not cover the question; each of its results carries
   `relevance`. A keyword answer carries none of these. The operation is limited
   to 120 requests a minute per caller.
 - `POST /v1/knowledge/research` and the MCP `research` tool no longer name the
@@ -622,16 +1195,6 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   `citation_not_citeable`. A `source_ref` in `evidence` that names nothing you
   may cite is now refused with `citation_not_citeable`, naming it, instead of
   being stored as a token that cites nothing.
-- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
-  source's compiled Knowledge contributions. For an uploaded file use
-  `source_type` `artifact` with the version UUID as `source_id`, and undo
-  versions newest first to remove a whole file's contribution. Requires
-  `kb:write`; a project-restricted credential must supply an allowed
-  `project_id`. File bytes are not deleted. Later edits can prevent a complete
-  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
-  deleting files: a `blocked` result can include applied changes, and HTTP 200
-  is not proof that every contribution was removed. An unknown source returns
-  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
 - `GET /v1/me/threads` adds `notifications`: `only` lists just the
   conversations a notification opened (their `origin` is `notification`), and
   `exclude` leaves them out. Omitted, both are listed, as before. Conversations
@@ -1645,9 +2208,8 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
   `detail.error_type: enterprise_sso_required`; keys and tokens are not
   sessions and keep their own scopes, but in an organization that requires
   single sign-on they answer `403 session_required` to every action that needs
-  step-up (creating service-account keys or service accounts, changing
-  roles or the authentication policy), and to project deletion independently
-  of the step-up setting.
+  step-up (creating keys or service accounts, deleting a project, changing
+  roles or the authentication policy).
 - An organization admin revoking a member's credential, and
   `POST /v1/organizations/{org_id}/service-accounts/{account_id}/disable`, need
   an interactive session (and step-up where the organization requires it); keys
@@ -2060,23 +2622,6 @@ self-hosted features below. Self-hosted builds report `0.5.0+selfhosted.g<commit
 
 ### CLI and SDK
 
-- **Project boundaries.** `beakr session start` takes `--read A,B --write A`
-  (checked first with `POST /v1/sessions/options`; a choice that breaks a
-  boundary is refused with each reason, exit 2), `--read-everything` and
-  `--automatic`, and prints the session's one line; inside an agent conversation
-  it declares that conversation's own session. `beakr session edit` takes
-  `--read-everything` and `--automatic`. `beakr session status` says where a
-  session can still write and why. `beakr projects ls` and `show` print each
-  project's boundary in plain words, and `beakr projects boundary show|set`
-  reads and changes it. `beakr org isolation set` takes `--default-boundary`,
-  `--default-out`/`--default-in`, `--minimum-out`/`--minimum-in` and
-  `--no-minimum`; `--session-mode auto_lock|picker`, `--guard` and
-  `--count-search-results` are deprecated for one release (sent as their
-  replacements, or ignored), and so is `beakr projects guard`. `beakr mcp`
-  explains the two rules and the three session modes, adds `start_session` and
-  answers `session_status` from the status route as the hosted server does,
-  lists each project's boundary, and puts the API's lock notice
-  (`Session: ...`) above a tool result; commands print it on stderr.
 - **Accept the proposal you reviewed.** `beakr kb proposals show` prints the
   proposal's content hash, and `beakr kb proposals accept --reviewed-hash HASH`
   applies it only if it is unchanged since (a changed proposal exits 5 and

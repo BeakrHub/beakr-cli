@@ -1,11 +1,12 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
 upload the person's files into it, and add the people who work in it.
 
-None of them is in the engine's shared agent tool surface: ``upload_files`` reads the
-person's own disk, which only this local server can, and the self-hosted installations
-these tools are for have no hosted MCP server. Their descriptions and tier are this
-module's (:data:`DESCRIPTIONS`, read by ``tool_surface``), as ``session_scope``'s are
-``mcp_session``'s.
+The hosted MCP server has the same five tools (beakr-engine
+``beakr/api/mcp_remote/project_tools.py``), and both take each description and tier
+from the shared agent tool surface (:mod:`beakr_cli.tool_surface`). The upload pair
+differs by design: this server reads the person's own disk (``paths``) and keeps a long
+upload running in this process, where the hosted server takes a file's content in the
+call (``files``) and reports one stored upload.
 
 Under a session (:mod:`beakr_cli.scope_session`) the API holds every call to the
 projects the person chose: an upload, a profile or a member needs a project the session
@@ -24,7 +25,6 @@ far; ``upload_status`` reports the rest.
 from __future__ import annotations
 
 import asyncio
-import fnmatch
 import time
 import uuid
 from dataclasses import dataclass, field
@@ -42,6 +42,7 @@ from beakr_sdk.resources._upload import (
 from beakr_cli import scope_session
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
+from beakr_cli.upload_path_policy import MAX_UPLOAD_BYTES, outside_link, refused_path
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
@@ -51,39 +52,6 @@ UPLOAD_WAIT_SECONDS = 40.0
 #: Files one ``upload_files`` call takes; a larger tree is `beakr upload` in a terminal.
 MAX_UPLOAD_FILES = 500
 
-#: Folders never uploaded from, wherever they sit: credential stores, settings, git's own.
-_SECRET_DIRECTORIES = frozenset(
-    {
-        ".ssh",
-        ".aws",
-        ".azure",
-        ".gnupg",
-        ".kube",
-        ".docker",
-        ".beakr",
-        ".config",
-        ".git",
-        ".password-store",
-        ".terraform",
-    }
-)
-#: File names never uploaded: keys, keystores and credential files.
-_SECRET_NAMES = (
-    "*.pem",
-    "*.key",
-    "*.p12",
-    "*.pfx",
-    "*.jks",
-    "*.keystore",
-    "*.kdbx",
-    "*.ovpn",
-    "id_rsa*",
-    "id_dsa*",
-    "id_ecdsa*",
-    "id_ed25519*",
-    "credentials",
-    "credentials.json",
-)
 #: Refusals that stop an upload: every later file would meet the same one.
 _STOPPING_CODES = frozenset(
     {
@@ -97,47 +65,6 @@ _STOPPING_CODES = frozenset(
 )
 
 ProjectRole = Literal["owner", "admin", "member", "viewer"]
-
-DESCRIPTIONS: dict[str, str] = {
-    "create_project": (
-        "Create a Beakr project, for files and Knowledge on one subject. Ask the person "
-        "first, and use an existing project (list_projects) when one fits. In a session, "
-        "the new project joins the projects this session may read and write. Then, before "
-        "any upload, agree its Knowledge profile with the person and save it with "
-        "set_project_profile, entity types first; an organization can require one, and "
-        "uploads are refused until it exists."
-    ),
-    "set_project_profile": (
-        "Write a project's Knowledge profile, which steers what Knowledge builds from its "
-        "files. Agree it with the person first, entity types first: the kinds of things "
-        "Knowledge should keep a page for (for example 'compound', 'lot', 'deviation'), "
-        "with what one instance is and examples in extraction_guidance; then goals, focus "
-        "areas and the core people, organizations and topics. A first profile needs "
-        "entity_types. Fields left out keep their saved value; a list given replaces that "
-        "list. Only the project's owners may write it."
-    ),
-    "upload_files": (
-        "Upload files or folders from this computer into a project: paths are local "
-        "(absolute, or relative to the folder this server runs in). A folder keeps its "
-        "subfolders. Knowledge compiles from the files within a few minutes "
-        "(knowledge=false keeps them out). Answers within about 40 seconds; a larger upload "
-        "carries on in the background and upload_status reports it. Refuses hidden files "
-        "and credential files. In a session, only projects it may write. A project whose "
-        "profile is required needs set_project_profile first."
-    ),
-    "upload_status": (
-        "Report an upload_files upload that was still running: files sent, failed, and "
-        "whether it has finished. Pass the upload id upload_files gave."
-    ),
-    "add_project_member": (
-        "Add a person to a project, by email (or user id, or exact name). Someone already "
-        "in the organization is added at once; anyone else is sent an invitation by email "
-        "and joins on first sign-in, which only works for the organization's own sign-in "
-        "domains. Without role, someone new joins as member and an existing member keeps "
-        "theirs. Needs permission to manage the project's members. Ask the person before "
-        "adding anyone."
-    ),
-}
 
 #: Each tool's MCP annotations: all of them change something; none deletes.
 ANNOTATIONS: dict[str, dict[str, bool]] = {
@@ -207,7 +134,7 @@ def _lock_line(session: dict[str, Any], project: dict[str, Any]) -> str:
 
 
 async def create_project(name: str, description: str = "") -> str | dict[str, Any]:
-    """Create a project (see :data:`DESCRIPTIONS`)."""
+    """Create a project (described in the shared agent tool surface)."""
     name = (name or "").strip()
     if not name:
         return _error("invalid_arguments", "A project needs a name.", "Pass name.")
@@ -294,7 +221,7 @@ async def set_project_profile(
     core_organizations: list[dict[str, str]] | None = None,
     core_topics: list[dict[str, str]] | None = None,
 ) -> str | dict[str, Any]:
-    """Write a project's Knowledge profile (see :data:`DESCRIPTIONS`)."""
+    """Write a project's Knowledge profile (described in the shared agent tool surface)."""
     project_id = await _project_id(project)
     fields = {
         key: value
@@ -373,29 +300,8 @@ def _profile_saved_text(profile: dict[str, Any], project: dict[str, Any], *, cre
 
 
 def _refused_path(path: Path) -> str | None:
-    """Why ``path`` may not be uploaded by an agent, or None.
-
-    Credential stores, a home folder's hidden folders (``~/.config``, ``~/.local``...),
-    hidden files (``.env``, ``.netrc``) and key files stay on the computer, whichever
-    path names them: the given one and the one a symlink leads to. A hidden folder
-    elsewhere (a checkout under ``~/work/.worktrees``) is an ordinary place.
-    """
-    home = Path.home()
-    for candidate in (path, path.resolve()):
-        for part in candidate.parts:
-            if part in _SECRET_DIRECTORIES:
-                return f"it is inside {part}, which holds credentials or settings"
-        if candidate.name.startswith("."):
-            return f"{candidate.name} is a hidden file"
-        try:
-            below_home = candidate.relative_to(home).parts
-        except ValueError:
-            below_home = ()
-        if below_home and below_home[0].startswith("."):
-            return f"~/{below_home[0]} holds settings and credentials"
-        if any(fnmatch.fnmatch(candidate.name.lower(), pattern) for pattern in _SECRET_NAMES):
-            return f"{candidate.name} looks like a key or credential file"
-    return None
+    """Why an agent may not upload ``path``, or None (:mod:`beakr_cli.upload_path_policy`)."""
+    return refused_path(path)
 
 
 @dataclass
@@ -437,16 +343,17 @@ def _gather(paths: list[str]) -> tuple[list[_Item], list[dict[str, Any]]]:
         path = Path(str(given)).expanduser()
         if not path.is_absolute():
             path = Path.cwd() / path
-        if not path.exists():
-            skipped.append({"path": str(given), "reason": "no such file or folder"})
-            continue
+        # Before the path is looked at: a refused place is not even said to exist.
         refused = _refused_path(path)
         if refused:
             skipped.append({"path": str(given), "reason": f"not uploaded: {refused}"})
             continue
+        if not path.exists():
+            skipped.append({"path": str(given), "reason": "no such file or folder"})
+            continue
         if path.is_dir():
             for file_path in iter_folder_files(path):
-                refused = _refused_path(file_path)
+                refused = outside_link(file_path, path) or _refused_path(file_path)
                 if refused:
                     skipped.append({"path": str(file_path), "reason": f"not uploaded: {refused}"})
                     continue
@@ -562,7 +469,7 @@ async def upload_files(
     knowledge: bool = True,
     resume_upload_id: str = "",
 ) -> str | dict[str, Any]:
-    """Upload local files or folders into a project (see :data:`DESCRIPTIONS`)."""
+    """Upload local files or folders into a project (described in the shared agent tool surface)."""
     project_id = await _project_id(project)
     named = next(
         (p for p in await _readable_projects() if str(p.get("id")) == project_id),
@@ -592,6 +499,16 @@ async def upload_files(
             "never uploaded from here.",
             skipped=skipped,
         )
+    total_bytes = sum(item.size for item in items)
+    if total_bytes > MAX_UPLOAD_BYTES:
+        return _error(
+            "upload_too_large",
+            f"{_size(total_bytes)} in {len(items)} files is more than one call uploads "
+            f"({_size(MAX_UPLOAD_BYTES)}).",
+            "Upload fewer files or one subfolder a call, or ask the person to run "
+            f"`beakr upload PATH --project {project_id}` in a terminal, which has no such limit.",
+            skipped=skipped,
+        )
     upload = _Upload(
         id=f"up_{uuid.uuid4().hex[:12]}",
         project_id=project_id,
@@ -599,7 +516,7 @@ async def upload_files(
         folder_id=folder_id.strip() or None,
         ingest=knowledge,
         items=items,
-        total_bytes=sum(item.size for item in items),
+        total_bytes=total_bytes,
     )
     _UPLOADS[upload.id] = upload
     # Not the call's own task: a client that gives up on the call (Codex after 60
@@ -637,11 +554,11 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
     return f"Finished uploading {path.name} to {project_name} (file {artifact.get('id')})."
 
 
-def _size(count: int) -> str:
+def _size(count: float) -> str:
     for unit in ("bytes", "KB", "MB", "GB"):
         if count < 1024 or unit == "GB":
             return f"{count} {unit}" if unit == "bytes" else f"{count:.1f} {unit}"
-        count /= 1024  # type: ignore[assignment]
+        count /= 1024
     return str(count)
 
 
@@ -698,7 +615,7 @@ def _stopped_line(upload: _Upload) -> str:
 
 
 async def upload_status(upload_id: str) -> str | dict[str, Any]:
-    """Report an upload started by ``upload_files`` (see :data:`DESCRIPTIONS`)."""
+    """Report an upload started by ``upload_files`` (described in the shared agent tool surface)."""
     upload = _UPLOADS.get((upload_id or "").strip())
     if upload is None:
         return _error(
@@ -713,16 +630,20 @@ async def upload_status(upload_id: str) -> str | dict[str, Any]:
 # --- add_project_member -----------------------------------------------------------------
 
 
-async def _org_members() -> list[dict[str, Any]] | None:
-    """The organization's members, or None when this credential cannot list them."""
+def _dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+async def _org_members() -> list[dict[str, Any]]:
+    """The organization's members; none when this credential cannot list them."""
     try:
         members = await call_api(lambda sdk: sdk.members.list())
     except Exception:  # noqa: BLE001 - no lookup: an email is then invited, an id sent as is
-        return None
-    return list(members or [])
+        return []
+    return [m for m in members if isinstance(m, dict)] if isinstance(members, list) else []
 
 
-def _find_member(
+def find_member(
     members: list[dict[str, Any]], person: str
 ) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
     """The member ``person`` names (email, user id or exact name), and any name clashes."""
@@ -742,13 +663,12 @@ def _find_member(
 async def add_project_member(
     project: str, person: str, role: ProjectRole | None = None
 ) -> str | dict[str, Any]:
-    """Add a person to a project, or invite them (see :data:`DESCRIPTIONS`)."""
+    """Add a person to a project, or invite them (described in the shared surface)."""
     person = (person or "").strip()
     if not person:
         return _error("invalid_arguments", "Name the person: an email address.", "Pass person.")
     project_id = await _project_id(project)
-    members = await _org_members()
-    found, clashes = _find_member(members or [], person)
+    found, clashes = find_member(await _org_members(), person)
     if clashes:
         listed = "; ".join(f"{m.get('display_name')} <{m.get('email')}>" for m in clashes[:5])
         return _error(
@@ -766,7 +686,7 @@ async def add_project_member(
         who = found.get("display_name") or found.get("email") or found["user_id"]
         if found.get("email") and found.get("display_name"):
             who = f"{found['display_name']} <{found['email']}>"
-        given = (added or {}).get("role") or role or "member"
+        given = _dict(added).get("role") or role or "member"
         return f"Added {who} to the project as {given}."
     if "@" not in person:
         return _error(
@@ -777,27 +697,34 @@ async def add_project_member(
     try:
         await call_api(lambda sdk: sdk.projects.invite(project_id, person, role=role or "member"))
     except ApiCallError as exc:
-        message = str(exc.fields.get("message") or "")
-        if "already a member of the organization" in message:
-            return _error(
-                "person_lookup_unavailable",
-                f"{person} is in the organization, but this credential cannot look up its "
-                "members to add them.",
-                "Pass their user id instead, or ask the person to add them in the web app.",
-            )
-        if "auto-join" in message:
-            return _error(
-                "invitation_domain_refused",
-                message.split(" Use Share")[0],
-                "Only an organization admin can bring in someone from another domain: in the "
-                "Beakr web app, Settings, Members. This tool does not send organization "
-                "invitations.",
-            )
+        refusal = invitation_refusal(person, str(exc.fields.get("message") or ""))
+        if refusal is not None:
+            return refusal
         raise
     return (
         f"Invited {person} to the project as {role or 'member'}: they are added when they "
         "first sign in to Beakr."
     )
+
+
+def invitation_refusal(person: str, message: str) -> dict[str, Any] | None:
+    """A refused project invitation in the tool's own words, or None for any other refusal."""
+    if "already a member of the organization" in message:
+        return _error(
+            "person_lookup_unavailable",
+            f"{person} is in the organization, but this credential cannot look up its "
+            "members to add them.",
+            "Pass their user id instead, or ask the person to add them in the web app.",
+        )
+    if "auto-join" in message:
+        return _error(
+            "invitation_domain_refused",
+            message.split(" Use Share")[0],
+            "Only an organization admin can bring in someone from another domain: in the "
+            "Beakr web app, Settings, Members. This tool does not send organization "
+            "invitations.",
+        )
+    return None
 
 
 #: The server ``upload_files`` reports progress through; set by :func:`register`.

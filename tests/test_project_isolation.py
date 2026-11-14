@@ -624,7 +624,7 @@ def test_session_scope_does_not_narrow_an_auto_lock_session():
 
 
 @respx.mock
-def test_list_projects_in_auto_lock_lists_every_project_and_the_lock():
+def test_list_projects_in_an_automatic_session_lists_every_project():
     from beakr_cli.mcp_server import mcp
 
     _active(_session("locked", touched=(A,)))
@@ -637,7 +637,8 @@ def test_list_projects_in_auto_lock_lists_every_project_and_the_lock():
 
     text = result.content[0].text
     assert listed.called and "Pharma A" in text and "Pharma B" in text
-    assert "Locked to Pharma A" in text
+    # Where it can still write is session_status's to say, as on the hosted server.
+    assert "This session:" not in text
 
 
 # --- An agent conversation's session ended ----------------------------------------------

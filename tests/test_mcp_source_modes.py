@@ -142,9 +142,15 @@ async def test_knowledge_base_defaults_to_brief(command: str) -> None:
         return result.content[0].text
 
     brief, full, none = await text(), await text(sources="full"), await text(sources="none")
-    assert full == render("knowledge_base", case["mcp"])
+    # The fixture holds the hosted server's default result, which is the brief
+    # list too (``source_listing: brief``); the other modes are the same result
+    # with the mode the call asked for.
+    hosted = case["mcp"]
+    assert hosted[SOURCE_MODE_KEY] == "brief"
+    assert brief == render("knowledge_base", hosted)
+    assert full == render("knowledge_base", {**hosted, SOURCE_MODE_KEY: "full"})
     assert len(none) <= len(brief) <= len(full)
-    assert none == render("knowledge_base", {**case["mcp"], "sources": []})
+    assert none == render("knowledge_base", {**hosted, SOURCE_MODE_KEY: "none"})
     # Each document's source_ref the full list names survives: what a write cites.
     for record in case["mcp"]["sources"]:
         ref = str(record.get("source_ref", ""))

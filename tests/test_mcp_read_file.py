@@ -153,6 +153,80 @@ async def test_a_unit_that_is_not_found_says_so():
     assert "That place was not found in this version of the file; this is its start." in text
 
 
+# ROOT CAUSE (agent tester report, 2026-11-13): an offset or a place past the
+# end of a file answered an empty window, or "not found ... this is its
+# start" over the file's first characters. The read route now says so
+# (``past_end`` and a ``note`` naming the text's length), and both servers
+# print that note in place of any text.
+PAST_END_NOTE = "Offset 5000 is past the end of this text (900 characters); the last offset is 899."
+
+
+def _past_end_windows() -> dict[str, dict]:
+    past = {"text": "", "start": 900, "end": 900, "past_end": True, "note": PAST_END_NOTE}
+    unit = {"locator": "p. 40", "found": False, "page": None, "page_count": 9}
+    return {
+        "offset": {**_window(), **past},
+        "place": {**_window(unit=unit), **past},
+        # A note on a window that is not past the end is not printed.
+        "plain": {**_window(), "past_end": False, "note": PAST_END_NOTE},
+    }
+
+
+@respx.mock
+async def test_an_offset_past_the_end_says_so_in_place_of_text():
+    respx.post(READ).respond(json=_past_end_windows()["offset"])
+    text = await _read({"artifact_id": FILE_ID, "offset": 5000})
+    assert text == (
+        f"{PATH} (characters 900-900 of 900; file {FILE_ID} version {VERSION})\n\n{PAST_END_NOTE}"
+    )
+
+
+@respx.mock
+async def test_a_place_past_the_end_is_not_called_not_found():
+    respx.post(READ).respond(json=_past_end_windows()["place"])
+    text = await _read({"path": f"{PATH}#p. 40"})
+    assert text == (
+        f"{PATH} › p. 40 (characters 900-900 of 900; file {FILE_ID} version {VERSION})"
+        f"\n\n{PAST_END_NOTE}"
+    )
+    assert "was not found" not in text
+
+
+_HOSTED_READS = """\
+import json, sys
+from beakr.api.mcp_remote import formatting, render
+windows = json.load(sys.stdin)
+print(json.dumps({
+    name: render.render("read_file", formatting.file_read(window))
+    for name, window in windows.items()
+}))
+"""
+
+
+async def test_a_past_end_reply_is_the_hosted_one_byte_for_byte():
+    import subprocess
+
+    from tests._engine import real_engine
+
+    engine = real_engine("beakr/api/mcp_remote/formatting.py")
+    if "past_end" not in (engine / "beakr/api/mcp_remote/formatting.py").read_text():
+        pytest.skip("this engine checkout predates the past-end read reply")
+    windows = _past_end_windows()
+    hosted = subprocess.run(
+        [str(engine / ".venv/bin/python"), "-c", _HOSTED_READS],
+        cwd=engine,
+        input=json.dumps(windows),
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    expected = json.loads(hosted.stdout)
+    for name, window in windows.items():
+        with respx.mock:
+            respx.post(READ).respond(json=window)
+            assert await _read({"artifact_id": FILE_ID}) == expected[name], name
+
+
 @respx.mock
 async def test_an_unreachable_reference_answers_as_the_hosted_server():
     respx.post(READ).respond(

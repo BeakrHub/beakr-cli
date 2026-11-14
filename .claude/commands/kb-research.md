@@ -4,9 +4,9 @@ Follow this procedure:
 
 1. **Discover the landscape.** Call `list_projects` to understand the available projects. Use `wiki_stats` for the whole accessible knowledge base, and with `project` when a project is clearly relevant.
 
-2. **Ask the researcher.** Call `research` with the topic as `query`. It is quick by default (the wiki and documents, within 15 seconds); pass `quick=false` when the topic lives in connected services (Slack, email, calendar, Jira) or needs every matching record. It returns a cited answer. Use it as a starting map.
+2. **Broad search.** Run `knowledge_base` command `sections` with `{"query": ...}` using 2-3 phrasings in parallel. Use command `grep` with `{"query": ...}` for exact names or IDs, and command `rows` for facts, counts and comparisons. If a literal grep misses, retry with `sections` before concluding the topic is not covered.
 
-3. **Broad search.** Run `knowledge_base` command `sections` with `{"query": ...}` using 2-3 phrasings in parallel. Use command `grep` with `{"query": ...}` for exact names or IDs. If a literal grep misses, retry with `sections` before concluding the topic is not covered.
+3. **Ask the researcher (optional).** For a composed answer to compare against, call `research` with the topic as `query`. It is quick by default (the wiki and documents, within 15 seconds); pass `quick=false` only when the topic lives in connected services (Slack, email, calendar, Jira).
 
 4. **Deep read.** Read the top 5-10 most relevant hits with command `cat`, using `{"page": ..., "section_id": ...}` when a hit points at a section and `{"page": ..., "outline": true}` to see a page's structure. Read in parallel. Pay attention to:
    - Section content and structure
@@ -26,4 +26,4 @@ Follow this procedure:
    - Gaps -- what the knowledge base does NOT cover that it should
    - Temporal context -- when information was written, whether it may be stale
 
-9. **Recommend.** If the research reveals gaps or stale pages, suggest specific knowledge base updates. Offer to propose pages or edits if appropriate.
+9. **Write back.** Save what the research established with `knowledge_base_write`: `add_finding` on the card each conclusion is about, citing the references you used. If it reveals gaps or stale pages, propose the specific edits. Tell the user what you saved.

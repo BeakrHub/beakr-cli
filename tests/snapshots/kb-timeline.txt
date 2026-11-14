@@ -1,50 +1,88 @@
-$ beakr kb timeline --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
-> GET /v1/knowledge/wiki/timeline?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+$ beakr kb timeline 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> POST /v1/knowledge/wiki/command
+  {"command": "timeline", "page": "Project Helios", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-[
-  {
-    "date_precision": "quarter",
-    "event_end": "2026-09-30",
-    "event_id": "b5d7f9a1-3c5e-4f7a-9b1d-2e4f6a8c0d13",
-    "event_start": "2026-07-01",
-    "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
-    "page_title": "Project Helios",
-    "page_type": "project",
-    "section_id": "sec_9q3t7w",
-    "title": "Q3 thermostability panel"
+{
+  "content": [
+    {
+      "text": "1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.\nKnowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.\n\n| entity | entity_type | attribute | value | when | sources | cite |\n| --- | --- | --- | --- | --- | --- | --- |\n| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |",
+      "type": "text"
+    }
+  ],
+  "coverage": {
+    "command": "rows",
+    "complete": true,
+    "limit": 100,
+    "next_offset": null,
+    "offset": 0,
+    "returned": 1,
+    "scope": {
+      "all_readable": false,
+      "project_ids": [
+        "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+      ]
+    },
+    "status": "success",
+    "total": 1
   },
-  {
-    "date_precision": "day",
-    "event_end": null,
-    "event_id": "c6e8a0b2-4d6f-4a8b-8c2e-3f5a7b9d1e24",
-    "event_start": "2026-09-30",
-    "page_id": "5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62",
-    "page_title": "Decision: Helios Lead Selection",
-    "page_type": "decision",
-    "section_id": "sec_4k8m2p",
-    "title": "Committee selects NW-217 as lead"
-  }
-]
+  "next": [
+    "Cite a row with its cite token; open its card with cat {page} for context.",
+    "Narrow with entity, attribute or page_type, or set current_only for facts."
+  ],
+  "outcome": {
+    "commit_ids": [],
+    "committed_page_ids": [],
+    "committed_revisions": {},
+    "error_code": null,
+    "protocol": "beakr.wiki_tool_outcome.v1",
+    "status": "success"
+  },
+  "sources": [
+    {
+      "citation_key": "wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877",
+      "name": "Helios HX-07 Solubility Card › Facts",
+      "section": {
+        "title": "Facts"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts"
+    }
+  ]
+}
 --- stderr
 
 
-$ beakr kb timeline --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
-> GET /v1/knowledge/wiki/timeline?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+$ beakr kb timeline 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/command
+  {"command": "timeline", "page": "Project Helios", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-2026-07-01 -- 2026-09-30 (quarter)  [project]  Q3 thermostability panel
-  Page: Project Helios
-2026-09-30  [decision]  Committee selects NW-217 as lead
-  Page: Decision: Helios Lead Selection
+1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.
+Knowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.
+
+| entity | entity_type | attribute | value | when | sources | cite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |
+
+next: Cite a row with its cite token; open its card with `beakr kb cat <page>` for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 
 
-$ beakr kb timeline --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
-> GET /v1/knowledge/wiki/timeline?limit=50&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4
+$ beakr kb timeline 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> POST /v1/knowledge/wiki/command
+  {"command": "timeline", "page": "Project Helios", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41	Q3 thermostability panel	type=project
-5e7b9d13-2a4c-4f6e-8b1d-7c9e0a3f5b62	Committee selects NW-217 as lead	type=decision
+1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.
+Knowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.
+
+| entity | entity_type | attribute | value | when | sources | cite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |
+
+next: Cite a row with its cite token; open its card with `beakr kb cat <page>` for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 

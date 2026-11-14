@@ -5,9 +5,9 @@ description: "Access your organization's knowledge base, research questions with
 
 # Beakr Knowledge Base
 
-Beakr is the team's organizational memory. Teams write decisions, processes, ownership, and dated events here so that 6 months later the answer to "why did we do X" is one search away instead of lost in Slack archives or tribal knowledge.
+Beakr is the organization's shared memory: what the team knows, decided and is working on, with the source behind every claim. It holds Knowledge (a map of cards for people, organizations, projects, decisions and events, each with dated Facts, Connections and Findings), the original files, and live access to connected services.
 
-Use the Beakr MCP tools to search and read existing knowledge — and to add to it when the conversation produces something durable.
+Use it in both directions. Read it before you answer or act on anything about the organization. Write back what you learn before you finish, so the next person or agent starts from it: Beakr knows only what is written to it, and what you worked out in a session is gone when the session ends unless you save it.
 
 ## When to use
 
@@ -19,12 +19,12 @@ Use the Beakr MCP tools to search and read existing knowledge — and to add to 
 
 ## Proactive capture
 
-You are not just a read interface. When the conversation produces something durable, **propose adding it — don't wait to be asked**.
+You are not just a read interface. Writing back is half of the job. When the work produces something durable, **write it — don't wait to be asked**. A write stages a proposal that a person or the project's auto-approve decides, so writing is safe.
 
 **Capture when all of:**
 - **Durable**: would still matter in 6 months
 - **Shareable**: others would benefit, not just this user right now
-- **Not already in Beakr**: check with `knowledge_base` command `sections` first
+- **Not already in Beakr**: check with `knowledge_base` command `rows` or `grep` on the thing's name first
 - **In scope**: the user can write to it (their personal project, or a team project they belong to — confirm with `list_projects`)
 
 **Good candidates:**
@@ -33,7 +33,10 @@ You are not just a read interface. When the conversation produces something dura
 - Role / ownership assignments ("Alex owns billing")
 - Dated events: launches, hires, fundraising rounds, incidents
 - External relationships: investors, partners, key vendors
-- Recurring questions you just answered
+- An answer you just assembled from several reads
+- A fact a source states that no card holds yet
+- A correction to something Knowledge has wrong
+- A cause you found and how it was fixed
 
 **Skip:**
 - Debugging traces, transient state
@@ -41,21 +44,26 @@ You are not just a read interface. When the conversation produces something dura
 - Hot takes, speculation, "thinking out loud"
 - Anything the user clearly considers ephemeral
 
+**How:**
+1. Find the card: `knowledge_base` command `grep` or `rows` on the thing's name.
+2. If it exists, add one row: `add_fact {page, attribute, value, when, evidence}` for what a source states; `add_finding {page, date, kind, text, evidence}` for what you concluded, decided or learned; `add_connection {page, relation, to, evidence}` for how two things relate.
+3. If it does not exist, create it with action `new` and the most specific card type from `knowledge_base` command `ontology`, then add its rows.
+4. Evidence is the reference a read printed, or this conversation as a `conversation` source with `meta.excerpt`.
+5. Tell the user in one line what you saved.
+
 **Etiquette:**
-- **Surface the suggestion before writing**: "This decision about X seems worth capturing — want me to propose it for your wiki?"
-- Never auto-write. Always propose, always wait for explicit OK -- unless the write result says the user's auto-approve is on; then it is applied automatically, so do not ask them to approve it.
-- One capture offer per significant thread — don't pepper the user.
-- Cite the current session as a `conversation` source with `meta.excerpt` so it is traceable.
+- Write, then say what you wrote. Do not ask first: the proposal is the review step. Never call `accept_proposal` unless the user asks to accept that specific proposal, and do not ask for approval when the write result says auto-approve is on.
+- Batch what one task produced; don't pepper the user with a note per row.
 
 ## Tools
 
 | Tool | When to use |
 |------|-------------|
-| `knowledge_base` | Every read over the wiki, chosen by `command`: `sections`, `grep`, `ls`, `cat`, `hover`, `links`, `references`, `timeline`, `rows` (every map card's Facts, Connections or Findings as one table), `provenance`, `blame`, `sources`, `log`, `diff`, `show`, `ontology`, `suggest_parent`, `diagnostics`, `completions`, `proposals`. |
+| `knowledge_base` | Every read over the wiki, chosen by `command`: `sections`, `grep`, `ls`, `cat`, `hover`, `links`, `references`, `timeline`, `rows` (every map card's Facts, Connections or Findings as one table), `provenance`, `blame`, `sources`, `log`, `diff`, `show`, `ontology`, `suggest_parent`, `diagnostics`, `completions`, `proposals`. `log`, `proposals` and `ls` filter by who wrote a change and through which agent, e.g. `log {by: "Ali Chen", via: "codex", since: "2026-11-09"}`. |
 | `knowledge_base_write` | Every change, chosen by `action`: `edit_section`, `add_fact`, `add_connection`, `add_finding`, `edit_rows`, `sort_table`, `new`, `edit`, `find_replace`, `mv`, `archive`, `merge`, `copy`, `page_type`. Stages a proposal, with two exceptions that apply at once: `sort_table` only reorders a table, and a project or org `page_type` the verifier accepts is active at once; a global one is refused. On a project-map card use the three `add_*` actions to add one row or one dated finding, and `edit_rows` to change, merge or delete rows (Facts, Connections or Findings). A card's table rows change only through these actions: an `edit_section` or `edit` that would change one is refused, and `find_replace` changes the text around the rows and reports the row matches it left for `edit_rows`. A write to one section or row prints its proposal's id and `content_hash`. |
 | `documents` | Where available: `grep` and `read` over the original documents themselves, for exact wording a page does not carry. |
-| `read_file` | The original document a citation points at. Pass the citation's readable reference (`memo.pdf › p. 7`), the `path › place` from a Sources line (`deals/acme/memo.pdf › p. 7`), or the file id. It reads files and canvases only: for a connected item (Slack, email, calendar, Jira) use its excerpt and open its url. Long files come back in pieces (`offset`). |
-| `research` | When your client exposes it: one cited answer. Quick by default (one search of the knowledge base and documents, within 15 seconds); `quick=false` runs the full researcher (up to 150 seconds), which also reads connected services (Slack, Gmail, Calendar, Jira...): for questions about those services, exhaustive questions, or when a quick answer is thin. |
+| `read_file` | The original document a citation points at. Pass the citation's readable reference (`memo.pdf › p. 7`), the `path › place` from a Sources line (`deals/acme/memo.pdf › p. 7`), the line's `source_ref`, or the file id. It reads files and canvases only: a connected item (a meeting note, an email, a Slack thread) is re-read with the `integrations` call its Sources line prints (`read with integrations command='call' tool='granola_get_note' arguments={...}`); make that call as printed. Its url is for a person to open, and its id is not the one the read tool takes. Long files come back in pieces (`offset`). |
+| `research` | When your client exposes it: Beakr composes one cited answer for you. For a lookup (a fact, a count, a name, a status) read Knowledge yourself with `knowledge_base`: it is faster and shows the rows themselves. Quick by default (one search of the knowledge base and documents, within 15 seconds); `quick=false` runs the full researcher (up to 150 seconds), which also reads connected services (Slack, Gmail, Calendar, Jira...): use it for a question about those services, not to make an answer complete. |
 | `integrations` | Live reads of the user's connected services (Slack, Drive, Gmail, Jira, Notion, Benchling...), as the user, with the read-only tools Beakr's own agent uses: `command: list` names the tools you can call and their options, `describe` with `tool` gives one tool's schema, and `call` with `tool` runs it with its options in `arguments` (`connector_id` when a service is connected twice). A call ends with a Sources list whose `source_ref` a Knowledge write accepts as a citation. For what the organization already knows, the knowledge base comes first. |
 | `show_proposal` / `accept_proposal` / `dismiss_proposal` | Review a staged proposal, which names who filed it ("filed by Dana Reyes via claude-code/2.1"); accept only when the user explicitly asks, passing the `content_hash` the write or `show_proposal` printed as `reviewed_hash`. A proposal that changed since it was shown is refused; one that changes a card's table rows is not accepted without the hash. Where the organization or project requires a person to accept what agents write, `accept_proposal` is refused (`person_review_required`) and nothing is applied; the hosted server's `show_proposal` says "Needs a person to accept". Tell the user it waits for them to accept in Beakr, and do not retry. |
 | `list_projects` | Discover projects (including the personal one) to use as `scope`. |
@@ -78,7 +86,7 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 
 ## Reading evidence
 
-- **Start with `sections`.** Each hit shows the document passage (a verbatim excerpt) that supports it. Quote it directly; open the file only when the value you need is not in the excerpt.
+- **Start with the narrowest read.** `rows` for a fact, a count or a comparison; `grep` for an exact name or id; `sections` when you can only describe it. A `sections` hit is Knowledge's own text and names the documents it cites: read the section (`cat {page, section_id}`) or its source before you quote.
 - **Four ways to read, combined as the task needs.**
 
   | Mode | Commands | Use it for | It cannot |
@@ -92,11 +100,11 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 - **`rows` as a database.** Every row carries its entity (the card's title), entity_type (page type), the table, the field (attribute or relation), the value (or `to`), When and its sources. Filter (`table`, `page_type`, `entity` (one title, or several as a list, `a|b|c` or `^(a|b)$`; the reply names any title that matched no card), `to` for every connection involving a page, `connected_to` for cards linked to a page either way, `attribute`, `query`, `regex: true` for patterns, dates, `current_only`, `as_of` for each card's value on a date), sort (`order_by` any column, or `amount` and `date` for typed values; `descending`) and aggregate (`group_by` entity, entity_type, year or a column: counts, sums, min, max; `group_by: value` groups a category field's consolidated values and any other value by its text). `match` sets how `attribute` finds a field: `exact` (the name or an alias), `similar` (also names holding its words) or `meaning` (the default: also the closest name by meaning, where the rows index is on); the reply says which field it used. `view: fields` lists the field names cards actually use, and `field_id` picks one.
 - **0 rows is not absence.** It means no scanned card states the fact under that name. Retry with the names the reply suggests or `view: fields`, then `sections` and the cited documents; never conclude a fact does not exist from an empty `rows`.
 - **Results stay under about 6k tokens.** When `next` appears, page with it rather than re-querying.
-- **Exact wording:** `sources {page}` lists every cited passage; `read_file` with a citation's reference, a file id or a path opens the original.
+- **Exact wording:** `sources {page}` lists every cited passage; `read_file` with a citation's reference, a `source_ref`, a file id or a path opens the original.
 
 ## Find, then verify in the file
 
-1. **Find** with the knowledge base (`sections`, `rows`, `cat`). Each citation reads as the document and the place in it, in parentheses, naming the file by its drive path when it is known: `Base rent is $48,000 per year (deals/acme/memo.pdf › p. 7).` A cited message, email, event or comment is dated by its own time, and its url opens that item when the connector gives one. Each Sources line names where a cited document lives, every place cited in it, its `read_file` id and its `source_ref`: `- deals/acme/memo.pdf › p. 7, p. 9 · read_file <id> · source_ref <ref>`.
+1. **Find** with the knowledge base (`sections`, `rows`, `cat`). Each citation reads as the document and the place in it, in parentheses, naming the file by its drive path when it is known: `Base rent is $48,000 per year (deals/acme/memo.pdf › p. 7).` A cited message, email, event or comment is dated by its own time, and its url opens that item when the connector gives one. Each Sources line names where a cited document lives, every place cited in it and its `source_ref`: `- deals/acme/memo.pdf › p. 7, p. 9 · source_ref <ref>`. `read_file` takes that `source_ref` (or the `path › place`). `sources: "full"` on the read adds each document's excerpt, url and file id (`read_file <id>`). A connected item's line ends with the `integrations` call that re-reads it.
 2. **Follow** that `path › place` with `read_file` (`deals/acme/memo.pdf › p. 7`, `book.xlsx › sheet 2, B4:D9`); it returns the text around that place. When the files are on your local disk, open the path there directly. Where the `documents` tool is available, its `read` of a path in the wrong subfolder opens the one file of that name in the same record folder and says which path it opened, and a spreadsheet read ends with the first 50 rows of each sheet.
 3. **Verify** every decisive value (an amount, date, count, name) in the file before you rely on it. When the file and a card disagree, the file wins: say so, and cite the file by its reference.
 - **Codex:** print only the result's text, and make one Knowledge call per exec cell.
@@ -104,11 +112,14 @@ There is no `search` command. Use `sections` (semantic, start here) or `grep` (l
 ## Quick decision tree
 
 ```
-User asks a question about their org, a fact, a decision or a page
-  → knowledge_base sections {query}; quote the excerpt, or cat {page, section_id} on the best hit
+User asks for a fact, a status, an owner or a value
+  → knowledge_base rows {table: facts, entity or attribute}; grep {query} for an exact name or id
 
-User asks a broad question and research is available
-  → research(query=...)   (quick by default; quick=false for connected services or every record)
+User asks something you can only describe
+  → knowledge_base sections {query}; then cat {page, section_id} on the best hit (a hit is Knowledge's own text: quote from the section or its source, not from the hit)
+
+User wants an answer composed from several sources, and research is available
+  → research(query=...)   (quick by default; quick=false only for questions about connected services)
 
 User asks for the most recent or largest X
   → knowledge_base rows {table: facts, page_type, attribute, order_by: when (or value), descending: true}; cat the top few, then their children for the executed documents
@@ -123,7 +134,7 @@ User asks everything about one record
   → knowledge_base hover {page}, ls {parent: <page>}, links {page, direction: out}, timeline {page}
 
 User needs the exact wording or a value the excerpt lacks
-  → read_file {path: "<path> › <place>"} from the Sources line (or the citation's reference)
+  → read_file {path: "<path> › <place>"} from the Sources line (or the citation's reference or source_ref); for a note, email or Slack thread, the integrations call its Sources line prints
 
 User wants an exact name, ID, or phrase
   → knowledge_base grep {query}

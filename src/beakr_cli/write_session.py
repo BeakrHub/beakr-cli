@@ -114,6 +114,9 @@ NOT_GATED: frozenset[str] = frozenset(
         "whoami", "context", "ask", "research", "doctor", "version",
         "kb ls", "kb cat", "kb sections", "kb search", "kb grep", "kb log", "kb sources",
         "kb research", "kb rows", "kb query", "kb entities", "kb proposals list",
+        # The graph reads and the original documents' reads (from main, 13 Nov).
+        "kb hover", "kb links", "kb provenance", "kb timeline",
+        "documents grep", "documents ls", "documents read",
         "kb proposals ls", "kb proposals show", "kb agent-review show",
         "workspace projects", "projects ls", "projects show", "projects status",
         "projects refusals", "projects profile show", "projects members ls",

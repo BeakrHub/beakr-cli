@@ -37,7 +37,7 @@ TOOLS_ENV = "BEAKR_MCP_TOOLS"
 DISCOVERY_NOTE = (
     "\n\nOnly the most-used Beakr tools are listed. Call 'discover_tools' to find the "
     "others (proposals review, project and profile lookups, statistics, conversations, "
-    "imports, the audit log); the tools it finds are added to the listing."
+    "imports, the audit log, project setup); the tools it finds are added to the listing."
 )
 
 
@@ -52,28 +52,14 @@ def _tools() -> dict[str, dict[str, Any]]:
     return {tool["name"]: tool for tool in document()["tools"]}
 
 
-def local_tools() -> dict[str, str]:
-    """Tools only this server has, with their descriptions, in the discovery tier.
-
-    The project set-up tools (:mod:`beakr_cli.mcp_tools_projects`): ``upload_files``
-    reads the person's own disk, which only a local server can, and the self-hosted
-    installations they are for have no hosted MCP server, so the engine's surface does
-    not describe them.
-    """
-    from beakr_cli.mcp_tools_projects import DESCRIPTIONS
-
-    return DESCRIPTIONS
-
-
 def description(name: str) -> str:
     """The canonical description of ``name``."""
-    local = local_tools()
-    return local[name] if name in local else _tools()[name]["description"]
+    return _tools()[name]["description"]
 
 
 def tier(name: str) -> str:
     """``eager`` or ``discovery``."""
-    return "discovery" if name in local_tools() else _tools()[name]["tier"]
+    return _tools()[name]["tier"]
 
 
 def meta(name: str) -> dict[str, str]:
@@ -82,10 +68,8 @@ def meta(name: str) -> dict[str, str]:
 
 
 def stdio_tools() -> list[str]:
-    """Every tool this server should expose, in the surface's order (eager first), then
-    this server's own (:func:`local_tools`)."""
-    shared = [tool["name"] for tool in document()["tools"] if "stdio" in tool["surfaces"]]
-    return shared + list(local_tools())
+    """Every tool this server should expose, in the surface's order (eager first)."""
+    return [tool["name"] for tool in document()["tools"] if "stdio" in tool["surfaces"]]
 
 
 def tool_kwargs(name: str) -> dict[str, Any]:
@@ -350,6 +334,16 @@ class TieredFastMCP(FastMCP):
             with session_notice.collecting() as notices:
                 result = await self._gated_call(name, arguments, agent)
             return _with_notices(result, notices)
+        except ToolError as exc:
+            # A raised error leaves as its message (the MCP library sends
+            # ``str(exc)`` as the reply's text), so it is shown the same way.
+            from beakr_cli.mcp_render import visible_controls
+
+            message = str(exc)
+            shown = visible_controls(message)
+            if shown == message:
+                raise
+            raise ToolError(shown) from exc
         finally:
             MCP_CLIENT_AGENT.reset(token)
 
@@ -441,7 +435,22 @@ class TieredFastMCP(FastMCP):
             return _error_result(mcp_call_shaping.compact_error(name, body))
         from beakr_cli.mcp_render import render
 
-        return CallToolResult(content=[TextContent(type="text", text=render(name, body))])
+        return CallToolResult(content=[_text_content(render(name, body))])
+
+
+def _text_content(text: str) -> TextContent:
+    """The one text block a tool call answers with, as it leaves this server.
+
+    Every reply and every error result passes through here, so this is where a
+    control, bidi or zero-width character in anything a tool printed (a title,
+    a file's text, a connected service's reply, an echoed argument) is shown as
+    a visible escape and never reaches a client's terminal as it was stored.
+    The hosted server's ``_text_content`` does the same with the same function
+    (``mcp_render.visible_controls``), so both servers send the same text.
+    """
+    from beakr_cli.mcp_render import visible_controls
+
+    return TextContent(type="text", text=visible_controls(text))
 
 
 def _with_notices(result: Any, notices: list[str]) -> Any:
@@ -450,17 +459,20 @@ def _with_notices(result: Any, notices: list[str]) -> Any:
 
     if not notices or not isinstance(result, CallToolResult):
         return result
+    # The notices lead, and the whole text leaves through _text_content, as on the
+    # hosted server (its escape changes nothing already escaped).
     content = list(result.content)
     if content and isinstance(content[0], TextContent):
-        content[0] = TextContent(type="text", text=prefixed(content[0].text, notices))
+        content[0] = _text_content(prefixed(content[0].text, notices))
     else:
-        content.insert(0, TextContent(type="text", text=prefixed("", notices)))
+        content.insert(0, _text_content(prefixed("", notices)))
     return result.model_copy(update={"content": content})
 
 
 def _error_result(body: dict[str, Any]) -> CallToolResult:
     """An error, once, as compact JSON text: ``{status, error_code, message, fix}``."""
+    # JSON already escapes everything but DEL, which ``visible_controls`` shows.
     return CallToolResult(
-        content=[TextContent(type="text", text=json.dumps(body, separators=(", ", ": ")))],
+        content=[_text_content(json.dumps(body, separators=(", ", ": ")))],
         isError=True,
     )

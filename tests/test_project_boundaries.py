@@ -732,6 +732,16 @@ def test_projects_guard_is_deprecated_but_works():
 # --- beakr mcp: instructions, start_session, session_status, list_projects ---------------
 
 
+def test_instructions_say_how_to_cite_an_outside_record_and_end_with_the_boundaries():
+    from beakr_cli.mcp_server import BOUNDARIES_INSTRUCTIONS, instructions
+
+    text = instructions()
+    assert "{source_type: external_record, url, title, meta: {system, record_id, excerpt}}" in (
+        text
+    )
+    assert text.endswith(BOUNDARIES_INSTRUCTIONS)
+
+
 def test_instructions_explain_the_two_rules_and_three_modes():
     from beakr_cli.mcp_server import BOUNDARIES_INSTRUCTIONS, instructions
 
@@ -1110,3 +1120,22 @@ def test_every_session_and_boundary_command_is_published():
     full = tree(internal_app)
     wanted = {n for n in full if n.startswith(("session ", "projects boundary ", "org isolation "))}
     assert wanted and wanted <= set(CORE_COMMANDS), sorted(wanted - set(CORE_COMMANDS))
+
+
+@respx.mock
+def test_a_notice_is_escaped_with_the_result_as_the_hosted_server_does():
+    from beakr_cli.mcp_server import mcp
+
+    _active(_session("automatic"))
+    respx.get(f"{API}/v1/me/organization").respond(json={"id": "org-1", "name": "Octant"})
+    respx.get(f"{API}/v1/projects").mock(
+        return_value=httpx.Response(
+            200,
+            json={"data": [_project(A, SILOED)], "has_more": False},
+            headers={"X-Beakr-Session-Notice": quote("Locked\u0007 to Partner A.")},
+        )
+    )
+
+    text = asyncio.run(mcp.call_tool("list_projects", {})).content[0].text
+
+    assert "\u0007" not in text and text.startswith("Session: Locked")
