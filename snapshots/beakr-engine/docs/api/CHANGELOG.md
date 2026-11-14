@@ -11,10 +11,15 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=9e041436a8f30b86d80c67abc71ff35ca3292cd1bcf16d4e584a985479f5218c changelog sha256=f08725f5b6ed50a01d997898cc52b7c9159f69a6e452dfe806966f4f304061fe -->
+<!-- contract-stamp: public-openapi sha256=717143d35bc3ba329eda817c65b31803b3720a58900d57aab61b7c1d0f080bad changelog sha256=0d481f1ddfe8007da5b499dad031e8de65d312497ef01d4f9e5fa45aaed218d1 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
+
+- `DELETE /v1/projects/{project_id}` no longer requires step-up MFA, even
+  when the organization requires it for sensitive actions. Project deletion
+  permissions still apply. Keys and tokens remain blocked with
+  `403 session_required` in organizations requiring enterprise SSO.
 
 - Project isolation, for organizations whose projects must not write into one
   another (each part is available where the organization has it turned on;
@@ -1485,8 +1490,9 @@ The first public version.
   `detail.error_type: enterprise_sso_required`; keys and tokens are not
   sessions and keep their own scopes, but in an organization that requires
   single sign-on they answer `403 session_required` to every action that needs
-  step-up (creating keys or service accounts, deleting a project, changing
-  roles or the authentication policy).
+  step-up (creating service-account keys or service accounts, changing
+  roles or the authentication policy), and to project deletion independently
+  of the step-up setting.
 - An organization admin revoking a member's credential, and
   `POST /v1/organizations/{org_id}/service-accounts/{account_id}/disable`, need
   an interactive session (and step-up where the organization requires it); keys
