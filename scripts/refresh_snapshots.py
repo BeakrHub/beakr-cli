@@ -182,6 +182,9 @@ SOURCES = (
             # suggests: the stdio server carries a copy
             # (test_project_scope_names_match_engine).
             "beakr/services/project_scope_names.py",
+            # The read tools a printed integrations call may name: the CLI
+            # carries the list (test_the_read_tools_are_the_engines).
+            "beakr/engines/tools/graph/native_source_fetch.py",
             # The compatibility rules scripts/contract_compat.py vendors.
             "beakr/api/public/compat.py",
         ),
