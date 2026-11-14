@@ -78,3 +78,49 @@ def test_the_client_label_is_header_safe() -> None:
     assert client_agent("codex\r\nX-Evil: 1", None) == "codex-X-Evil: 1"
     assert client_agent("", "1.0") is None
     assert len(client_agent("a" * 500, "1") or "") == 200
+
+
+# The engine renders `<agent> for <person>, via <surface>` and names an agent by
+# its slug (claude-code -> Claude Code, codex -> Codex). Codex's MCP client
+# declares `codex-mcp-client`, which it printed as it is, and the CLI run by an
+# agent declared nothing, so its writes read "beakr-cli 0.6.0 for ..." (sandbox
+# run, 2026-11-14).
+
+
+@respx.mock
+async def test_codex_s_mcp_client_is_declared_as_codex() -> None:
+    route = await _dismiss_as(types.Implementation(name="codex-mcp-client", version="0.58.0"))
+    assert route.calls.last.request.headers["X-Beakr-Agent"] == "codex/0.58.0"
+
+
+@respx.mock
+async def test_another_mcp_client_is_declared_by_its_own_name() -> None:
+    route = await _dismiss_as(types.Implementation(name="cursor-vscode", version="1.0"))
+    assert route.calls.last.request.headers["X-Beakr-Agent"] == "cursor-vscode/1.0"
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    ("variable", "agent"),
+    [
+        ("CLAUDE_CODE_SESSION_ID", "claude-code"),
+        ("CODEX_THREAD_ID", "codex"),
+        ("CURSOR_CONVERSATION_ID", "cursor"),
+    ],
+)
+def test_the_cli_run_by_an_agent_declares_that_agent(monkeypatch, variable, agent) -> None:
+    monkeypatch.setenv(variable, "session-1")
+    route = respx.get(f"{API}/v1/projects").respond(json={"data": [], "has_more": False})
+    result = CliRunner().invoke(internal_app, ["projects", "ls", "--json"])
+    assert result.exit_code == 0, result.output
+    headers = route.calls.last.request.headers
+    assert headers["X-Beakr-Agent"] == agent
+    assert headers["X-Beakr-Session"] == "session-1"
+
+
+@respx.mock
+async def test_the_mcp_clients_name_wins_over_the_session_variable(monkeypatch) -> None:
+    # Claude Code also sets its session variable for the MCP servers it starts.
+    monkeypatch.setenv("CODEX_THREAD_ID", "t-1")
+    route = await _dismiss_as(types.Implementation(name="claude-code", version="2.1.283"))
+    assert route.calls.last.request.headers["X-Beakr-Agent"] == "claude-code/2.1.283"
