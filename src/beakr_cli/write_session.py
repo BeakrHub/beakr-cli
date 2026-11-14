@@ -136,6 +136,7 @@ NOT_GATED: frozenset[str] = frozenset(
         # Project isolation settings: the person's own credential, joined to no session
         "org isolation show", "org isolation set", "org read-trail show", "org read-trail set",
         "projects guard show", "projects guard set",
+        "projects boundary show", "projects boundary set",
         # Sign-in and credentials
         "auth login", "auth logout", "auth status", "auth whoami", "auth token", "auth dev",
         "auth set-org", "auth clear-org", "auth set-scope", "keys ls", "keys create",
@@ -156,8 +157,8 @@ NOT_GATED: frozenset[str] = frozenset(
         "init", "install", "setup", "update", "mcp", "codex", "hooks install",
         "hooks uninstall", "hooks capture", "hooks learning",
         # The sessions themselves (always the person's own credential)
-        "session start", "session show", "session trail", "session ls", "session edit",
-        "session end",
+        "session start", "session status", "session show", "session trail", "session ls",
+        "session edit", "session end",
         "session forget",
     }
 )  # fmt: skip
