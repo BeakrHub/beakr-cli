@@ -4,6 +4,52 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## Unreleased
+
+### CLI and SDK
+
+- **One project resolver.** Every place a typed project becomes an id (`--project`
+  / `-P` / `--scope` on every command, `BEAKR_PROJECT_ID`, `projects
+  show|archive|rm`, `projects members`, `init --project`, and the stdio MCP
+  `project`/`scope` arguments) uses one rule: an id; else the name spelled
+  exactly, case included; else the one project whose name or slug matches
+  without regard to case. Several matches is a usage error (exit 2) naming each
+  as `Name (slug, id)`; none names the closest names. `projects show test` no
+  longer answers the project named `TEST` (whose slug is `test`), and a name two
+  projects share no longer reads whichever was listed first.
+- **Next steps as commands.** A reply that carries `next_calls` prints a
+  `Next:` block of runnable `beakr ...` commands, each with why; a line with a
+  `<placeholder>` is marked as a template, and the door's own `beakr api ...`
+  command says it prints JSON. The prose `next` lines that name a call are not
+  printed beside it. `kb`, `documents` and `research` read it. A reply without
+  `next_calls` prints as before. A next step that names no project runs in the
+  project (or with `--all`) the command ran with.
+- `beakr kb sources` reads the Knowledge door, as `kb cat` and `kb provenance`
+  do: a connected item prints its `beakr integrations call ...` and a file
+  `beakr documents read <id>`. It takes `--limit`, `--after-title` and
+  `--after-source-id`; `--json` is the door's reply.
+- `beakr kb sections --sources none|brief|full`; `beakr kb grep
+  --files-with-matches/-l`, `--count/-c` and `--title`.
+- `beakr kb proposals show|accept|dismiss` take the start of an id (at least 4
+  characters) as `kb proposals ls` prints it; an ambiguous one is refused naming
+  each. `proposals show` prints page text as a read does (`--raw` for the
+  stored text).
+- `beakr version` and `beakr context` print `Connected to: Beakr <env>,
+  organization ...`, as the MCP tools do.
+- `upload_files` (stdio MCP): a link named directly whose target is outside the
+  link's folder is refused (name the target to upload it); a relative path that
+  leaves the working folder is sent only into the home folder, and the reply
+  names the file it read; a relative path inside the working folder keeps its
+  folders in the project; a refusal of every path gives each path's reason.
+
+**At the next release:** `beakr-sdk` 0.3.0 forwards a connected item's
+`retrieval` itself. When it is published, bump `beakr-sdk>=0.2.0,<0.3` in
+`pyproject.toml` to `beakr-sdk>=0.3.0,<0.4` (then `uv lock`). No code change is
+needed: `beakr_cli/source_records.with_read_call` (the only workaround) leaves a
+0.3.0 record as the SDK built it and still drops a read call whose tool or
+argument names are not plain identifiers (`tests/test_source_records_sdk_shapes.py`
+runs both shapes). Use the SDK's `integrations.call` alias only after the bump.
+
 ## beakr-cli 0.6.0 (2026-11-13)
 
 ### Changes

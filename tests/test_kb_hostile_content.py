@@ -271,7 +271,10 @@ def _check_door_reply(
         github, rest = _take(rest, r" · read with (beakr integrations call github_get_file .*)$")
         commands.append((github, _integration("github_get_file", _github(hostile))))
         again, rest = _take(
-            rest, r"^next: Not everything is shown: continue with `(.*)` to read the rest\.$"
+            # The door's own command says that it prints JSON.
+            rest,
+            r"^next: Not everything is shown: continue with `(.*)`(?: \(prints JSON\))? "
+            r"to read the rest\.$",
         )
         # The command that was run, with the reply's cursor; where that command
         # has no flag for the cursor, the door's own command with the same call.
@@ -288,7 +291,8 @@ def _check_door_reply(
         assert "integrations command='call' tool='github_get_file'" in rest
         assert "continue with the same filters and after_title=" in rest
     for command in (
-        "beakr kb cat <page>",
+        # In the project the command ran in, so the pasted step reads the same place.
+        f"beakr kb cat <page> --project {PROJECT}",
         "beakr kb proposals show <proposal_id>",
         "beakr kb proposals accept <proposal_id>",
     ):
@@ -415,6 +419,8 @@ DOOR_READS = [
     (["links", "Agent rules"], "kb links"),
     (["timeline"], "kb timeline"),
     (["proposals", "ls", "--by", "me"], "kb proposals ls"),
+    # Through the door since 2026-11-14 (it read the REST route, which names no read call).
+    (["sources", PAGE], "kb sources"),
 ]
 
 
@@ -423,6 +429,8 @@ DOOR_READS = [
 def test_every_door_read_prints_hostile_content_safely(hostile: str, shells: Shells) -> None:
     reply = _reply(hostile)
     respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=Response(200, json=reply))
+    page = {"id": PAGE, "title": hostile, "project_id": PROJECT}
+    respx.get(f"{API}/v1/knowledge/wiki/pages/{PAGE}").mock(return_value=Response(200, json=page))
 
     for arguments, path in DOOR_READS:
         result = runner.invoke(app, ["kb", *arguments, "--project", PROJECT])
@@ -548,10 +556,6 @@ def test_kb_commands_that_print_api_fields_write_no_hidden_character(
     respx.get(url__regex=rf"{API}/v1/knowledge/wiki/search.*").respond(json=listing)
     respx.get(url__regex=rf"{pages}(\?.*)?$").respond(json=listing)
     respx.get(f"{pages}/{PAGE}").respond(json={**hit, "project_id": PROJECT})
-    source = {"source_title": hostile, "filename": hostile, "key": hostile, "stance": "support"}
-    respx.get(f"{pages}/{PAGE}/sources").respond(
-        json={"data": [source], "next_cursor": None, "has_more": False}
-    )
     proposal = {
         "id": PROPOSAL,
         "proposal_type": "edit",
@@ -565,7 +569,6 @@ def test_kb_commands_that_print_api_fields_write_no_hidden_character(
     for arguments in (
         ["search", "roadmap"],
         ["ls", "--project", PROJECT],
-        ["sources", PAGE],
         ["proposals", "show", PROPOSAL],
     ):
         result = runner.invoke(app, ["kb", *arguments])

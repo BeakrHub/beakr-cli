@@ -1,74 +1,97 @@
 $ beakr kb sources 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
 > GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+> POST /v1/knowledge/wiki/command
+  {"command": "sources", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-[
-  {
-    "source_ref": "beakr-source:v1:8e1f3a5c-7d9b-4b2e-8f04-6a1c3e5d7b92",
-    "citation_key": "artifact:a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13",
-    "name": "helios-charter.pdf",
-    "filename": "helios-charter.pdf",
-    "provider": "upload",
-    "source_kind": "artifact",
-    "stance": "support",
-    "location": {
-      "file_id": "a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13"
-    },
-    "evidence": {
-      "locator": "pages 2-3"
-    },
-    "section": {
-      "id": "sec_facts"
+{
+  "content": [
+    {
+      "text": "1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.\nKnowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.\n\n| entity | entity_type | attribute | value | when | sources | cite |\n| --- | --- | --- | --- | --- | --- | --- |\n| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |",
+      "type": "text"
     }
+  ],
+  "coverage": {
+    "command": "rows",
+    "complete": true,
+    "limit": 100,
+    "next_offset": null,
+    "offset": 0,
+    "returned": 1,
+    "scope": {
+      "all_readable": false,
+      "project_ids": [
+        "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+      ]
+    },
+    "status": "success",
+    "total": 1
   },
-  {
-    "source_ref": "beakr-source:v1:2c7e9a14-5b3d-4f81-a6c2-8d0e4f6b1a39",
-    "citation_key": "artifact:6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37",
-    "name": "NW-217 Accelerated Stability Report",
-    "filename": "NW-217 Accelerated Stability Report",
-    "provider": "upload",
-    "source_kind": "artifact",
-    "stance": "contradicts",
-    "location": {
-      "file_id": "6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37"
-    },
-    "evidence": {
-      "locator": "page 7"
-    },
-    "section": {
-      "id": "sec_facts"
+  "next": [
+    "Cite a row with its cite token; open its card with cat {page} for context.",
+    "Narrow with entity, attribute or page_type, or set current_only for facts."
+  ],
+  "outcome": {
+    "commit_ids": [],
+    "committed_page_ids": [],
+    "committed_revisions": {},
+    "error_code": null,
+    "protocol": "beakr.wiki_tool_outcome.v1",
+    "status": "success"
+  },
+  "sources": [
+    {
+      "citation_key": "wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877",
+      "name": "Helios HX-07 Solubility Card › Facts",
+      "section": {
+        "title": "Facts"
+      },
+      "source_kind": "wiki",
+      "source_ref": "beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts"
     }
-  }
-]
+  ]
+}
 --- stderr
 
 
 $ beakr kb sources 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+> POST /v1/knowledge/wiki/command
+  {"command": "sources", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-┏━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━━━━━━┓
-┃# ┃ Source                                                               ┃ Citations ┃ Stance     ┃
-┡━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━━━━━━┩
-│1 │ helios-charter.pdf · upload · file                                   │ 1         │ support    │
-│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13 (`beakr files download          │           │            │
-│  │ a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13`)                               │           │            │
-│2 │ NW-217 Accelerated Stability Report · upload · file                  │ 1         │ contradicts│
-│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37 (`beakr files download          │           │            │
-│  │ 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37`)                               │           │            │
-└──┴──────────────────────────────────────────────────────────────────────┴───────────┴────────────┘
+1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.
+Knowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.
+
+| entity | entity_type | attribute | value | when | sources | cite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |
+
+Sources (1 Knowledge page):
+- Helios HX-07 Solubility Card › Facts · source_ref beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts
+
+next: Cite a row with its cite token; open its card with `beakr kb cat <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 
 
 $ beakr kb sources 'Project Helios' --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
 > GET /v1/knowledge/wiki/pages/by-title?project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&title=Project Helios
-> GET /v1/knowledge/wiki/pages/9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41/sources?limit=200
+> POST /v1/knowledge/wiki/command
+  {"command": "sources", "page": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41", "scope": "4dd25154-0d80-44ab-b4c2-167319bfacb4"}
 [exit 0]
 --- stdout
-[1]	helios-charter.pdf · upload · file a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13 (`beakr files download a3d5f7b9-1c2e-4a6b-8d0f-2e4c6a8b0d13`)	citations=1	stance=support	sections=sec_facts
-[2]	NW-217 Accelerated Stability Report · upload · file 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37 (`beakr files download 6b9e2d41-8f3a-4c7e-a5d1-0e2f4b6c8a37`)	citations=1	stance=contradicts	sections=sec_facts
-next: beakr kb sources 9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41 --json  (every citation, with its source_ref)
+1 row(s) from 1 card(s) (table=facts; ordered by entity). Showing 1-1.
+Knowledge was compiled from 0 of 16 file(s) in this project (16 not compiled yet). A value with no row may still be in the files.
+
+| entity | entity_type | attribute | value | when | sources | cite |
+| --- | --- | --- | --- | --- | --- | --- |
+| Helios HX-07 Solubility Card | experiment | Plates run | 2 | 2026-03 | 1 | {{wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e-s3c5ac877}} |
+
+Sources (1 Knowledge page):
+- Helios HX-07 Solubility Card › Facts · source_ref beakr-source:v1:wiki:05eca915-f19c-4e54-a16f-23d27c5bd69e#sec_facts
+
+next: Cite a row with its cite token; open its card with `beakr kb cat <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` for context.
+next: Narrow with entity, attribute or page_type, or set current_only for facts.
 --- stderr
 

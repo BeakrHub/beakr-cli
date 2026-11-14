@@ -40,7 +40,10 @@ __all__ = [
     "DoorCall",
     "Slot",
     "Unprintable",
+    "generic_write",
     "is_write_action",
+    "option_word",
+    "positional_word",
     "shell_command",
     "shell_quote",
     "shell_word",
@@ -144,7 +147,13 @@ COMMANDS: dict[str, _Spec] = {
         # --source-offset pages the records of a --full read.
         fits=lambda a: "source_offset" not in a or a.get("detail") == "full",
     ),
-    "sections": _Spec("kb sections", "query", options={"page_type": "--type", "limit": "--limit"}),
+    "sections": _Spec(
+        "kb sections",
+        "query",
+        options={"page_type": "--type", "limit": "--limit"},
+        # `--sources none` is the door's `include_sources: false`; the list is on by default.
+        switches={("include_sources", False): "--sources none", ("include_sources", True): ""},
+    ),
     "grep": _Spec(
         "kb grep",
         "query",
@@ -154,7 +163,15 @@ COMMANDS: dict[str, _Spec] = {
             "after_title": "--after-title",
             "after_page_id": "--after-page-id",
         },
-        switches={("mode", "regex"): "--regex", ("mode", "text"): ""},
+        switches={
+            ("mode", "regex"): "--regex",
+            ("mode", "text"): "",
+            ("output_mode", "files_with_matches"): "--files-with-matches",
+            ("output_mode", "count"): "--count",
+            ("output_mode", "content"): "",
+            ("target", "title"): "--title",
+            ("target", "content"): "",
+        },
     ),
     "ls": _Spec(
         "kb ls",
@@ -171,7 +188,15 @@ COMMANDS: dict[str, _Spec] = {
             not ({"after_title", "after_page_id"} & set(a)) or any(key in a for key in _PAGE_AUTHOR)
         ),
     ),
-    "sources": _Spec("kb sources", "page"),
+    "sources": _Spec(
+        "kb sources",
+        "page",
+        options={
+            "limit": "--limit",
+            "after_title": "--after-title",
+            "after_source_id": "--after-source-id",
+        },
+    ),
     "hover": _Spec("kb hover", "page"),
     "blame": _Spec("kb blame", "page"),
     "provenance": _Spec(
@@ -239,10 +264,9 @@ COMMANDS: dict[str, _Spec] = {
 #: holds every argument the engine accepts to this table or to ``COMMANDS``.
 GENERIC_ONLY: dict[str, frozenset[str]] = {
     "ls": frozenset({"sort_by"}),
-    "grep": frozenset({"page_type", "output_mode", "target", "matches_per_page", "detail"}),
-    "sections": frozenset({"detail", "include_sources"}),
+    "grep": frozenset({"page_type", "matches_per_page", "detail"}),
+    "sections": frozenset({"detail"}),
     "log": frozenset({"limit"}),
-    "sources": frozenset({"limit", "after_title", "after_source_id"}),
     "provenance": frozenset({"sources_per_section"}),
     "links": frozenset({"relation", "page_type"}),
     "timeline": frozenset({"include_approx", "include_children"}),
@@ -319,30 +343,31 @@ def shell_command(
     last: list[str] = []
     if spec.positional is not None:
         if spec.positional in given:
-            word = _positional(given.pop(spec.positional))
+            word = positional_word(given.pop(spec.positional))
             (last if word.startswith("-- ") else words).append(word)
         elif spec.required:
             words.append(str(Slot(spec.positional)))
     for key, value in given.items():
         if key == "scope":
-            words.append(_option("--project", value))
+            words.append(option_word("--project", value))
         elif key in spec.options:
-            words.append(_option(spec.options[key], value))
-        elif isinstance(value, bool) and not value and (key, True) in spec.switches:
-            continue
+            words.append(option_word(spec.options[key], value))
         elif isinstance(value, (str, bool)) and (key, value) in spec.switches:
             words.append(spec.switches[(key, value)])
+        elif isinstance(value, bool) and not value and (key, True) in spec.switches:
+            continue
         else:
             return _generic(command, dict(arguments or {}))
     return " ".join(word for word in (*words, *flags, *last) if word)
 
 
-def _generic_fields() -> dict[str, dict[str, Any]]:
-    """The options ``beakr api knowledge run-wiki-command`` has, by the door argument each sets."""
+@cache
+def _door_fields(action: str) -> dict[str, dict[str, Any]]:
+    """The options ``beakr api knowledge <action>`` has, by the door argument each sets."""
     from beakr_cli.commands.api import operations
 
     for entry in operations():
-        if entry["area"] == "knowledge" and entry["action"] == "run-wiki-command":
+        if entry["area"] == "knowledge" and entry["action"] == action:
             return {field["name"]: field for field in entry["body"]["fields"]}
     return {}
 
@@ -375,30 +400,49 @@ def _generic(command: str, arguments: Mapping[str, Any]) -> str:
     then goes in ``--data`` as one quoted JSON body, which the command sends
     as it is. Either way the printed command parses and nothing is dropped.
     """
-    # `command` is the door's own field, never an argument of a call: one in a
+    given = dict(arguments)
+    needed = _REQUIRED.get(command)
+    if needed is not None and given.get(needed) is None:
+        given = {needed: Slot(needed), **given}
+    return _door_command(_GENERIC, "run-wiki-command", "command", command, given)
+
+
+def generic_write(action: str, arguments: Mapping[str, Any]) -> str:
+    """The write door's own command (``beakr api knowledge run-wiki-write``) for ``action``.
+
+    Raises :class:`Unprintable` like :func:`shell_command`. It prints the
+    door's reply as JSON.
+    """
+    given = {key: value for key, value in arguments.items() if value is not None}
+    if unprintable(action) or unprintable(given):
+        raise Unprintable(action)
+    return _door_command(GENERIC_WRITE, "run-wiki-write", "action", action, given)
+
+
+def _door_command(
+    base: str, operation: str, verb_field: str, verb: str, arguments: Mapping[str, Any]
+) -> str:
+    # The verb is the door's own field, never an argument of a call: one in a
     # hint's arguments would replace the command this line names.
     given = {
-        key: value for key, value in arguments.items() if value is not None and key != "command"
+        key: value for key, value in arguments.items() if value is not None and key != verb_field
     }
-    needed = _REQUIRED.get(command)
-    if needed is not None and needed not in given:
-        given = {needed: Slot(needed), **given}
-    fields = _generic_fields()
-    if not _takes(fields.get("command"), command) or not all(
+    fields = _door_fields(operation)
+    if not _takes(fields.get(verb_field), verb) or not all(
         # Argument and command names come from a reply's text: only a name the
         # command really has an option for becomes a flag.
         _IDENTIFIER.fullmatch(str(key)) and _takes(fields.get(key), value)
         for key, value in given.items()
     ):
-        body = json.dumps({"command": command, **given}, ensure_ascii=False, default=_json_slot)
-        return f"{_GENERIC} --data {shell_quote(body)}"
-    words = [f"{_GENERIC} --command {command}"]
+        body = json.dumps({verb_field: verb, **given}, ensure_ascii=False, default=_json_slot)
+        return f"{base} --data {shell_quote(body)}"
+    words = [f"{base} --{verb_field} {verb}"]
     for key, value in given.items():
         flag = "--project" if key == "scope" else "--" + key.replace("_", "-")
         if isinstance(value, bool):
             words.append(flag if value else "--no-" + flag.removeprefix("--"))
         else:
-            words.append(_option(flag, value))
+            words.append(option_word(flag, value))
     return " ".join(words)
 
 
@@ -416,7 +460,7 @@ def shell_word(value: Any) -> str:
     return shell_quote(text)
 
 
-def _positional(value: Any) -> str:
+def positional_word(value: Any) -> str:
     if isinstance(value, Slot):
         return f"[{value}]" if value.optional else str(value)
     text = str(value)
@@ -424,7 +468,7 @@ def _positional(value: Any) -> str:
     return f"-- {shell_word(text)}" if text.startswith("-") else shell_word(text)
 
 
-def _option(flag: str, value: Any) -> str:
+def option_word(flag: str, value: Any) -> str:
     # A value that opens with a dash would be read as another option: joined
     # to its flag with `=`, it can only be the flag's value.
     joiner = "=" if not isinstance(value, Slot) and str(value).startswith("-") else " "

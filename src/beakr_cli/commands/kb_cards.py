@@ -17,7 +17,13 @@ from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
 from beakr_cli.commands.kb import app as kb_app
-from beakr_cli.kb_shell_hints import DoorCall, continuation, shell_content, with_cursor
+from beakr_cli.kb_shell_hints import (
+    DoorCall,
+    continuation,
+    next_lines,
+    shell_content,
+    with_cursor,
+)
 from beakr_cli.output import console, emit, err_console
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.proposal_view import staged_proposal_lines
@@ -88,7 +94,9 @@ def _print_result(result: dict[str, Any], *, json_out: bool, call: DoorCall) -> 
     staged = result.get("proposal") if isinstance(result, dict) else None
     write = call.command not in _READ_COMMANDS
     if isinstance(staged, dict) and staged.get("id"):
-        call = DoorCall(call.command, call.arguments, proposal_id=str(staged["id"]))
+        call = DoorCall(
+            call.command, call.arguments, proposal_id=str(staged["id"]), flags=call.flags
+        )
     if isinstance(result, dict):
         # A cut listing continues from its structured cursor, not from its prose.
         call = with_cursor(call, result.get("coverage"))
@@ -97,8 +105,14 @@ def _print_result(result: dict[str, Any], *, json_out: bool, call: DoorCall) -> 
         # Escaped before it is cut into lines: a carriage return or a line
         # separator in a row's text is not a line break of this output.
         text = visible(shell_content(result_text(r), call, acknowledgement=write))
-        again = None if write else continuation(call)
-        more = [f"next: Continue with `{again}`."] if again else []
+        if isinstance(r.get("next_calls"), list) and r["next_calls"]:
+            # The reply's next steps as data: the commands that make them.
+            tool = "knowledge_base_write" if write else "knowledge_base"
+            _, block = next_lines(r, call, tool=tool)
+            more = ["", *(visible(line) for line in block)] if block else []
+        else:
+            again = None if write else continuation(call)
+            more = [f"next: Continue with `{again}`."] if again else []
         return [*text.split("\n"), *staged_proposal_lines(r), *more]
 
     emit(
@@ -405,9 +419,9 @@ def add_fact(
             citations=citations,
             when=when,
             rationale=rationale,
-            scope=_scope(scope),
+            scope=(project := _scope(scope)),
         )
-    _print_result(result, json_out=json_out, call=DoorCall("add_fact"))
+    _print_result(result, json_out=json_out, call=DoorCall("add_fact", {"scope": project}))
 
 
 def add_connection(
@@ -434,9 +448,9 @@ def add_connection(
             citations=citations,
             when=when,
             rationale=rationale,
-            scope=_scope(scope),
+            scope=(project := _scope(scope)),
         )
-    _print_result(result, json_out=json_out, call=DoorCall("add_connection"))
+    _print_result(result, json_out=json_out, call=DoorCall("add_connection", {"scope": project}))
 
 
 def add_finding(
@@ -475,9 +489,9 @@ def add_finding(
             finding_scope=finding_scope,
             supersedes=supersedes,
             rationale=rationale,
-            scope=_scope(scope),
+            scope=(project := _scope(scope)),
         )
-    _print_result(result, json_out=json_out, call=DoorCall("add_finding"))
+    _print_result(result, json_out=json_out, call=DoorCall("add_finding", {"scope": project}))
 
 
 def edit_rows(

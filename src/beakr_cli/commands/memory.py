@@ -117,6 +117,11 @@ def context(
     if json_out or fmt == "json":
         print_json(result)
         return
+    # The sentence the MCP `context` tool opens with: which Beakr and which
+    # organization this context comes from (sandbox run, 2026-11-14).
+    from beakr_cli.mcp_workspace import workspace_prefix
+
+    content = workspace_prefix(result) + content
     sys.stdout.write(content if content.endswith("\n") else content + "\n")
 
 

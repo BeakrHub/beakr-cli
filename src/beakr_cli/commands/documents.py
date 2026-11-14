@@ -18,10 +18,12 @@ import click
 import typer
 
 from beakr_cli.errors import EXIT_ERROR
+from beakr_cli.kb_shell_hints import DoorCall, next_lines
 from beakr_cli.output import console, emit
 from beakr_cli.project_binding import project_is_pinned, resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.sdk import get_sdk
+from beakr_cli.terminal_text import visible
 
 app = typer.Typer(help="Search, grep, list and read the original documents' text.")
 
@@ -68,12 +70,30 @@ def _scoped_project(project: str | None, all_projects: bool) -> str | None:
     return project
 
 
-def _run(command: str, *, project: str | None, json_out: bool, **arguments: Any) -> None:
+def _ran(command: str, project: str | None, all_projects: bool, sent: dict[str, Any]) -> DoorCall:
+    """The call a command made, so a structured next step runs in the same scope."""
+    return DoorCall(command, {**sent, "scope": project}, flags=("--all",) if all_projects else ())
+
+
+def _run(
+    command: str,
+    *,
+    project: str | None,
+    json_out: bool,
+    all_projects: bool = False,
+    **arguments: Any,
+) -> None:
     """Run one documents door command and print its reply; exit 1 when it is an error."""
     sent = {key: value for key, value in arguments.items() if value is not None}
     with get_sdk() as sdk:
         data = sdk.knowledge.documents(command, project_id=project, **sent)
-    emit(data, json_out=json_out, render=_render, lines=_lines)
+    call = _ran(command, project, all_projects, sent)
+    emit(
+        data,
+        json_out=json_out,
+        render=lambda d: _render(d, call),
+        lines=lambda d: _lines(d, call),
+    )
     if isinstance(data, dict) and data.get("is_error"):
         raise typer.Exit(EXIT_ERROR)
 
@@ -105,6 +125,7 @@ def read(
         "read",
         project=_scoped_project(project, all_projects),
         json_out=json_out,
+        all_projects=all_projects,
         document=document,
         start_line=start_line,
         end_line=end_line,
@@ -154,6 +175,7 @@ def grep(
         "grep",
         project=_scoped_project(project, all_projects),
         json_out=json_out,
+        all_projects=all_projects,
         pattern=pattern,
         fixed_strings=True if fixed_strings else None,
         ignore_case=True if ignore_case else None,
@@ -190,6 +212,7 @@ def ls(
         "ls",
         project=_scoped_project(project, all_projects),
         json_out=json_out,
+        all_projects=all_projects,
         path=path,
         glob=glob or None,
         type=kind or None,
@@ -231,7 +254,13 @@ def search(
         )
     # Piped, an agent reads the same ranked text (not a key=value summary of the
     # reply, which cut the passages to one column).
-    emit(data, json_out=json_out, render=_render, lines=_lines)
+    call = _ran("search", project, all_projects, {"query": query})
+    emit(
+        data,
+        json_out=json_out,
+        render=lambda d: _render(d, call),
+        lines=lambda d: _lines(d, call),
+    )
 
 
 def _coverage_line(data: dict) -> list[str]:
@@ -251,22 +280,30 @@ def _coverage_line(data: dict) -> list[str]:
     return []
 
 
-def _lines(data: dict) -> list[str]:
+def _next(data: dict, call: DoorCall | None) -> list[str]:
+    """The reply's next steps: its prose, or the `Next:` block where it sends them as data.
+
+    The prose names the next call as an MCP client makes it ("continue with
+    start_line=21"); a reply with ``next_calls`` prints the `beakr documents`
+    commands instead (:func:`beakr_cli.kb_shell_hints.next_lines`).
+    """
+    prose, block = next_lines(data, call, tool="documents")
+    return [*prose, *(visible(line) for line in block)]
+
+
+def _lines(data: dict, call: DoorCall | None = None) -> list[str]:
     text = str(data.get("content") or "").rstrip("\n")
-    return [
-        *text.splitlines(),
-        *_coverage_line(data),
-        *(str(hint) for hint in data.get("next") or []),
-    ]
+    return [*text.splitlines(), *_coverage_line(data), *_next(data, call)]
 
 
-def _render(data: dict) -> None:
+def _render(data: dict, call: DoorCall | None = None) -> None:
     console.print(data.get("content") or "", markup=False, highlight=False)
     for line in _coverage_line(data):
         # Not wrapped: one line of JSON, as the Knowledge reads print it.
         console.print(line, markup=False, highlight=False, soft_wrap=True)
-    for hint in data.get("next") or []:
-        console.print(hint, markup=False, highlight=False)
+    for hint in _next(data, call):
+        # Not wrapped: a command is copied whole.
+        console.print(hint, markup=False, highlight=False, soft_wrap=True)
 
 
 def register(root: typer.Typer) -> None:

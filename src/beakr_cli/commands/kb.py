@@ -23,7 +23,7 @@ from beakr_cli.cited_answer import print_research_result, research_lines
 from beakr_cli.commands import kb_author_filters as author
 from beakr_cli.compact import cell, next_page_hint, print_compact
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
-from beakr_cli.kb_shell_hints import DoorCall, shell_acknowledgement, shell_reply
+from beakr_cli.kb_shell_hints import DoorCall, next_lines, shell_acknowledgement, shell_reply
 from beakr_cli.output import (
     console,
     err_console,
@@ -43,12 +43,12 @@ from beakr_cli.project_binding import project_is_pinned, resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
+from beakr_cli.proposal_ids import resolve_proposal_id
 from beakr_cli.proposal_view import filed_by_line, payload_lines
 from beakr_cli.research_metadata import public_research
 from beakr_cli.revision_view import revision_writer
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
-from beakr_cli.source_listing import document_lines, group_by_document
 from beakr_cli.source_records import with_read_call
 from beakr_cli.terminal_text import visible
 
@@ -434,7 +434,13 @@ def cat(
 
 
 def _door_read(
-    command: str, *, project: str | None, mine: bool, json_out: bool, **arguments: object
+    command: str,
+    *,
+    project: str | None,
+    mine: bool,
+    json_out: bool,
+    source_mode: str | None = None,
+    **arguments: object,
 ) -> None:
     """Run a Knowledge read command and print it as the MCP tools show it.
 
@@ -450,7 +456,11 @@ def _door_read(
     one in text.
     """
     _door_print(
-        command, scope=_project_id(project=project, mine=mine), json_out=json_out, **arguments
+        command,
+        scope=_project_id(project=project, mine=mine),
+        json_out=json_out,
+        source_mode=source_mode,
+        **arguments,
     )
 
 
@@ -460,14 +470,19 @@ def _door_print(
     scope: str | None,
     json_out: bool,
     flags: tuple[str, ...] = (),
+    source_mode: str | None = None,
     **arguments: object,
 ) -> None:
     """:func:`_door_read` for a scope the caller already resolved (None: every project).
 
     ``flags`` are the options of this command that the door call does not carry
     (``--all``), so a hint that continues the listing repeats them.
+    ``source_mode`` is how the Sources list closing the text is printed
+    (``none``, ``brief`` or ``full``; None: as the command always printed it).
     """
     from beakr_sdk.sources import public_source
+
+    from beakr_cli.mcp_render import SOURCE_MODE_KEY
 
     with get_sdk() as sdk:
         result = sdk.knowledge.command(command, scope=scope, check=False, **arguments)
@@ -485,7 +500,11 @@ def _door_print(
             "coverage": result.get("coverage"),
             "sources": sources,
             "next": result.get("next"),
+            # The same steps as data, from an engine that sends them.
+            "next_calls": result.get("next_calls"),
         }
+        if source_mode:
+            body[SOURCE_MODE_KEY] = source_mode
         # The door names its next calls as an MCP client makes them; a terminal
         # reads them as the `beakr kb ...` commands that do the same.
         call = DoorCall(command, {**arguments, "scope": scope}, flags=flags)
@@ -503,6 +522,16 @@ def sections(
         None, "--type", "-t", help="Only sections of this page type (e.g. person, decision)."
     ),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Max sections (default 10)."),
+    sources: str | None = typer.Option(
+        None,
+        "--sources",
+        click_type=click.Choice(["none", "brief", "full"]),
+        help=(
+            "The cited documents closing the reply. none: leave them out, for the "
+            "shortest reply. brief: one line per document. full: each with its "
+            "excerpt, url and file id (what is printed when not given)."
+        ),
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
@@ -512,16 +541,20 @@ def sections(
     Semantic search over sections; each hit carries the verbatim document
     passage it rests on, so you can quote it without opening the file. Each cited
     document is listed with where it lives and where each passage sits
-    (path › p. 7). The same command as the MCP tool's `knowledge_base sections`.
+    (path › p. 7); --sources none drops that list and brief shortens it. The
+    same command as the MCP tool's `knowledge_base sections`.
     """
     _door_read(
         "sections",
         project=project,
         mine=mine,
         json_out=json_out,
+        source_mode=sources,
         query=query,
         page_type=page_type,
         limit=limit,
+        # The door leaves its own "Documents these sections cite" legend out too.
+        include_sources=False if sources == "none" else None,
     )
 
 
@@ -588,6 +621,18 @@ def grep(
         None, "--context", "-C", help="Lines of context around each match (max 10)."
     ),
     limit: int | None = typer.Option(None, "--limit", "-n", help="Max pages."),
+    files_with_matches: bool = typer.Option(
+        False,
+        "--files-with-matches",
+        "-l",
+        help="Only the pages that match, one line each (no matching lines).",
+    ),
+    count: bool = typer.Option(
+        False, "--count", "-c", help="Only how many lines match, per page and in all."
+    ),
+    title: bool = typer.Option(
+        False, "--title", help="Match page titles, not the text of the pages."
+    ),
     after_title: str | None = typer.Option(
         None, "--after-title", help="Continue a listing after this page title (as a reply names)."
     ),
@@ -600,9 +645,15 @@ def grep(
 ) -> None:
     """Find the lines that contain a word, id or exact name, with the section they are in.
 
-    A long listing ends "continue with after_title=... after_page_id=...":
-    pass both back as --after-title and --after-page-id for the next pages.
+    -l lists only the pages that match and -c only counts the matches (the
+    door's output_mode files_with_matches and count); --title searches page
+    titles. A long listing ends "continue with after_title=...
+    after_page_id=...": pass both back as --after-title and --after-page-id
+    for the next pages.
     """
+    if files_with_matches and count:
+        err_console.print("Give --files-with-matches or --count, not both.")
+        raise typer.Exit(EXIT_USAGE)
     _door_read(
         "grep",
         project=project,
@@ -612,6 +663,8 @@ def grep(
         mode="regex" if regex else None,
         context_lines=context,
         limit=limit,
+        output_mode="files_with_matches" if files_with_matches else "count" if count else None,
+        target="title" if title else None,
         after_title=after_title,
         after_page_id=after_page_id,
     )
@@ -749,55 +802,49 @@ def _revision_lines(revisions: list[dict]) -> list[str]:
 @app.command()
 def sources(
     page: str = typer.Argument(help="Page title or UUID."),
-    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    limit: int | None = typer.Option(
+        None, "--limit", "-n", min=1, help="Max sources (the door's default when not given)."
+    ),
+    after_title: str | None = typer.Option(
+        None, "--after-title", help="Continue after this source title (as a cut reply names)."
+    ),
+    after_source_id: str | None = typer.Option(
+        None,
+        "--after-source-id",
+        help="With --after-title: the source id a cut reply names beside it.",
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", "-j", help="The door's reply as JSON: {content, coverage, next, sources}."
+    ),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Show the documents a page cites and where each one lives.
+    """Show the documents a page cites, each with the command that reads it.
 
-    One line per document: filename, provider and a link or path to the
-    original, or for a file only Beakr holds its file id and the
-    `beakr files download` command. --json prints every citation as a public
-    source record (the shape the MCP server and the SDKs return).
+    The Knowledge door's `sources`, as `kb cat` and `kb provenance` print
+    their sources: one entry per document with its cited passages, and how to
+    open it. A file is read with `beakr documents read <id>`; a connected item
+    (a Slack channel, a meeting note, an email) with the `beakr integrations
+    call ...` its record gives. --json prints the door's structured reply, each
+    source a public source record with its `retrieval`. A cut listing names the
+    --after-title and --after-source-id that continue it.
     """
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
-
-    page_id = page_data["id"]
-    with get_sdk() as sdk:
-        # Every citation on the page, as public source records.
-        source_list = sdk.knowledge.pages.sources(page_id)
-
-    if machine_output(
-        source_list,
+    # The REST sources route carries no read call for a connected item
+    # (`retrieval: null`), so this printed a url and no way to read the item,
+    # and `beakr files download` for a file (sandbox run, 2026-11-14).
+    _door_read(
+        "sources",
+        project=project,
+        mine=mine,
         json_out=json_out,
-        lines=document_lines,
-        hint=f"beakr kb sources {page_id} --json  (every citation, with its source_ref)"
-        if source_list
-        else None,
-    ):
-        return
-
-    if not source_list:
-        err_console.print("No sources.")
-        return
-    _print_documents(source_list)
-
-
-def _print_documents(source_list: list[dict]) -> None:
-    """The person's view of a page's sources: one numbered line per document."""
-    rows = []
-    for index, group in enumerate(group_by_document(source_list), 1):
-        rows.append(
-            [
-                str(index),
-                group["where"],
-                str(group["citations"]),
-                ", ".join(group["stances"]),
-            ]
-        )
-    print_table(["#", "Source", "Citations", "Stance"], rows)
+        page=str(page_data["id"]),
+        limit=limit,
+        after_title=after_title,
+        after_source_id=after_source_id,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1141,10 +1188,12 @@ def research(
     with get_sdk() as sdk:
         data = public_research(sdk.knowledge.research(query, project_id=project_id, quick=quick))
 
-    if machine_output(data, json_out=json_out, lines=research_lines):
+    if machine_output(
+        data, json_out=json_out, lines=lambda answer: research_lines(answer, project_id)
+    ):
         return
 
-    print_research_result(data)
+    print_research_result(data, project_id)
 
 
 # ---------------------------------------------------------------------------
@@ -1243,7 +1292,7 @@ def _create_proposal(body: dict) -> dict:
         return sdk.knowledge.proposals.create(action, project_id=project_id, **fields)
 
 
-def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
+def _print_proposal(proposal: dict, *, with_payload: bool = False, raw: bool = False) -> None:
     """Print a proposal's summary, its payload when asked, and its content hash last.
 
     The hash comes last so it is on screen when the reviewer copies it into
@@ -1271,7 +1320,7 @@ def _print_proposal(proposal: dict, *, with_payload: bool = False) -> None:
         console.print(f"Moves:  {len(payload.get('reorg') or [])}")
     if with_payload and isinstance(payload, dict):
         console.print()
-        for text, style in payload_lines(payload):
+        for text, style in payload_lines(payload, raw=raw):
             console.print(text, style=style, markup=False, highlight=False)
         console.print()
     if proposal.get("changes_card_tables"):
@@ -1559,10 +1608,14 @@ def _stage_new_page(
         reply = result_text(result) if isinstance(result, dict) else str(result or "")
         staged = result.get("proposal") if isinstance(result, dict) else None
         # The reply as a terminal reads it: `accept_proposal` is `beakr kb proposals accept`.
-        shown = shell_acknowledgement(
-            reply,
-            DoorCall("new", proposal_id=str(staged["id"]) if _staged_id(staged) else None),
+        wrote = DoorCall(
+            "new", {"scope": scope}, proposal_id=str(staged["id"]) if _staged_id(staged) else None
         )
+        shown = shell_acknowledgement(reply, wrote)
+        if isinstance(result, dict):
+            # The reply's next steps as data, from an engine that sends them.
+            _, block = next_lines(result, wrote, tool="knowledge_base_write")
+            shown = "\n\n".join(part for part in (shown, "\n".join(block)) if part)
         proposal = sdk.knowledge.proposals.show(str(staged["id"])) if _staged_id(staged) else None
     if proposal is None:
         if not machine_output(
@@ -1791,7 +1844,7 @@ def proposals_list(
         return
     rows = [
         [
-            p.get("id", "")[:8],
+            _short_id(p),
             p.get("proposal_type", ""),
             p.get("status", ""),
             p.get("page_title", "")[:32],
@@ -1805,6 +1858,11 @@ def proposals_list(
     )
     if more:
         err_console.print(f"More proposals: {more}", highlight=False, soft_wrap=True, markup=False)
+
+
+def _short_id(proposal: dict) -> str:
+    """The start of the id: `kb proposals show|accept|dismiss` take it when it names one."""
+    return str(proposal.get("id") or "")[:8]
 
 
 def _filer(proposal: dict) -> str:
@@ -1834,7 +1892,9 @@ def _proposal_lines(proposals: list[dict]) -> list[str]:
 
 @proposals_app.command("show")
 def proposals_show(
-    proposal_id: str = typer.Argument(..., help="Proposal ID."),
+    proposal_id: str = typer.Argument(
+        ..., help="Proposal id, or the start of it as `proposals ls` prints it."
+    ),
     project: str | None = typer.Option(
         None,
         "--project",
@@ -1844,24 +1904,37 @@ def proposals_show(
         help="Only if the proposal is in this project (id, slug or name).",
         callback=project_ref_callback,
     ),
+    raw: bool = typer.Option(
+        False,
+        "--raw",
+        help="Page text as it is stored, with its section markers and {{citation}} tokens.",
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """Show one wiki proposal: its change as a diff, and the content hash to accept it with."""
+    """Show one wiki proposal: its change as a diff, and the content hash to accept it with.
+
+    Page text reads as a page read prints it: no section markers, and each
+    citation as the title of what it cites, in parentheses. --raw prints the
+    stored text; --json the whole proposal.
+    """
     with get_sdk() as sdk:
+        proposal_id = resolve_proposal_id(sdk, proposal_id)
         proposal = sdk.knowledge.proposals.show(proposal_id)
     if project and proposal.get("project_id") and str(proposal["project_id"]) != project:
         raise NotFoundError(f"Proposal {proposal_id} is not in project {project}.")
-    if machine_output(proposal, json_out=json_out, lines=_proposal_show_lines):
+    if machine_output(
+        proposal, json_out=json_out, lines=lambda p: _proposal_show_lines(p, raw=raw)
+    ):
         return
-    _print_proposal(proposal, with_payload=True)
+    _print_proposal(proposal, with_payload=True, raw=raw)
 
 
-def _proposal_show_lines(proposal: dict) -> list[str]:
+def _proposal_show_lines(proposal: dict, *, raw: bool = False) -> list[str]:
     """The proposal for an agent: its summary line, the payload as read, the hash last."""
     lines = _proposal_lines([proposal])
     payload = proposal.get("payload")
     if isinstance(payload, dict):
-        lines += ["", *(text for text, _style in payload_lines(payload))]
+        lines += ["", *(text for text, _style in payload_lines(payload, raw=raw))]
     if proposal.get("content_hash"):
         lines += ["", f"content_hash={proposal['content_hash']}"]
     return lines
@@ -1869,7 +1942,9 @@ def _proposal_show_lines(proposal: dict) -> list[str]:
 
 @proposals_app.command("accept")
 def proposals_accept(
-    proposal_id: str = typer.Argument(..., help="Proposal ID."),
+    proposal_id: str = typer.Argument(
+        ..., help="Proposal id, or the start of it as `proposals ls` prints it."
+    ),
     reviewed_hash: str | None = typer.Option(
         None,
         "--reviewed-hash",
@@ -1891,6 +1966,8 @@ def proposals_accept(
             f"{exc} Copy it from `beakr kb proposals show {proposal_id}`.", markup=False
         )
         raise typer.Exit(EXIT_USAGE) from exc
+    with get_sdk() as sdk:
+        proposal_id = resolve_proposal_id(sdk, proposal_id, pending_only=True)
     if given is None and not yes and output_mode(json_out) == "human" and is_interactive():
         # Review here: show the proposal and bind the accept to exactly this read.
         with get_sdk() as sdk:
@@ -1910,11 +1987,15 @@ def proposals_accept(
 
 @proposals_app.command("dismiss")
 def proposals_dismiss(
-    proposal_id: str = typer.Argument(..., help="Proposal ID."),
+    proposal_id: str = typer.Argument(
+        ..., help="Proposal id, or the start of it as `proposals ls` prints it."
+    ),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
     """Dismiss a wiki proposal."""
+    with get_sdk() as sdk:
+        proposal_id = resolve_proposal_id(sdk, proposal_id, pending_only=True)
     confirm_or_require_yes(f"Dismiss proposal {proposal_id}?", yes)
     with get_sdk() as sdk:
         result = sdk.knowledge.proposals.dismiss(proposal_id)

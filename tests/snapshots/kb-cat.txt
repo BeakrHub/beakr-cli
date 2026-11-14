@@ -296,8 +296,8 @@ Sources (2 documents, 8 Knowledge pages):
 - Maja Lindqvist · source_ref beakr-source:v1:wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301
 - Northwind Biosciences · source_ref beakr-source:v1:wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f
 
-next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
-next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
+next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` (prints JSON) or `beakr kb links <page> --direction out --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` lists a group in full; `beakr kb timeline <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` gives this record's dated events.
+next: Check where a claim came from with `beakr kb provenance <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` or `beakr kb sources <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`.
 --- stderr
 
 
@@ -361,7 +361,7 @@ Sources (2 documents, 8 Knowledge pages):
 - Maja Lindqvist · source_ref beakr-source:v1:wiki:e6a79f95-ad5b-4060-87ec-04d67fc6b301
 - Northwind Biosciences · source_ref beakr-source:v1:wiki:18c2d719-cf62-4dc4-8127-e9cafd7e9a9f
 
-next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page>`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type>` or `beakr kb links <page> --direction out` lists a group in full; `beakr kb timeline <page>` gives this record's dated events.
-next: Check where a claim came from with `beakr kb provenance <page>` or `beakr kb sources <page>`.
+next: Walk its edges rather than searching again: open a child (its documents) or a Linked from page with `beakr kb cat <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`; `beakr api knowledge run-wiki-command --command links --page <page> --page-type <page_type> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` (prints JSON) or `beakr kb links <page> --direction out --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` lists a group in full; `beakr kb timeline <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` gives this record's dated events.
+next: Check where a claim came from with `beakr kb provenance <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4` or `beakr kb sources <page> --project 4dd25154-0d80-44ab-b4c2-167319bfacb4`.
 --- stderr
 
