@@ -4367,28 +4367,31 @@
       "type": "boolean"
      },
      {
-      "description": "In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).",
+      "description": "Retired: a broad search always counts its results now.",
       "name": "auto_lock_counts_search_results",
       "required": false,
       "type": "boolean"
      },
      {
-      "description": "The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.",
-      "enum": [
-       "allow",
-       "hold",
-       "refuse"
-      ],
+      "description": "Retired: set each project's content_in instead.",
       "name": "cross_project_guard",
       "required": false,
       "type": "string"
      },
      {
-      "description": "`picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.",
-      "enum": [
-       "picker",
-       "auto_lock"
-      ],
+      "description": "The boundary new projects start with.",
+      "name": "default_boundary",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "A floor no project's boundary can be set below, or null for none. Every project's boundary applies raised to it; content_out locked keeps every project locked.",
+      "name": "minimum_boundary",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "`automatic` (the default): an agent session starts open and the server tracks what it touches; it may still choose its projects up front. `must_pick`: a session reaches no project until its projects (or read everything) are chosen.",
       "name": "session_mode",
       "required": false,
       "type": "string"
@@ -4549,6 +4552,23 @@
    "area": "projects",
    "body": {
     "fields": [
+     {
+      "description": "A change to a project's boundary: a key left out keeps its value.",
+      "name": "boundary",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "A preset to set the boundary from, instead of `boundary`.",
+      "enum": [
+       "internal",
+       "siloed",
+       "leadership"
+      ],
+      "name": "boundary_preset",
+      "required": false,
+      "type": "string"
+     },
      {
       "description": "Optional long-form project description.",
       "name": "description",
@@ -5361,7 +5381,7 @@
    "body": {
     "fields": [
      {
-      "description": "`allow`, `hold` or `refuse`; null clears it, so the project follows the organization.",
+      "description": "`allow`, `hold` or `refuse`, setting the project's content_in to allowed, owner_approves or blocked; null sets it to allowed.",
       "enum": [
        "allow",
        "hold",
@@ -5399,6 +5419,23 @@
    "area": "projects",
    "body": {
     "fields": [
+     {
+      "description": "A change to a project's boundary: a key left out keeps its value.",
+      "name": "boundary",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "Set the boundary from a preset, instead of `boundary`.",
+      "enum": [
+       "internal",
+       "siloed",
+       "leadership"
+      ],
+      "name": "boundary_preset",
+      "required": false,
+      "type": "string"
+     },
      {
       "description": "Optional updated project description.",
       "name": "description",
@@ -5892,7 +5929,7 @@
    "body": {
     "fields": [
      {
-      "description": "The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Needs `server_agent_sessions`.",
+      "description": "The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Lists or `read_everything` given for a session that has already touched a project answer `409 session_already_started`. Needs `server_agent_sessions`.",
       "name": "agent_session",
       "required": false,
       "type": "string"
@@ -5924,7 +5961,14 @@
       "type": "string"
      },
      {
-      "description": "Projects the session may read. Omit both lists to create a pending session the person completes at `picker_url`; every Knowledge, document and research call answers `403 session_needs_selection` until they do.",
+      "default": false,
+      "description": "Read every project the person can, locked ones included, and write nothing. Takes no lists.",
+      "name": "read_everything",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "Projects the session may read (a picked session). Omit both lists for the organization's mode: an automatic session, or a pending one the person completes at `picker_url` (every Knowledge, document and research call answers `403 session_needs_selection` until they do). Lists that break a project's boundary answer `422 session_selection_invalid` with every reason.",
       "multiple": true,
       "name": "read_project_ids",
       "required": false,
@@ -5975,6 +6019,22 @@
    "response": "json",
    "scope": null,
    "summary": "Get the current session"
+  },
+  {
+   "action": "current-session-status",
+   "anonymous": false,
+   "area": "sessions",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/sessions/current/status",
+   "paginated": false,
+   "path": "/v1/sessions/current/status",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Show this session's status"
   },
   {
    "action": "end-session",
@@ -6093,6 +6153,64 @@
    "summary": "Mint a session token"
   },
   {
+   "action": "session-options",
+   "anonymous": false,
+   "area": "sessions",
+   "body": {
+    "fields": [
+     {
+      "description": "The read list chosen so far.",
+      "multiple": true,
+      "name": "read_project_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The write list chosen so far.",
+      "multiple": true,
+      "name": "write_project_ids",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/sessions/options",
+   "paginated": false,
+   "path": "/v1/sessions/options",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Check a session's project choices"
+  },
+  {
+   "action": "session-status",
+   "anonymous": false,
+   "area": "sessions",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/sessions/{session_id}/status",
+   "paginated": false,
+   "path": "/v1/sessions/{session_id}/status",
+   "path_params": [
+    {
+     "name": "session_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": null,
+   "summary": "Show a session's status"
+  },
+  {
    "action": "session-trail",
    "anonymous": false,
    "area": "sessions",
@@ -6139,6 +6257,18 @@
       "name": "label",
       "required": false,
       "type": "string"
+     },
+     {
+      "description": "`automatic`: the server tracks what the session touches instead of chosen lists. Only while it has touched nothing, and not where the organization's session mode is must_pick (`422 session_mode_must_pick`).",
+      "name": "mode",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "true: read every project and write none. Only while the session has touched nothing (else `409 session_already_started`).",
+      "name": "read_everything",
+      "required": false,
+      "type": "boolean"
      },
      {
       "description": "The session's read projects, replacing the list. Dropping a read project drops it from write too.",

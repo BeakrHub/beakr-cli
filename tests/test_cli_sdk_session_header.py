@@ -108,6 +108,8 @@ def _sent_session_headers() -> list[str]:
 
 @respx.mock
 def test_a_shell_session_works_start_show_and_upload(tmp_path, monkeypatch):
+    # The picked lists are checked against the projects' boundaries first.
+    respx.post(f"{API}/v1/sessions/options").respond(json={"valid": True, "reasons": []})
     respx.post(f"{API}/v1/sessions").respond(
         201,
         json={

@@ -337,7 +337,7 @@ class TieredFastMCP(FastMCP):
         project that names nothing and an error outcome become ``{status,
         error_code, message, fix}`` marked ``isError``.
         """
-        from beakr_cli import mcp_session
+        from beakr_cli import session_notice
         from beakr_cli.sdk import MCP_CLIENT_AGENT
 
         # Writes are attributed to the agent that made them: the MCP client's
@@ -345,22 +345,31 @@ class TieredFastMCP(FastMCP):
         agent = self._client_agent()
         token = MCP_CLIENT_AGENT.set(agent)
         try:
-            # Until the person chooses this session's projects, answer with the
-            # picker (in chat where the client can show a form) instead.
-            refusal = await mcp_session.gate(self, name, agent)
-            if refusal is not None:
-                return _error_result(refusal)
-            result = await self._call_tool(name, arguments)
-            if not mcp_session.was_replaced():
-                return result
-            # The person ended the session while this call ran: the server started a
-            # pending one in its place. Ask again, as at startup, then run it once more.
-            refusal = await mcp_session.gate(self, name, agent)
-            if refusal is not None:
-                return _error_result(refusal)
-            return await self._call_tool(name, arguments)
+            # A request that locked the session says so on the result's first line,
+            # in the API's words, as the hosted server does.
+            with session_notice.collecting() as notices:
+                result = await self._gated_call(name, arguments, agent)
+            return _with_notices(result, notices)
         finally:
             MCP_CLIENT_AGENT.reset(token)
+
+    async def _gated_call(self, name: str, arguments: dict[str, Any], agent: str | None) -> Any:
+        from beakr_cli import mcp_session
+
+        # Until the person chooses this session's projects, answer with the
+        # picker (in chat where the client can show a form) instead.
+        refusal = await mcp_session.gate(self, name, agent)
+        if refusal is not None:
+            return _error_result(refusal)
+        result = await self._call_tool(name, arguments)
+        if not mcp_session.was_replaced():
+            return result
+        # The person ended the session while this call ran: the server started a
+        # pending one in its place. Ask again, as at startup, then run it once more.
+        refusal = await mcp_session.gate(self, name, agent)
+        if refusal is not None:
+            return _error_result(refusal)
+        return await self._call_tool(name, arguments)
 
     def _client_agent(self) -> str | None:
         """``name/version`` of the client that sent ``initialize``, when a request is running."""
@@ -433,6 +442,20 @@ class TieredFastMCP(FastMCP):
         from beakr_cli.mcp_render import render
 
         return CallToolResult(content=[TextContent(type="text", text=render(name, body))])
+
+
+def _with_notices(result: Any, notices: list[str]) -> Any:
+    """``result`` with each lock notice the call heard above its text (``Session: ...``)."""
+    from beakr_cli.session_notice import prefixed
+
+    if not notices or not isinstance(result, CallToolResult):
+        return result
+    content = list(result.content)
+    if content and isinstance(content[0], TextContent):
+        content[0] = TextContent(type="text", text=prefixed(content[0].text, notices))
+    else:
+        content.insert(0, TextContent(type="text", text=prefixed("", notices)))
+    return result.model_copy(update={"content": content})
 
 
 def _error_result(body: dict[str, Any]) -> CallToolResult:

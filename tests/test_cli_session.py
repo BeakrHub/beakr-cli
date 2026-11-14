@@ -621,6 +621,8 @@ def test_a_remembered_selection_starts_the_next_session_in_that_folder(tmp_path,
 
 @respx.mock
 def test_session_start_puts_a_shell_in_the_session_by_id(monkeypatch, tmp_path):
+    # The picked lists are checked against the projects' boundaries first.
+    respx.post(f"{API}/v1/sessions/options").respond(json={"valid": True, "reasons": []})
     monkeypatch.chdir(tmp_path)
     created = respx.post(f"{API}/v1/sessions").respond(201, json=_created("active"))
 
@@ -675,6 +677,8 @@ def test_a_shell_naming_an_unknown_session_does_not_fall_back(monkeypatch):
 
 @respx.mock
 def test_session_edit_uses_the_persons_credential_inside_the_session(monkeypatch):
+    # The picked lists are checked against the projects' boundaries first.
+    respx.post(f"{API}/v1/sessions/options").respond(json={"valid": True, "reasons": []})
     scope_session.save_state(TokenState(SID, "bk_st_shell", _later()))
     monkeypatch.setenv(scope_session.SESSION_ENV, SID)
     respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
@@ -760,6 +764,8 @@ def test_the_terminal_picker_refuses_more_than_a_session_holds(capsys):
 
 @respx.mock
 def test_session_start_read_all_and_write_all(monkeypatch, tmp_path):
+    # The picked lists are checked against the projects' boundaries first.
+    respx.post(f"{API}/v1/sessions/options").respond(json={"valid": True, "reasons": []})
     monkeypatch.chdir(tmp_path)
     respx.get(f"{API}/v1/projects").respond(
         json={"data": [{"id": A, "name": "Helios"}, {"id": B, "name": "Assays"}]}
@@ -779,6 +785,8 @@ def test_session_start_read_all_and_write_all(monkeypatch, tmp_path):
 
 @respx.mock
 def test_session_edit_write_all_and_the_limit(monkeypatch):
+    # The picked lists are checked against the projects' boundaries first.
+    respx.post(f"{API}/v1/sessions/options").respond(json={"valid": True, "reasons": []})
     respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
     patched = respx.patch(f"{API}/v1/sessions/{SID}").respond(json=_session())
     projects = respx.get(f"{API}/v1/projects").respond(

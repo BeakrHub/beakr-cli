@@ -2154,6 +2154,121 @@
         "title": "BlockedOrgJoinOut",
         "type": "object"
       },
+      "BoundaryChange": {
+        "properties": {
+          "content_in": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allowed",
+                  "owner_approves",
+                  "blocked"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Leave out to keep it.",
+            "title": "Content In"
+          },
+          "content_out": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allowed",
+                  "locked"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Leave out to keep it.",
+            "title": "Content Out"
+          }
+        },
+        "title": "BoundaryChange",
+        "type": "object"
+      },
+      "BoundaryPreset": {
+        "properties": {
+          "content_in": {
+            "description": "The preset's content_in.",
+            "enum": [
+              "allowed",
+              "owner_approves",
+              "blocked"
+            ],
+            "title": "Content In",
+            "type": "string"
+          },
+          "content_out": {
+            "description": "The preset's content_out.",
+            "enum": [
+              "allowed",
+              "locked"
+            ],
+            "title": "Content Out",
+            "type": "string"
+          },
+          "description": {
+            "description": "What it means, in a sentence.",
+            "title": "Description",
+            "type": "string"
+          },
+          "key": {
+            "description": "`internal`, `siloed` or `leadership`.",
+            "title": "Key",
+            "type": "string"
+          },
+          "title": {
+            "description": "The name the apps show.",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "title",
+          "content_out",
+          "content_in",
+          "description"
+        ],
+        "title": "BoundaryPreset",
+        "type": "object"
+      },
+      "BoundaryValues": {
+        "properties": {
+          "content_in": {
+            "description": "`allowed`, `owner_approves` (writes bringing in other projects' content wait for its owners) or `blocked` (refused).",
+            "enum": [
+              "allowed",
+              "owner_approves",
+              "blocked"
+            ],
+            "title": "Content In",
+            "type": "string"
+          },
+          "content_out": {
+            "description": "`allowed`, or `locked`: touching the project locks a session's writes to it.",
+            "enum": [
+              "allowed",
+              "locked"
+            ],
+            "title": "Content Out",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_out",
+          "content_in"
+        ],
+        "title": "BoundaryValues",
+        "type": "object"
+      },
       "BulkCompleteFileIn": {
         "description": "Single file completion info.",
         "properties": {
@@ -3598,17 +3713,17 @@
       "CrossProjectGuardOut": {
         "properties": {
           "available": {
-            "description": "Whether the cross-project guard is turned on.",
+            "description": "Whether project boundaries are turned on.",
             "title": "Available",
             "type": "boolean"
           },
           "can_change": {
-            "description": "Whether the caller may change it: an owner or admin of the project acting as a person.",
+            "description": "Whether the caller may change it: an owner or admin of the project, or an org admin, acting as a person.",
             "title": "Can Change",
             "type": "boolean"
           },
           "effective": {
-            "description": "The guard that applies: the project's, else the org's.",
+            "description": "The content_in that applies, in the guard's words.",
             "enum": [
               "allow",
               "hold",
@@ -3618,7 +3733,7 @@
             "type": "string"
           },
           "org_default": {
-            "description": "The organization's guard.",
+            "description": "The organization's default content_in.",
             "enum": [
               "allow",
               "hold",
@@ -3641,7 +3756,7 @@
                 "type": "null"
               }
             ],
-            "description": "The project's own guard; null follows the organization's.",
+            "description": "The project's own content_in in the guard's words; null when it has none.",
             "title": "Override"
           },
           "project_id": {
@@ -3694,7 +3809,7 @@
                 "type": "null"
               }
             ],
-            "description": "`allow`, `hold` or `refuse`; null clears it, so the project follows the organization.",
+            "description": "`allow`, `hold` or `refuse`, setting the project's content_in to allowed, owner_approves or blocked; null sets it to allowed.",
             "title": "Override"
           }
         },
@@ -10275,6 +10390,38 @@
         "title": "ObjectPage",
         "type": "object"
       },
+      "OptionBoundary": {
+        "properties": {
+          "content_in": {
+            "description": "`allowed`, `owner_approves` or `blocked`.",
+            "title": "Content In",
+            "type": "string"
+          },
+          "content_out": {
+            "description": "`allowed` or `locked`.",
+            "title": "Content Out",
+            "type": "string"
+          },
+          "preset": {
+            "description": "`internal`, `siloed`, `leadership` or `custom`.",
+            "title": "Preset",
+            "type": "string"
+          },
+          "summary": {
+            "description": "The boundary in plain words.",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_out",
+          "content_in",
+          "preset",
+          "summary"
+        ],
+        "title": "OptionBoundary",
+        "type": "object"
+      },
       "OrgMemberAdd": {
         "description": "Schema for adding a member to an organization.",
         "properties": {
@@ -10980,6 +11127,146 @@
         "title": "PrincipalType",
         "type": "string"
       },
+      "ProjectBoundaryChange": {
+        "description": "A change to a project's boundary: a key left out keeps its value.",
+        "properties": {
+          "content_in": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allowed",
+                  "owner_approves",
+                  "blocked"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`owner_approves`: writes bringing in other projects' content wait for its owners; `blocked`: they are refused.",
+            "title": "Content In"
+          },
+          "content_out": {
+            "anyOf": [
+              {
+                "enum": [
+                  "allowed",
+                  "locked"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`locked`: once an agent session touches the project, it may write only there.",
+            "title": "Content Out"
+          }
+        },
+        "title": "ProjectBoundaryChange",
+        "type": "object"
+      },
+      "ProjectBoundaryOut": {
+        "description": "A project's boundary as it applies now (null on a project while boundaries are off).",
+        "properties": {
+          "can_change": {
+            "default": false,
+            "description": "The caller may change it: an owner or admin of the project, or an org admin, acting as a person.",
+            "title": "Can Change",
+            "type": "boolean"
+          },
+          "content_in": {
+            "description": "The effective content_in: the project's own, raised to the org minimum.",
+            "enum": [
+              "allowed",
+              "owner_approves",
+              "blocked"
+            ],
+            "title": "Content In",
+            "type": "string"
+          },
+          "content_out": {
+            "description": "The effective content_out: the project's own, raised to the org minimum.",
+            "enum": [
+              "allowed",
+              "locked"
+            ],
+            "title": "Content Out",
+            "type": "string"
+          },
+          "preset": {
+            "description": "The preset the effective boundary matches, or `custom`.",
+            "enum": [
+              "internal",
+              "siloed",
+              "leadership",
+              "custom"
+            ],
+            "title": "Preset",
+            "type": "string"
+          },
+          "raised_by_minimum": {
+            "default": false,
+            "description": "The organization's minimum raised the project's setting.",
+            "title": "Raised By Minimum",
+            "type": "boolean"
+          },
+          "stored": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectBoundaryValues"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project's own setting; null when it has none (internal)."
+          },
+          "summary": {
+            "description": "The boundary in plain words, as list_projects prints it.",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_out",
+          "content_in",
+          "preset",
+          "summary"
+        ],
+        "title": "ProjectBoundaryOut",
+        "type": "object"
+      },
+      "ProjectBoundaryValues": {
+        "properties": {
+          "content_in": {
+            "description": "What may come into the project from other projects.",
+            "enum": [
+              "allowed",
+              "owner_approves",
+              "blocked"
+            ],
+            "title": "Content In",
+            "type": "string"
+          },
+          "content_out": {
+            "description": "What may leave the project.",
+            "enum": [
+              "allowed",
+              "locked"
+            ],
+            "title": "Content Out",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content_out",
+          "content_in"
+        ],
+        "title": "ProjectBoundaryValues",
+        "type": "object"
+      },
       "ProjectCreate": {
         "description": "Request payload for creating a project.\n\nAttributes:\n    name: Human-readable project name.\n    description: Optional long-form project description.\n    tags: List of tags stored in `projects.tags`.\n    group_id: Legacy space (group) this project belongs to. New projects\n              should omit this and remain standalone.",
         "examples": [
@@ -10993,6 +11280,34 @@
           }
         ],
         "properties": {
+          "boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectBoundaryChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project's boundary (needs a person); without it, the org's default."
+          },
+          "boundary_preset": {
+            "anyOf": [
+              {
+                "enum": [
+                  "internal",
+                  "siloed",
+                  "leadership"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A preset to set the boundary from, instead of `boundary`.",
+            "title": "Boundary Preset"
+          },
           "description": {
             "anyOf": [
               {
@@ -11048,8 +11363,13 @@
             "type": "boolean"
           },
           "cross_project_guard": {
-            "description": "`cross_project_guard` and project overrides may be set.",
+            "description": "Legacy name of `project_boundaries` (the same flag).",
             "title": "Cross Project Guard",
+            "type": "boolean"
+          },
+          "project_boundaries": {
+            "description": "Project boundaries: `session_mode`, `default_boundary`, `minimum_boundary` and each project's boundary may be set, and they apply.",
+            "title": "Project Boundaries",
             "type": "boolean"
           },
           "server_agent_sessions": {
@@ -11058,15 +11378,16 @@
             "type": "boolean"
           },
           "session_auto_lock": {
-            "description": "`session_mode` may be set.",
+            "description": "Retired (always false): the org-wide auto-lock is now a minimum boundary.",
             "title": "Session Auto Lock",
             "type": "boolean"
           }
         },
         "required": [
           "server_agent_sessions",
-          "session_auto_lock",
+          "project_boundaries",
           "agent_writes_require_session",
+          "session_auto_lock",
           "cross_project_guard"
         ],
         "title": "ProjectIsolationAvailable",
@@ -11080,7 +11401,8 @@
             "type": "boolean"
           },
           "auto_lock_counts_search_results": {
-            "description": "In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).",
+            "deprecated": true,
+            "description": "Deprecated and always true: a broad search always counts what it read.",
             "title": "Auto Lock Counts Search Results",
             "type": "boolean"
           },
@@ -11094,7 +11416,8 @@
             "type": "boolean"
           },
           "cross_project_guard": {
-            "description": "The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.",
+            "deprecated": true,
+            "description": "Deprecated: `default_boundary.content_in` in the old guard's words.",
             "enum": [
               "allow",
               "hold",
@@ -11103,11 +11426,34 @@
             "title": "Cross Project Guard",
             "type": "string"
           },
+          "default_boundary": {
+            "$ref": "#/components/schemas/BoundaryValues",
+            "description": "The boundary new projects start with."
+          },
+          "minimum_boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoundaryValues"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A floor no project's boundary can be set below, or null for none. Every project's boundary applies raised to it; content_out locked keeps every project locked."
+          },
+          "presets": {
+            "description": "The boundary presets the apps offer.",
+            "items": {
+              "$ref": "#/components/schemas/BoundaryPreset"
+            },
+            "title": "Presets",
+            "type": "array"
+          },
           "session_mode": {
-            "description": "`picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.",
+            "description": "`automatic` (the default): an agent session starts open and the server tracks what it touches; it may still choose its projects up front. `must_pick`: a session reaches no project until its projects (or read everything) are chosen.",
             "enum": [
-              "picker",
-              "auto_lock"
+              "automatic",
+              "must_pick"
             ],
             "title": "Session Mode",
             "type": "string"
@@ -11115,11 +11461,14 @@
         },
         "required": [
           "session_mode",
-          "auto_lock_counts_search_results",
+          "default_boundary",
+          "minimum_boundary",
           "agent_writes_require_session",
-          "cross_project_guard",
+          "presets",
           "available",
-          "can_change"
+          "can_change",
+          "cross_project_guard",
+          "auto_lock_counts_search_results"
         ],
         "title": "ProjectIsolationOut",
         "type": "object"
@@ -11147,40 +11496,53 @@
                 "type": "null"
               }
             ],
-            "description": "In auto_lock, whether the projects an unscoped search's results come from count as read (true, strict) or only projects a request names (false).",
+            "description": "Retired: a broad search always counts its results now.",
             "title": "Auto Lock Counts Search Results"
           },
           "cross_project_guard": {
             "anyOf": [
               {
-                "enum": [
-                  "allow",
-                  "hold",
-                  "refuse"
-                ],
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "The organization's default for writes into a project that cite a source from another project, or come from a session that read another project: `allow`, `hold` (only an owner or admin of the project may accept them) or `refuse`.",
+            "description": "Retired: set each project's content_in instead.",
             "title": "Cross Project Guard"
+          },
+          "default_boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoundaryChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The boundary new projects start with."
+          },
+          "minimum_boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BoundaryChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A floor no project's boundary can be set below, or null for none. Every project's boundary applies raised to it; content_out locked keeps every project locked."
           },
           "session_mode": {
             "anyOf": [
               {
-                "enum": [
-                  "picker",
-                  "auto_lock"
-                ],
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "`picker`: the person chooses each agent session's projects. `auto_lock`: the server decides: the first project a session reads or writes becomes its read-write project, and reading a second makes it read-only for the rest of its life.",
+            "description": "`automatic` (the default): an agent session starts open and the server tracks what it touches; it may still choose its projects up front. `must_pick`: a session reaches no project until its projects (or read everything) are chosen.",
             "title": "Session Mode"
           }
         },
@@ -11886,6 +12248,102 @@
         "title": "ProjectMemberOutPage",
         "type": "object"
       },
+      "ProjectOption": {
+        "properties": {
+          "boundary": {
+            "$ref": "#/components/schemas/OptionBoundary",
+            "description": "The project's boundary as it applies now."
+          },
+          "can_read": {
+            "description": "Adding it to the read list keeps the selection valid.",
+            "title": "Can Read",
+            "type": "boolean"
+          },
+          "can_write": {
+            "description": "Adding it to the write list (and so to read) keeps the selection valid.",
+            "title": "Can Write",
+            "type": "boolean"
+          },
+          "id": {
+            "description": "Project id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "in_read": {
+            "description": "It is in the read list given.",
+            "title": "In Read",
+            "type": "boolean"
+          },
+          "in_write": {
+            "description": "It is in the write list given.",
+            "title": "In Write",
+            "type": "boolean"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Project name.",
+            "title": "Name"
+          },
+          "read_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it can't be read, when it can't.",
+            "title": "Read Reason"
+          },
+          "write_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What writing it means with these reads (an owner_approves hold).",
+            "title": "Write Note"
+          },
+          "write_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it can't be written, when it can't.",
+            "title": "Write Reason"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "boundary",
+          "in_read",
+          "in_write",
+          "can_read",
+          "read_reason",
+          "can_write",
+          "write_reason",
+          "write_note"
+        ],
+        "title": "ProjectOption",
+        "type": "object"
+      },
       "ProjectOut": {
         "description": "Serialized representation of a project resource.\n\nAttributes:\n    id: Unique identifier shared with the backing resource.\n    org_id: Identifier for the owning organization.\n    group_id: Legacy space (group) this project belongs to.\n    owner_user_id: ID of the user who owns the project.\n    owner_name: Display name of the owner.\n    owner_email: Email of the owner.\n    name: Human-readable project name.\n    slug: URL-safe slug for the project.\n    description: Optional project description.\n    status: Lifecycle status for the project.\n    tags: Tag values stored for the project.\n    updated_at: Timestamp propagated from the resource row.\n    created_at: Timestamp propagated from the resource row.\n    member_count: Count of distinct users/access subjects with project access.\n    is_shared: True when more than one user/access subject can reach the project.",
         "examples": [
@@ -11917,6 +12375,17 @@
           }
         ],
         "properties": {
+          "boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectBoundaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project's boundary as it applies now; null while project boundaries are off."
+          },
           "can_add_content": {
             "default": false,
             "description": "Whether the caller can add content.",
@@ -12272,6 +12741,34 @@
           }
         ],
         "properties": {
+          "boundary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectBoundaryChange"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Change the boundary: an owner or admin of the project, or an org admin, acting as a person."
+          },
+          "boundary_preset": {
+            "anyOf": [
+              {
+                "enum": [
+                  "internal",
+                  "siloed",
+                  "leadership"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set the boundary from a preset, instead of `boundary`.",
+            "title": "Boundary Preset"
+          },
           "description": {
             "anyOf": [
               {
@@ -12433,6 +12930,20 @@
           "text"
         ],
         "title": "ProposalFiledBy",
+        "type": "object"
+      },
+      "ReadEverythingOption": {
+        "properties": {
+          "summary": {
+            "description": "What a read-everything session would read and write.",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary"
+        ],
+        "title": "ReadEverythingOption",
         "type": "object"
       },
       "ReadTrailSettingsOut": {
@@ -13597,6 +14108,78 @@
         "title": "ScopesOut",
         "type": "object"
       },
+      "SelectionOptionsIn": {
+        "properties": {
+          "read_project_ids": {
+            "description": "The read list chosen so far.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Read Project Ids",
+            "type": "array"
+          },
+          "write_project_ids": {
+            "description": "The write list chosen so far.",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Write Project Ids",
+            "type": "array"
+          }
+        },
+        "title": "SelectionOptionsIn",
+        "type": "object"
+      },
+      "SelectionOptionsOut": {
+        "properties": {
+          "notes": {
+            "description": "What the lists given mean for writes.",
+            "items": {
+              "$ref": "#/components/schemas/SessionNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "projects": {
+            "description": "Every project the person can read (at most 500), by name.",
+            "items": {
+              "$ref": "#/components/schemas/ProjectOption"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "read_everything": {
+            "$ref": "#/components/schemas/ReadEverythingOption",
+            "description": "The read-everything choice."
+          },
+          "reasons": {
+            "description": "Why the lists given are invalid (session_selection_invalid's reasons).",
+            "items": {
+              "$ref": "#/components/schemas/SessionNote"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "valid": {
+            "description": "The lists given are a valid selection.",
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "reasons",
+          "notes",
+          "projects",
+          "read_everything"
+        ],
+        "title": "SelectionOptionsOut",
+        "type": "object"
+      },
       "SendToKnowledgeRequest": {
         "properties": {
           "project_ids": {
@@ -14321,7 +14904,7 @@
                 "type": "null"
               }
             ],
-            "description": "The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Needs `server_agent_sessions`.",
+            "description": "The agent conversation this session is for (what the client sends as `X-Beakr-Session`). Returns the person's active session for it, or starts one; an id whose session has ended answers `409 session_ended`. Lists or `read_everything` given for a session that has already touched a project answer `409 session_already_started`. Needs `server_agent_sessions`.",
             "title": "Agent Session"
           },
           "client_name": {
@@ -14364,6 +14947,12 @@
             "description": "A label the person recognizes, such as the agent and folder.",
             "title": "Label"
           },
+          "read_everything": {
+            "default": false,
+            "description": "Read every project the person can, locked ones included, and write nothing. Takes no lists.",
+            "title": "Read Everything",
+            "type": "boolean"
+          },
           "read_project_ids": {
             "anyOf": [
               {
@@ -14378,7 +14967,7 @@
                 "type": "null"
               }
             ],
-            "description": "Projects the session may read. Omit both lists to create a pending session the person completes at `picker_url`; every Knowledge, document and research call answers `403 session_needs_selection` until they do.",
+            "description": "Projects the session may read (a picked session). Omit both lists for the organization's mode: an automatic session, or a pending one the person completes at `picker_url` (every Knowledge, document and research call answers `403 session_needs_selection` until they do). Lists that break a project's boundary answer `422 session_selection_invalid` with every reason.",
             "title": "Read Project Ids"
           },
           "ttl_seconds": {
@@ -14408,6 +14997,112 @@
           }
         },
         "title": "SessionCreate",
+        "type": "object"
+      },
+      "SessionNote": {
+        "properties": {
+          "code": {
+            "description": "`owner_approves`, or a reason code of `session_selection_invalid`.",
+            "title": "Code",
+            "type": "string"
+          },
+          "message": {
+            "description": "What it means, in plain words.",
+            "title": "Message",
+            "type": "string"
+          },
+          "project_ids": {
+            "description": "The projects it names.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Project Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "code",
+          "message",
+          "project_ids"
+        ],
+        "title": "SessionNote",
+        "type": "object"
+      },
+      "SessionNotice": {
+        "description": "A lock this request's touch engaged in its agent session (project boundaries).",
+        "properties": {
+          "lock_state": {
+            "description": "`locked` or `read_only`.",
+            "title": "Lock State",
+            "type": "string"
+          },
+          "message": {
+            "description": "What changed, in plain words.",
+            "title": "Message",
+            "type": "string"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionNoticeProject"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`locked`: the one project the session may now write."
+          },
+          "projects": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SessionNoticeProject"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`read_only`: the locked projects it has touched.",
+            "title": "Projects"
+          }
+        },
+        "required": [
+          "lock_state",
+          "message"
+        ],
+        "title": "SessionNotice",
+        "type": "object"
+      },
+      "SessionNoticeProject": {
+        "properties": {
+          "id": {
+            "description": "Project id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Project name, when the caller can see it.",
+            "title": "Name"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "title": "SessionNoticeProject",
         "type": "object"
       },
       "SessionOut": {
@@ -14503,14 +15198,22 @@
                 "type": "null"
               }
             ],
-            "description": "`auto_lock` only: `open` (no project yet), `locked` (reads and writes `write_project`) or `read_only` (read two projects; writes are refused). Null in picker mode.",
+            "description": "`open`, `locked` (it touched one project that keeps its content in, and writes only there: `write_project`) or `read_only` (two such projects, or read everything). Null while pending.",
             "title": "Lock State"
           },
           "mode": {
-            "default": "picker",
-            "description": "`picker` (the person chooses the projects) or `auto_lock` (the first project the session reads or writes becomes its project; reading a second makes it read-only).",
+            "default": "picked",
+            "description": "`automatic` (the server tracks what it touches), `picked` (its read and write lists were chosen) or `read_everything` (every project, no writes).",
             "title": "Mode",
             "type": "string"
+          },
+          "notes": {
+            "description": "What its lists mean for writes: `owner_approves` holds.",
+            "items": {
+              "$ref": "#/components/schemas/SessionNote"
+            },
+            "title": "Notes",
+            "type": "array"
           },
           "picker_url": {
             "description": "Where the person chooses and changes the projects.",
@@ -14543,11 +15246,19 @@
             "title": "Read Only Reason"
           },
           "read_projects": {
-            "description": "Projects the session may read.",
+            "description": "Projects the session may read; for an automatic session, those it has read.",
             "items": {
               "$ref": "#/components/schemas/SessionProject"
             },
             "title": "Read Projects",
+            "type": "array"
+          },
+          "read_touched_projects": {
+            "description": "Every project the session has read, in order.",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Read Touched Projects",
             "type": "array"
           },
           "remember_folder": {
@@ -14578,6 +15289,12 @@
             "title": "Status",
             "type": "string"
           },
+          "summary": {
+            "default": "",
+            "description": "The session's projects in one line.",
+            "title": "Summary",
+            "type": "string"
+          },
           "token": {
             "anyOf": [
               {
@@ -14590,7 +15307,7 @@
             "description": "The token minted with the session, when `issue_token` was set."
           },
           "touched_projects": {
-            "description": "Every project the session has read or written, in order (tracked under auto-lock or the cross-project guard).",
+            "description": "Every project the session has read or written, in order.",
             "items": {
               "$ref": "#/components/schemas/SessionProject"
             },
@@ -14615,10 +15332,10 @@
                 "type": "null"
               }
             ],
-            "description": "`auto_lock` only: the project it reads and writes, while locked."
+            "description": "The project it is locked to, while locked."
           },
           "write_projects": {
-            "description": "Projects the session may write.",
+            "description": "Projects the session may write now.",
             "items": {
               "$ref": "#/components/schemas/SessionProject"
             },
@@ -14860,6 +15577,110 @@
         "title": "SessionReadOutPage",
         "type": "object"
       },
+      "SessionStatusOut": {
+        "properties": {
+          "events": {
+            "description": "Its latest boundary events (at most 20), newest first: rows of its trail whose `op` is `boundary:started`, `boundary:changed`, `boundary:locked`, `boundary:read_only` or `boundary:refused`.",
+            "items": {
+              "$ref": "#/components/schemas/SessionReadOut"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "lock_state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`open`, `locked` or `read_only`; null while pending.",
+            "title": "Lock State"
+          },
+          "locked_to": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionProject"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project its writes are locked to."
+          },
+          "mode": {
+            "description": "`automatic`, `picked` or `read_everything`.",
+            "title": "Mode",
+            "type": "string"
+          },
+          "read_projects": {
+            "description": "What it has read, in order.",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Read Projects",
+            "type": "array"
+          },
+          "readable_projects": {
+            "description": "A picked session's read list (empty otherwise).",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Readable Projects",
+            "type": "array"
+          },
+          "reads_everything": {
+            "description": "It may read every project the person can (automatic, read everything).",
+            "title": "Reads Everything",
+            "type": "boolean"
+          },
+          "session_id": {
+            "description": "The session this status describes.",
+            "title": "Session Id",
+            "type": "string"
+          },
+          "status": {
+            "description": "`pending`, `active` or `ended`.",
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "description": "Where the session stands, in plain words.",
+            "title": "Summary",
+            "type": "string"
+          },
+          "touched_projects": {
+            "description": "What it has read or written.",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Touched Projects",
+            "type": "array"
+          },
+          "write": {
+            "$ref": "#/components/schemas/SessionWriteStatus",
+            "description": "Where it may still write, and why not elsewhere."
+          }
+        },
+        "required": [
+          "session_id",
+          "status",
+          "mode",
+          "lock_state",
+          "locked_to",
+          "read_projects",
+          "touched_projects",
+          "reads_everything",
+          "readable_projects",
+          "write",
+          "summary",
+          "events"
+        ],
+        "title": "SessionStatusOut",
+        "type": "object"
+      },
       "SessionToken": {
         "properties": {
           "expires_at": {
@@ -14919,6 +15740,31 @@
             "description": "A new label; empty clears it.",
             "title": "Label"
           },
+          "mode": {
+            "anyOf": [
+              {
+                "const": "automatic",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`automatic`: the server tracks what the session touches instead of chosen lists. Only while it has touched nothing, and not where the organization's session mode is must_pick (`422 session_mode_must_pick`).",
+            "title": "Mode"
+          },
+          "read_everything": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "true: read every project and write none. Only while the session has touched nothing (else `409 session_already_started`).",
+            "title": "Read Everything"
+          },
           "read_project_ids": {
             "anyOf": [
               {
@@ -14967,6 +15813,38 @@
           }
         },
         "title": "SessionUpdate",
+        "type": "object"
+      },
+      "SessionWriteStatus": {
+        "properties": {
+          "anywhere": {
+            "description": "It may write any project it can read, except those in `refused`.",
+            "title": "Anywhere",
+            "type": "boolean"
+          },
+          "projects": {
+            "description": "Where it may write (empty when `anywhere`), and whether it is held.",
+            "items": {
+              "$ref": "#/components/schemas/StatusWrite"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "refused": {
+            "description": "Projects it can read but not write, with why (at most 200).",
+            "items": {
+              "$ref": "#/components/schemas/StatusRefused"
+            },
+            "title": "Refused",
+            "type": "array"
+          }
+        },
+        "required": [
+          "anywhere",
+          "projects",
+          "refused"
+        ],
+        "title": "SessionWriteStatus",
         "type": "object"
       },
       "SkillBundleOut": {
@@ -16565,6 +17443,93 @@
           "status_url"
         ],
         "title": "StartRunResponse",
+        "type": "object"
+      },
+      "StatusRefused": {
+        "properties": {
+          "code": {
+            "description": "The refusal a write there would get.",
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "description": "Project id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Project name.",
+            "title": "Name"
+          },
+          "reason": {
+            "description": "Why, in plain words.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "code",
+          "reason"
+        ],
+        "title": "StatusRefused",
+        "type": "object"
+      },
+      "StatusWrite": {
+        "properties": {
+          "id": {
+            "description": "Project id.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Project name.",
+            "title": "Name"
+          },
+          "outcome": {
+            "description": "`write`, or `held` (its owners approve what this session writes there).",
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it is held, when it is.",
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "outcome",
+          "reason"
+        ],
+        "title": "StatusWrite",
         "type": "object"
       },
       "TextContent": {
@@ -18216,6 +19181,18 @@
             ],
             "default": null,
             "description": "`query` only: the spec that ran and the window as columns and rows."
+          },
+          "session_notice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionNotice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Present when this read locked the agent session (project boundaries)."
           },
           "sources": {
             "default": [],
@@ -20484,6 +21461,18 @@
             "default": null,
             "description": "`proposal.id`, at the top level, whenever a proposal was staged.",
             "title": "Proposal Id"
+          },
+          "session_notice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SessionNotice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Present when this write locked the agent session (project boundaries)."
           },
           "sources": {
             "anyOf": [
@@ -30865,7 +31854,7 @@
     },
     "/v1/organizations/{org_id}/project-isolation": {
       "get": {
-        "description": "Get the project isolation settings.\n\nThe organization's settings, and which of the features are turned on for it.",
+        "description": "Get the project isolation settings.\n\nThe organization's session mode, its default and minimum project boundary,\nwhether agent writes need a session, and which features are turned on.",
         "operationId": "get_project_isolation_v1_organizations__org_id__project_isolation_get",
         "parameters": [
           {
@@ -30937,7 +31926,7 @@
         "x-beakr-scope": "kb:read"
       },
       "put": {
-        "description": "Change the project isolation settings.\n\nOnly the fields sent change.",
+        "description": "Change the project isolation settings.\n\nOnly the fields sent change. ``minimum_boundary`` null clears the floor.",
         "operationId": "set_project_isolation_v1_organizations__org_id__project_isolation_put",
         "parameters": [
           {
@@ -31995,7 +32984,7 @@
     },
     "/v1/projects/{project_id}/cross-project-guard": {
       "get": {
-        "description": "Get a project's cross-project guard.\n\nIts own setting, the organization's, and the one that applies.",
+        "description": "Get a project's cross-project guard.\n\nLegacy: the project's content_in, in the guard's words (allow, hold, refuse).",
         "operationId": "get_cross_project_guard_v1_projects__project_id__cross_project_guard_get",
         "parameters": [
           {
@@ -32067,7 +33056,7 @@
         "x-beakr-scope": "kb:read"
       },
       "put": {
-        "description": "Set a project's cross-project guard.\n\nIts own guard, or null to follow the organization's.",
+        "description": "Set a project's cross-project guard.\n\nLegacy: sets the project's content_in (allow, hold, refuse; null is allow).",
         "operationId": "set_cross_project_guard_v1_projects__project_id__cross_project_guard_put",
         "parameters": [
           {
@@ -34325,6 +35314,132 @@
         ]
       }
     },
+    "/v1/sessions/current/status": {
+      "get": {
+        "description": "Show this session's status.\n\nFor the session of the request (a session token, or a key joined by\n``X-Beakr-Session``): its mode, what it has read, where it may still write,\nand why not elsewhere.",
+        "operationId": "current_session_status_v1_sessions_current_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Show this session's status",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
+    "/v1/sessions/options": {
+      "post": {
+        "description": "Check a session's project choices.\n\nFor the given read and write lists: whether they are valid, and for each\nproject the person can read, whether it can be added to read or to write,\nwith the reason when not.",
+        "operationId": "session_options_v1_sessions_options_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SelectionOptionsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SelectionOptionsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Check a session's project choices",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
     "/v1/sessions/{session_id}": {
       "get": {
         "description": "One of the caller's sessions.",
@@ -34537,6 +35652,76 @@
           }
         ],
         "summary": "End a session",
+        "tags": [
+          "public",
+          "sessions"
+        ]
+      }
+    },
+    "/v1/sessions/{session_id}/status": {
+      "get": {
+        "description": "Show a session's status.\n\nOne of the caller's sessions: its mode, what it has read, where it may\nstill write, and why not elsewhere.",
+        "operationId": "session_status_v1_sessions__session_id__status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Show a session's status",
         "tags": [
           "public",
           "sessions"

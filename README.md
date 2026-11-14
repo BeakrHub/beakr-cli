@@ -192,8 +192,8 @@ are stable:
 |------|---------|
 | 0 | ok |
 | 1 | error |
-| 2 | usage (bad flags, or a confirmation needed without `--yes`) |
-| 3 | not signed in, the credential lacks a scope, or the session may not write the project (`session_write_scope`) |
+| 2 | usage (bad flags, a confirmation needed without `--yes`, or picked session lists that break a project boundary: `session_selection_invalid`) |
+| 3 | not signed in, the credential lacks a scope, or the session may not write the project (`session_write_scope`, `session_locked_to_project`, `session_read_only`, `cross_project_write_refused`, `project_content_locked`) |
 | 4 | not found |
 | 5 | conflict |
 | 6 | a person must do it: the project requires a person to accept proposals, commit Knowledge or approve an agent's upload (`person_review_required`), or the person has not yet chosen the projects of the session a write waited for (`session_needs_selection`) |
@@ -390,12 +390,15 @@ beakr interviews link ls | revoke LINK_ID
 ## Sessions: which projects a terminal writes
 
 A session limits a shell or an agent to the projects you choose: which it may
-read and which it may write. You can change them while it runs (`beakr session
+read and which it may write (or, with project boundaries, it reads everything or
+starts automatic; see below). You can change them while it runs (`beakr session
 edit`, or the session's page in the web app), and an agent holding the session
 can only drop projects, never add them.
 
 ```bash
 eval "$(beakr session start --env)"   # a checkbox picker, then this shell is in the session
+beakr session start --read A,B --write A   # picked without the picker, checked against boundaries
+beakr session status                  # where it can still write, and why
 beakr session show                    # what it may read and write, and its page
 beakr session edit                    # change the projects (the picker, or --read/--write)
 beakr session ls                      # your open sessions, agents' included
@@ -493,45 +496,93 @@ session, and an agent's session never approves its own files. A service account 
 a session token given as the credential, and an installation without sessions
 run as before.
 
-### Project isolation: one session per agent conversation
+### Project boundaries: one session per agent conversation
 
 Where the installation has agent sessions, `beakr mcp`, its subagents and every
 `beakr` command the agent runs in the same Claude Code or Codex conversation
 share one session: each joins it by the conversation's id
 (`CLAUDE_CODE_SESSION_ID`, `CODEX_THREAD_ID`, or `BEAKR_SESSION` where the host
 gives its MCP server none), so a Bash call or a subagent cannot step outside it.
-`beakr session show` and `beakr session trail` (no argument) find the
-conversation's session.
+`beakr session show`, `beakr session status` and `beakr session trail` (no
+argument) find the conversation's session.
+
+Each project has a **boundary** (where the organization has Project boundaries
+turned on), and Beakr enforces two rules on every session:
+
+- **Content out.** A project whose boundary is locked ("Touching it locks this
+  session's writes to it") locks the session the first time the session reads
+  or writes it: from then on it can write only to that project. After two such
+  projects it is read-only. Reads keep working.
+- **Content in.** A project that takes no content from other projects refuses
+  writes from a session that has read another project; one whose owners approve
+  holds those writes for them. A write that cites or copies a locked project's
+  content into another project is refused, for agents and people alike.
+
+A session works one of three ways:
+
+```bash
+beakr session start --read "Partner A,Chemistry" --write "Partner A"   # picked
+beakr session start --read-everything   # every project you can read, locked ones included; writes nothing
+beakr session start --automatic         # open: Beakr tracks what it touches (the default where allowed)
+beakr session status                    # where it can still write, and why
+```
+
+A picked choice is checked against the projects' boundaries before the session
+starts (`POST /v1/sessions/options`), and one that breaks a boundary is refused
+with each reason, for example "Reading Partner A locks this session's writes to
+Partner A, so it can't also write to Chemistry." An organization can make every
+session pick (`session_mode: must_pick`); there `--automatic` is refused. The
+session's one line comes back on start:
+
+```text
+Picked session: reads Partner A and Chemistry; writes Partner A.
+```
+
+Inside an agent conversation `beakr session start` declares that conversation's
+own session instead, as `beakr mcp`'s `start_session` tool does, and only before
+the session has read or written anything (`session_already_started` after). The
+conversation's commands then run in it.
+
+`beakr session status` (and `beakr mcp`'s `session_status` tool) says where the
+session can still write and why:
+
+```text
+Automatic session. It read Partner A, which keeps its content in, so it can write only to Partner A. Start a new session to work in another project.
+Read: Partner A.
+Can write: Partner A.
+Can't write Chemistry: This session read Partner A, so it can write only to Partner A.
+Recent:
+- Locked to Partner A by knowledge_base sections (scope Partner A).
+```
+
+`beakr projects ls`, `beakr projects show` and `beakr mcp`'s `list_projects`
+show each project's boundary in plain words ("Boundary: Partner A: siloed.
+Touching it locks this session's writes to it. ..."). A search that names no project skips
+locked projects the session has not touched; name the project to search it.
+
+The request that locks a session says so, in Beakr's words: `beakr mcp` puts
+`Session: This session is now locked: it can write only to Partner A.` on the
+tool result's first line, and a command prints it on stderr. Refusals keep the
+API's message and code (`session_locked_to_project`, `session_read_only`,
+`cross_project_write_refused`, `project_content_locked`,
+`session_selection_invalid`, `session_already_started`), exit 3 for a refused
+write.
 
 Inside an agent conversation the `beakr session` commands read only that
 conversation's own session (through its token), and a person's own acts that
-could widen the agent's reach are refused: `beakr session start`, `beakr session
-edit`, `beakr session end` of another session, `beakr org isolation set`,
-`beakr org read-trail set`, `beakr projects guard set`, `beakr kb agent-review set`
-and `beakr files approve`. Do those in the web app or a terminal outside the
+could widen the agent's reach are refused: `beakr session edit`, `beakr session
+end` of another session, `beakr org isolation set`, `beakr org read-trail set`,
+`beakr projects boundary set`, `beakr projects guard set`, `beakr kb agent-review
+set` and `beakr files approve`. Do those in the web app or a terminal outside the
 conversation (`!` commands typed in Claude Code share the agent's environment, so
 they are refused too). This relies on the conversation id in the environment: an
 agent that clears those variables is not stopped by the CLI. The lock guards
 against mistakes, not a determined agent.
 
-An organization can lock each session to one project instead of asking
-(`session_mode: auto_lock`, set by an admin). Then nothing shows a picker: the
-session starts open, the first project it reads or writes becomes its project,
-and reading a second project makes it read-only for the rest of its life. In an
-agent conversation the CLI's reads run in the session too, so they count.
-
 ```bash
 beakr session show       # mode, the project it is locked to, read-only, the projects it touched
-beakr session trail      # its reads, newest first: op, projects, what each returned (--limit, --cursor)
+beakr session trail      # its reads, lock events and refusals, newest first (--limit, --cursor)
 beakr kb proposals show PROPOSAL_ID --trail   # what the filing session read first, by project
-```
-
-```text
-Session 7c1e2d3f-... (active)
-Mode: auto_lock (Beakr locks the session to the first project it touches)
-Read-only: Read Pharma A and Pharma B. Writes are refused; reads keep working.
-To write: Start a new agent conversation (a new Claude Code session, a new Codex thread): it gets a new Beakr session. Work in one project per conversation.
-Touched: Pharma A, Pharma B
 ```
 
 A write the session may no longer make is refused by name before anything is
@@ -541,61 +592,69 @@ the fix is a new conversation; a terminal's session is ended with `beakr session
 end <id>` and the next command starts a new one.
 
 ```text
-Error: Session 7c1e2d3f-... reads and writes Pharma A, so it cannot write Pharma B; nothing was written. To fix: To write Pharma B: Start a new agent conversation ...
+Error: Session 7c1e2d3f-... is locked to Partner A: it can write only to Partner A, so it cannot write Chemistry; nothing was written. To fix: Start a new agent conversation ...
 ```
 
-`beakr mcp`'s new `session_status` tool shows the same state to the agent
-(`trail=true` adds the session's own read trail). A write's trail is read by a
-person, never by the agent: it can list other projects' reads, so the API refuses
-it to a session token, and `session_status` with `proposal_id` says to open it
-in the web app (Knowledge → the proposal → What it read first) or run
-`beakr kb proposals show <id> --trail` from a terminal outside any session. The read trail is kept where the organization turns it on
-(`session_read_trail`); a write's trail groups the reads made before it by
-project, the write's own first, other projects marked, sources outside Beakr
-last. `session_scope` cannot narrow an auto_lock session, which has no project
-list to drop from.
+`session_status` with `trail=true` adds the session's own read trail. A write's
+trail is read by a person, never by the agent: it can list other projects'
+reads, so the API refuses it to a session token, and `session_status` with
+`proposal_id` says to open it in the web app (Knowledge → the proposal → What it
+read first) or run `beakr kb proposals show <id> --trail` from a terminal outside
+any session. The read trail is kept where the organization turns it on
+(`session_read_trail`). `session_scope` narrows only a picked session: an
+automatic or read-everything one has no project list to drop from.
 
-Two more organization settings show up as refusals or results:
-
-- **Writes need a session** (`agent_writes_require_session`): a Knowledge or
-  file write made with an API key outside any session is refused
-  (`session_required`, exit 3). Run it from the agent conversation, or put the
-  shell in a session with `eval "$(beakr session start --env)"`.
-- **Cross-project guard** (per project, `allow`, `hold` or `refuse`): a write
-  into Pharma B that cites Pharma A's sources, or comes from a session that read
-  Pharma A, is refused (`cross_project_write_refused`, naming both projects and
-  who can change the setting) or held. A held write is staged as usual and shown
-  as a result, not an error: "Held for approval by an owner or admin of Pharma
-  B. ..." Only an owner or admin of Pharma B can accept it; auto-approve never
-  does, and an agent's accept is refused (`cross_project_owner_required`).
-  `beakr kb proposals show` and `show_proposal` print the hold, and
-  `beakr kb proposals show --trail` the write's read trail.
+**Writes need a session** (`agent_writes_require_session`): a Knowledge or file
+write made with an API key outside any session is refused (`session_required`,
+exit 3). Run it from the agent conversation, or put the shell in a session with
+`eval "$(beakr session start --env)"`. A write held for a project's owners is
+staged as usual and shown as a result, not an error: "Held for approval by an
+owner or admin of Leadership. ..." Only an owner or admin of that project can
+accept it; auto-approve never does, and an agent's accept is refused
+(`cross_project_owner_required`).
 
 #### Changing the settings
 
 An organization admin changes the organization's settings, and an owner or admin
-of a project its own guard, acting as a person: signed in to the web app, or with
-an API key they created with the `proposals:accept` scope (`BEAKR_API_KEY`).
+of a project (or an organization admin) its boundary, acting as a person: signed
+in to the web app, or with an API key they created with the `proposals:accept`
+scope (`BEAKR_API_KEY`).
 
 ```bash
 beakr org isolation show                 # each setting, and which parts are turned on (--json)
-beakr org isolation set --session-mode auto_lock --require-session --guard hold
-beakr org isolation set --no-count-search-results --yes   # only the options given are sent
+beakr org isolation set --session-mode must_pick --require-session
+beakr org isolation set --default-boundary siloed     # what new projects start with
+beakr org isolation set --minimum-out locked          # every project locked (the old auto-lock)
+beakr org isolation set --no-minimum --yes            # only the options given are sent
 beakr org read-trail show
 beakr org read-trail set --days 30       # shorter: older reads are deleted within the hour
-beakr projects guard show "Pharma B"
-beakr projects guard set "Pharma B" refuse   # or allow, hold; default follows the organization
+beakr projects boundary show "Partner A"
+beakr projects boundary set "Partner A" --preset siloed      # internal, siloed or leadership
+beakr projects boundary set Leadership --in owner_approves   # or --out locked|allowed, --in allowed|blocked
 ```
+
+The presets are names only: **Internal** (allowed / allowed, the default),
+**Partner project (siloed)** (content out locked, content in owner_approves) and
+**Leadership** (allowed / owner_approves). A boundary below the organization's
+minimum is refused with the minimum (`boundary_below_minimum`).
+
+The auto-lock options are retired, and kept for one release with a deprecation
+message: `--session-mode auto_lock` is sent as `--session-mode automatic
+--minimum-out locked`, `--session-mode picker` as `must_pick`, `--guard
+allow|hold|refuse` as `--default-in allowed|owner_approves|blocked` (each existing
+project keeps its own), and `--count-search-results` is ignored (a search that
+names no project never locks a session now). `beakr projects guard show|set`
+still reads and sets a project's content in as a guard.
 
 These commands always send your own credential and no `X-Beakr-Session`, never
 a session's token, so a change is joined to no agent session. None of them is an
-MCP tool: an agent must never loosen its own guard. A change that loosens a rule
-(a guard less strict than the one in force, `--no-require-session`,
-`--no-count-search-results`, a shorter read trail) asks first; without a terminal
-it needs `--yes`. A part the installation has not turned on is refused before
-anything is sent, naming the flag (exit 4: "Ask your operator to turn on
-cross_project_guard on the Features page."), and so is a caller the settings say
-may not change them (`can_change: false`, exit 3).
+MCP tool: an agent must never loosen its own boundary. A change that loosens a
+rule (a lower boundary, default or minimum, `automatic` instead of `must_pick`,
+`--no-require-session`, a shorter read trail) asks first; without a terminal it
+needs `--yes`. A part the installation has not turned on is refused before
+anything is sent, naming the flag (exit 4: "Ask your operator to turn on Project
+boundaries (cross_project_guard) on the Features page."), and so is a caller the
+settings say may not change them (`can_change: false`, exit 3).
 
 ## Knowledge cards
 

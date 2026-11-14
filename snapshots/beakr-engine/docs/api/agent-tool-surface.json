@@ -15,6 +15,8 @@
     "import_conversation",
     "org_audit_log",
     "integrations",
+    "start_session",
+    "session_status",
     "beakr_version",
     "update_beakr"
   ],
@@ -48,7 +50,7 @@
       "tier": "eager"
     },
     {
-      "description": "List projects in the organization, including the user's personal project. Pass a project's name or id as `scope` to knowledge_base and knowledge_base_write, or as `project` to research, wiki_stats and wiki_graph. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "description": "List projects in the organization, including the user's personal project, each with its boundary in plain words (what touching it does to this session). Pass a project's name or id as `scope` to knowledge_base and knowledge_base_write, or as `project` to research, wiki_stats and wiki_graph. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "list_projects",
       "surfaces": [
         "remote",
@@ -111,7 +113,7 @@
       "tier": "eager"
     },
     {
-      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
+      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, this session's projects (start_session, session_status), and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
       "name": "discover_tools",
       "surfaces": [
         "remote",
@@ -212,6 +214,24 @@
     {
       "description": "Read the user's connected integrations (Slack, Google Drive, Gmail, Jira, Notion, Benchling and any others they connected) live, as the user, with the read-only tools Beakr's own agent uses. command='list' lists the tools you can call, one line each with its options, under the accounts they read (narrow with `provider` or `connector_id`); command='describe' with `tool` gives one tool's full description and input schema; command='call' with `tool` runs it, with the tool's own options in `arguments` and `connector_id` when the user has that integration connected twice. A call answers the tool's text, which cites items as {{key}}, and Sources giving each item's url and the source_ref a Knowledge write accepts as a citation. Only reads: a tool that sends, creates or changes anything is refused. Use it for live or recent items in a connected service; for what the organization already knows, use research or knowledge_base first. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "integrations",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Choose this session's projects before anything else: `read` and `write` (project names or ids; a write project is read too), or read_everything=true to read every project, locked ones included, and write nothing. Lists that break a project's boundary are refused with each reason. Without it the session is automatic: the server tracks what it touches. Once the session has read or written a project its projects can no longer be chosen; start a new agent conversation instead.",
+      "name": "start_session",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery"
+    },
+    {
+      "description": "Show this session's mode, what it has read, where it can still write and why it can't write elsewhere (project boundaries). Call it when a write is refused or before writing to a second project.",
+      "name": "session_status",
       "surfaces": [
         "remote",
         "stdio"

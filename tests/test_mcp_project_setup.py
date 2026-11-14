@@ -560,7 +560,10 @@ async def test_a_locked_session_refuses_another_project_without_the_picker(tmp_p
     result, routes = await _upload_into(tmp_path, _auto_lock("locked", touched=(A,)), B)
 
     assert result["error_code"] == scope_session.LOCKED_TO_PROJECT
-    assert "reads and writes Helios, so it cannot write Assays" in result["message"]
+    assert (
+        "is locked to Helios: it can write only to Helios, so it cannot write Assays"
+        in (result["message"])
+    )
     assert "picker_url" not in result and "/sessions/" not in str(result.get("fix"))
     assert not routes["create"].called
 
@@ -570,14 +573,14 @@ async def test_a_read_only_session_refuses_every_upload(tmp_path: Path) -> None:
     result, routes = await _upload_into(tmp_path, _auto_lock("read_only", touched=(A, B)), A)
 
     assert result["error_code"] == scope_session.READ_ONLY
-    assert "read Helios, Assays, so it is read-only" in result["message"]
+    assert "is read-only" in result["message"] and "cannot write Helios" in result["message"]
     assert not routes["create"].called
 
 
 @pytest.mark.parametrize(
     ("state", "touched", "said"),
     [
-        ("open", (), "its first write locks the session to that project"),
+        ("open", (), "This session may read and write it."),
         ("locked", (A,), "Locked to Helios"),
     ],
 )

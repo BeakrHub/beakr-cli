@@ -1,6 +1,6 @@
 {
   "operation": "POST /v1/sessions",
-  "source": "synthesized from public-openapi.json (beakr-engine#2442 SessionOut), values hand-edited",
+  "source": "synthesized from public-openapi.json (beakr-engine#2442 SessionOut), values hand-edited; mode and summary added for project boundaries",
   "status": 201,
   "content_type": "application/json",
   "body": {
@@ -37,6 +37,8 @@
       "token": "bk_st_SNAPSHOT_TOKEN_NOT_REAL",
       "token_type": "bearer",
       "expires_at": "2026-11-08T18:00:00+00:00"
-    }
+    },
+    "mode": "picked",
+    "summary": "Picked session: reads Project Helios and Helios Assays; writes Project Helios."
   }
 }

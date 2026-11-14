@@ -126,6 +126,8 @@ def _text(result) -> str:
 def test_session_start_resolves_names_with_the_persons_credential_in_an_ended_shell(
     tmp_path, monkeypatch
 ):
+    # The picked lists are checked against the projects' boundaries first.
+    respx.post(f"{API}/v1/sessions/options").respond(json={"valid": True, "reasons": []})
     monkeypatch.chdir(tmp_path)
     listed = respx.get(f"{API}/v1/projects").mock(
         side_effect=_by_credential(person=_projects(A, B, C), session=_token_refused())
@@ -154,6 +156,8 @@ def test_session_start_resolves_names_with_the_persons_credential_in_an_ended_sh
 
 @respx.mock
 def test_session_edit_resolves_a_project_the_session_does_not_read():
+    # The picked lists are checked against the projects' boundaries first.
+    respx.post(f"{API}/v1/sessions/options").respond(json={"valid": True, "reasons": []})
     listed = respx.get(f"{API}/v1/projects").mock(
         side_effect=_by_credential(person=_projects(A, B, C), session=_projects(A, B))
     )

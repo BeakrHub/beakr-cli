@@ -351,6 +351,12 @@ _NO_ISOLATION_FIXTURE = (
     "requests and output"
 )
 
+_NO_BOUNDARY_FIXTURE = (
+    "project boundaries are behind the engine flag cross_project_guard, which the snapshot "
+    "engine leaves off, and no session-status response is recorded yet; "
+    "tests/test_project_boundaries.py pins the requests and output"
+)
+
 #: Visible hand-written commands with no snapshot, each with the reason.
 EXEMPT: dict[str, str] = {
     "projects profile setup": (
@@ -363,7 +369,7 @@ EXEMPT: dict[str, str] = {
         "in tests/test_session_trail.py"
     ),
     # Project isolation administration: no recorded response yet, and every change is
-    # behind an engine flag (cross_project_guard, session_auto_lock, ...,
+    # behind an engine flag (cross_project_guard, server_agent_sessions, ...,
     # session_read_trail) the snapshot engine leaves off.
     "org isolation show": _NO_ISOLATION_FIXTURE,
     "org isolation set": _NO_ISOLATION_FIXTURE,
@@ -371,6 +377,11 @@ EXEMPT: dict[str, str] = {
     "org read-trail set": _NO_ISOLATION_FIXTURE,
     "projects guard show": _NO_ISOLATION_FIXTURE,
     "projects guard set": _NO_ISOLATION_FIXTURE,
+    # Project boundaries: behind the engine flag cross_project_guard (Project boundaries),
+    # which the snapshot engine leaves off (a project's boundary reads null).
+    "projects boundary show": _NO_BOUNDARY_FIXTURE,
+    "projects boundary set": _NO_BOUNDARY_FIXTURE,
+    "session status": _NO_BOUNDARY_FIXTURE,
     "session forget": (
         "local only: edits this folder's .beakr/project.json and calls no API; "
         "tests/test_cli_session.py"
