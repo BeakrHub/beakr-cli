@@ -4,6 +4,8 @@
   as the MCP tools' default list does (a ``sections`` reply listed every hit again);
 - a project name two projects share is refused with both ids, as the MCP tools refuse
   it (``scope_ambiguous``), instead of reading one of them silently;
+  ``projects show/archive/rm`` and ``projects members`` refuse it too (rm and archive
+  acted on the first of the two);
 - an empty ``kb ls`` says so;
 - ``kb cat --outline`` reads as lines, and the door's ``ledger`` hint is the
   ``--ledger`` command.
@@ -114,6 +116,68 @@ def test_a_slug_still_picks_one_of_the_twins():
 
     assert result.exit_code == 0, result.output
     assert json.loads(door.calls.last.request.content)["scope"] == TWIN_B
+
+
+_TWINS = {
+    "data": [
+        {"id": TWIN_A, "name": "iso fr twin", "slug": "iso-fr-twin"},
+        {"id": TWIN_B, "name": "iso fr twin", "slug": "iso-fr-twin-2"},
+    ],
+    "has_more": False,
+}
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["projects", "rm", "iso fr twin", "--yes"],
+        ["projects", "archive", "iso fr twin"],
+        ["projects", "show", "iso fr twin"],
+        ["projects", "members", "ls", "iso fr twin"],
+    ],
+)
+def test_project_commands_refuse_a_name_two_projects_share(argv):
+    respx.get(f"{API}/v1/projects").respond(json=_TWINS)
+    deleted = respx.delete(url__regex=rf"{API}/v1/projects/.*")
+    patched = respx.patch(url__regex=rf"{API}/v1/projects/.*")
+
+    result = runner.invoke(app, argv)
+
+    assert result.exit_code == 2, result.output
+    said = " ".join(result.output.split())
+    assert "2 projects are named 'iso fr twin'" in said
+    assert TWIN_A in said.replace(" ", "") and TWIN_B in said.replace(" ", "")
+    assert not deleted.called and not patched.called
+
+
+@respx.mock
+@pytest.mark.parametrize("ref", [TWIN_B, "iso-fr-twin-2"])
+def test_projects_rm_acts_on_the_twin_an_id_or_slug_names(ref):
+    respx.get(f"{API}/v1/projects").respond(json=_TWINS)
+    other = respx.delete(f"{API}/v1/projects/{TWIN_A}").respond(204)
+    deleted = respx.delete(f"{API}/v1/projects/{TWIN_B}").respond(204)
+
+    result = runner.invoke(app, ["projects", "rm", ref, "--yes", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert deleted.called and not other.called
+
+
+@respx.mock
+@pytest.mark.parametrize("ref", [TWIN_B, "iso-fr-twin-2"])
+def test_projects_archive_acts_on_the_twin_an_id_or_slug_names(ref):
+    respx.get(f"{API}/v1/projects").respond(json=_TWINS)
+    other = respx.patch(f"{API}/v1/projects/{TWIN_A}").respond(json={})
+    patched = respx.patch(f"{API}/v1/projects/{TWIN_B}").respond(
+        json={"id": TWIN_B, "name": "iso fr twin", "status": "archived"}
+    )
+
+    result = runner.invoke(app, ["projects", "archive", ref, "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert patched.called and not other.called
+    assert json.loads(patched.calls.last.request.content) == {"status": "archived"}
 
 
 @respx.mock

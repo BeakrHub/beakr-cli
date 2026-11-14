@@ -6,6 +6,7 @@
       "uncommitted_changes": false,
       "files": {
         "beakr/api/mcp_remote/document_listing.py": "sha256:375389207c8e84b6d0f2a45075ede6d52a50cc5cd3fae64d9a54dc0712e2486e",
+        "beakr/api/mcp_remote/formatting.py": "sha256:7f6ab63de8f5db6801b51080f1c3ec4ed9474caa2d6f8c1f77a777ced001779e",
         "beakr/api/mcp_remote/integration_results.py": "sha256:5072eae67bccdcea076095a6e42f8ff7835ce51fd3f91167c858cfbe8193a0b7",
         "beakr/api/mcp_remote/knowledge_status.py": "sha256:2e5c56d818dfe185b6b02055b6551f53e8e4ad3b1507fc1953c14bb448d14563",
         "beakr/api/mcp_remote/render.py": "sha256:35cfb46c3b475d34e039bd00c22cb2a437c6ab51f164b6740ccd1f4cdc116ffe",

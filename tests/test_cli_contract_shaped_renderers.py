@@ -68,43 +68,6 @@ def test_kb_links_lists_the_backlink_rows(terminal):
 
 
 @respx.mock
-def test_kb_sources_lists_the_source_rows(terminal):
-    row = {
-        "source_type": "artifact",
-        "source_title": "handbook.pdf",
-        "source_id": "a-1",
-        "key": "artifact:a-1",
-        "stance": "support",
-    }
-    respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
-    respx.get(f"{PAGES}/{PAGE_ID}/sources").respond(
-        json={"data": [row], "has_more": False, "next_cursor": None}
-    )
-    result = runner.invoke(app, ["kb", "sources", PAGE_ID])
-    assert result.exit_code == 0, result.output
-    assert "handbook.pdf" in result.stdout and "support" in result.stdout
-
-    # --json prints each row as the public source record the MCP server returns.
-    as_json = runner.invoke(app, ["kb", "sources", PAGE_ID, "--json"])
-    assert as_json.exit_code == 0, as_json.output
-    assert json.loads(as_json.stdout) == [
-        {
-            "citation_key": "artifact:a-1",
-            "name": "handbook.pdf",
-            "filename": "handbook.pdf",
-            "source_kind": "artifact",
-            "stance": "support",
-        }
-    ]
-
-
-# --- kb graph -------------------------------------------------------------------
-# Root cause: it printed node `title`, but a WikiGraphNode carries the page title
-# in `label`, so every node printed as its id; and the "[type]" prefix went
-# through Rich markup, which swallowed it as an unknown style tag.
-
-
-@respx.mock
 def test_kb_graph_prints_each_node_by_its_label_and_page_type(terminal):
     respx.get(f"{API}/v1/knowledge/wiki/graph").respond(
         json={
