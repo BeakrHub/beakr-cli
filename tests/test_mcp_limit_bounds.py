@@ -23,7 +23,7 @@ from beakr_cli.mcp_tools_platform import READ_FILE_CHARS
 API = "https://api.test"
 ORG = {"id": "o1", "name": "Northwind", "slug": "northwind"}
 EMPTY_PAGE = {"data": [], "next_cursor": None, "has_more": False}
-REDUCED = "limit reduced from 100 to 50, the most one call returns"
+REDUCED = "Repaired this call: reduced `limit` from 100 to 50, the most rows one page holds"
 
 #: Every stdio tool that takes a row ``limit``; the hosted server gives each ``_LIMIT``.
 PAGED_TOOLS = ("list_projects", "skills", "conversations_search", "org_audit_log", "integrations")
@@ -132,7 +132,11 @@ async def test_each_paged_tool_reduces_an_over_maximum_limit_with_a_note(
 
     assert not result.isError, _text(result)
     assert route.calls.last.request.url.params["limit"] == sent
-    assert f"limit reduced from 100 to {sent}, the most one call returns" in _text(result)
+    # The hosted server's repair note, word for word, above the result.
+    assert _text(result).startswith(
+        f"Repaired this call: reduced `limit` from 100 to {sent}, the most rows one page holds; "
+        "pass the result's next_cursor as `cursor` for the rows after these."
+    )
 
 
 @respx.mock

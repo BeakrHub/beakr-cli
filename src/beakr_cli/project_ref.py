@@ -17,6 +17,11 @@ The rule, in order:
 5. none is a refusal naming the closest readable names (the engine's matcher,
    :mod:`beakr_cli.project_scope_names`).
 
+A destructive command (``projects rm``, ``projects archive``) passes
+``strict``: a name must be spelled exactly, case included, and name one
+project; a match only without regard to case is refused with its candidates,
+never acted on. An id or a slug still names one project there.
+
 Slug sits beside the case-insensitive name, after the exact name. It used to
 be matched first, so ``test`` chose the project named ``TEST`` (slug ``test``)
 over the one named ``test``, and the first case-folded name won silently, so
@@ -62,14 +67,21 @@ class ProjectNotResolved(ValueError):
     could mean when ``ambiguous``, and of the closest names otherwise.
     """
 
-    def __init__(self, given: str, *, candidates: list[str], ambiguous: bool) -> None:
+    def __init__(
+        self, given: str, *, candidates: list[str], ambiguous: bool, same_name: bool = False
+    ) -> None:
         self.given = given
         self.candidates = candidates
         self.ambiguous = ambiguous
-        if ambiguous:
+        if ambiguous and same_name:
+            message = (
+                f"{len(candidates)} projects are named {given!r}: {'; '.join(candidates)}. "
+                "Pass the project's id or slug instead."
+            )
+        elif ambiguous:
             message = (
                 f"More than one project matches {given!r}: {'; '.join(candidates)}. "
-                "Pass the id of the one you mean."
+                "Pass the project's id or slug instead."
             )
         elif candidates:
             message = (
@@ -109,9 +121,13 @@ def closest_projects(projects: list[dict[str, Any]], ref: str) -> list[str]:
     return [project_label(by_name[name]) for name in names]
 
 
-def pick_project(projects: list[dict[str, Any]], ref: str) -> dict[str, Any]:
+def pick_project(
+    projects: list[dict[str, Any]], ref: str, *, strict: bool = False
+) -> dict[str, Any]:
     """The one project of ``projects`` that ``ref`` names (the module's rule).
 
+    ``strict`` (a destructive command): a name match counts only when spelled
+    exactly and unique; an id or an exact slug still names one project.
     Raises :class:`ProjectNotResolved` when it names none or several.
     """
     ref = ref.strip()
@@ -123,6 +139,19 @@ def pick_project(projects: list[dict[str, Any]], ref: str) -> dict[str, Any]:
     if len(exact) == 1:
         return exact[0]
     folded = ref.casefold()
+    if strict and not exact:
+        by_slug = [p for p in projects if str(p.get("slug") or "") == ref]
+        if len(by_slug) == 1:
+            return by_slug[0]
+        named = [p for p in projects if folded and str(p.get("name") or "").casefold() == folded]
+        if named:
+            # Spelled another way than any project's name: never acted on as a guess.
+            raise ProjectNotResolved(
+                ref,
+                candidates=[project_label(p) for p in named],
+                ambiguous=True,
+                same_name=True,
+            )
     loose = exact or [
         p
         for p in projects
@@ -132,7 +161,10 @@ def pick_project(projects: list[dict[str, Any]], ref: str) -> dict[str, Any]:
     if len(loose) == 1:
         return loose[0]
     if loose:
-        raise ProjectNotResolved(ref, candidates=[project_label(p) for p in loose], ambiguous=True)
+        same = all(str(p.get("name") or "").casefold() == folded for p in loose)
+        raise ProjectNotResolved(
+            ref, candidates=[project_label(p) for p in loose], ambiguous=True, same_name=same
+        )
     raise ProjectNotResolved(ref, candidates=closest_projects(projects, ref), ambiguous=False)
 
 
@@ -148,6 +180,37 @@ def find_project(projects: list[dict[str, Any]], ref: str) -> dict[str, Any] | N
         if refused.ambiguous:
             raise
         return None
+
+
+def same_named(projects: list[dict[str, Any]], ref: str) -> list[dict[str, Any]]:
+    """The projects ``ref`` could mean when it names more than one, else none."""
+    try:
+        pick_project(projects, ref)
+    except ProjectNotResolved as refused:
+        if refused.ambiguous:
+            labels = set(refused.candidates)
+            return [p for p in _unique(projects) if project_label(p) in labels]
+    return []
+
+
+def refuse_same_named(
+    projects: list[dict[str, Any]],
+    ref: str,
+    *,
+    param_hint: str = "--project",
+    strict: bool = False,
+) -> None:
+    """A usage error naming each candidate when ``ref`` names more than one project.
+
+    Picking one silently read (or archived, or deleted) the wrong project; the
+    MCP tools refuse it as ``scope_ambiguous`` and name each. ``strict`` is the
+    rule for a destructive command (:func:`pick_project`).
+    """
+    try:
+        pick_project(projects, ref, strict=strict)
+    except ProjectNotResolved as refused:
+        if refused.ambiguous:
+            raise typer.BadParameter(str(refused), param_hint=param_hint) from refused
 
 
 def resolve_project_ref(ref: str, *, param_hint: str = "--project") -> str:

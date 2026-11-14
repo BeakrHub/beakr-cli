@@ -181,7 +181,7 @@ def test_the_project_option_refuses_a_name_two_projects_share():
     assert result.exit_code == 2, result.output
     assert not pages.called
     output = _flat(result.output)
-    assert "More than one project matches 'My first project'" in output
+    assert "2 projects are named 'My first project'" in output
     assert FIRST_A in output and FIRST_B in output
 
 
@@ -199,7 +199,7 @@ def test_the_default_project_from_the_environment_uses_the_same_rule(monkeypatch
     monkeypatch.setenv("BEAKR_PROJECT_ID", "My first project")
     refused = runner.invoke(app, ["kb", "ls", "--json"])
     assert refused.exit_code == 2, refused.output
-    assert "More than one project matches" in _flat(refused.output)
+    assert "2 projects are named" in _flat(refused.output)
 
 
 @respx.mock
@@ -232,3 +232,25 @@ def test_the_stdio_mcp_tools_resolve_by_the_same_rule():
         asyncio.run(mcp_tools_platform._project_id("Platform Doc"))
     assert missing.value.fields["error_code"] == "scope_not_found"
     assert f"Platform Docs (platform-docs, {DOCS})" in missing.value.fields["fix"]
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "argv", [["projects", "rm", "platform docs", "--yes"], ["projects", "archive", "platform docs"]]
+)
+def test_a_destructive_command_acts_only_on_an_exact_unique_name_an_id_or_a_slug(argv):
+    # `projects show "platform docs"` reads Platform Docs; deleting or archiving
+    # it on a case-folded match would act on a guess (coordination with #159).
+    _projects()
+    deleted = respx.delete(url__regex=rf"{API}/v1/projects/.*").respond(204)
+    patched = respx.patch(url__regex=rf"{API}/v1/projects/.*").respond(json={"id": DOCS})
+
+    refused = runner.invoke(app, argv)
+
+    assert refused.exit_code == 2, refused.output
+    assert f"Platform Docs (platform-docs, {DOCS})" in _flat(refused.output)
+    assert not deleted.called and not patched.called
+    for ref in ("Platform Docs", "platform-docs", DOCS):
+        acted = runner.invoke(app, [argv[0], argv[1], ref, *argv[3:], "--json"])
+        assert acted.exit_code == 0, acted.output
+    assert deleted.called or patched.called

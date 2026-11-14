@@ -73,14 +73,15 @@ def create_project(
     )
 
 
-def _resolve_project_ref(sdk: Any, ref: str) -> dict[str, Any]:
+def _resolve_project_ref(sdk: Any, ref: str, *, strict: bool = False) -> dict[str, Any]:
     """The one project ``ref`` names (:func:`beakr_cli.project_ref.pick_project`).
 
     Several matches is a usage error (exit 2) naming each candidate; none is
-    not found (exit 4) with the closest names.
+    not found (exit 4) with the closest names. ``strict`` for a command that
+    destroys or hides the project: a name must be spelled exactly and unique.
     """
     try:
-        return pick_project(list(sdk.projects.list() or []), ref)
+        return pick_project(list(sdk.projects.list() or []), ref, strict=strict)
     except ProjectNotResolved as refused:
         if refused.ambiguous:
             err_console.print(str(refused), markup=False, highlight=False, soft_wrap=True)
@@ -126,7 +127,7 @@ def archive_project(
 ) -> None:
     """Archive a project (reversible from the web app)."""
     with get_sdk() as sdk:
-        found = _resolve_project_ref(sdk, project)
+        found = _resolve_project_ref(sdk, project, strict=True)
         archived = sdk.projects.archive(str(found["id"]))
     emit(
         archived,
@@ -149,7 +150,7 @@ def delete_project(
     cannot be deleted. `beakr projects archive` hides a project reversibly.
     """
     with get_sdk() as sdk:
-        found = _resolve_project_ref(sdk, project)
+        found = _resolve_project_ref(sdk, project, strict=True)
         confirm_or_require_yes(
             f"Permanently delete project {found.get('name')}? This cannot be undone.",
             yes=yes,
