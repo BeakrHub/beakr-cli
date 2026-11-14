@@ -497,6 +497,20 @@ Each release lists the public API changes it supports, taken from the API change
     `X-Beakr-Session-Lock`, and the Knowledge operations
     (`POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`) also
     `session_notice`.
+  - Confirm before entering a locked project: in an `automatic` session that has
+    already read or written another project, the first request that touches a
+    `locked` project it has not touched answers `409 session_lock_confirm` and
+    reads, writes and records nothing. `detail` (and `error`, beside `code`)
+    carries `message` (one line: what entering costs and how to go in), `fix`,
+    `session_id`, `project` (`id`, `name`), `cost` and `confirm_lock`, the id to
+    send back. The same request with `X-Beakr-Confirm-Lock: <project id>`
+    (several ids comma-separated) goes in, with the usual lock notice; anything
+    but project ids in it answers `422 invalid_arguments`. Never held: a
+    session's first touch, a project it already touched or is locked to, a
+    session that is already read-only, `picked` and `read_everything` sessions,
+    and a credential that can read only that project. A `picked` session gets no
+    lock notice either (its log and status still record the lock). The session's
+    log records one `boundary:held` event per held project.
   - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
     they are valid and, for each project the person can read, whether it can be
     added to read or to write, with the reason when not.
@@ -654,6 +668,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **Confirm before entering a locked project.** When a command's session is held
+  before a locked project (`409 session_lock_confirm`: entering it would cut off
+  work the session already started), a terminal asks "Enter Partner A? This
+  session will only be able to write to Partner A. [y/N]" and, on yes, sends the
+  request once more with `X-Beakr-Confirm-Lock`; no ends the command (exit 1).
+  Without a terminal it exits 3 with the API's warning and the command to repeat:
+  `beakr --confirm-lock <project id> <command>` (or `BEAKR_CONFIRM_LOCK`), which
+  sends that id on every request. Ids only; anything else is a usage error.
+- `beakr mcp`: the tools that can touch a project (the shared surface's
+  `confirm_lock` list) take an optional `confirm_lock`, the project id a
+  `session_lock_confirm` answer named, and send it as `X-Beakr-Confirm-Lock` for
+  that call, as the hosted server does. A held call answers the agent with the
+  hosted server's `{status, error_code: "session_lock_confirm", message, fix}`;
+  the server never asks. `read_file` and `upload_files` answer the hold too,
+  rather than a read conflict or a failed file. The instructions say how a held
+  call goes in.
 - `beakr kb log`, `beakr kb proposals ls` and `beakr kb ls` filter by who wrote a
   change and through which agent. `kb log [page]` and `kb proposals ls` take
   `--by`, `--via`, `--kind`, `--accepted-by`, `--since`, `--until` and `--offset`

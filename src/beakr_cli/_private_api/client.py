@@ -12,12 +12,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from beakr_sdk import AsyncBeakr, Beakr
+from beakr_sdk.errors import BeakrError
 
-from beakr_cli import session_notice
+from beakr_cli import lock_confirm, session_notice
 from beakr_cli._private_api._generated.operations import AsyncBeakrApi, BeakrApi
 from beakr_cli._private_api.resources import attach_private_resources
 
 if TYPE_CHECKING:
+    from beakr_sdk._calls import Call
     from beakr_sdk._typing import Async, Sync
 
     from beakr_cli._private_api.resources.auth import Auth
@@ -61,8 +63,21 @@ class PrivateBeakr(Beakr):
         super().__init__(**kwargs)
         attach_private_resources(self)
         self.private_api = BeakrApi(self)
-        # A request that locks the session says so (beakr_cli.session_notice).
+        # A request that locks the session says so (beakr_cli.session_notice), and one
+        # held before entering a locked project goes in once confirmed (lock_confirm).
         session_notice.attach(self, is_async=False)
+        lock_confirm.attach(self, is_async=False)
+
+    def _send(self, call: Call) -> Any:
+        # A request held before entering a locked project (409 session_lock_confirm)
+        # is sent again once the person at the terminal enters it; nothing was read
+        # or written the first time.
+        while True:
+            try:
+                return super()._send(call)
+            except BeakrError as exc:
+                if not lock_confirm.entered_after(exc):
+                    raise
 
     def __enter__(self) -> PrivateBeakr:
         return self
@@ -93,6 +108,8 @@ class AsyncPrivateBeakr(AsyncBeakr):
         attach_private_resources(self)
         self.private_api = AsyncBeakrApi(self)
         session_notice.attach(self, is_async=True)
+        # ``beakr mcp``: a tool's confirm_lock is sent for that call (lock_confirm).
+        lock_confirm.attach(self, is_async=True)
 
     async def __aenter__(self) -> AsyncPrivateBeakr:
         return self

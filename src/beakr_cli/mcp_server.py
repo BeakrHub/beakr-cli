@@ -133,6 +133,10 @@ BOUNDARIES_INSTRUCTIONS = (
     "read_everything=true: every project, locked ones included, and no writes). Searches "
     "that name no project skip locked projects this session has not touched; name the "
     "project to search it. session_status says where this session can still write and why. "
+    "In an automatic session that already worked in another project, the first call that "
+    "touches a locked project is held with a one-line warning (session_lock_confirm) and "
+    'nothing is read or written: to go in, repeat the call with confirm_lock="<the project '
+    'id it names>", or ask the user. '
     "When a write is refused, tell the user and start a new session (a new agent "
     "conversation) to work in the other project."
 )

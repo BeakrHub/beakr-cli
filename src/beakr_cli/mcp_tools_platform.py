@@ -664,7 +664,8 @@ async def read_file(
                 "reference, source_ref or path from a Knowledge result's Sources "
                 "(location.file_id, or `read_file <id>`).",
             )
-        if status == 409:
+        if status == 409 and exc.fields.get("error_code") != "session_lock_confirm":
+            # Not a held call (beakr_cli.lock_confirm): that answers as the API says it.
             return _read_conflict(exc)
         raise
     result = mcp_result.file_read(dict(data or {}))
@@ -1045,7 +1046,7 @@ async def discover_tools(search: str = "") -> str | dict[str, Any]:
         {
             "name": tool.name,
             "description": tool.description,
-            "input_schema": tool.inputSchema,
+            "input_schema": tool_surface.listed_schema(tool.name, tool.inputSchema),
             "read_only": bool(tool.annotations and tool.annotations.readOnlyHint),
         }
         for tool in every

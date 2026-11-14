@@ -402,6 +402,10 @@ async def _run_upload(upload: _Upload) -> None:
                 upload.stopped = exc.fields
                 break
             except ApiCallError as exc:
+                if exc.fields.get("error_code") == "session_lock_confirm":
+                    # The session's first touch of a locked project is held: nothing
+                    # was sent, and the agent repeats the call with confirm_lock.
+                    raise
                 failure = {"path": str(item.path), **exc.fields}
                 upload.failed.append(failure)
                 if exc.fields.get("error_code") in _STOPPING_CODES or exc.response.status_code in {
