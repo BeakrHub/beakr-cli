@@ -587,7 +587,7 @@ def next_lines(
         return hints, []
     if again is not None and not any(step.command == again for step in steps):
         steps = [*steps, NextStep(again, "Read on from where this reply stopped.")]
-    return [hint for hint in prose if not names_a_call(hint, translate)], next_block(steps)
+    return [translate(hint) for hint in prose if not names_a_call(hint)], next_block(steps)
 
 
 #: The door's own first line of a ``cat`` whose section has citation records it no

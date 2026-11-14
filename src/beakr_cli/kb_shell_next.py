@@ -45,7 +45,7 @@ from __future__ import annotations
 import json
 import re
 import shlex
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -572,7 +572,14 @@ def next_block(steps: list[NextStep]) -> list[str]:
     command prints its why alone.
     """
     lines: list[str] = []
+    printed: set[str] = set()
     for step in steps:
+        if step.command is not None:
+            # Two calls that spell the same command (one names a flag the
+            # other leaves at its default) print once.
+            if step.command in printed:
+                continue
+            printed.add(step.command)
         if step.command is None:
             if step.why:
                 lines.append(f"  - {step.why}")
@@ -592,24 +599,34 @@ def next_block(steps: list[NextStep]) -> list[str]:
 # Which prose steps the block replaces
 # ---------------------------------------------------------------------------
 
-#: A prose ``next`` line that names a call, in the wording an MCP client reads:
-#: a tool, ``key=value``, a backticked name, ``command {arguments}``.
+#: The engine's own rule for "this ``next`` sentence names a call"
+#: (``beakr/engines/tools/graph/next_calls.py`` ``_NAMES_A_CALL``): its
+#: ``next_calls`` carries the calls of exactly these sentences, so a sentence the
+#: rule passes says something the structured steps do not, and is still printed.
+#: ``tests/test_cli_next_calls_engine.py`` holds the two to the same verdict on
+#: every step the engine's tables write.
+_COMMANDS = (
+    "ls|cat|grep|sections|log|blame|diff|show|sources|provenance|links|timeline|rows|"
+    "ontology|hover|references|diagnostics|completions|proposals|suggest_parent|help"
+)
 _NAMES_A_CALL = re.compile(
-    r"\b(?:knowledge_base(?:_write)?|read_file|integrations|accept_proposal|show_proposal|"
-    r"dismiss_proposal|list_projects|upload_files)\b"
-    r"|\b[a-z][a-z0-9_]*=\S"
-    r"|`[^`\n]+`"
-    r"|\{[^{}\n]*\}"
+    rf"(?:\b(?:{_COMMANDS})\s*\{{)"
+    rf"|(?:`(?:{_COMMANDS})\b[^`]*`)"
+    rf"|(?:\bcall (?:{_COMMANDS}|documents|read_file|research|skills)\b)"
+    r"|(?:\b(?:read_file|show_proposal|accept_proposal|list_projects|knowledge_base_write)\b)"
+    r"|(?:\bintegrations call\b|\bdocuments (?:grep|read|search|list)\b)"
+    r"|(?:\b(?:offset|source_offset|start_line|after_title|after_page_id|after_card|cursor"
+    r"|status|quick)=)"
+    r"|(?:\bcontinue with\b|\brepeat this call\b|\bsame call\b)",
+    re.IGNORECASE,
 )
 
 
-def names_a_call(hint: str, translated: Callable[[str], str] | None = None) -> bool:
+def names_a_call(hint: str) -> bool:
     """Whether a prose ``next`` line names a call, so ``next_calls`` stands for it.
 
-    ``translated`` is the prose translator: a line it changes named a call.
-    A line that names none (how many records were left out, how to cite) says
-    something the structured steps do not, and is still printed.
+    By the line's own words, wherever it sits: ``next_calls`` is not aligned
+    with ``next`` (one sentence can give several calls, one that names none
+    gives none, the continuation comes first, repeats are dropped).
     """
-    if _NAMES_A_CALL.search(hint):
-        return True
-    return translated is not None and translated(hint) != hint
+    return bool(_NAMES_A_CALL.search(str(hint)))

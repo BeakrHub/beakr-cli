@@ -1,0 +1,1531 @@
+{
+ "engine_commit": "3ffa74fc50eba8446c9f3d4c390665f36513060e",
+ "replies": [
+  {
+   "name": "_NEXT_ON_SUCCESS[ls]",
+   "request": {
+    "command": "ls",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open a page with cat {page}, or list a record's documents with ls {parent}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a page."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "ls",
+     "arguments": {
+      "parent": "<parent>",
+      "scope": "Alpha"
+     },
+     "why": "List a record's documents."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[cat]",
+   "request": {
+    "command": "cat",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Walk its edges rather than searching again: open a child (its documents) or a Linked from page with cat; links {page, page_type} or {page, direction: out} lists a group in full; timeline {page} gives this record's dated events.",
+    "Check where a claim came from with provenance {page} or sources {page}."
+   ],
+   "names_a_call": [
+    true,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a child or a page that links here."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "links",
+     "arguments": {
+      "page": "<page>",
+      "page_type": "<page_type>",
+      "scope": "Alpha"
+     },
+     "why": "List one group of links in full."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "links",
+     "arguments": {
+      "page": "<page>",
+      "direction": "out",
+      "scope": "Alpha"
+     },
+     "why": "List the pages this one links to."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "timeline",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "List this record's dated events."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "provenance",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "See which source supports each section."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "sources",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "List the cited sources and how to open each."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[grep]",
+   "request": {
+    "command": "grep",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open the best hit with cat {page, section_id?}; hover {page} shows the record it belongs to and what links to it."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "section_id": "<section_id>",
+      "scope": "Alpha"
+     },
+     "why": "Open a hit."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "hover",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "See the record a page belongs to and what links to it."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[sections]",
+   "request": {
+    "command": "sections",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open a hit with cat {page, section_id} using the hit's section id; hover {page} shows its parent record, children and links to walk next."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "section_id": "<section_id>",
+      "scope": "Alpha"
+     },
+     "why": "Open a hit."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "hover",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "See the record a page belongs to and what links to it."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[log]",
+   "request": {
+    "command": "log",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Compare revisions with diff {page, rev, rev2?} or read one with show."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "diff",
+     "arguments": {
+      "page": "<page>",
+      "rev": "<rev>",
+      "scope": "Alpha"
+     },
+     "why": "Compare two revisions."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "show",
+     "arguments": {
+      "page": "<page>",
+      "rev": "<rev>",
+      "scope": "Alpha"
+     },
+     "why": "Read one revision."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[blame]",
+   "request": {
+    "command": "blame",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open the revision that wrote a line with show {page, rev}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "show",
+     "arguments": {
+      "page": "<page>",
+      "rev": "<rev>",
+      "scope": "Alpha"
+     },
+     "why": "Read the revision that wrote a line."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[diff]",
+   "request": {
+    "command": "diff",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Read a whole revision with show {page, rev}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "show",
+     "arguments": {
+      "page": "<page>",
+      "rev": "<rev>",
+      "scope": "Alpha"
+     },
+     "why": "Read a whole revision."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[show]",
+   "request": {
+    "command": "show",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Compare it with the current page using diff {page, rev}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "diff",
+     "arguments": {
+      "page": "<page>",
+      "rev": "<rev>",
+      "scope": "Alpha"
+     },
+     "why": "Compare this revision with the current page."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[sources]",
+   "request": {
+    "command": "sources",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open a source by what its entry gives: a file with read_file and its file id or path; a connected item with the call on its `fetch:` line; an entry with only a url has no reader here, so use its excerpt and the url."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "read_file",
+     "command": null,
+     "arguments": {
+      "reference": "<reference>"
+     },
+     "why": "Open a cited file."
+    },
+    {
+     "tool": "integrations",
+     "command": "call",
+     "arguments": {
+      "tool": "<tool>",
+      "arguments": "<arguments>"
+     },
+     "why": "Read a connected item with the call on its fetch line."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[provenance]",
+   "request": {
+    "command": "provenance",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "List the cited sources and how to open each with sources {page}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "sources",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "List the cited sources and how to open each."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[links]",
+   "request": {
+    "command": "links",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open a neighbour with cat {page}; narrow with page_type or relation, or switch direction (in: pages linking here, out: pages this one links to)."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a neighbour."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[timeline]",
+   "request": {
+    "command": "timeline",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open an event's page with cat {page}; timeline {page} keeps one record."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open an event's page."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "timeline",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Keep the timeline to one record."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[rows]",
+   "request": {
+    "command": "rows",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Cite a row with its cite token; open its card with cat {page} and follow its children to the documents that prove it.",
+    "Narrow with entity, attribute or page_type (to {page} for connections that point at a page, connected_to {page} for cards linked to it), or set current_only or as_of {date} for facts or connections."
+   ],
+   "names_a_call": [
+    true,
+    false
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a row's card."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[ontology]",
+   "request": {
+    "command": "ontology",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "List pages of a type with ls {page_type}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "ls",
+     "arguments": {
+      "page_type": "<page_type>",
+      "scope": "Alpha"
+     },
+     "why": "List the pages of one type."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[hover]",
+   "request": {
+    "command": "hover",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Follow an edge it lists (ls {parent}, links {page, page_type}, links {page, direction: out}) or read the page with cat {page}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "ls",
+     "arguments": {
+      "parent": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "List this record's children."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "links",
+     "arguments": {
+      "page": "<page>",
+      "page_type": "<page_type>",
+      "scope": "Alpha"
+     },
+     "why": "List one group of links in full."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "links",
+     "arguments": {
+      "page": "<page>",
+      "direction": "out",
+      "scope": "Alpha"
+     },
+     "why": "List the pages this one links to."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Read the page."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[references]",
+   "request": {
+    "command": "references",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open a referencing page with cat {page}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a referencing page."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[diagnostics]",
+   "request": {
+    "command": "diagnostics",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Fix a reported page with knowledge_base_write."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base_write",
+     "command": "<action>",
+     "arguments": {
+      "page": "<page>"
+     },
+     "why": "Fix a reported page."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[completions]",
+   "request": {
+    "command": "completions",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open the page you meant with cat {page}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open the page you meant."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[proposals]",
+   "request": {
+    "command": "proposals",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Review one with show_proposal, then accept_proposal or dismiss_proposal."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "show_proposal",
+     "command": null,
+     "arguments": {
+      "proposal_id": "<proposal_id>"
+     },
+     "why": "Review a proposal."
+    },
+    {
+     "tool": "accept_proposal",
+     "command": null,
+     "arguments": {
+      "proposal_id": "<proposal_id>"
+     },
+     "why": "Accept it, only when the person asks."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[suggest_parent]",
+   "request": {
+    "command": "suggest_parent",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Pass the suggested parent as `parent` to knowledge_base_write new."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base_write",
+     "command": "new",
+     "arguments": {
+      "title": "<title>",
+      "parent": "<parent>"
+     },
+     "why": "Create the page under the suggested parent."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[entities]",
+   "request": {
+    "command": "entities",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open an entity's card with cat {page} or its rows with rows {entity}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open an entity's card."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "rows",
+     "arguments": {
+      "entity": "<entity>",
+      "scope": "Alpha"
+     },
+     "why": "Read an entity's rows."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_SUCCESS[conflicts]",
+   "request": {
+    "command": "conflicts",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Read the section with cat {page, section_id}, then record the outcome: edit the section, or resolve its review proposal (POST /v1/knowledge/wiki/proposals/{review_proposal_id}/resolve)."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "section_id": "<section_id>",
+      "scope": "Alpha"
+     },
+     "why": "Read the conflicting section."
+    }
+   ]
+  },
+  {
+   "name": "_OUTSIDE_NEXT_ON_SUCCESS[sources]",
+   "request": {
+    "command": "sources",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Open a source by what its entry gives: a file with read_file and its file id or path; a connected item by making the integrations call its `fetch:` line gives, as written; an entry with only a url has no reader here, so use its excerpt and the url."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "read_file",
+     "command": null,
+     "arguments": {
+      "reference": "<reference>"
+     },
+     "why": "Open a cited file."
+    },
+    {
+     "tool": "integrations",
+     "command": "call",
+     "arguments": {
+      "tool": "<tool>",
+      "arguments": "<arguments>"
+     },
+     "why": "Read a connected item with the call on its fetch line."
+    }
+   ]
+  },
+  {
+   "name": "_OUTSIDE_NEXT_ON_SUCCESS[rows]",
+   "request": {
+    "command": "rows",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Cite a row with the reference after it (memo.pdf › p. 7); open its card with cat {page} and follow its children to the documents that prove it.",
+    "Narrow with entity, attribute or page_type (to {page} for connections that point at a page), or set current_only for facts."
+   ],
+   "names_a_call": [
+    true,
+    false
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a row's card."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[grep]",
+   "request": {
+    "command": "grep",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Try sections {query} for meaning rather than exact words."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "sections",
+     "arguments": {
+      "query": "<query>",
+      "scope": "Alpha"
+     },
+     "why": "Search by meaning instead."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[sections]",
+   "request": {
+    "command": "sections",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Try grep {query} for exact words, or widen `scope`."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "grep",
+     "arguments": {
+      "query": "<query>",
+      "scope": "Alpha"
+     },
+     "why": "Search for the exact words instead."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[rows]",
+   "request": {
+    "command": "rows",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Empty is not zero: inspect the reason and candidates, discover labels with rows {view: fields, query: intended meaning}, then select field_id for exact rows. Preserve the same scope, entity and page_type. If evidence is missing, use sections, cat/sources and the original files; do not guess missing facts."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "rows",
+     "arguments": {
+      "view": "fields",
+      "query": "<query>",
+      "scope": "Alpha"
+     },
+     "why": "Discover the field names the cards use."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[ls]",
+   "request": {
+    "command": "ls",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Drop page_type or parent, or widen `scope`."
+   ],
+   "names_a_call": [
+    false
+   ],
+   "next_calls": []
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[log]",
+   "request": {
+    "command": "log",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Widen since or until, drop the by, via, kind or accepted_by filter, or widen `scope`."
+   ],
+   "names_a_call": [
+    false
+   ],
+   "next_calls": []
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[timeline]",
+   "request": {
+    "command": "timeline",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Widen start_date / end_date or drop timeline_query."
+   ],
+   "names_a_call": [
+    false
+   ],
+   "next_calls": []
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[entities]",
+   "request": {
+    "command": "entities",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Drop the type filter or widen `scope`; list the types with ontology."
+   ],
+   "names_a_call": [
+    false
+   ],
+   "next_calls": []
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[conflicts]",
+   "request": {
+    "command": "conflicts",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "No open conflicts in this scope."
+   ],
+   "names_a_call": [
+    false
+   ],
+   "next_calls": []
+  },
+  {
+   "name": "_NEXT_ON_EMPTY[proposals]",
+   "request": {
+    "command": "proposals",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "proposals reads one status at a time, pending by default: pass status=accepted for proposals already applied (dismissed, superseded and resolved are the others), or drop a filter."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "proposals",
+     "arguments": {
+      "scope": "Alpha",
+      "status": "accepted"
+     },
+     "why": "List the proposals already applied."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_EMPTY_DEFAULT",
+   "request": {
+    "command": "grep",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Nothing matched: check the page name with completions {prefix}, widen `scope`, or search with sections {query}."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "completions",
+     "arguments": {
+      "prefix": "<prefix>",
+      "scope": "Alpha"
+     },
+     "why": "Check the page name."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "sections",
+     "arguments": {
+      "query": "<query>",
+      "scope": "Alpha"
+     },
+     "why": "Search by meaning."
+    }
+   ]
+  },
+  {
+   "name": "_NEXT_ON_ERROR",
+   "request": {
+    "command": "grep",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Correct the call as the message says and retry; nothing was read."
+   ],
+   "names_a_call": [
+    false
+   ],
+   "next_calls": []
+  },
+  {
+   "name": "_OUTSIDE_DEFAULT_NEXT",
+   "request": {
+    "command": "grep",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "Cite what you use with its readable reference (memo.pdf › p. 7)."
+   ],
+   "names_a_call": [
+    false
+   ],
+   "next_calls": []
+  },
+  {
+   "name": "RELATED_NEXT",
+   "request": {
+    "command": "grep",
+    "query": "x",
+    "scope": "Alpha"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "grep found 0 exact matches: the entries shown are related by meaning and may not state the term. Read one with cat {page, section_id} before relying on it, or search the source files for the exact text (documents grep)."
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "section_id": "<section_id>",
+      "scope": "Alpha"
+     },
+     "why": "Read a related entry."
+    },
+    {
+     "tool": "documents",
+     "command": "grep",
+     "arguments": {
+      "pattern": "x"
+     },
+     "why": "Search the source files for the exact text."
+    }
+   ]
+  },
+  {
+   "name": "grep_hint",
+   "request": {
+    "command": "grep",
+    "query": "ENG-2341"
+   },
+   "coverage": null,
+   "tool": "knowledge_base",
+   "next": [
+    "This query reads as an exact id or name, and sections ranks by meaning. For exact ids, names and file names use grep: grep {query: \"ENG-2341\"}"
+   ],
+   "names_a_call": [
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "grep",
+     "arguments": {
+      "query": "ENG-2341"
+     },
+     "why": "Look the exact id or name up."
+    }
+   ]
+  },
+  {
+   "name": "QUICK_NEXT_HINT",
+   "request": {
+    "query": "q"
+   },
+   "coverage": null,
+   "tool": "research",
+   "next": [
+    "This quick answer read the top results of one search. For a list or a count, read Knowledge directly (knowledge_base rows or ls). To also search connected services, run the full researcher: quick=false (MCP, SDK, API) or --deep (CLI).",
+    "If this answered something the organization will want again, save it before you finish: knowledge_base_write action='add_finding' on the card it is about (page, date, kind, text, evidence), citing the references above."
+   ],
+   "names_a_call": [
+    true,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "rows",
+     "arguments": {},
+     "why": "Read every structured row for a list or a count."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "ls",
+     "arguments": {
+      "page_type": "<page_type>"
+     },
+     "why": "List pages of one type for a list or a count."
+    },
+    {
+     "tool": "research",
+     "command": null,
+     "arguments": {
+      "query": "q",
+      "quick": false
+     },
+     "why": "Run the full researcher, which also searches connected services."
+    },
+    {
+     "tool": "knowledge_base_write",
+     "command": "add_finding",
+     "arguments": {
+      "page": "<page>",
+      "date": "<date>",
+      "kind": "<kind>",
+      "text": "<text>",
+      "evidence": "<evidence>"
+     },
+     "why": "Save the answer as a finding on the card it is about."
+    }
+   ]
+  },
+  {
+   "name": "continuation[log]",
+   "request": {
+    "command": "log",
+    "scope": "Alpha",
+    "limit": 5
+   },
+   "coverage": {
+    "complete": false,
+    "next_offset": 20
+   },
+   "tool": "knowledge_base",
+   "next": [
+    "Compare revisions with diff {page, rev, rev2?} or read one with show.",
+    "Not everything is shown: call log again with offset=20 to read the rest."
+   ],
+   "names_a_call": [
+    true,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "diff",
+     "arguments": {
+      "page": "<page>",
+      "rev": "<rev>",
+      "scope": "Alpha"
+     },
+     "why": "Compare two revisions."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "show",
+     "arguments": {
+      "page": "<page>",
+      "rev": "<rev>",
+      "scope": "Alpha"
+     },
+     "why": "Read one revision."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "log",
+     "arguments": {
+      "scope": "Alpha",
+      "limit": 5,
+      "offset": 20
+     },
+     "why": "Read the rest of this result."
+    }
+   ]
+  },
+  {
+   "name": "continuation[rows]",
+   "request": {
+    "command": "rows",
+    "scope": "Alpha",
+    "limit": 5
+   },
+   "coverage": {
+    "complete": false,
+    "next_cursor": "c1"
+   },
+   "tool": "knowledge_base",
+   "next": [
+    "Cite a row with its cite token; open its card with cat {page} and follow its children to the documents that prove it.",
+    "Narrow with entity, attribute or page_type (to {page} for connections that point at a page, connected_to {page} for cards linked to it), or set current_only or as_of {date} for facts or connections.",
+    "Later candidates remain: call rows with after_card=c1 and the same filters."
+   ],
+   "names_a_call": [
+    true,
+    false,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a row's card."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "rows",
+     "arguments": {
+      "scope": "Alpha",
+      "limit": 5,
+      "after_card": "c1"
+     },
+     "why": "Read the rest of this result."
+    }
+   ]
+  },
+  {
+   "name": "continuation[timeline]",
+   "request": {
+    "command": "timeline",
+    "scope": "Alpha",
+    "limit": 5
+   },
+   "coverage": {
+    "complete": false,
+    "next_cursor": "t1"
+   },
+   "tool": "knowledge_base",
+   "next": [
+    "Open an event's page with cat {page}; timeline {page} keeps one record.",
+    "Later candidates remain: call timeline with cursor=t1 and the same filters."
+   ],
+   "names_a_call": [
+    true,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open an event's page."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "timeline",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Keep the timeline to one record."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "timeline",
+     "arguments": {
+      "scope": "Alpha",
+      "limit": 5,
+      "cursor": "t1"
+     },
+     "why": "Read the rest of this result."
+    }
+   ]
+  },
+  {
+   "name": "continuation[ls]",
+   "request": {
+    "command": "ls",
+    "scope": "Alpha",
+    "limit": 5
+   },
+   "coverage": {
+    "complete": false,
+    "continue_with": {
+     "after_title": "A \"quoted\" title"
+    }
+   },
+   "tool": "knowledge_base",
+   "next": [
+    "Open a page with cat {page}, or list a record's documents with ls {parent}.",
+    "Not everything is shown: call ls again with the same filters and after_title=\"A \\\"quoted\\\" title\" to read the rest."
+   ],
+   "names_a_call": [
+    true,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a page."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "ls",
+     "arguments": {
+      "parent": "<parent>",
+      "scope": "Alpha"
+     },
+     "why": "List a record's documents."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "ls",
+     "arguments": {
+      "scope": "Alpha",
+      "limit": 5,
+      "after_title": "A \"quoted\" title"
+     },
+     "why": "Read the rest of this result."
+    }
+   ]
+  },
+  {
+   "name": "continuation[sources]",
+   "request": {
+    "command": "sources",
+    "scope": "Alpha",
+    "limit": 5,
+    "page": "Helios"
+   },
+   "coverage": {
+    "complete": false,
+    "continue_with": {
+     "after_title": "T"
+    }
+   },
+   "tool": "knowledge_base",
+   "next": [
+    "Open a source by what its entry gives: a file with read_file and its file id or path; a connected item with the call on its `fetch:` line; an entry with only a url has no reader here, so use its excerpt and the url.",
+    "Not every source is shown: call sources again with the same page and after_title=\"T\" to read the rest."
+   ],
+   "names_a_call": [
+    true,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "read_file",
+     "command": null,
+     "arguments": {
+      "reference": "<reference>"
+     },
+     "why": "Open a cited file."
+    },
+    {
+     "tool": "integrations",
+     "command": "call",
+     "arguments": {
+      "tool": "<tool>",
+      "arguments": "<arguments>"
+     },
+     "why": "Read a connected item with the call on its fetch line."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "sources",
+     "arguments": {
+      "scope": "Alpha",
+      "limit": 5,
+      "page": "Helios",
+      "after_title": "T"
+     },
+     "why": "Read the rest of this result."
+    }
+   ]
+  },
+  {
+   "name": "cut_cat",
+   "request": {
+    "command": "cat",
+    "page": "Helios",
+    "scope": "Alpha"
+   },
+   "coverage": {
+    "complete": false,
+    "truncated": true,
+    "shown_chars": 100,
+    "total_chars": 900,
+    "sections_not_shown": [
+     "sec_facts",
+     "sec_connections"
+    ],
+    "revision": 3,
+    "lines_shown": "1-4",
+    "lines_total": "1-40",
+    "continue_with": {
+     "page": "9b445bea-66bc-43a0-a651-8eb1c77bcb3f",
+     "scope": "Alpha",
+     "lines": "5-40"
+    }
+   },
+   "tool": "knowledge_base",
+   "next": [
+    "Cut to fit the response budget: 100 of 900 characters are shown (page lines 1-4 of 1-40, revision 3). Continue exactly where this stops: cat {page: \"9b445bea-66bc-43a0-a651-8eb1c77bcb3f\", scope: \"Alpha\", lines: \"5-40\"}. Sections not shown: sec_facts, sec_connections. Read one with cat {page: \"9b445bea-66bc-43a0-a651-8eb1c77bcb3f\", scope: \"Alpha\", section_id: \"sec_facts\"}.",
+    "Walk its edges rather than searching again: open a child (its documents) or a Linked from page with cat; links {page, page_type} or {page, direction: out} lists a group in full; timeline {page} gives this record's dated events.",
+    "Check where a claim came from with provenance {page} or sources {page}."
+   ],
+   "names_a_call": [
+    true,
+    true,
+    true
+   ],
+   "next_calls": [
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "9b445bea-66bc-43a0-a651-8eb1c77bcb3f",
+      "scope": "Alpha",
+      "lines": "5-40"
+     },
+     "why": "Read the rest of this result."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "9b445bea-66bc-43a0-a651-8eb1c77bcb3f",
+      "scope": "Alpha",
+      "section_id": "sec_facts"
+     },
+     "why": "Read a section that was not shown."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "cat",
+     "arguments": {
+      "page": "<page>",
+      "scope": "Alpha"
+     },
+     "why": "Open a child or a page that links here."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "links",
+     "arguments": {
+      "page": "Helios",
+      "page_type": "<page_type>",
+      "scope": "Alpha"
+     },
+     "why": "List one group of links in full."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "links",
+     "arguments": {
+      "page": "Helios",
+      "direction": "out",
+      "scope": "Alpha"
+     },
+     "why": "List the pages this one links to."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "timeline",
+     "arguments": {
+      "page": "Helios",
+      "scope": "Alpha"
+     },
+     "why": "List this record's dated events."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "provenance",
+     "arguments": {
+      "page": "Helios",
+      "scope": "Alpha"
+     },
+     "why": "See which source supports each section."
+    },
+    {
+     "tool": "knowledge_base",
+     "command": "sources",
+     "arguments": {
+      "page": "Helios",
+      "scope": "Alpha"
+     },
+     "why": "List the cited sources and how to open each."
+    }
+   ]
+  }
+ ]
+}
