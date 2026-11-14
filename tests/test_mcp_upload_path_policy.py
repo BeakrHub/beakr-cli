@@ -85,7 +85,7 @@ def _project_routes() -> dict:
     ],
 )
 def test_a_system_location_is_refused(path: str) -> None:
-    reason = refused_path(Path(path), named=True)
+    reason = refused_path(Path(path))
 
     assert reason is not None and "belongs to the system" in reason
 
@@ -112,8 +112,8 @@ def test_a_credential_store_under_the_home_folder_is_refused(home: Path, relativ
     path = _file(home / relative)
     os.chdir(home)
 
-    assert refused_path(path, named=True) is not None
-    assert refused_path(Path(relative), named=True) is not None
+    assert refused_path(path) is not None
+    assert refused_path(Path(relative)) is not None
 
 
 @pytest.mark.parametrize(
@@ -131,8 +131,8 @@ def test_a_credential_store_under_the_home_folder_is_refused(home: Path, relativ
 def test_a_document_where_people_keep_documents_is_not_refused(home: Path, relative: str) -> None:
     path = _file(home / relative)
 
-    assert refused_path(path, named=True) is None
-    assert refused_path(path, named=False) is None
+    assert refused_path(path) is None
+    assert refused_path(path) is None
 
 
 # --- Names ------------------------------------------------------------------------------
@@ -161,26 +161,84 @@ CREDENTIAL_NAMES = [
 
 
 @pytest.mark.parametrize("name", CREDENTIAL_NAMES)
-def test_a_credential_shaped_name_goes_only_when_named_under_the_working_directory(
+def test_a_credential_shaped_name_is_refused_wherever_it_is_and_however_it_is_named(
     home: Path, name: str
 ) -> None:
+    """ROOT CAUSE: a credential-shaped file was let through when the call named
+    it under the working directory. An agent's working directory is not a
+    place a person chose (it can be ``/`` or the home folder), so there is no
+    such exception: the person uploads it themselves with ``beakr upload``.
+    """
     inside = _file(Path.cwd() / "deploy" / name)
     elsewhere = _file(home / "Documents" / name)
 
-    # Found on a folder walk, or named from somewhere else: it stays.
-    assert "key or credential" in (refused_path(inside, named=False) or "")
-    assert "key or credential" in (refused_path(elsewhere, named=True) or "")
-    # Under the working directory and named exactly: the person's choice.
-    assert refused_path(inside, named=True) is None
-    assert refused_path(Path("deploy") / name, named=True) is None
+    for path in (inside, Path("deploy") / name, elsewhere):
+        reason = refused_path(path)
+        assert reason is not None and "key or credential" in reason
+        assert "`beakr upload PATH --project PROJECT` in a terminal" in reason
+    # In any case: a file called ID_RSA or Prod.ENV is still a credential.
+    for spelled in (name.upper(), name.title()):
+        assert "key or credential" in (refused_path(Path.cwd() / "deploy" / spelled) or "")
+
+
+@respx.mock
+async def test_a_credential_named_under_the_working_directory_is_not_uploaded(home: Path) -> None:
+    _file(Path.cwd() / "prod.env", "TOKEN=1")
+    routes = _project_routes()
+
+    result = await mcp_tools_projects.upload_files(A, paths=["prod.env", "./prod.env"])
+
+    assert result["error_code"] == "nothing_to_upload"
+    assert all("key or credential" in row["reason"] for row in result["skipped"])
+    assert "beakr upload" in result["skipped"][0]["reason"]
+    assert not routes["create"].called
+
+
+MIXED_CASE = [
+    "/ETC/passwd",
+    "/Private/Etc/hosts",
+    "/VAR/db/x",
+    "/library/keychains/System.keychain",
+    "~/.SSH/config",
+    "~/.Aws/config",
+    "~/library/Keychains/login.keychain-db",
+    "~/LIBRARY/Application Support/Google/Chrome/Default/Cookies",
+    "~/appdata/Local/x",
+    "~/work/repo/.GIT/config",
+    "~/work/repo/.Terraform/state",
+]
+
+
+@pytest.mark.parametrize("path", MIXED_CASE)
+@pytest.mark.parametrize("platform", ["darwin", "win32"])
+def test_a_refused_place_spelled_in_another_case_is_refused_where_case_is_not_kept(
+    home: Path, monkeypatch, path: str, platform: str
+) -> None:
+    """ROOT CAUSE: places were compared by exact case, and macOS and Windows
+    filesystems have none: ``~/.SSH/id_rsa``, ``/ETC/passwd`` and
+    ``~/library/Keychains`` are the refused places and went through.
+    """
+    monkeypatch.setattr(upload_path_policy.sys, "platform", platform)
+
+    assert refused_path(Path(path).expanduser()) is not None
+
+
+def test_case_is_kept_for_places_where_the_filesystem_keeps_it(home: Path, monkeypatch) -> None:
+    monkeypatch.setattr(upload_path_policy.sys, "platform", "linux")
+    # On Linux ~/library is a folder of the person's own, not ~/Library.
+    assert refused_path(home / "library" / "papers" / "memo.pdf") is None
+    assert refused_path(home / "Library" / "Keychains" / "x.db") is not None
+    # The cloud drives under ~/Library stay documents in any case on macOS.
+    monkeypatch.setattr(upload_path_policy.sys, "platform", "darwin")
+    assert refused_path(home / "library" / "cloudstorage" / "Drive" / "memo.pdf") is None
 
 
 @pytest.mark.parametrize("name", [".env", ".env.production", ".netrc", ".npmrc", ".pypirc"])
 def test_a_hidden_credential_file_is_never_sent(home: Path, name: str) -> None:
     path = _file(Path.cwd() / name, "TOKEN=1")
 
-    assert refused_path(path, named=True) is not None
-    assert refused_path(path, named=False) is not None
+    assert refused_path(path) is not None
+    assert refused_path(path) is not None
 
 
 @respx.mock

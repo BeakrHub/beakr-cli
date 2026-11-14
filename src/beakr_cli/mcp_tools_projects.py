@@ -224,9 +224,9 @@ def profile_saved_text(profile: dict[str, Any], project: dict[str, Any], *, crea
 # --- upload_files -----------------------------------------------------------------------
 
 
-def _refused_path(path: Path, *, named: bool = False) -> str | None:
+def _refused_path(path: Path) -> str | None:
     """Why an agent may not upload ``path``, or None (:mod:`beakr_cli.upload_path_policy`)."""
-    return refused_path(path, named=named)
+    return refused_path(path)
 
 
 @dataclass
@@ -266,10 +266,8 @@ def _gather(paths: list[str]) -> tuple[list[_Item], list[dict[str, Any]]]:
         path = Path(str(given)).expanduser()
         if not path.is_absolute():
             path = Path.cwd() / path
-        # A file the call names is the person's choice of that file; one found
-        # on a folder walk is not, and a credential-shaped name there stays.
         # Before the path is looked at: a refused place is not even said to exist.
-        refused = _refused_path(path, named=not path.is_dir())
+        refused = _refused_path(path)
         if refused:
             skipped.append({"path": str(given), "reason": f"not uploaded: {refused}"})
             continue
@@ -448,7 +446,7 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
     path = Path(paths[0]).expanduser()
     if not path.is_absolute():
         path = Path.cwd() / path
-    refused = _refused_path(path, named=True)
+    refused = _refused_path(path)
     if refused or not path.is_file():
         return _error("invalid_arguments", f"Cannot resume {paths[0]}: {refused or 'not a file'}.")
     try:

@@ -11,13 +11,19 @@ decided by where the file is and what it is called, not by who asked:
   browser profiles (``~/Library`` apart from the cloud drives under it);
 - a hidden file is never sent;
 - a file named like a credential (``prod.env``, ``terraform.tfstate``,
-  ``kubeconfig``, ``service-account.json``, ``server.pem``) is sent only when
-  it is under the working directory and the call names that exact file. Found
-  on a folder walk, or named from anywhere else, it stays;
+  ``kubeconfig``, ``service-account.json``, ``server.pem``) is never sent,
+  wherever it is and whether the call named it or a folder holding it. The
+  working directory is no exception: an agent's can be ``/`` or the home folder;
 - a link inside a folder being uploaded that leads outside that folder is not
   followed (:func:`outside_link`): a folder is what is in it.
 
-Each refusal is a reason the tool reports for that path. An ordinary upload (a
+Places are compared without case on macOS and Windows, whose filesystems have
+none (``~/.SSH``, ``/ETC`` and ``~/library`` are the same places), and names
+without case everywhere (``ID_RSA``, ``Prod.ENV``).
+
+Each refusal is a reason the tool reports for that path, and says that a person
+who does mean to upload the file can run ``beakr upload`` in a terminal, which
+sends what it is given. An ordinary upload (a
 project folder, named documents from the working directory or from Documents,
 Desktop or Downloads) meets none of them.
 """
@@ -25,10 +31,18 @@ Desktop or Downloads) meets none of them.
 from __future__ import annotations
 
 import fnmatch
+import sys
 import tempfile
 from pathlib import Path
 
-__all__ = ["MAX_UPLOAD_BYTES", "outside_link", "refused_path"]
+__all__ = ["BY_HAND", "MAX_UPLOAD_BYTES", "outside_link", "refused_path"]
+
+#: What every refusal ends with. ``beakr upload`` is the person's own command:
+#: it sends the paths it is given and does not apply these rules.
+BY_HAND = (
+    "An agent cannot upload it; a person who means to can run "
+    "`beakr upload PATH --project PROJECT` in a terminal"
+)
 
 #: Bytes one ``upload_files`` call sends: room for one file of the largest size
 #: Beakr takes (1 GB) and a folder of documents beside it.
@@ -69,7 +83,7 @@ _HOME_APPLICATION_DATA = ("Library", "AppData")
 #: The parts of ``~/Library`` that are a person's documents: their cloud drives.
 _HOME_DOCUMENT_STORES = (("Library", "Mobile Documents"), ("Library", "CloudStorage"))
 #: File names that say "credential": keys, keystores, environment and state
-#: files, service accounts, tool logins. Matched on the lower-cased name.
+#: files, service accounts, tool logins. Matched on the casefolded name.
 _CREDENTIAL_NAMES = (
     "*.env",
     ".env*",
@@ -99,11 +113,24 @@ _CREDENTIAL_NAMES = (
 )
 
 
-def _below(path: Path, root: Path) -> tuple[str, ...] | None:
-    try:
-        return path.relative_to(root).parts
-    except ValueError:
-        return None
+def _folds_case() -> bool:
+    """Whether this platform's filesystems treat ``/ETC`` and ``/etc`` as one place."""
+    return sys.platform in ("darwin", "win32")
+
+
+def _place(part: str) -> str:
+    """A path part as places are compared: without case where the filesystem has none."""
+    return part.casefold() if _folds_case() else part
+
+
+def _parts(path: Path | str) -> tuple[str, ...]:
+    return tuple(_place(part) for part in Path(path).parts)
+
+
+def _below(path: Path, root: Path | str) -> tuple[str, ...] | None:
+    """The parts of ``path`` under ``root`` (as places are compared), or None when it is not."""
+    parts, base = _parts(path), _parts(root)
+    return parts[len(base) :] if parts[: len(base)] == base else None
 
 
 def _system_location(path: Path) -> str | None:
@@ -112,7 +139,7 @@ def _system_location(path: Path) -> str | None:
         # The temporary folder sits under /var on macOS and holds no system state.
         return None
     for root in _SYSTEM_ROOTS:
-        if _below(path, Path(root)) is not None:
+        if _below(path, root) is not None:
             return f"it is inside {root}, which belongs to the system"
     return None
 
@@ -123,8 +150,8 @@ def _home_location(path: Path) -> str | None:
         return None
     if below_home[0].startswith("."):
         return f"~/{below_home[0]} holds settings and credentials"
-    if below_home[0] in _HOME_APPLICATION_DATA and not any(
-        below_home[: len(store)] == store for store in _HOME_DOCUMENT_STORES
+    if below_home[0] in {_place(name) for name in _HOME_APPLICATION_DATA} and not any(
+        below_home[: len(store)] == _parts(Path(*store)) for store in _HOME_DOCUMENT_STORES
     ):
         return (
             f"~/{below_home[0]} holds application data (keychains, browser profiles, cookies), "
@@ -134,37 +161,41 @@ def _home_location(path: Path) -> str | None:
 
 
 def _credential_name(name: str) -> bool:
-    return any(fnmatch.fnmatch(name.lower(), pattern) for pattern in _CREDENTIAL_NAMES)
+    # On every platform: a file called ID_RSA or Prod.ENV is still a credential.
+    folded = name.casefold()
+    return any(fnmatch.fnmatchcase(folded, pattern) for pattern in _CREDENTIAL_NAMES)
 
 
-def refused_path(path: Path, *, named: bool = False) -> str | None:
+def _why_not(path: Path) -> str | None:
+    reason = _system_location(path)
+    if reason:
+        return reason
+    secret = {_place(name) for name in _SECRET_DIRECTORIES}
+    for part in _parts(path):
+        if part in secret:
+            return f"it is inside {part}, which holds credentials or settings"
+    if path.name.startswith("."):
+        return f"{path.name} is a hidden file"
+    reason = _home_location(path)
+    if reason:
+        return reason
+    if _credential_name(path.name):
+        return f"{path.name} looks like a key or credential file"
+    return None
+
+
+def refused_path(path: Path) -> str | None:
     """Why ``path`` may not be uploaded by an agent, or None.
 
-    Checked for the path as given and for the one a symlink leads to. ``named``
-    is whether the call gave this exact file (not a folder it sits in): a file
-    named like a credential is sent only then, and only from under the working
-    directory. A hidden folder elsewhere (a checkout under
-    ``~/work/.worktrees``) is an ordinary place.
+    Checked for the path as given and for the one a symlink leads to, wherever
+    it is and however the call named it. A hidden folder elsewhere (a checkout
+    under ``~/work/.worktrees``) is an ordinary place. The reason ends with
+    what a person who does mean to upload the file can do.
     """
-    resolved = path.resolve()
-    chosen = named and _below(resolved, Path.cwd().resolve()) is not None
-    for candidate in (path, resolved):
-        reason = _system_location(candidate)
+    for candidate in (path, path.resolve()):
+        reason = _why_not(candidate)
         if reason:
-            return reason
-        for part in candidate.parts:
-            if part in _SECRET_DIRECTORIES:
-                return f"it is inside {part}, which holds credentials or settings"
-        if candidate.name.startswith("."):
-            return f"{candidate.name} is a hidden file"
-        reason = _home_location(candidate)
-        if reason:
-            return reason
-        if _credential_name(candidate.name) and not chosen:
-            return (
-                f"{candidate.name} looks like a key or credential file; one is uploaded only "
-                "when it is under the working directory and the call names that exact file"
-            )
+            return f"{reason}. {BY_HAND}"
     return None
 
 
