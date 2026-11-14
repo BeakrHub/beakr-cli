@@ -170,6 +170,9 @@ def file_read(data: dict[str, Any]) -> dict[str, Any]:
     total = data.get("total_chars")
     where = str(file.get("display_path") or file.get("title") or "File")
     hints: list[str] = []
+    # An offset or a place past the end of the text: the route's plain statement
+    # of it (the text's length, the last valid offset), in place of any text.
+    past_end = str(data.get("note") or "") if data.get("past_end") else ""
     if unit is not None:
         locator = unit.get("locator")
         if locator:
@@ -177,7 +180,9 @@ def file_read(data: dict[str, Any]) -> dict[str, Any]:
         page = unit.get("page")
         span = f"page {page} of {unit.get('page_count')}, " if page else ""
         position = f"{span}characters {start}-{end}" + (f" of {total}" if total else "")
-        if not unit.get("found", True):
+        if past_end:
+            hints.append(past_end)
+        elif not unit.get("found", True):
             hints.append("That place was not found in this version of the file; this is its start.")
         if data.get("next_offset") is not None:
             # The rest of this page or sheet, before the next one.
@@ -188,11 +193,14 @@ def file_read(data: dict[str, Any]) -> dict[str, Any]:
             hints.append(f"Next page: call read_file with {data['next_reference']!r}.")
     else:
         position = f"characters {start}-{end}" + (f" of {total}" if total else "")
+        if past_end:
+            hints.append(past_end)
         if data.get("next_offset") is not None:
             hints.append(f"More text follows: call read_file again with offset={end}.")
     header = f"{where} ({position}; file {file.get('id')} version {file.get('version_id')})"
     more = bool(data.get("has_more"))
-    body = f"{header}\n\n{text}" + ("".join(f"\n\n{hint}" for hint in hints))
+    # No blank stretch where a window past the end has no text.
+    body = "\n\n".join([header, *([text] if text or not past_end else []), *hints])
     return finish(
         {
             "content": body,

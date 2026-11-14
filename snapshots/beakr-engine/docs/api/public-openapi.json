@@ -5141,6 +5141,24 @@
             "description": "With a paged unit: the reference that reads the next page",
             "title": "Next Reference"
           },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With past_end: the plain statement of it, with the length of the text (its characters, lines or pages) and, for an offset, the last valid offset",
+            "title": "Note"
+          },
+          "past_end": {
+            "default": false,
+            "description": "True when the offset, or the place the reference named, lies at or past the end of the text: text is empty and start and end equal total_chars, never a range beyond it",
+            "title": "Past End",
+            "type": "boolean"
+          },
           "start": {
             "description": "First character of the window (within the page when paged)",
             "title": "Start",
@@ -5198,7 +5216,7 @@
           },
           "offset": {
             "default": 0,
-            "description": "Without a unit: the first character to return (at most 100,000,000; past the end of the text the window is empty). Ignored with a unit.",
+            "description": "Without a unit: the first character to return (at most 100,000,000). With a unit: the offset into its page, sheet or document that next_offset gave. At or past the end of the text the window is empty, start and end equal total_chars, and past_end is true.",
             "maximum": 100000000.0,
             "minimum": 0.0,
             "title": "Offset",
@@ -5235,7 +5253,7 @@
         "description": "The place the window was opened at.",
         "properties": {
           "found": {
-            "description": "False when the place could not be found in this version; the window is then the start of the file",
+            "description": "False when the place could not be found in this version; the window is then the start of the file, or empty when the place lies past the end of the file (past_end is then true)",
             "title": "Found",
             "type": "boolean"
           },
@@ -17391,7 +17409,7 @@
               }
             ],
             "default": null,
-            "description": "Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.",
+            "description": "Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`).",
             "title": "Last Compiled By"
           },
           "links": {
@@ -18715,7 +18733,7 @@
               }
             ],
             "default": null,
-            "description": "Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.",
+            "description": "Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`), as `writer` names it.",
             "title": "Compiled By"
           },
           "created_at": {
