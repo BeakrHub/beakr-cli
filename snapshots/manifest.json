@@ -2,11 +2,11 @@
   "sources": {
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
-      "commit": "94aca3a4467c95c7720fae853c8c547172dcaddb",
+      "commit": "fd4f5c057e98476778b217a0856c588328ea5595",
       "uncommitted_changes": false,
       "files": {
         "beakr/api/mcp_remote/document_listing.py": "sha256:375389207c8e84b6d0f2a45075ede6d52a50cc5cd3fae64d9a54dc0712e2486e",
-        "beakr/api/mcp_remote/formatting.py": "sha256:7f6ab63de8f5db6801b51080f1c3ec4ed9474caa2d6f8c1f77a777ced001779e",
+        "beakr/api/mcp_remote/formatting.py": "sha256:7d429068ecc6f8e6cf396a9da356a4259f451d82dbf84eca45a3320decb9c38e",
         "beakr/api/mcp_remote/integration_results.py": "sha256:5072eae67bccdcea076095a6e42f8ff7835ce51fd3f91167c858cfbe8193a0b7",
         "beakr/api/mcp_remote/knowledge_status.py": "sha256:2e5c56d818dfe185b6b02055b6551f53e8e4ad3b1507fc1953c14bb448d14563",
         "beakr/api/mcp_remote/render.py": "sha256:35cfb46c3b475d34e039bd00c22cb2a437c6ab51f164b6740ccd1f4cdc116ffe",
@@ -16,10 +16,10 @@
         "derived/mcp_result_helpers.py.txt": "sha256:92b45dcb4a265e5954816cbef6d2b9e7f36f3304ead247df39c0e1ca27c75ee6",
         "derived/replaying-creates.json": "sha256:370f816fc01b366076d0dfb4cbfb89f1c36d340685db8878f9e1685bafead8fa",
         "derived/workspace_line.py.txt": "sha256:0773b1c1236371278596e50d6b9c2e1b91ad7585de163fe28240ef1cb55388f2",
-        "docs/api/CHANGELOG.md": "sha256:62c561d6cc72c45deecf37b1dc15a1a289201334eadac47dc72e704598d79358",
-        "docs/api/agent-tool-surface.json": "sha256:8c27ac5b94b0b1d1c0205d3e4693fb9edf1b56f2123f1eadcb879970701a7261",
+        "docs/api/CHANGELOG.md": "sha256:9dfc2133d00d380c31ac9a825df54f6412879993b883f5badaae8fea83eeff4d",
+        "docs/api/agent-tool-surface.json": "sha256:629e3b86c1290065f2546fe23e8e9199892c6801654a05c21e9eb39a30dd0034",
         "docs/api/cli-private-openapi.json": "sha256:8bc9693fc71df42ed74b40c6f164890943bb6c1148025a896878d19e45910e29",
-        "docs/api/public-openapi.json": "sha256:45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c",
+        "docs/api/public-openapi.json": "sha256:a0c6fd996fc58bc24b347d68c57ed3b18d80ee6cfcc814796296d79b3de2c922",
         "docs/api/still-served-openapi.json": "sha256:0a7c2dbca8e8ba0ed938ad861a65b896dd4d77dcbd7f088b291454f5ff3122b9",
         "release-base/e464bf209d200147486b6b99c9998f59a7090775/docs/api/CHANGELOG.md": "sha256:8cf9a3c23247d737f8f855cd44f80478c716f14446b32937ab81cb2c4875a4d2",
         "release-base/e464bf209d200147486b6b99c9998f59a7090775/docs/api/public-openapi.json": "sha256:62df6eb6d684926b122000636ef3719b72a85c1ab9c5de622d2b07518e90b5bb"

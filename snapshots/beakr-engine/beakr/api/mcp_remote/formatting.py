@@ -391,7 +391,11 @@ def profile(data: Any, profile_type: str) -> str:
     """
     if not data:
         return f"No {profile_type} profile found."
-    lines = [f"# {data.get('name', 'Untitled')} ({profile_type} profile)"]
+    # A profile saved with no name (set_project_profile asks for none) printed
+    # "#  (project profile)" (sandbox, 2026-11-14): ``get`` defaulted only a
+    # missing name, not an empty one.
+    name = str(data.get("name") or "").strip() or "Untitled"
+    lines = [f"# {name} ({profile_type} profile)"]
     if data.get("description"):
         lines.append(str(data["description"]))
     if data.get("industry"):

@@ -8,6 +8,29 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command` `sources`: `next_calls` now names the read
+  of each of the first five sources the reply lists, in listing order, one per
+  document: `read_file` with `artifact_id` set to the source's reference and
+  the first place cited in it (`memo.pdf › p. 7`), or, for a connected item,
+  the `integrations` call its `retrieval` gives, exactly. The placeholder
+  calls remain only when no listed source has a call, and the `read_file` one
+  now names its argument `artifact_id` (it named `reference`, which
+  `read_file` does not take). Every `next_calls` entry has a non-empty `why`.
+- `POST /v1/knowledge/wiki/command` (`log`, `blame`, `sources`, `provenance`)
+  and `POST /v1/knowledge/wiki/write`: who wrote something reads the same way
+  everywhere. A person's own write through a client with no agent names the
+  person first and the client as the way it came: `Dana Reyes, via
+  beakr-cli 0.6.0, session 7f3c21d0` (it read `beakr-cli/0.6.0 for Dana
+  Reyes`). A write from a hosted MCP client recorded under its client
+  metadata URL reads as the client's name (`Claude (claude.ai) for Dana
+  Reyes, via the hosted MCP server`). A revision Beakr compiled reads `Beakr
+  compiler (gpt-6-luna) for Dana Reyes, from a source sent via beakr-cli
+  0.6.0` (it read `gpt-6-luna (for Dana Reyes via beakr-cli/0.6.0)`). The
+  stored values and the `by`, `via`, `kind` and `session` filters are
+  unchanged.
+- `GET /v1/knowledge/wiki/pages/{page_id}/revisions`: `writer` is now set for
+  a revision Beakr wrote (a compile or a maintenance run), in the words above;
+  it was `null`.
 - `POST /v1/knowledge/wiki/command` `sections` with no `scope`: a strong match
   in a small project you can read now reaches the ranking even when larger
   projects hold more similar wording. When the search still left projects
