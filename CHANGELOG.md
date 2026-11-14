@@ -480,8 +480,9 @@ Each release lists the public API changes it supports, taken from the API change
   Each document keeps its excerpt and its `beakr documents read` command.
 - **A project name two projects share is refused.** `--project <name>` (every
   command that takes one) exits 2 naming both projects' ids, as the MCP tools refuse
-  it (`scope_ambiguous`); it used to read the first one silently. An id or slug
-  still picks one. An empty `beakr kb ls` says "No Knowledge pages here yet."
+  it (`scope_ambiguous`); it used to read the first one silently. So do
+  `beakr projects show`, `archive`, `rm` and `projects members`, where `rm` and
+  `archive` acted on the first of the two. An id or slug still picks one. An empty `beakr kb ls` says "No Knowledge pages here yet."
 - **`beakr kb cat --ledger` and a readable `--outline`.** `--ledger` adds the
   citation records the text no longer cites, with their trust fields, and the
   door's "cat {page, section_id, ledger: true}" line names that command. `--outline`
