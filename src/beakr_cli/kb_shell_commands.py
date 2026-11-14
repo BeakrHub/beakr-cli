@@ -122,7 +122,13 @@ class _Spec:
     fits: Callable[[Mapping[str, Any]], bool] = lambda arguments: True
 
 
-_AUTHOR = {"by": "--by", "via": "--via", "kind": "--kind", "accepted_by": "--accepted-by"}
+_AUTHOR = {
+    "by": "--by",
+    "via": "--via",
+    "session": "--session",
+    "kind": "--kind",
+    "accepted_by": "--accepted-by",
+}
 _WINDOW = {"since": "--since", "until": "--until", "offset": "--offset"}
 _PAGE_AUTHOR = {
     f"{verb}_{what}": f"--{verb}-{what}"
