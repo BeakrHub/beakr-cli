@@ -25,6 +25,12 @@ So a result is sent once, as text a model reads directly:
   ``sources`` argument (:data:`SOURCE_MODES`); see :func:`sources_block`;
 - the ``next`` hints when the result is incomplete or names a follow-up.
 
+Everything from ``organization_line`` to the end of this file is the hosted
+renderer's (beakr-engine ``beakr/api/mcp_remote/render.py``), byte for byte from
+the same function on; ``tests/test_mcp_render_matches_engine.py`` fails the
+moment the copy drifts. ``render`` above it is the hosted ``render`` too, kept
+in step by the engine's parity test, which renders every stdio result both ways.
+
 No ``outputSchema`` is declared, so no client expects ``structuredContent``
 (the MCP spec requires it whenever a schema is declared). Errors are the same
 one block: ``{status, error_code, message, fix}`` as compact JSON.
@@ -33,6 +39,7 @@ one block: ``{status, error_code, message, fix}`` as compact JSON.
 from __future__ import annotations
 
 import json
+import re
 from typing import Annotated, Any, Literal, get_args
 
 from pydantic import Field
@@ -85,6 +92,10 @@ DEFAULT_SOURCE_MODE = "brief"
 #: gets the full list, as the hosted server renders every result.
 SOURCE_MODE_KEY = "source_listing"
 
+#: The engine's step after a read that has no step of its own (its
+#: ``kb_result_coverage._OUTSIDE_DEFAULT_NEXT``, as the hosted renderer repeats it).
+CITE_HINT = "Cite what you use with its readable reference (memo.pdf \u203a p. 7)."
+
 
 def render(tool: str, body: dict[str, Any]) -> str:
     """The one text block a tool's result is sent as."""
@@ -118,6 +129,12 @@ def render(tool: str, body: dict[str, Any]) -> str:
         if state:
             parts.append(state)
     hints = [str(h) for h in body.get("next") or [] if str(h) and str(h) not in text]
+    if tool in _SOURCE_LISTING_TOOLS and mode == "none":
+        # The list was left out on request, so a step that says to cite from it
+        # cannot be followed (agent tester report, 2026-11-13). Nothing is said
+        # in its place: ``none`` asks for the shortest reply, and the tool's
+        # ``sources`` argument already says how to get the list.
+        hints = [hint for hint in hints if hint != CITE_HINT]
     if hints:
         parts.append("\n".join(f"next: {hint}" for hint in hints))
     return "\n\n".join(parts) if parts else "(no output)"
@@ -148,17 +165,82 @@ def _one_line(value: Any, width: int) -> str:
     return text if len(text) <= width else text[: width - 1].rstrip() + "…"
 
 
+#: The document a citation key belongs to: ``unit:<id>-u-m2`` and ``unit:<id>-u-m5``
+#: are passages of ``unit:<id>``. The rule of ``readable_citations._DOCUMENT_KEY``,
+#: restated because this module loads standalone.
+_KEY_DOCUMENT = re.compile(
+    r"^[a-z_]+:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+#: The first eight characters of that id, for telling same-named sources apart.
+_KEY_SHORT_ID = re.compile(r"^[a-z_]+:([0-9a-fA-F]{8})-")
+
+
 def _document_key(record: dict[str, Any]) -> str:
+    """What makes two records one source: its identity, never its display name.
+
+    A file is its file id. Anything else is the document its citation key
+    names, so two different call notes that are both titled "Granola: Albert"
+    stay two entries: keyed by the name they share, they were one line (agent
+    tester report, 2026-11-13). A Knowledge section keeps its own line, as
+    before. A record with neither falls back to where it lives, then its name.
+    """
     location = record.get("location") or {}
+    if location.get("file_id"):
+        return str(location["file_id"])
+    key = str(record.get("citation_key") or "")
+    document = _KEY_DOCUMENT.match(key)
+    if document and _kind(record) != _PAGE:
+        return document.group(0).lower()
     return str(
-        location.get("file_id")
-        or location.get("url")
+        location.get("url")
         or location.get("display_path")
         or record.get("filename")
         or record.get("name")
-        or record.get("citation_key")
+        or key
         or id(record)
     )
+
+
+def _display_name(record: dict[str, Any]) -> str:
+    """The name a Sources line leads with: where the source lives, else its name."""
+    location = record.get("location") or {}
+    return str(
+        location.get("display_path") or record.get("filename") or record.get("name") or "source"
+    )
+
+
+def _label_same_named(entries: list[dict[str, Any]]) -> None:
+    """Give each of several sources that share a name the label that tells it apart.
+
+    The name the result's text uses for it when the record carries one
+    (``reference``, set by the engine for exactly this case), else the
+    source's own date, else a short id read off its citation key.
+    """
+    by_name: dict[str, list[dict[str, Any]]] = {}
+    for entry in entries:
+        by_name.setdefault(_display_name(entry["record"]).casefold(), []).append(entry)
+    for clash in by_name.values():
+        if len(clash) < 2:
+            continue
+        dates = [
+            str((entry["record"].get("evidence") or {}).get("source_recorded_at") or "")[:10]
+            for entry in clash
+        ]
+        # A date only when it tells every one of them apart, as the engine names them.
+        dated = len(set(dates)) == len(dates) and all(
+            re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) for date in dates
+        )
+        for entry, date in zip(clash, dates, strict=True):
+            record = entry["record"]
+            name = _display_name(record)
+            reference = str(record.get("reference") or "").split(LOCATION_SEPARATOR, 1)[0]
+            short = _KEY_SHORT_ID.match(str(record.get("citation_key") or ""))
+            if reference and reference != name and _kind(record) != _PAGE:
+                entry["label"] = reference
+            elif dated:
+                entry["label"] = f"{name} \u00b7 {date}"
+            elif short:
+                entry["label"] = f"{name} \u00b7 id {short.group(1).lower()}"
 
 
 def sources_block(sources: list[Any], *, mode: str = "full", named_in: str = "") -> str:
@@ -173,14 +255,15 @@ def sources_block(sources: list[Any], *, mode: str = "full", named_in: str = "")
     cited in it and its ``source_ref``, no excerpt -- and leaves out the
     Knowledge pages ``named_in`` (the result's text) already names: a grep or
     ls registers every page it prints, and repeated them all here. ``full``
-    (the default, and the hosted server's rendering) is the whole list.
+    (the default) is the whole list.
     """
     documents: dict[str, dict[str, Any]] = {}
     for record in sources:
         if not isinstance(record, dict):
             continue
         entry = documents.setdefault(
-            _document_key(record), {"record": record, "places": [], "excerpt": None}
+            _document_key(record),
+            {"record": record, "places": [], "excerpt": None, "excerpt_authored": False},
         )
         # A full record carries one passage (``evidence``) and its place; a
         # compact one carries its document's places (``cited_places``) and some
@@ -195,12 +278,19 @@ def sources_block(sources: list[Any], *, mode: str = "full", named_in: str = "")
         for place in places:
             if place and str(place) not in entry["places"]:
                 entry["places"].append(str(place))
-        for excerpt in [
-            (record.get("evidence") or {}).get("excerpt"),
-            *(excerpt.get("text") for excerpt in excerpts),
+        evidence = record.get("evidence") or {}
+        # The document's one excerpt is a passage of it where one was cited: the
+        # compiler's own analysis (authored evidence on a scientific file) is
+        # shown only when nothing else was, and labelled as what it is.
+        for excerpt, authored in [
+            (evidence.get("excerpt"), _authored(evidence)),
+            *((excerpt.get("text"), _authored(excerpt)) for excerpt in excerpts),
         ]:
-            if excerpt and entry["excerpt"] is None:
+            if excerpt and (
+                entry["excerpt"] is None or (entry["excerpt_authored"] and not authored)
+            ):
                 entry["excerpt"] = excerpt
+                entry["excerpt_authored"] = authored
     if not documents:
         return ""
     brief = mode == "brief"
@@ -215,6 +305,7 @@ def sources_block(sources: list[Any], *, mode: str = "full", named_in: str = "")
         entries = kept
         if not entries:
             return ""
+    _label_same_named(entries)
     count = _count_label(entries)
     if named:
         count += f"; {named} Knowledge {'page' if named == 1 else 'pages'} named above not repeated"
@@ -270,9 +361,7 @@ def _brief_line(entry: dict[str, Any]) -> str:
     shown = ", ".join(places[:PLACES_PER_DOCUMENT])
     if len(places) > PLACES_PER_DOCUMENT:
         shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
-    name = str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
-    )
+    name = entry.get("label") or _display_name(record)
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     if record.get("source_ref"):
         handle = f"source_ref {record['source_ref']}"
@@ -282,10 +371,10 @@ def _brief_line(entry: dict[str, Any]) -> str:
         handle = str(location["url"])
     else:
         handle = ""
-    tail = f" · {handle}" if handle else ""
+    tail = f" \u00b7 {handle}" if handle else ""
     read_call = _read_call(record)
     if read_call:
-        tail += f" · {read_call}"
+        tail += f" \u00b7 {read_call}"
     return f"- {_line_label(record)}{head}{tail}".rstrip()
 
 
@@ -295,7 +384,7 @@ def _read_call(record: dict[str, Any]) -> str:
     A connected item that is not a file (a meeting note, an email or Slack
     thread) is read through its provider's own tool with the provider's own
     id. Its share link carries a different id that the tool refuses, so the
-    line names the exact call. Mirrors the hosted server's ``render._read_call``.
+    line names the exact call (``native_source_fetch.public_native_call``).
     """
     retrieval = record.get("retrieval")
     if not isinstance(retrieval, dict):
@@ -327,8 +416,8 @@ def _states_it(text: str) -> bool:
 def approval_state_line(state: Any, text: str) -> str:
     """``approval_state: <state> -- <what it means>``, unless the text already says it.
 
-    The engine's write reply carries ``approval_state``; an engine that already
-    prints it in the text gets no second copy, and one without it gets no line.
+    The engine's write reply carries ``approval_state``; a reply whose text
+    already prints it gets no second copy, and one without it gets no line.
     """
     if not isinstance(state, str) or not state.strip() or _states_it(text):
         return ""
@@ -359,7 +448,7 @@ _KIND_BY_SOURCE_TYPE = {
 
 
 def _kind(record: dict[str, Any]) -> str:
-    """Which kind of source ``record`` is: document, Knowledge page, conversation or note."""
+    """Which kind of source ``record`` is: a document, a Knowledge page, a conversation or a note."""
     if str(record.get("source_ref") or "").startswith("beakr-source:v1:wiki:"):
         return _PAGE
     for source_type in (
@@ -411,9 +500,7 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
     # Where the source lives: a Beakr file's drive path, a connector file's path
     # in its service, or a connector item's place there.
-    name = str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
-    )
+    name = entry.get("label") or _display_name(record)
     where = []
     # ``upload`` says only that Beakr holds the file, which the read_file id says.
     if record.get("provider") and record["provider"] != UPLOAD_PROVIDER:
@@ -430,9 +517,22 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     read_call = _read_call(record)
     if read_call:
         where.append(read_call)
-    tail = f" · {' · '.join(where)}" if where else ""
+    separator = " \u00b7 "
+    tail = separator + separator.join(where) if where else ""
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     lines = [f"- {_line_label(record)}{head}{tail}".rstrip()]
     if entry["excerpt"]:
-        lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"')
+        label = " (paraphrase)" if entry.get("excerpt_authored") else ""
+        lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"{label}')
     return lines
+
+
+def _authored(evidence: dict[str, Any]) -> bool:
+    """Whether an excerpt is the compiler's wording rather than the document's.
+
+    The rule of ``beakr.services.evidence.is_authored_excerpt``, restated because
+    this module loads standalone and imports nothing from beakr.
+    """
+    origin = str(evidence.get("quote_origin") or "").strip().lower()
+    kind = str(evidence.get("evidence_kind") or "").strip().lower()
+    return bool(evidence.get("authored")) or origin == "authored" or kind == "description"

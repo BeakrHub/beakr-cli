@@ -43,6 +43,18 @@
             "description": "True when `budget_chars` shortened a block or left one out: a larger budget, or a `question` or `project_id` to focus it, returns more of what matters.",
             "title": "Truncated",
             "type": "boolean"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Workspace"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Which Beakr answered and for which organization, so a client connected to the wrong environment or organization can tell."
           }
         },
         "required": [
@@ -3603,6 +3615,19 @@
       },
       "DocumentsCoverage": {
         "properties": {
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`grep` or `search`.",
+            "title": "Command"
+          },
           "complete": {
             "description": "Whether this answer covers every match in scope; when false, see `reason`.",
             "title": "Complete",
@@ -3632,6 +3657,19 @@
             "title": "Documents Considered",
             "type": "integer"
           },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The page size applied.",
+            "title": "Limit"
+          },
           "next_offset": {
             "anyOf": [
               {
@@ -3644,6 +3682,19 @@
             "default": null,
             "description": "The offset of the next page, if any.",
             "title": "Next Offset"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where this page starts.",
+            "title": "Offset"
           },
           "reason": {
             "anyOf": [
@@ -3671,6 +3722,19 @@
             "description": "`grep`: the last document checked, when the scan stopped early.",
             "title": "Resume After Document"
           },
+          "returned": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Entries (`grep`) or documents (`search`) this reply shows, as a Knowledge read's `coverage.returned`.",
+            "title": "Returned"
+          },
           "rows_not_searched": {
             "anyOf": [
               {
@@ -3696,6 +3760,19 @@
             "default": null,
             "description": "Entries found: matching lines (content) or documents.",
             "title": "Total"
+          },
+          "truncated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when the reply's size budget cut this page short of `limit`; `next_offset` is then the first entry not shown. Absent otherwise.",
+            "title": "Truncated"
           }
         },
         "required": [
@@ -3896,7 +3973,7 @@
               }
             ],
             "default": null,
-            "description": "Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.",
+            "description": "Reusable reference to this passage's document, the same as its document's `source_ref`: a later Knowledge write cites it (add ` \u203a ` and `unit_locator` for this place, or cite `citation_key` for this passage), `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.",
             "title": "Source Ref"
           },
           "unit_locator": {
@@ -5141,7 +5218,7 @@
             "title": "Project"
           },
           "reference": {
-            "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
+            "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's own passage is its unit; a file's source_ref names the file, so add the unit to open a place in it. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
             "maxLength": 2048,
             "minLength": 1,
             "title": "Reference",
@@ -6740,6 +6817,25 @@
             "default": null,
             "description": "How many items were skipped before this page.",
             "title": "Offset"
+          },
+          "projects": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a listing whose pages are of more than one project: each project's `id` and `name`, only projects the caller can read. The text names each page's project; pass an id as `scope` to read one. Absent on a read within one project.",
+            "title": "Projects"
           },
           "related": {
             "anyOf": [
@@ -8852,6 +8948,18 @@
       },
       "Message": {
         "properties": {
+          "answer_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether this message contains a completed user-facing answer, independent of transport or worker status. Null for legacy history.",
+            "title": "Answer Complete"
+          },
           "canvases": {
             "anyOf": [
               {
@@ -12277,7 +12385,7 @@
                 "name": "validation-run-2026-03.pdf",
                 "provider": "upload",
                 "source_kind": "file",
-                "source_ref": "beakr-source:v1:key:YXJ0aWZhY3Q6M2Y2YTFjMmUtN2I0ZC00ZTlhLTljMWYtMmQ4ZTViN2E2YzQw",
+                "source_ref": "beakr-source:v1:file:3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
                 "stance": "support"
               }
             ],
@@ -12574,7 +12682,7 @@
               }
             ],
             "default": null,
-            "description": "Reusable reference a later Knowledge write can cite: a stored citation, a Knowledge page or section, or a source known by its citation key.",
+            "description": "Reusable reference a later Knowledge write can cite: a file (one reference per document, the same on every read), a stored citation, a Knowledge page or section, or a source known by its citation key.",
             "title": "Source Ref"
           },
           "title": {
@@ -14899,7 +15007,7 @@
                 "type": "null"
               }
             ],
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "Opaque reference to a source, the same on every read of it; pass it back in a citation.",
             "title": "Source Ref"
           },
           "version": {
@@ -15124,7 +15232,7 @@
               }
             ],
             "default": null,
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "The source's reference: a file has one, the same on every read (`beakr-source:v1:file:<file id>`), and the place cited in it is `location.unit_locator`. Pass it to a Knowledge write to cite the document, or followed by ` \u203a <unit_locator>` to cite or open that place; `citation_key` names the cited passage itself.",
             "title": "Source Ref"
           },
           "stance": {
@@ -17618,7 +17726,7 @@
               }
             ],
             "default": null,
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "Opaque reference to a source, the same on every read of it; pass it back in a citation.",
             "title": "Source Ref"
           },
           "source_title": {
@@ -19015,7 +19123,7 @@
                 "type": "null"
               }
             ],
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "Opaque reference to a source, the same on every read of it; pass it back in a citation.",
             "title": "Source Ref"
           },
           "source_title": {
@@ -19393,6 +19501,53 @@
           "kind"
         ],
         "title": "WorkflowChatEvent",
+        "type": "object"
+      },
+      "Workspace": {
+        "description": "Where a call landed: this deployment and the organization it acted in.",
+        "properties": {
+          "environment": {
+            "description": "The deployment that answered: production, sandbox, eval, test or local.",
+            "title": "Environment",
+            "type": "string"
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkspaceOrganization"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The organization this call acted in; null if it could not be read."
+          }
+        },
+        "required": [
+          "environment"
+        ],
+        "title": "Workspace",
+        "type": "object"
+      },
+      "WorkspaceOrganization": {
+        "properties": {
+          "name": {
+            "description": "The organization's display name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "description": "Its URL slug.",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "WorkspaceOrganization",
         "type": "object"
       },
       "beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate": {

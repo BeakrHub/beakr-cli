@@ -53,6 +53,124 @@ Each release lists the public API changes it supports, taken from the API change
   matches '<name>'.` and a `fix` naming the closest projects, as the stdio
   server does; a name several readable projects share answers
   `scope_ambiguous` with their ids. It answered with a message alone.
+- Source records (`sources` on `POST /v1/knowledge/wiki/command`, `citations`
+  and `sources` on `POST /v1/knowledge/research`, `results` on
+  `POST /v1/knowledge/documents` `search`): a file you can open now has one
+  `source_ref`, `beakr-source:v1:file:<file id>`, on every read. Before, the
+  same file and page could come back under different references: it named
+  whichever stored citation or search hit a read happened to hold, so two
+  cards citing one page, or a `sections` read and a research answer, gave
+  different values. The place cited is `location.unit_locator` and the passage
+  is `citation_key`, as before. `POST /v1/artifacts/read` and
+  `POST /v1/artifacts/download-url` take the new reference, and with
+  ` › <unit>` after it (`... › p. 7`) the read opens that place; without one it
+  opens the start of the file. A Knowledge write citing it cites the document
+  as a whole, or the place named after it; cite `citation_key` (as `key`) or
+  the readable reference to cite one passage. It is refused with
+  `citation_not_citeable` under the same rule as a file id: only your own
+  upload or a file Knowledge already cites. Every reference handed out before
+  still resolves. Connected items (Slack, email, calendar, issues), Knowledge
+  pages, and a file cited on a page you can read but cannot open yourself keep
+  the references they had.
+- `POST /v1/knowledge/wiki/command` `rows` with `group_by: value`, and `query`
+  with `GROUP BY value`: a Facts value is counted in several groups only when
+  it lists values. Every value was cut at `; `, so one sentence holding a
+  semicolon was counted as several values (73 rows gave 80 groups). A value
+  now counts in each part's group only when every part is a value another row
+  of the same read states on its own; otherwise it is one group. When a row
+  counts in several groups, the reply says how many rows do and what the
+  groups' rows add up to, so the group counts reconcile with the rows read.
+- `POST /v1/knowledge/documents` `search`: a hit's `match` label now follows
+  the printed order. The search orders by meaning and wording together and
+  labelled each hit by meaning alone, so a `moderate` hit could print above a
+  `strong` one; a hit's `match` is now never better than that of a hit printed
+  above it. `sections` labels are unchanged.
+- Source records: a place is printed as `chars A-B` only when the citation
+  records that span in the file's own text. Citations compiled before spans
+  were recorded that way printed offsets that count an internal annotated copy
+  of the file, so a place could read past the end of the file (`chars
+  827-1236` of a 767-character file). Such a citation now names its document
+  without a character place; reading its `citation_key` token with
+  `POST /v1/artifacts/read` opens the cited passage.
+- `POST /v1/knowledge/documents` `grep` and `search`: `coverage` also carries
+  `command`, `returned`, `limit`, `offset` and, when the reply's size budget
+  cut the page short, `truncated`, with the meanings they have on a Knowledge
+  read's `coverage`, so one reader handles both. Every earlier field stays. A
+  `search` reply cut by its size budget now sets `coverage.next_offset` and
+  `coverage.continue_with` to the first document not shown; they named the end
+  of the ranked page, which skipped the documents in between.
+- `POST /v1/knowledge/wiki/command` `diagnostics`: findings are grouped by
+  what they are, most severe first (broken links, unparseable card tables,
+  rows with no evidence, prose with no citation, disputed sections, orphan
+  pages), each with the call that opens it and each group with the write
+  action that fixes it. An index page's entries, and list items or rows that
+  open with a link to another page, are no longer reported as uncited claims:
+  they are counted apart as navigation that needs no citation.
+- `POST /v1/knowledge/wiki/command` with no `scope` reads every project the
+  caller can read, and its replies named pages by title alone. When the pages
+  of a `sections`, `grep`, `ls`, `rows`, `timeline`, `links`, `references` or
+  `log` reply belong to more than one project, the reply now opens with the
+  projects it spans, each with its id (the value `scope` takes), every
+  reference to a page is followed by `[project: <name>]` unless its line
+  already names the project, and `coverage.projects` lists each project's `id`
+  and `name`. A reply within one project is unchanged. Only projects the
+  caller can read are named; a project-restricted key is told only of its own.
+- `POST /v1/knowledge/wiki/command`: the `ambiguous_page` refusal, for a title
+  that names a page in several projects, now lists each candidate with its
+  project name and id, its page id and the call that opens it
+  (`cat {"page": "<page id>"}` for a refused `cat`). A project-restricted key
+  is no longer told, above a page it opened by title, the names and page ids
+  of same-titled pages in the key owner's other projects.
+- `POST /v1/knowledge/wiki/command` and `POST /v1/knowledge/wiki/write`
+  `scope`: a project name spelled in its own case now selects that project
+  when another project's name differs only by case (`test` and `TEST`); both
+  were refused as ambiguous. A name that still matches several projects is
+  refused with `scope_ambiguous`, which now names each candidate
+  (`"<name>" (id <project id>)`) and says to pass the id.
+- `POST /v1/knowledge/wiki/command` `sources`: the reply states what it
+  counts. Its header reads `N distinct source(s), cited M time(s)` (it gave the
+  number of citations as the number of sources), a closing line says how many
+  sources and citations are shown of how many and, when some are not, the call
+  that shows the rest, and `coverage` carries the same account: `returned` and
+  `total` count distinct sources, `complete` says whether all are listed, and
+  `continue_with` holds `after_title` and `after_source_id`. `limit` still
+  counts citations; a window now ends at the end of a source, so following the
+  cursor no longer skips the remaining passages of a source the limit fell
+  inside.
+- `POST /v1/knowledge/wiki/command`: two different sources that share a name
+  (two meeting notes with one title) are cited by a name that tells them
+  apart, `<name> · <date>` when each has its own date and `<name> · id
+  <first 8 characters of its id>` otherwise, and each record in `sources`
+  carries that name as `reference`. Both MCP servers list them as two Sources
+  entries; they were one.
+- `POST /v1/knowledge/wiki/command`: no reply contains a `{{...}}` citation
+  token, a `` section marker or another HTML comment, in its
+  text, its `next` steps or its `sources` records. `cat`, `blame` and
+  `timeline` printed section markers, and a token was left where a reply
+  indented the line it was on, where it was triple-braced, and in `sources`
+  excerpts. Where a reply prints a page's own lines (`cat`, `blame`, `show`,
+  `diff`), a section marker reads `[section_id=<id>]`, the id `cat {page,
+  section_id}` takes, on the same line. Text inside a fenced or inline code
+  span is returned as written.
+- `POST /v1/knowledge/wiki/command` `rows`: a partial reply says both limits:
+  `limit` asks for at most 500 rows a call (100 by default, 300 with `view:
+  census`, 50 with `include_evidence`), and one reply holds about 100 rows
+  whatever `limit` is, so a large table is read by paging with `offset`.
+  `help` and `help {topic: "rows"}` state the same numbers. `help` now ends
+  with a `next` step a caller can take; it told callers to cite with a token.
+- `POST /v1/knowledge/documents`: the notes under a spreadsheet's summary name
+  the commands that read its rows (`read` for the first 50 rows of each sheet,
+  `grep` for every row). They said to use a spreadsheet parser, which an API
+  or MCP caller does not have.
+- `POST /v1/context` (JSON): the response gains `workspace`, the deployment
+  that answered (`environment`: `production`, `sandbox`, `eval`, `test` or
+  `local`) and the organization the call acted in (`organization.name` and
+  `organization.slug`; `organization` is null if it cannot be read), so an
+  agent connected to the wrong environment or
+  organization can tell from its first call. The hosted MCP server's `context`
+  and `beakr_version` tools print it; `beakr_version` there no longer says to
+  run a terminal command, and a read made with `sources: "none"` no longer ends
+  with a step that says to cite from the list it left out.
 - `POST /v1/knowledge/wiki/command` `ls`: following the continuation a reply
   prints now reaches every page. A window is ordered by title in byte order
   (uppercase before lowercase, then non-ASCII letters), and `after_title` was
@@ -134,10 +252,13 @@ Each release lists the public API changes it supports, taken from the API change
   with one `Filters:` line stating what was applied, and a reply that is cut
   ends with the exact options that continue it, the filters included;
   `coverage` reports `returned`, `complete` and `next_offset` as for other
-  listings. A person is resolved among the members of your organization you
-  can see: a name that several of them share is refused with
-  `person_ambiguous` and the matching people, and a name that matches none of
-  them is not an error, it lists nothing. A revision written from a proposal
+  listings. A person is resolved only among the people the history
+  being read already names to you (who wrote or accepted a revision of the
+  pages read, or filed or decided a proposal listed), never among the
+  organization's members: a name that several of them share is refused with
+  `person_ambiguous` and their names, and anyone else (a name nobody has, a
+  colleague who wrote nothing there, a user id) is not an error, it lists
+  nothing. The `Filters:` line says a person back as you typed it. A revision written from a proposal
   you cannot open names only the person who applied it in `log`, so it matches
   `by` for that person and no `via` or `accepted_by`. Calls without these
   options answer as before. The
@@ -245,6 +366,9 @@ Each release lists the public API changes it supports, taken from the API change
   documented `coverage` object. Through the MCP
   servers `coverage.has_more` is true whenever `continue_with` is set;
   `next_cursor` stays null.
+- `GET /v1/threads/{thread_id}` messages include `answer_complete`: whether
+  the assistant finished its user-facing answer. A paused stream is not a
+  completed answer; older messages without this information return null.
 - `GET /v1/artifacts?thread_outputs=true` lists every file and document a
   chat produced, including ones not yet saved to a project. Each row's
   `saved_to_files` says whether project Files lists it. Files attached to a
@@ -325,6 +449,25 @@ Each release lists the public API changes it supports, taken from the API change
   through which agent (`by=Dana Reyes via codex/1.4 (proposal 179c343c,
   accepted by auto-approve)`) instead of the stored stamp
   (`by=proposal:<uuid>`).
+- The stdio MCP server says where its calls land, as the hosted server does.
+  `context` (markdown) opens with `Connected to: Beakr <environment>,
+  organization "<name>" (slug <slug>).`, read from the reply's `workspace`, and
+  `beakr_version` prints the same line under the installed version: the
+  organization from `GET /v1/me/organization`, the environment from the
+  context route. What cannot be read is left out, and the line is dropped
+  when nothing can; a `claude_md`, `agents_md` or `json` context is unchanged.
+- A project named in its own case is that project on the stdio MCP server when
+  another's name differs only by case (`test` and `TEST`); both were refused.
+  A name that still matches several is refused as `scope_ambiguous` naming
+  each candidate with its slug and id, and a name that matches none suggests
+  the names the hosted server suggests (the engine's matcher, similarity 0.6
+  over names; it was 0.4 over names and slugs).
+- The Sources list closing a stdio MCP result lists a source once per
+  identity, not per display name: two meeting notes with one title are two
+  lines, each told apart by the name the text uses, its date or a short id. A
+  compiler-written excerpt is marked `(paraphrase)` in the full list, and
+  `sources='none'` no longer leaves a `next` step that says to cite from the
+  list it left out.
 
 ## beakr-cli 0.5.0 (2026-11-10)
 

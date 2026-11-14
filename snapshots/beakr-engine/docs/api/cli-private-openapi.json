@@ -889,7 +889,7 @@
       "title": "Name"
      },
      "source_ref": {
-      "description": "Opaque reference to a source; pass it back in a citation.",
+      "description": "Opaque reference to a source, the same on every read of it; pass it back in a citation.",
       "title": "Source Ref",
       "type": "string"
      }

@@ -89,6 +89,11 @@ DEFAULT_SOURCE_MODE = "brief"
 #: gets the full list.
 SOURCE_MODE_KEY = "source_listing"
 
+#: The engine's step after a read that has no step of its own. Equals
+#: ``kb_result_coverage._OUTSIDE_DEFAULT_NEXT``; repeated for the same standalone
+#: reason as ``UPLOAD_PROVIDER``.
+CITE_HINT = "Cite what you use with its readable reference (memo.pdf \u203a p. 7)."
+
 #: A hint every refused Knowledge call carries; the message already says it.
 _GENERIC_FIXES = frozenset({"Correct the call as the message says and retry; nothing was read."})
 
@@ -125,6 +130,12 @@ def render(tool: str, body: dict[str, Any]) -> str:
         if state:
             parts.append(state)
     hints = [str(h) for h in body.get("next") or [] if str(h) and str(h) not in text]
+    if tool in _SOURCE_LISTING_TOOLS and mode == "none":
+        # The list was left out on request, so a step that says to cite from it
+        # cannot be followed (agent tester report, 2026-11-13). Nothing is said
+        # in its place: ``none`` asks for the shortest reply, and the tool's
+        # ``sources`` argument already says how to get the list.
+        hints = [hint for hint in hints if hint != CITE_HINT]
     if hints:
         parts.append("\n".join(f"next: {hint}" for hint in hints))
     return "\n\n".join(parts) if parts else "(no output)"
@@ -191,17 +202,82 @@ def _one_line(value: Any, width: int) -> str:
     return text if len(text) <= width else text[: width - 1].rstrip() + "…"
 
 
+#: The document a citation key belongs to: ``unit:<id>-u-m2`` and ``unit:<id>-u-m5``
+#: are passages of ``unit:<id>``. The rule of ``readable_citations._DOCUMENT_KEY``,
+#: restated because this module loads standalone.
+_KEY_DOCUMENT = re.compile(
+    r"^[a-z_]+:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+#: The first eight characters of that id, for telling same-named sources apart.
+_KEY_SHORT_ID = re.compile(r"^[a-z_]+:([0-9a-fA-F]{8})-")
+
+
 def _document_key(record: dict[str, Any]) -> str:
+    """What makes two records one source: its identity, never its display name.
+
+    A file is its file id. Anything else is the document its citation key
+    names, so two different call notes that are both titled "Granola: Albert"
+    stay two entries: keyed by the name they share, they were one line (agent
+    tester report, 2026-11-13). A Knowledge section keeps its own line, as
+    before. A record with neither falls back to where it lives, then its name.
+    """
     location = record.get("location") or {}
+    if location.get("file_id"):
+        return str(location["file_id"])
+    key = str(record.get("citation_key") or "")
+    document = _KEY_DOCUMENT.match(key)
+    if document and _kind(record) != _PAGE:
+        return document.group(0).lower()
     return str(
-        location.get("file_id")
-        or location.get("url")
+        location.get("url")
         or location.get("display_path")
         or record.get("filename")
         or record.get("name")
-        or record.get("citation_key")
+        or key
         or id(record)
     )
+
+
+def _display_name(record: dict[str, Any]) -> str:
+    """The name a Sources line leads with: where the source lives, else its name."""
+    location = record.get("location") or {}
+    return str(
+        location.get("display_path") or record.get("filename") or record.get("name") or "source"
+    )
+
+
+def _label_same_named(entries: list[dict[str, Any]]) -> None:
+    """Give each of several sources that share a name the label that tells it apart.
+
+    The name the result's text uses for it when the record carries one
+    (``reference``, set by the engine for exactly this case), else the
+    source's own date, else a short id read off its citation key.
+    """
+    by_name: dict[str, list[dict[str, Any]]] = {}
+    for entry in entries:
+        by_name.setdefault(_display_name(entry["record"]).casefold(), []).append(entry)
+    for clash in by_name.values():
+        if len(clash) < 2:
+            continue
+        dates = [
+            str((entry["record"].get("evidence") or {}).get("source_recorded_at") or "")[:10]
+            for entry in clash
+        ]
+        # A date only when it tells every one of them apart, as the engine names them.
+        dated = len(set(dates)) == len(dates) and all(
+            re.fullmatch(r"\d{4}-\d{2}-\d{2}", date) for date in dates
+        )
+        for entry, date in zip(clash, dates, strict=True):
+            record = entry["record"]
+            name = _display_name(record)
+            reference = str(record.get("reference") or "").split(LOCATION_SEPARATOR, 1)[0]
+            short = _KEY_SHORT_ID.match(str(record.get("citation_key") or ""))
+            if reference and reference != name and _kind(record) != _PAGE:
+                entry["label"] = reference
+            elif dated:
+                entry["label"] = f"{name} \u00b7 {date}"
+            elif short:
+                entry["label"] = f"{name} \u00b7 id {short.group(1).lower()}"
 
 
 def sources_block(sources: list[Any], *, mode: str = "full", named_in: str = "") -> str:
@@ -266,6 +342,7 @@ def sources_block(sources: list[Any], *, mode: str = "full", named_in: str = "")
         entries = kept
         if not entries:
             return ""
+    _label_same_named(entries)
     count = _count_label(entries)
     if named:
         count += f"; {named} Knowledge {'page' if named == 1 else 'pages'} named above not repeated"
@@ -321,9 +398,7 @@ def _brief_line(entry: dict[str, Any]) -> str:
     shown = ", ".join(places[:PLACES_PER_DOCUMENT])
     if len(places) > PLACES_PER_DOCUMENT:
         shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
-    name = str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
-    )
+    name = entry.get("label") or _display_name(record)
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     if record.get("source_ref"):
         handle = f"source_ref {record['source_ref']}"
@@ -462,9 +537,7 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
     # Where the source lives: a Beakr file's drive path, a connector file's path
     # in its service, or a connector item's place there.
-    name = str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
-    )
+    name = entry.get("label") or _display_name(record)
     where = []
     # ``upload`` says only that Beakr holds the file, which the read_file id says.
     if record.get("provider") and record["provider"] != UPLOAD_PROVIDER:

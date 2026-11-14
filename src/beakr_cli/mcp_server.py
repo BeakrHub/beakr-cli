@@ -26,6 +26,7 @@ from beakr_cli.mcp_render import (
     organization_line,
 )
 from beakr_cli.mcp_tools_platform import PageLimit, _project_by_name_or_id
+from beakr_cli.mcp_workspace import connected_line as _connected_line
 from beakr_cli.source_records import with_read_call
 from beakr_cli.updates import (
     CHECK_OFF,
@@ -1181,11 +1182,16 @@ async def beakr_version() -> str:
     from datetime import timedelta
 
     info = detect_install()
+    # Where this server's calls land, as the hosted tool says it; left out when
+    # the API could not say (mcp_workspace).
+    connected = await _connected_line()
     if await asyncio.to_thread(bundled_with_box, info):
         # Upgraded with the installation, so PyPI's latest release says nothing about it.
-        return box_line(__version__)
+        return "\n".join(filter(None, [box_line(__version__), connected]))
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
     lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
+    if connected:
+        lines.append(connected)
     if check_disabled():
         lines.append(CHECK_OFF)
     elif status.latest is None:

@@ -81,12 +81,12 @@ def _sent(route: respx.Route) -> dict:
 
 @respx.mock
 def test_log_filters_reach_the_door_under_its_argument_names():
-    door = respx.post(COMMAND).respond(json=_door("Filters: by Ali Chen.\nrev 4  Launch Plan"))
+    door = respx.post(COMMAND).respond(json=_door('Filters: by "Ali Chen".\nrev 4  Launch Plan'))
     result = runner.invoke(app, ["kb", "log", "--project", PROJECT, *HISTORY_FLAGS])
     assert result.exit_code == 0, result.output
     assert _sent(door) == {"command": "log", "scope": PROJECT, **HISTORY_ARGUMENTS}
     # The door's text, as the other door commands print it.
-    assert "Filters: by Ali Chen." in result.stdout
+    assert 'Filters: by "Ali Chen".' in result.stdout
     assert "rev 4  Launch Plan" in result.stdout
 
 
@@ -125,7 +125,7 @@ def test_log_without_a_page_or_filter_sends_the_door_no_filter_argument():
 @respx.mock
 def test_a_filtered_log_as_json_is_the_doors_reply_with_its_coverage():
     reply = _door(
-        "Filters: via codex.",
+        'Filters: via "codex" (client or agent prefix).',
         coverage={"returned": 20, "complete": False, "next_offset": 20},
         next=[{"command": "log", "arguments": {"via": "codex", "offset": 20}}],
     )
@@ -155,7 +155,7 @@ def test_a_refused_filter_prints_the_doors_reason_and_fails():
 @respx.mock
 def test_proposals_filters_reach_the_door_with_status_and_limit():
     listing = respx.get(PROPOSALS).respond(json=_envelope([]))
-    door = respx.post(COMMAND).respond(json=_door("Filters: filed by Ali Chen.\n1 proposal"))
+    door = respx.post(COMMAND).respond(json=_door('Filters: filed by "Ali Chen".\n1 proposal'))
     result = runner.invoke(
         app,
         [
@@ -180,7 +180,7 @@ def test_proposals_filters_reach_the_door_with_status_and_limit():
         "limit": 5,
         **HISTORY_ARGUMENTS,
     }
-    assert "Filters: filed by Ali Chen." in result.stdout
+    assert 'Filters: filed by "Ali Chen".' in result.stdout
 
 
 @respx.mock
@@ -227,7 +227,9 @@ def test_filtered_proposals_refuse_a_cursor():
 @respx.mock
 def test_ls_filters_reach_the_door_under_its_argument_names():
     pages = respx.get(PAGES).respond(json=_envelope([]))
-    door = respx.post(COMMAND).respond(json=_door("1 matching page(s):\nFilters: created by Ali."))
+    door = respx.post(COMMAND).respond(
+        json=_door('1 matching page(s):\nFilters: created by "Ali".')
+    )
     result = runner.invoke(
         app,
         [
@@ -270,7 +272,7 @@ def test_ls_filters_reach_the_door_under_its_argument_names():
         "changed_via": "codex",
         "changed_since": "2026-11-09T14:00:00-05:00",
     }
-    assert "Filters: created by Ali." in result.stdout
+    assert 'Filters: created by "Ali".' in result.stdout
 
 
 @respx.mock

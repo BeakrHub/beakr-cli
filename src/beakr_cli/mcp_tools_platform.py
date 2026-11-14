@@ -21,6 +21,8 @@ from beakr_cli import mcp_integration_results as integration_results
 from beakr_cli import mcp_result, tool_surface
 from beakr_cli.capabilities import NOT_PROVIDED_CODE
 from beakr_cli.mcp_errors import ApiCallError, call_api
+from beakr_cli.mcp_workspace import workspace_prefix
+from beakr_cli.project_scope_names import closest_project_names
 from beakr_cli.scope import scope_params
 
 if TYPE_CHECKING:
@@ -170,10 +172,14 @@ async def context(
             budget_chars=budget_chars,
         )
     )
-    content = str((data or {}).get("content") or "")
-    if not content:
-        return "No context available yet for this scope."
-    return content
+    content = str((data or {}).get("content") or "") or "No context available yet for this scope."
+    if format != "markdown":
+        # A managed file (CLAUDE.md, AGENTS.md) is written to disk as returned,
+        # and json is parsed: neither takes a line of this server's.
+        return content
+    # Where the call landed, first, as the hosted context says it: an agent on
+    # the wrong environment or organization must see it before it reads on.
+    return f"{workspace_prefix(data)}{content}"
 
 
 #: The context call as the hosted server's refusal shows it (``shape_example`` in
@@ -690,9 +696,10 @@ _resolved_projects: dict[str, str] = {}
 class ScopeNotFound(ValueError):
     """A ``scope``/``project`` naming no project the caller can read, or several.
 
-    Refused as ``scope_not_found`` (or ``scope_ambiguous``) with the closest
-    names, the way the Knowledge door and ``beakr --project`` refuse one. An
-    unknown project id used to pass straight through, so documents listed
+    Refused as ``scope_not_found`` with the closest names, or as
+    ``scope_ambiguous`` naming each candidate, in the hosted server's words
+    (``project_not_resolved`` in the engine's ``mcp_remote/project_tools.py``).
+    An unknown project id used to pass straight through, so documents listed
     nothing ("0 in scope") and an agent read that as an empty project.
     """
 
@@ -731,13 +738,34 @@ async def _readable_projects() -> list[dict[str, Any]]:
     return projects
 
 
+def _project_label(project: dict[str, Any]) -> str:
+    """``Name (slug, id)``, as the hosted refusal names a candidate."""
+    slug = project.get("slug")
+    return f"{project.get('name')} ({f'{slug}, ' if slug else ''}{project.get('id')})"
+
+
+def _closest_projects(projects: list[dict[str, Any]], given: str) -> list[str]:
+    """The labels of the readable projects whose names are closest to ``given``.
+
+    The engine's matcher and cutoff (``project_scope_names``, a copy of its
+    file), so both servers suggest the same names for the same miss. This
+    server used a looser cutoff (0.4, over names and slugs) and offered names
+    the hosted one did not.
+    """
+    by_name: dict[str, dict[str, Any]] = {}
+    for project in projects:
+        by_name.setdefault(str(project.get("name") or ""), project)
+    names = closest_project_names(given, [name for name in by_name if name])
+    return [_project_label(by_name[name]) for name in names]
+
+
 async def _project_id(project: str) -> str:
     """The id of the one readable project ``project`` names (id, slug or name).
 
     An id is checked too: it must be a project the caller can read. Raises
     :class:`ScopeNotFound` naming the closest projects otherwise.
     """
-    from beakr_cli.project_ref import close_matches, find_project
+    from beakr_cli.project_ref import find_project
 
     given = project.strip()
     if given in _resolved_projects:
@@ -746,15 +774,20 @@ async def _project_id(project: str) -> str:
         return await _checked_project_id(given)
     projects = await _readable_projects()
     named = [p for p in projects if str(p.get("name") or "").casefold() == given.casefold()]
-    if len(named) > 1 and not any(str(p.get("id")) == given for p in projects):
-        raise ScopeNotFound(
-            given,
-            suggestions=[f"{p.get('name')} ({p.get('id')})" for p in named[:5]],
-            ambiguous=True,
-        )
-    found = find_project(projects, given)
+    if len(named) > 1:
+        # Names match whatever their case, so "test" and "TEST" each matched both
+        # and neither could be named (agent tester report, 2026-11-13): the one
+        # spelled exactly as asked is the one meant, as on the hosted server.
+        exact = [p for p in named if str(p.get("name") or "") == given]
+        if len(exact) != 1:
+            raise ScopeNotFound(
+                given, suggestions=[_project_label(p) for p in named], ambiguous=True
+            )
+        found: dict[str, Any] | None = exact[0]
+    else:
+        found = find_project(projects, given)
     if found is None:
-        raise ScopeNotFound(given, suggestions=close_matches(projects, given))
+        raise ScopeNotFound(given, suggestions=_closest_projects(projects, given))
     _resolved_projects[given] = str(found["id"])
     return _resolved_projects[given]
 
