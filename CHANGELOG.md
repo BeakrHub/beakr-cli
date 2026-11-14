@@ -128,15 +128,25 @@ Each release lists the public API changes it supports, taken from the API change
   refused with `scope_ambiguous`, which now names each candidate
   (`"<name>" (id <project id>)`) and says to pass the id.
 - `POST /v1/knowledge/wiki/command` `sources`: the reply states what it
-  counts. Its header reads `N distinct source(s), cited M time(s)` (it gave the
-  number of citations as the number of sources), a closing line says how many
-  sources and citations are shown of how many and, when some are not, the call
-  that shows the rest, and `coverage` carries the same account: `returned` and
-  `total` count distinct sources, `complete` says whether all are listed, and
-  `continue_with` holds `after_title` and `after_source_id`. `limit` still
-  counts citations; a window now ends at the end of a source, so following the
+  counts. Its header reads `N distinct source(s) with M cited passage(s)` (it
+  gave the number of citation records as the number of sources), where M is
+  the passages the list prints under the sources: a source's own citation
+  record is its entry line and is not counted as a passage. A closing line
+  says how many sources and passages are shown of how many and, when some are
+  not, the call that shows the rest, and `coverage` carries the same account:
+  `returned` and `total` count distinct sources, `complete` says whether all
+  are listed, and `continue_with` holds `after_title` and `after_source_id`.
+  `limit` still counts citation records (one per passage and one for a source
+  cited as a whole); a window now ends at the end of a source, so following the
   cursor no longer skips the remaining passages of a source the limit fell
-  inside.
+  inside. Following the cursor lists every source exactly once: the closing
+  line and the `next` step print the cursor as JSON strings that parse back to
+  `continue_with` (a title holding a quote read back short and listed the same
+  source again), a source is placed once by the earliest title among its
+  citations, a source with no title has a cursor that continues after it, and
+  the cursor is compared exactly as printed, leading and trailing spaces
+  included. A reply cut to fit the response budget names the whole title and
+  id of the last source it kept.
 - `POST /v1/knowledge/wiki/command`: two different sources that share a name
   (two meeting notes with one title) are cited by a name that tells them
   apart, `<name> · <date>` when each has its own date and `<name> · id
