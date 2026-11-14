@@ -112,7 +112,7 @@ def test_page_headers_print_section_and_source_titles_literally():
         }
     )
 
-    result = runner.invoke(app, ["kb", "provenance", PAGE_ID])
+    result = runner.invoke(app, ["kb", "section-provenance", PAGE_ID])
 
     assert result.exit_code == 0, result.output
     assert TITLE in result.stdout

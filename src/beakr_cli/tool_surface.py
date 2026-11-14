@@ -37,7 +37,7 @@ TOOLS_ENV = "BEAKR_MCP_TOOLS"
 DISCOVERY_NOTE = (
     "\n\nOnly the most-used Beakr tools are listed. Call 'discover_tools' to find the "
     "others (proposals review, project and profile lookups, statistics, conversations, "
-    "imports, the audit log); the tools it finds are added to the listing."
+    "imports, the audit log, project setup); the tools it finds are added to the listing."
 )
 
 

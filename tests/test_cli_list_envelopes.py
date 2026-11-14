@@ -64,7 +64,7 @@ CASES = [
         {f"/v1/knowledge/wiki/pages/{PAGE}": {"id": PAGE, "title": "Binding assay"}},
     ),
     (
-        ["kb", "timeline"],
+        ["kb", "events"],
         "/v1/knowledge/wiki/timeline",
         {"date": "2026-10-01", "title": "Plate reader recalibrated", "page_title": "Lab"},
         "recalibrated",

@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 import re
 import sys
-from itertools import islice
 from pathlib import Path
 
+import click
 import typer
 from beakr_sdk.errors import BeakrError, NotFoundError
 from beakr_sdk.resources.knowledge import result_text
@@ -20,8 +20,10 @@ from beakr_cli.citations import (
     validate_proposal_sections,
 )
 from beakr_cli.cited_answer import print_research_result, research_lines
-from beakr_cli.compact import cell
+from beakr_cli.commands import kb_author_filters as author
+from beakr_cli.compact import cell, next_page_hint, print_compact
 from beakr_cli.errors import EXIT_ERROR, EXIT_USAGE
+from beakr_cli.kb_shell_hints import DoorCall, shell_acknowledgement, shell_reply
 from beakr_cli.output import (
     console,
     err_console,
@@ -43,9 +45,12 @@ from beakr_cli.prompts import confirm_or_require_yes, confirmed
 from beakr_cli.proposal_accept import ReviewRequired, accept_reviewed, checked_hash
 from beakr_cli.proposal_view import filed_by_line, payload_lines
 from beakr_cli.research_metadata import public_research
+from beakr_cli.revision_view import revision_writer
 from beakr_cli.scope import get_personal_project_id, scope_params
 from beakr_cli.sdk import get_sdk
 from beakr_cli.source_listing import document_lines, group_by_document
+from beakr_cli.source_records import with_read_call
+from beakr_cli.terminal_text import visible
 
 app = typer.Typer(help="Interact with your Beakr knowledge base.")
 propose_app = typer.Typer(help="Create user-approved wiki write proposals.")
@@ -105,6 +110,36 @@ def _project_id(*, project: str | None = None, mine: bool = False) -> str | None
 # ---------------------------------------------------------------------------
 
 
+#: Most pages one list request returns.
+_LS_PAGE_SIZE = 200
+
+
+def _list_pages(
+    sdk: object, *, limit: int | None, cursor: str | None, **filters: object
+) -> tuple[list[dict], str | None, bool]:
+    """Pages from ``cursor`` on, at most ``limit``: the rows, the next cursor, whether more exist.
+
+    Each request asks for no more than is still wanted, so the cursor a short
+    listing ends on continues exactly after its last row.
+    """
+    rows: list[dict] = []
+    while True:
+        size = min(limit - len(rows), _LS_PAGE_SIZE) if limit else _LS_PAGE_SIZE
+        page = sdk.knowledge.pages.list(limit=size, cursor=cursor, **filters)  # type: ignore[attr-defined]
+        batch = page_rows(page)
+        rows.extend(batch)
+        envelope = page if isinstance(page, dict) else {}
+        cursor = envelope.get("next_cursor") or None
+        has_more = bool(envelope.get("has_more", cursor is not None))
+        if not has_more or cursor is None or not batch or (limit and len(rows) >= limit):
+            break
+    if limit and len(rows) > limit:
+        # A server that returned more than was asked for: the cursor is past
+        # rows this listing drops, so it cannot continue the listing exactly.
+        return rows[:limit], None, True
+    return rows, cursor, has_more
+
+
 @app.command()
 def ls(
     page_type: str | None = typer.Option(None, "--type", "-t", help="Filter by page type."),
@@ -116,12 +151,84 @@ def ls(
         "-p",
         help="Filter to children of this page (title or UUID).",
     ),
-    limit: int | None = typer.Option(None, "--limit", "-n", help="Max pages to return."),
+    limit: int | None = typer.Option(
+        None, "--limit", "-n", min=1, help="Max pages to return (default: every page)."
+    ),
+    cursor: str | None = typer.Option(
+        None, "--cursor", help="Continue a listing cut by --limit (the cursor it named)."
+    ),
+    envelope: bool = typer.Option(
+        False,
+        "--envelope",
+        help="With --json: print {data, has_more, next_cursor} instead of the plain array.",
+    ),
+    created_by: str | None = author.created_by_opt,
+    created_via: str | None = author.created_via_opt,
+    created_since: str | None = author.created_since_opt,
+    changed_by: str | None = author.changed_by_opt,
+    changed_via: str | None = author.changed_via_opt,
+    changed_since: str | None = author.changed_since_opt,
+    after_title: str | None = typer.Option(
+        None,
+        "--after-title",
+        help="Continue a filtered listing after this title (a reply names it).",
+    ),
+    after_page_id: str | None = typer.Option(
+        None, "--after-page-id", help="With --after-title: the page id a reply names beside it."
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """List knowledge base pages in the current scope."""
+    """List knowledge base pages in the current scope.
+
+    Without --limit every page is listed. With --limit a listing that stops
+    early says so on its last line and names the command that continues it
+    (the same command with --cursor). --json prints a plain array (the notice
+    goes to stderr); add --envelope for {data, has_more, next_cursor}.
+
+    --created-by, --created-via and --created-since test a page's first
+    revision; --changed-by, --changed-via and --changed-since test any one of
+    its revisions. A filtered listing is the Knowledge door's `ls`: a flat list
+    in title order (100 pages unless --limit, at most 500) that opens with the
+    filters applied; a cut one names the title to pass as --after-title, with
+    the page id to pass as --after-page-id when titles repeat.
+    """
+    filters = author.page_arguments(
+        created_by=created_by,
+        created_via=created_via,
+        created_since=created_since,
+        changed_by=changed_by,
+        changed_via=changed_via,
+        changed_since=changed_since,
+    )
+    if filters:
+        _ls_by_author(
+            filters,
+            page_type=page_type,
+            all_scopes=all_scopes,
+            roots_only=roots_only,
+            parent=parent,
+            limit=limit,
+            cursor=cursor,
+            envelope=envelope,
+            after_title=after_title,
+            after_page_id=after_page_id,
+            json_out=json_out,
+            project=project,
+            mine=mine,
+        )
+        return
+    if after_title or after_page_id:
+        err_console.print(
+            "--after-title and --after-page-id continue a listing filtered by author "
+            "(--created-by, --changed-via, ...); an unfiltered listing continues with --cursor."
+        )
+        raise typer.Exit(EXIT_USAGE)
+    mode = output_mode(json_out)
+    if envelope and mode != "json":
+        err_console.print("--envelope shapes the JSON output; add --json.")
+        raise typer.Exit(EXIT_USAGE)
     parent_page_id = None
     if parent:
         parent_data = _resolve_page(parent, project=project, mine=mine)
@@ -130,19 +237,15 @@ def ls(
 
     scope = _scope_params(project=project, mine=mine)
     with get_sdk() as sdk:
-        # Page through the list (at most 200 per request) up to --limit pages.
-        pages = list(
-            islice(
-                sdk.knowledge.pages.iter(
-                    project_id=scope.get("project_id"),
-                    page_type=page_type or None,
-                    roots_only=True if roots_only else None,
-                    parent_page_id=parent_page_id,
-                    page_size=min(limit, 200) if limit else 200,
-                    all_scopes=True if all_scopes else None,
-                ),
-                limit,
-            )
+        pages, next_cursor, has_more = _list_pages(
+            sdk,
+            limit=limit,
+            cursor=(cursor or "").strip() or None,
+            project_id=scope.get("project_id"),
+            page_type=page_type or None,
+            roots_only=True if roots_only else None,
+            parent_page_id=parent_page_id,
+            all_scopes=True if all_scopes else None,
         )
 
     if not pages and not all_scopes and "project_id" not in scope:
@@ -152,8 +255,89 @@ def ls(
             "No project is selected, so only organization-level pages are listed. "
             "Pass --project, bind this directory with `beakr init`, or use --all."
         )
-    if not machine_output(pages, json_out=json_out):
-        print_pages_table(pages)
+    continue_with = (
+        next_page_hint({"has_more": True, "next_cursor": next_cursor}) if next_cursor else None
+    )
+    notice = _incomplete_listing_notice(len(pages), continue_with) if has_more else None
+    if mode == "json":
+        if envelope:
+            print_json({"data": pages, "has_more": has_more, "next_cursor": next_cursor})
+            return
+        # The plain array scripts read; what it leaves out is said on stderr.
+        print_json(pages)
+        if notice:
+            err_console.print(notice, markup=False, highlight=False)
+        return
+    if mode == "compact":
+        print_compact(pages)
+        if notice:
+            sys.stdout.write(visible(notice) + "\n")
+        return
+    print_pages_table(pages)
+    if notice:
+        # Not wrapped: the command it names is copied whole.
+        console.print(notice, markup=False, highlight=False, soft_wrap=True)
+
+
+def _ls_by_author(
+    filters: dict[str, object],
+    *,
+    page_type: str | None,
+    all_scopes: bool,
+    roots_only: bool,
+    parent: str | None,
+    limit: int | None,
+    cursor: str | None,
+    envelope: bool,
+    after_title: str | None,
+    after_page_id: str | None,
+    json_out: bool,
+    project: str | None,
+    mine: bool,
+) -> None:
+    """``kb ls`` filtered by who created or changed each page, read from the Knowledge door.
+
+    The pages route takes no author filter. The door's listing is flat and
+    paged by title, so the options that shape the route's listing are refused
+    rather than ignored.
+    """
+    unsupported = [
+        flag
+        for flag, given in (("--roots", roots_only), ("--cursor", cursor), ("--envelope", envelope))
+        if given
+    ]
+    if unsupported:
+        err_console.print(
+            f"{', '.join(unsupported)} cannot be combined with an author filter: a filtered "
+            "listing is flat, in title order, and continues with --after-title."
+        )
+        raise typer.Exit(EXIT_USAGE)
+    parent_id = None
+    if parent:
+        parent_data = _resolve_page(parent, project=project, mine=mine)
+        if not parent_data:
+            return
+        parent_id = str(parent_data["id"])
+    _door_print(
+        "ls",
+        # --all reads every project the caller can open: the door's unscoped read.
+        scope=None if all_scopes else _project_id(project=project, mine=mine),
+        json_out=json_out,
+        flags=("--all",) if all_scopes else (),
+        page_type=page_type or None,
+        parent=parent_id,
+        limit=limit,
+        after_title=(after_title or "").strip() or None,
+        after_page_id=(after_page_id or "").strip() or None,
+        **filters,
+    )
+
+
+def _incomplete_listing_notice(shown: int, continue_with: str | None) -> str:
+    """The last line of a listing that stopped before the end of the list."""
+    if continue_with:
+        return f"Incomplete: {shown} pages listed and more exist. Continue with: {continue_with}"
+    return f"Incomplete: {shown} pages listed and more exist. Raise --limit to list them."
 
 
 # ---------------------------------------------------------------------------
@@ -171,6 +355,9 @@ def cat(
     lines: str | None = typer.Option(
         None, "--lines", help="Read only these lines, start-end or one line (a grep hit's line)."
     ),
+    outline: bool = typer.Option(
+        False, "--outline", help="The page's sections (title, id, size), not their text."
+    ),
     full: bool = typer.Option(
         False, "--full", help="Every source record with its excerpt, not one per document."
     ),
@@ -180,7 +367,17 @@ def cat(
         min=0,
         help="With --full: the first source record to return (a cut read names it).",
     ),
-    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    raw: bool = typer.Option(
+        False,
+        "--raw",
+        help=(
+            "Export the whole stored page record with every source as JSON, however "
+            "large (what --json printed before 0.6.0)."
+        ),
+    ),
+    json_out: bool = typer.Option(
+        False, "--json", "-j", help="The bounded read as JSON: {content, coverage, next, sources}."
+    ),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
@@ -188,26 +385,34 @@ def cat(
 
     The text is the Knowledge door's `cat`, as the MCP tool shows it: each
     {{key}} citation is the name of what it cites, and the cited documents are
-    listed after it. A read cut to the response budget names how to continue
-    (section_id=, lines=, source_offset=); --section-id, --lines and
-    --source-offset take those. --json prints the stored page record and its
-    sources (the door's reply with --rev, --section-id, --lines or --full).
+    listed after it. A read cut to the response budget says so (Coverage) and
+    names how to continue (section_id=, lines=, source_offset=); --section-id,
+    --lines and --source-offset take those, and --outline lists the sections.
+    --json prints that same bounded read as {content, coverage, next, sources},
+    whichever options select it. --raw exports the whole stored page record and
+    all its sources as JSON instead, with no size bound.
     """
     if source_offset is not None and not full:
         err_console.print("--source-offset pages the records of a --full read; add --full.")
+        raise typer.Exit(EXIT_USAGE)
+    if raw and (rev is not None or section_id is not None or lines is not None or outline or full):
+        err_console.print(
+            "--raw exports the whole stored page; drop --rev, --section-id, --lines, "
+            "--outline and --full, or drop --raw for the bounded read."
+        )
         raise typer.Exit(EXIT_USAGE)
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
 
-    door_only = rev is not None or section_id is not None or lines is not None or full
-    if json_out and not door_only:
+    if raw:
         with get_sdk() as sdk:
             source_list = sdk.knowledge.pages.sources(str(page_data["id"]))
         print_json({**page_data, "sources": source_list})
         return
     # The stored markdown carries raw {{artifact:...}} tokens; the door's `cat`
-    # renders them as the references a reader can follow.
+    # renders them as the references a reader can follow, within one bounded
+    # reply. Every output mode reads it, so --json is the same data as the text.
     _door_read(
         "cat",
         project=project,
@@ -217,6 +422,7 @@ def cat(
         rev=rev,
         section_id=section_id,
         lines=lines,
+        outline=True if outline else None,
         detail="full" if full else None,
         source_offset=source_offset,
     )
@@ -233,24 +439,59 @@ def _door_read(
     """Run a Knowledge read command and print it as the MCP tools show it.
 
     The text is the engine's rendering, followed by one line per cited document
-    (its citation tokens, filename, provider, the id ``read_file``/``beakr files
-    download`` takes, one verbatim excerpt) -- the same text an agent gets from
-    the ``knowledge_base`` tool. ``--json`` prints the door's reply unchanged.
+    (its citation tokens, filename, provider, the id ``beakr documents read``
+    takes, one verbatim excerpt) -- the text an agent gets from the
+    ``knowledge_base`` tool, with each call a hint names spelled as the
+    ``beakr`` command that makes it (:mod:`beakr_cli.kb_shell_hints`).
+    ``--json`` prints the door's reply unchanged.
+
+    The reply's ``coverage`` is passed to the renderer, which prints it whenever
+    the read is partial: a cut read is otherwise indistinguishable from a whole
+    one in text.
+    """
+    _door_print(
+        command, scope=_project_id(project=project, mine=mine), json_out=json_out, **arguments
+    )
+
+
+def _door_print(
+    command: str,
+    *,
+    scope: str | None,
+    json_out: bool,
+    flags: tuple[str, ...] = (),
+    **arguments: object,
+) -> None:
+    """:func:`_door_read` for a scope the caller already resolved (None: every project).
+
+    ``flags`` are the options of this command that the door call does not carry
+    (``--all``), so a hint that continues the listing repeats them.
     """
     from beakr_sdk.sources import public_source
 
-    from beakr_cli.mcp_render import render
-
-    project_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
-        result = sdk.knowledge.command(command, scope=project_id, check=False, **arguments)
+        result = sdk.knowledge.command(command, scope=scope, check=False, **arguments)
     outcome = result.get("outcome") if isinstance(result.get("outcome"), dict) else {}
     if json_out:
         print_json(result)
     else:
-        sources = [public_source(r) for r in result.get("sources") or [] if isinstance(r, dict)]
-        body = {"content": result_text(result), "sources": sources, "next": result.get("next")}
-        sys.stdout.write(render("knowledge_base", body).rstrip() + "\n")
+        sources = [
+            with_read_call(public_source(r), r)
+            for r in result.get("sources") or []
+            if isinstance(r, dict)
+        ]
+        body = {
+            "content": result_text(result),
+            "coverage": result.get("coverage"),
+            "sources": sources,
+            "next": result.get("next"),
+        }
+        # The door names its next calls as an MCP client makes them; a terminal
+        # reads them as the `beakr kb ...` commands that do the same.
+        call = DoorCall(command, {**arguments, "scope": scope}, flags=flags)
+        # The reply quotes what other people wrote: nothing in it reaches the
+        # terminal as a raw control, bidirectional or zero-width character.
+        sys.stdout.write(visible(shell_reply("knowledge_base", body, call).rstrip()) + "\n")
     if outcome.get("status") == "error":
         raise typer.Exit(1)
 
@@ -422,16 +663,46 @@ def blame(
 @app.command()
 def log(
     page: str | None = typer.Argument(None, help="Page title or UUID. Omit for global."),
+    by: str | None = author.by_opt,
+    via: str | None = author.via_opt,
+    kind: str | None = author.kind_opt,
+    accepted_by: str | None = author.accepted_by_opt,
+    since: str | None = author.since_opt,
+    until: str | None = author.until_opt,
+    offset: int | None = typer.Option(
+        None, "--offset", min=0, help="The first revision to return (a cut reply names it)."
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Show revision history for a page, or recent revisions across the knowledge base."""
+    """Show revision history for a page, or recent revisions across the knowledge base.
+
+    --by, --via, --kind, --accepted-by, --since and --until keep the revisions
+    a person or an agent wrote, for one page or across the scope. The filtered
+    history is the Knowledge door's `log`: it opens with the filters applied,
+    and a cut one names the --offset that continues it.
+    """
+    filters = author.history_arguments(
+        by=by,
+        via=via,
+        kind=kind,
+        accepted_by=accepted_by,
+        since=since,
+        until=until,
+        offset=offset,
+    )
     if page:
         page_data = _resolve_page(page, project=project, mine=mine)
         if not page_data:
             return
         page_id = page_data["id"]
+        if filters:
+            # The revisions route takes no author filter; the door's `log` does.
+            _door_read(
+                "log", project=project, mine=mine, json_out=json_out, page=str(page_id), **filters
+            )
+            return
         with get_sdk() as sdk:
             data = sdk.knowledge.pages.revisions(page_id)
         revisions = page_rows(data)
@@ -439,13 +710,13 @@ def log(
         if machine_output(revisions, json_out=json_out, lines=_revision_lines):
             return
 
-        columns = ["Rev", "Compiled By", "Summary", "Date"]
+        columns = ["Rev", "By", "Summary", "Date"]
         rows = []
         for r in revisions:
             rows.append(
                 [
                     str(r.get("revision", "")),
-                    r.get("compiled_by", "")[:30],
+                    revision_writer(r),
                     (r.get("summary", "") or "")[:50],
                     r.get("created_at", "")[:16] if r.get("created_at") else "",
                 ]
@@ -454,7 +725,7 @@ def log(
     else:
         # The Knowledge door's `log` with no page: recent revisions in scope,
         # printed as its text (piped too), not the reply's envelope.
-        _door_read("log", project=project, mine=mine, json_out=json_out)
+        _door_read("log", project=project, mine=mine, json_out=json_out, **filters)
 
 
 def _revision_lines(revisions: list[dict]) -> list[str]:
@@ -462,9 +733,8 @@ def _revision_lines(revisions: list[dict]) -> list[str]:
     lines = []
     for r in revisions:
         columns = [f"rev={r.get('revision', '')}", str(r.get("created_at") or "")[:16]]
-        by = r.get("editor_name") or r.get("compiled_by")
-        if by:
-            columns.append(f"by={cell(by)}")
+        # The person and their agent, not the storage stamp (`proposal:<uuid>`).
+        columns.append(f"by={cell(revision_writer(r), width=120)}")
         if r.get("summary"):
             columns.append(cell(r["summary"], width=200))
         lines.append("\t".join(columns))
@@ -531,18 +801,139 @@ def _print_documents(source_list: list[dict]) -> None:
 
 
 # ---------------------------------------------------------------------------
-# provenance
+# hover, links, timeline, provenance: the Knowledge door's graph and lineage reads
 # ---------------------------------------------------------------------------
+
+# Each is the door command of the same name, the one the MCP `knowledge_base`
+# tool runs, so a hint a read prints ("hover {page}", "links {page}
+# direction=out", "timeline {page}") is a command here too. `page` goes to the
+# door as given: it resolves a title, slug, UUID or `wiki:` key itself.
+
+
+@app.command()
+def hover(
+    page: str = typer.Argument(help="Page title, slug, UUID or wiki: key."),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """A page's type, summary, revision and counts: a cheap look before `kb cat`."""
+    _door_read("hover", project=project, mine=mine, json_out=json_out, page=page)
 
 
 @app.command()
 def provenance(
+    page: str = typer.Argument(help="Page title, slug, UUID or wiki: key."),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1, help="Max sections."),
+    after_section: str | None = typer.Option(
+        None, "--after-section", help="Continue after this section (as a cut reply names)."
+    ),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """Show each section's citations and their stance (support, qualifies, contradicts)."""
+    _door_read(
+        "provenance",
+        project=project,
+        mine=mine,
+        json_out=json_out,
+        page=page,
+        limit=limit,
+        after_section=after_section,
+    )
+
+
+@app.command()
+def links(
+    page: str = typer.Argument(help="Page title, slug, UUID or wiki: key."),
+    direction: str | None = typer.Option(
+        None,
+        "--direction",
+        "-d",
+        click_type=click.Choice(["in", "out"]),
+        help="in (default): pages that link to this one. out: the pages it links to.",
+    ),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1, help="Max links."),
+    offset: int | None = typer.Option(
+        None, "--offset", min=0, help="Links to skip (as a cut reply names)."
+    ),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """Show the pages that link to a page, or with --direction out the pages it links to."""
+    _door_read(
+        "links",
+        project=project,
+        mine=mine,
+        json_out=json_out,
+        page=page,
+        direction=direction,
+        limit=limit,
+        offset=offset,
+    )
+
+
+@app.command()
+def timeline(
+    page: str | None = typer.Argument(
+        None, help="Only this page's dated events (title, slug, UUID or wiki: key)."
+    ),
+    query: str | None = typer.Option(
+        None, "--query", "-q", help="Keyword filter (section titles, page titles, content)."
+    ),
+    start_date: str | None = typer.Option(None, "--start", help="Start date YYYY-MM-DD."),
+    end_date: str | None = typer.Option(None, "--end", help="End date YYYY-MM-DD."),
+    page_type: str | None = typer.Option(None, "--type", "-t", help="Filter by page type."),
+    include_content: bool = typer.Option(
+        False,
+        "--content",
+        "-c",
+        help="Include section markdown content.",
+    ),
+    limit: int | None = typer.Option(None, "--limit", "-n", min=1, help="Max events."),
+    cursor: str | None = typer.Option(
+        None, "--cursor", help="Continue a cut timeline (the cursor a reply names)."
+    ),
+    json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
+    project: str | None = _project_opt,
+    mine: bool = _mine_opt,
+) -> None:
+    """Dated events: one page's, or with no page every event in scope."""
+    _door_read(
+        "timeline",
+        project=project,
+        mine=mine,
+        json_out=json_out,
+        page=page,
+        timeline_query=query,
+        start_date=start_date,
+        end_date=end_date,
+        page_type=page_type,
+        include_content=True if include_content else None,
+        limit=limit,
+        cursor=cursor,
+    )
+
+
+# ---------------------------------------------------------------------------
+# The structured REST reads: unpublished (internal tree only)
+# ---------------------------------------------------------------------------
+
+# `kb provenance`, `kb links` and `kb timeline` are the Knowledge door's commands
+# above. These three return the REST routes' structured rows instead and are
+# registered in the full tree only (they are not in CORE_COMMANDS).
+
+
+@app.command("section-provenance")
+def section_provenance(
     page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Show section provenance rollups with inline citations and stance."""
+    """Section provenance as structured rollups (REST), with inline citations and stance."""
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
@@ -582,19 +973,14 @@ def provenance(
             )
 
 
-# ---------------------------------------------------------------------------
-# links (backlinks)
-# ---------------------------------------------------------------------------
-
-
 @app.command()
-def links(
+def backlinks(
     page: str = typer.Argument(help="Page title or UUID."),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Show pages that link to this page."""
+    """Pages that link to this page, as structured rows (REST)."""
     page_data = _resolve_page(page, project=project, mine=mine)
     if not page_data:
         return
@@ -616,13 +1002,8 @@ def links(
     print_table(columns, rows)
 
 
-# ---------------------------------------------------------------------------
-# timeline
-# ---------------------------------------------------------------------------
-
-
 @app.command()
-def timeline(
+def events(
     query: str | None = typer.Argument(
         None,
         help="Keyword filter (matches section titles, page titles, content).",
@@ -641,7 +1022,7 @@ def timeline(
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
 ) -> None:
-    """Query temporal events across the knowledge base by date range and keyword."""
+    """Dated events as structured rows (REST), by date range and keyword."""
     project_id = _project_id(project=project, mine=mine)
     with get_sdk() as sdk:
         data = sdk.knowledge.pages.timeline(
@@ -1133,6 +1514,11 @@ def _auto_approved(result: object, reply: str) -> bool:
     return _AUTO_APPROVE_REPLY in reply
 
 
+def _staged_id(staged: object) -> bool:
+    """Whether a write's reply names the proposal it staged."""
+    return isinstance(staged, dict) and bool(staged.get("id"))
+
+
 def _stage_new_page(
     *,
     title: str,
@@ -1172,18 +1558,21 @@ def _stage_new_page(
         )
         reply = result_text(result) if isinstance(result, dict) else str(result or "")
         staged = result.get("proposal") if isinstance(result, dict) else None
-        proposal = (
-            sdk.knowledge.proposals.show(str(staged["id"]))
-            if isinstance(staged, dict) and staged.get("id")
-            else None
+        # The reply as a terminal reads it: `accept_proposal` is `beakr kb proposals accept`.
+        shown = shell_acknowledgement(
+            reply,
+            DoorCall("new", proposal_id=str(staged["id"]) if _staged_id(staged) else None),
         )
+        proposal = sdk.knowledge.proposals.show(str(staged["id"])) if _staged_id(staged) else None
     if proposal is None:
-        if not machine_output(result, json_out=json_out, lines=lambda r: reply.splitlines()):
-            console.print(reply, markup=False)
+        if not machine_output(
+            result, json_out=json_out, lines=lambda r: visible(shown).split("\n")
+        ):
+            console.print(shown, markup=False)
         return None, False
-    if reply:
+    if shown:
         (console if output_mode(json_out) == "human" else err_console).print(
-            reply, markup=False, highlight=False
+            shown, markup=False, highlight=False
         )
     return proposal, _auto_approved(result, reply)
 
@@ -1327,11 +1716,55 @@ def proposals_list(
     cursor: str | None = typer.Option(
         None, "--cursor", help="The next page: the cursor a previous listing printed."
     ),
+    by: str | None = author.by_opt,
+    via: str | None = author.via_opt,
+    kind: str | None = author.kind_opt,
+    accepted_by: str | None = author.accepted_by_opt,
+    since: str | None = author.since_opt,
+    until: str | None = author.until_opt,
+    offset: int | None = typer.Option(
+        None,
+        "--offset",
+        min=0,
+        help="The first proposal to return (a cut filtered reply names it).",
+    ),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
 ) -> None:
-    """List wiki proposals, one page at a time (--cursor continues)."""
+    """List wiki proposals, one page at a time (--cursor continues).
+
+    --by, --via, --kind, --accepted-by, --since and --until keep the proposals
+    a person filed or an agent filed them through (--since and --until bound
+    when it was filed; --accepted-by lists accepted ones). The filtered listing
+    is the Knowledge door's `proposals`: it opens with the filters applied, and
+    a cut one names the --offset that continues it.
+    """
+    filters = author.history_arguments(
+        by=by,
+        via=via,
+        kind=kind,
+        accepted_by=accepted_by,
+        since=since,
+        until=until,
+        offset=offset,
+    )
+    if filters:
+        if cursor:
+            err_console.print(
+                "--cursor pages the unfiltered listing; a filtered one continues with --offset."
+            )
+            raise typer.Exit(EXIT_USAGE)
+        # The list route takes no author filter; the door's `proposals` does.
+        _door_print(
+            "proposals",
+            scope=_proposal_filter_scope(project, mine=mine).get("project_id"),
+            json_out=json_out,
+            status=status_filter,
+            limit=limit,
+            **filters,
+        )
+        return
     params: dict = {
         "status": status_filter,
         "limit": limit,

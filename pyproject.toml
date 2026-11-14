@@ -81,6 +81,9 @@ select = ["E", "F", "I", "UP"]
 # expressions are left whole, its imports keep the generator's order, and the
 # freshness test requires the exact output.
 "src/beakr_cli/_private_api/_generated/*" = ["E501", "I001"]
+# Carries the engine's hosted renderer byte for byte from ``organization_line``
+# on (tests/test_mcp_render_matches_engine.py); the engine allows longer lines.
+"src/beakr_cli/mcp_render.py" = ["E501"]
 
 [tool.ruff.format]
 exclude = ["src/beakr_cli/_private_api/_generated/*"]

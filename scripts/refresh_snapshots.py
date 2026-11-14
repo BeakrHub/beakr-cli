@@ -21,7 +21,7 @@ holds only the operations on ``src/beakr_cli/_private_api/operations.allowlist``
 and the schemas they use. Where a test needs a fact from an engine source file
 rather than the file, ``derived/`` holds just that fact, computed by the same
 function the test applies to a real checkout (``mcp_result_helpers``,
-``keyed_creates``).
+``workspace_line``, ``keyed_creates``).
 
 When ``release/released.json`` names the engine commit of the last release,
 ``release-base/<commit>/`` holds that commit's public contract and API
@@ -62,6 +62,10 @@ FORMATTING = "beakr/api/mcp_remote/formatting.py"
 IDEMPOTENCY_TESTS = "tests/api/test_public_create_idempotency.py"
 #: The part of FORMATTING that src/beakr_cli/mcp_result.py copies.
 MCP_RESULT_HELPERS = "derived/mcp_result_helpers.py.txt"
+#: The engine module that says which environment and organization answered.
+WORKSPACE_IDENTITY = "beakr/services/workspace_identity.py"
+#: The one function of WORKSPACE_IDENTITY that src/beakr_cli/mcp_workspace.py copies.
+WORKSPACE_LINE = "derived/workspace_line.py.txt"
 #: The engine's keyed creates that the CLI can call (documented or allowlisted).
 REPLAYING_CREATES = "derived/replaying-creates.json"
 
@@ -79,6 +83,11 @@ def mcp_result_helpers(formatting: str) -> str:
             formatting, "#: Character caps that differ from ``MAX_TEXT_CHARS``", "def error_text("
         )
     ).rstrip() + "\n"
+
+
+def workspace_line(workspace_identity: str) -> str:
+    """``workspace_line`` of the engine's ``workspace_identity.py``: the "Connected to" sentence."""
+    return workspace_identity[workspace_identity.index("def workspace_line(") :].rstrip() + "\n"
 
 
 def keyed_creates(idempotency_tests: str) -> set[str]:
@@ -112,6 +121,10 @@ def _cli_private(engine: Path) -> str:
 
 def _mcp_result_helpers(engine: Path) -> str:
     return mcp_result_helpers((engine / FORMATTING).read_text())
+
+
+def _workspace_line(engine: Path) -> str:
+    return workspace_line((engine / WORKSPACE_IDENTITY).read_text())
 
 
 def _replaying_creates(engine: Path) -> str:
@@ -165,12 +178,20 @@ SOURCES = (
             # The integrations tool's text: the stdio server carries a copy
             # (test_mcp_integration_results_match_engine).
             "beakr/api/mcp_remote/integration_results.py",
+            # How a typed project name is matched and which names a refusal
+            # suggests: the stdio server carries a copy
+            # (test_project_scope_names_match_engine).
+            "beakr/services/project_scope_names.py",
+            # The read tools a printed integrations call may name: the CLI
+            # carries the list (test_the_read_tools_are_the_engines).
+            "beakr/engines/tools/graph/native_source_fetch.py",
             # The compatibility rules scripts/contract_compat.py vendors.
             "beakr/api/public/compat.py",
         ),
         derived={
             CLI_PRIVATE: (_cli_private, (INTERNAL, PUBLIC)),
             MCP_RESULT_HELPERS: (_mcp_result_helpers, (FORMATTING,)),
+            WORKSPACE_LINE: (_workspace_line, (WORKSPACE_IDENTITY,)),
             REPLAYING_CREATES: (_replaying_creates, (IDEMPOTENCY_TESTS, PUBLIC)),
         },
         release_base=True,

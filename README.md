@@ -504,6 +504,33 @@ with its options in `arguments` and `connector_id` when a service is connected
 twice. A call answers the tool's text and a Sources list whose `source_ref` a
 Knowledge write accepts as a citation. The hosted MCP server has the same tool.
 
+An agent can also set a project up, with the person's agreement. The hosted
+MCP server has the same five tools; only `upload_files` takes different
+arguments there (`files` with each file's content, at most 20 files and about
+3.5 MB a call, since it cannot read your disk):
+
+- `create_project` (`name`, `description`) creates a project. A name already
+  in use is not created twice. If the organization requires a Knowledge
+  profile, the answer says so.
+- `set_project_profile` (`project`, `entity_types`, `goals`, `focus_areas`,
+  `description`, `industry`, `extraction_guidance`, `core_people`,
+  `core_organizations`, `core_topics`) writes the project's Knowledge
+  profile, the non-interactive `beakr projects profile set`. A first profile
+  needs `entity_types`. After that, only the fields given change.
+- `upload_files` (`project`, `paths`, `folder_id`, `knowledge`,
+  `resume_upload_id`) uploads local files and folders, the way `beakr upload`
+  does. A folder keeps its subfolders, and each file goes through the resumable
+  upload. It answers within about 40 seconds. A larger upload carries on in the
+  server, and `upload_status` (`upload_id`) reports it, because Codex ends a
+  tool call after 60 seconds by default. Hidden files, a home folder's hidden
+  folders (`~/.config`, `~/.ssh`...), `.git` and key or credential files are
+  never uploaded from here.
+- `add_project_member` (`project`, `person`, `role`) adds an organization member
+  by email, user id or exact name. Anyone else is sent a project invitation by
+  email, which works for the organization's own sign-in domains only.
+  Organization invitations stay in the web app (Settings, Members) and in
+  `beakr members invite`: no MCP tool sends one.
+
 The MCP server lists every tool: Claude Code calls only the tools a server
 lists. For a smaller listing, set `BEAKR_MCP_TOOLS=eager` in the server's
 environment (for example `"env": {"BEAKR_MCP_TOOLS": "eager"}` in the MCP
@@ -645,6 +672,10 @@ beakr kb search "authentication flow"
 beakr documents search "who covers losses from defects"   # the original files, by meaning
 beakr kb sources "API Design"
 beakr kb log
+# History, proposals and listings filter by who wrote a change and through which agent
+beakr kb log --by "Ali Chen" --via codex --since 2026-11-09
+beakr kb proposals ls --via claude-code --accepted-by auto-approve
+beakr kb ls --changed-by me --changed-since 2026-11-09
 
 # Ask a question
 beakr research "what's our deploy process?"

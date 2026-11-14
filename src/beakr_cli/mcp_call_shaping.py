@@ -64,6 +64,9 @@ PROJECT_PARAMETER: dict[str, str] = {
     "import_conversation": "project",
     "workboard": "project",
     "get_profile": "project_id",
+    "set_project_profile": "project",
+    "upload_files": "project",
+    "add_project_member": "project",
 }
 
 
