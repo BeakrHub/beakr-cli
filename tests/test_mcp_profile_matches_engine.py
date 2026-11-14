@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 
 from beakr_cli.mcp_server import _profile_text
-from tests._engine import engine_checkout, is_snapshot
+from tests._engine import engine_checkout
 
 SAMPLES: list[tuple[Any, str]] = [
     ({"name": "", "description": "Assays."}, "project"),
@@ -36,8 +36,6 @@ def test_a_profile_without_a_name_is_untitled(data):
 
 def test_the_profile_text_is_the_engines():
     path = engine_checkout("beakr/api/mcp_remote/formatting.py")
-    if is_snapshot(path.parents[3]):
-        pytest.skip("the snapshot carries no formatting.py")
     source = path.read_text()
     start = source.index("\ndef profile(")
     end = source.index("\ndef ", start + 1)
