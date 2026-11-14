@@ -6,7 +6,9 @@ The hosted MCP server has the same five tools (beakr-engine
 from the shared agent tool surface (:mod:`beakr_cli.tool_surface`). The upload pair
 differs by design: this server reads the person's own disk (``paths``) and keeps a long
 upload running in this process, where the hosted server takes a file's content in the
-call (``files``) and reports one stored upload.
+call (``files``) and reports one stored upload. This server takes ``files`` (and
+``folder``) too, with the hosted server's checks, so a call written for either works on
+both; ``resume_upload_id`` (finishing one interrupted local file) is this server's only.
 
 Under a session (:mod:`beakr_cli.scope_session`) the API holds every call to the
 projects the person chose: an upload, a profile or a member needs a project the session
@@ -25,11 +27,15 @@ far; ``upload_status`` reports the rest.
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
+import shutil
+import tempfile
 import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 from beakr_sdk.errors import BeakrError, BeakrUploadInterrupted
 from beakr_sdk.resources._upload import (
@@ -329,6 +335,8 @@ class _Upload:
     started: float = field(default_factory=time.monotonic)
     finished: float | None = None
     task: asyncio.Task | None = None
+    #: Where the call's inline ``files`` were written; removed when the upload ends.
+    scratch: Path | None = None
 
 
 #: Uploads this server has run, by id, for ``upload_status``.
@@ -449,6 +457,8 @@ async def _run_upload(upload: _Upload) -> None:
                 call_api, upload.project_id, [str(row["file_id"]) for row in upload.sent]
             )
         upload.finished = time.monotonic()
+        if upload.scratch is not None:
+            shutil.rmtree(upload.scratch, ignore_errors=True)
 
 
 async def _report_progress(upload: _Upload) -> None:
@@ -466,9 +476,91 @@ async def _report_progress(upload: _Upload) -> None:
         return
 
 
+class InlineFile(TypedDict, total=False):
+    """One file sent in the call, as the hosted server takes it: a name and its content once."""
+
+    name: str
+    text: str
+    content_base64: str
+
+
+def _inline_parts(value: str) -> list[str]:
+    """``value``'s folder parts: no empty, ``.`` or ``..`` part (nothing leaves the folder)."""
+    return [
+        part
+        for part in str(value or "").replace("\\", "/").split("/")
+        if part not in ("", ".", "..")
+    ]
+
+
+def _inline(
+    files: list[InlineFile], folder: str
+) -> tuple[Path | None, list[_Item], list[dict[str, Any]], dict[str, Any] | None]:
+    """The call's ``files``, written under a private folder laid out as ``folder/name``.
+
+    Checked as the hosted server checks them (``project_uploads._decoded``, the same
+    words): each has a name and exactly one of ``text`` and ``content_base64``, which
+    must be base64; an empty file is skipped. A file under ``folder`` (or a name with
+    folders) is uploaded as a folder upload is, so its folders are made in the project.
+    """
+    scratch = Path(tempfile.mkdtemp(prefix="beakr-mcp-upload-"))
+    items: list[_Item] = []
+    skipped: list[dict[str, Any]] = []
+    base = _inline_parts(folder)
+    for position, entry in enumerate(files):
+        name = str(entry.get("name") or "").strip() if isinstance(entry, dict) else ""
+        refusal = None
+        if not name:
+            refusal = _error(
+                "invalid_arguments",
+                f"files[{position}] has no name.",
+                "Give each file a name with its extension, for example notes.md.",
+            )
+        else:
+            text, encoded = entry.get("text"), entry.get("content_base64")
+            if (text is None) == (encoded is None):
+                refusal = _error(
+                    "invalid_arguments",
+                    f"{name} needs its content once: `text` for a text file or "
+                    "`content_base64` for any other.",
+                    "Pass exactly one of text and content_base64 for each file.",
+                )
+            elif text is not None:
+                content = str(text).encode("utf-8")
+            else:
+                try:
+                    content = base64.b64decode(str(encoded), validate=True)
+                except (binascii.Error, ValueError):
+                    refusal = _error(
+                        "invalid_arguments",
+                        f"content_base64 of {name} is not base64.",
+                        "Encode the file's bytes as standard base64, with no line breaks.",
+                    )
+        if refusal is not None:
+            shutil.rmtree(scratch, ignore_errors=True)
+            return None, [], [], refusal
+        parts = [*base, *_inline_parts(name)]
+        if not content or not _inline_parts(name):
+            skipped.append({"path": name, "reason": "empty file"})
+            continue
+        path = scratch.joinpath(*parts)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+        root = scratch / parts[0] if len(parts) > 1 else None
+        items.append(_Item(path, root, len(content)))
+    return scratch, items, skipped, None
+
+
+def _discard(scratch: Path | None) -> None:
+    if scratch is not None:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+
 async def upload_files(
     project: str,
-    paths: list[str],
+    paths: list[str] | None = None,
+    files: list[InlineFile] | None = None,
+    folder: str = "",
     folder_id: str = "",
     knowledge: bool = True,
     resume_upload_id: str = "",
@@ -483,12 +575,31 @@ async def upload_files(
     refusal = await _write_refusal(project_id, project_name)
     if refusal is not None:
         return refusal
-    if not paths:
-        return _error("invalid_arguments", "No paths given.", "Pass paths: files or folders.")
+    paths = list(paths or [])
+    if not paths and not files:
+        return _error(
+            "invalid_arguments",
+            "No paths or files given.",
+            "Pass paths: files or folders on this computer; or files: a list of {name, text} "
+            "or {name, content_base64}.",
+        )
     if resume_upload_id:
+        if files:
+            return _error(
+                "invalid_arguments",
+                "resume_upload_id finishes one interrupted local file; it takes no files.",
+                "Pass the one path that was interrupted, without files.",
+            )
         return await _resume(resume_upload_id, paths, project_name)
     items, skipped = _gather(paths)
+    scratch = None
+    if files:
+        scratch, inline, inline_skipped, refused = _inline(list(files), folder)
+        if refused is not None:
+            return refused
+        items, skipped = [*items, *inline], [*skipped, *inline_skipped]
     if len(items) > MAX_UPLOAD_FILES:
+        _discard(scratch)
         return _error(
             "too_many_files",
             f"{len(items)} files is more than one call uploads ({MAX_UPLOAD_FILES}).",
@@ -496,6 +607,7 @@ async def upload_files(
             f"`beakr upload PATH --project {project_id}` in a terminal.",
         )
     if not items:
+        _discard(scratch)
         return _error(
             "nothing_to_upload",
             "None of the paths is a file that can be uploaded.",
@@ -505,6 +617,7 @@ async def upload_files(
         )
     total_bytes = sum(item.size for item in items)
     if total_bytes > MAX_UPLOAD_BYTES:
+        _discard(scratch)
         return _error(
             "upload_too_large",
             f"{_size(total_bytes)} in {len(items)} files is more than one call uploads "
@@ -521,6 +634,7 @@ async def upload_files(
         ingest=knowledge,
         items=items,
         total_bytes=total_bytes,
+        scratch=scratch,
     )
     _UPLOADS[upload.id] = upload
     # Not the call's own task: a client that gives up on the call (Codex after 60

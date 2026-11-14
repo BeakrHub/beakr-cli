@@ -821,17 +821,17 @@ async def knowledge_base(
 @mcp.tool(**tool_surface.tool_kwargs("wiki_stats"))
 async def wiki_stats(
     project: str | None = None,
-    project_id: str = "",
 ) -> str:
     """Show knowledge base statistics: live pages, and page-to-source citations.
 
     Args:
         project: Project name or ID to scope the stats. Omit for everything you can see.
-        project_id: Deprecated alias for project.
+            ``project_id`` and ``scope`` are read as it too (mcp_call_shaping), unlisted,
+            as on the hosted server.
     """
     from beakr_cli import mcp_graph
 
-    scoped = await _project_by_name_or_id(project, project_id)
+    scoped = await _project_by_name_or_id(project)
     data = await _call_api(lambda sdk: sdk.knowledge.pages.stats(project_id=scoped))
     return mcp_graph.stats(data if isinstance(data, dict) else {})
 
@@ -839,7 +839,6 @@ async def wiki_stats(
 @mcp.tool(**tool_surface.tool_kwargs("wiki_graph"))
 async def wiki_graph(
     project: str | None = None,
-    project_id: str = "",
 ) -> dict[str, Any]:
     """Get a summary of the knowledge base graph structure.
 
@@ -849,11 +848,11 @@ async def wiki_graph(
 
     Args:
         project: Project name or ID to scope the graph. Omit for everything you can see.
-        project_id: Deprecated alias for project.
+            ``project_id`` and ``scope`` are read as it too, unlisted.
     """
     from beakr_cli import mcp_graph
 
-    scoped = await _project_by_name_or_id(project, project_id)
+    scoped = await _project_by_name_or_id(project)
     data = await _call_api(
         lambda sdk: sdk.knowledge.pages.graph(
             project_id=scoped, max_nodes=mcp_graph.GRAPH_MAX_NODES
@@ -908,7 +907,6 @@ async def documents(
 async def research(
     query: str,
     project: str = "",
-    project_id: str = "",
     quick: bool = True,
     sources: SourceMode = DEFAULT_SOURCE_MODE,
 ) -> dict:
@@ -938,9 +936,8 @@ async def research(
 
     Args:
         query: The question to answer.
-        project: Optional project name or ID to scope the search. ``scope`` is
-            read as the same argument.
-        project_id: Deprecated alias for project.
+        project: Optional project name or ID to scope the search. ``scope`` and
+            ``project_id`` are read as the same argument.
         quick: True (default) for a short cited answer within 15 seconds from
             one search of Knowledge and documents; False for the full
             researcher, which also reads connected services.
@@ -955,7 +952,7 @@ async def research(
         with_cited_labels,
     )
 
-    scoped = await _project_by_name_or_id(project, project_id)
+    scoped = await _project_by_name_or_id(project)
     started = time.monotonic()
     try:
         data = await _call_api(
