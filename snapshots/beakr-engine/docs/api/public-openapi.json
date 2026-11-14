@@ -3800,7 +3800,7 @@
               }
             ],
             "default": null,
-            "description": "`grep` and `search`: whether the answer is complete, and the next call."
+            "description": "`grep`, `read` and `search`: whether the answer is complete, and the next call."
           },
           "error_code": {
             "anyOf": [
@@ -3814,6 +3814,20 @@
             "default": null,
             "description": "When `is_error`: `invalid_arguments`, `invalid_pattern`, `document_not_found`, `timeout` or `scope_unavailable`.",
             "title": "Error Code"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`read` of a reference with a place (`memo.pdf \u203a p. 7`): the file opened (`id`, `version_id`, `display_path`). The content is then the text around that place, as `POST /v1/artifacts/read` returns it.",
+            "title": "File"
           },
           "is_error": {
             "default": false,
@@ -3836,6 +3850,22 @@
             "default": null,
             "description": "`search` only: what the response budget left out, and how to get it.",
             "title": "Next"
+          },
+          "next_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NextCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.",
+            "title": "Next Calls"
           },
           "results": {
             "anyOf": [
@@ -5116,6 +5146,15 @@
             ],
             "title": "Has More",
             "type": "boolean"
+          },
+          "next_calls": {
+            "description": "The calls that read on, as data ({tool, command, arguments, why}), so a client never builds one from next_offset and next_reference itself: read_file with the same reference and next_offset, then read_file with next_reference. Empty when nothing follows.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Next Calls",
+            "type": "array"
           },
           "next_offset": {
             "anyOf": [
@@ -10246,6 +10285,58 @@
         "title": "ModelRefusalSummary",
         "type": "object"
       },
+      "NextCall": {
+        "description": "One call a `next` step names, as data, so a client never parses the sentence.",
+        "properties": {
+          "arguments": {
+            "additionalProperties": true,
+            "description": "The call's exact arguments, as that REST request takes them: a Knowledge command's options flat, `scope` included; a documents command's options, with `project` beside them when the request named one; `reference` and `offset` for `read_file`. A value the caller must fill is the string `<name>`, e.g. `<page>` or `<section_id>`. A call that continues a partial result is the request's own arguments with `coverage.continue_with` over them.",
+            "title": "Arguments",
+            "type": "object"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The tool's command: a `knowledge_base` or `documents` command (`cat`, `rows`, `grep`), the action of a `knowledge_base_write` (`add_finding`), `call` for `integrations`; null for a tool that has none.",
+            "title": "Command"
+          },
+          "tool": {
+            "description": "The tool to call, by the name both MCP servers give it. Over REST: `knowledge_base` is `POST /v1/knowledge/wiki/command`, `knowledge_base_write` is `POST /v1/knowledge/wiki/write`, `documents` is `POST /v1/knowledge/documents`, `read_file` is `POST /v1/artifacts/read`, `research` is `POST /v1/knowledge/research`, `integrations` is the integrations call route, `show_proposal` and `accept_proposal` are the proposals routes and `list_projects` is `GET /v1/projects`.",
+            "enum": [
+              "knowledge_base",
+              "knowledge_base_write",
+              "documents",
+              "read_file",
+              "integrations",
+              "research",
+              "accept_proposal",
+              "show_proposal",
+              "list_projects"
+            ],
+            "title": "Tool",
+            "type": "string"
+          },
+          "why": {
+            "description": "What the call is for, in one short sentence.",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "command",
+          "arguments",
+          "why"
+        ],
+        "title": "NextCall",
+        "type": "object"
+      },
       "ObjectPage": {
         "properties": {
           "data": {
@@ -12576,6 +12667,22 @@
             "description": "Present when the response budget shortened or left out excerpts: how to read a cited passage in full.",
             "title": "Next"
           },
+          "next_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NextCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.",
+            "title": "Next Calls"
+          },
           "not_checked": {
             "anyOf": [
               {
@@ -14879,7 +14986,7 @@
               }
             ],
             "default": null,
-            "description": "Where the source lives, for a reader to go to: a Beakr file's path (the uploader's recorded path or `relative_path`, else its folder path in its project plus its name, e.g. `deals/acme/Closing/schedule.xlsx`), a connected file's path in its service, or a connected item's place there (`#channel`, `subject \u00b7 from sender \u00b7 date`, an issue's key and summary). Present only for sources the caller can read; for a file, `read_file` accepts it, alone or with ` \u203a ` and the `unit_locator` (connected items are not stored as files: use the excerpt and `url`).",
+            "description": "Where the source lives, for a reader to go to: a Beakr file's path (the uploader's recorded path or `relative_path`, else its folder path in its project plus its name, e.g. `deals/acme/Closing/schedule.xlsx`), a connected file's path in its service, or a connected item's place there (`#channel`, `subject \u00b7 from sender \u00b7 date`, an issue's key and summary). Present only for sources the caller can read; for a file, `read_file` accepts it, alone or with ` \u203a ` and the `unit_locator` (connected items are not files: re-read one with the `integrations` call in its `retrieval`).",
             "title": "Display Path"
           },
           "file_id": {
@@ -17245,9 +17352,31 @@
             "title": "Next",
             "type": "array"
           },
+          "next_calls": {
+            "description": "The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.",
+            "items": {
+              "$ref": "#/components/schemas/NextCall"
+            },
+            "title": "Next Calls",
+            "type": "array"
+          },
           "outcome": {
             "$ref": "#/components/schemas/WikiToolOutcome",
             "description": "How it turned out."
+          },
+          "outline": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`cat` with `outline` only: the page's outline as data (`title`, `page_type`, `revision`, `summary`, `sections` with each `section_id`, `title`, `lines`, `chars` and `citations`, and `edges`). The text prints the same outline as lines.",
+            "title": "Outline"
           },
           "query": {
             "anyOf": [
@@ -19362,6 +19491,22 @@
             },
             "title": "Content",
             "type": "array"
+          },
+          "next_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NextCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whenever a proposal was staged: the calls that follow it, as data. `show_proposal` confirms what happened to it; `accept_proposal` is listed only while it waits (`pending`), and is made only when the person asks.",
+            "title": "Next Calls"
           },
           "outcome": {
             "$ref": "#/components/schemas/WikiToolOutcome",
