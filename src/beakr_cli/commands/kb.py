@@ -1616,6 +1616,8 @@ def _stage_new_page(
             # The reply's next steps as data, from an engine that sends them.
             _, block = next_lines(result, wrote, tool="knowledge_base_write")
             shown = "\n\n".join(part for part in (shown, "\n".join(block)) if part)
+        # The reply quotes what people wrote: shown, never obeyed by the terminal.
+        shown = visible(shown)
         proposal = sdk.knowledge.proposals.show(str(staged["id"])) if _staged_id(staged) else None
     if proposal is None:
         if not machine_output(

@@ -166,6 +166,7 @@ def version(
     from beakr_cli import __version__
     from beakr_cli.mcp_workspace import connected_line_now
     from beakr_cli.output import print_json
+    from beakr_cli.terminal_text import visible
     from beakr_cli.updates import (
         BOX_INSTRUCTIONS,
         CHECK_OFF,
@@ -207,7 +208,8 @@ def version(
     # upgraded binary to confirm what is now on PATH.
     print(f"beakr-cli {__version__}")
     if connected:
-        print(connected)
+        # The organization's name is whatever its admin typed: shown, never obeyed.
+        print(visible(connected))
     if offline:
         return
     if on_box:

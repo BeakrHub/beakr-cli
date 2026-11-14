@@ -32,6 +32,7 @@ from typing import Any
 import typer
 
 from beakr_cli.project_scope_names import closest_project_names
+from beakr_cli.terminal_text import visible
 
 #: Project option flags shared by every command; ``--scope`` is the MCP's word.
 PROJECT_FLAGS = ("--project", "-P", "--scope")
@@ -79,7 +80,8 @@ class ProjectNotResolved(ValueError):
             message = (
                 f"No project with id, name or slug {given!r}. List them with `beakr projects ls`."
             )
-        super().__init__(message)
+        # Project names are what people typed: shown, never obeyed by the terminal.
+        super().__init__(visible(message))
 
 
 def _unique(projects: list[dict[str, Any]]) -> list[dict[str, Any]]:

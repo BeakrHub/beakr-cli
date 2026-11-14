@@ -288,7 +288,7 @@ def _next(data: dict, call: DoorCall | None) -> list[str]:
     commands instead (:func:`beakr_cli.kb_shell_hints.next_lines`).
     """
     prose, block = next_lines(data, call, tool="documents")
-    return [*prose, *(visible(line) for line in block)]
+    return [visible(line) for line in (*prose, *block)]
 
 
 def _lines(data: dict, call: DoorCall | None = None) -> list[str]:

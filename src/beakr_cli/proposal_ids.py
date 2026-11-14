@@ -18,6 +18,7 @@ from beakr_sdk.errors import NotFoundError
 
 from beakr_cli.errors import EXIT_USAGE
 from beakr_cli.output import err_console, page_rows
+from beakr_cli.terminal_text import visible
 
 __all__ = ["resolve_proposal_id"]
 
@@ -87,9 +88,13 @@ def resolve_proposal_id(sdk: Any, given: str, *, pending_only: bool = False) -> 
             fix="List them with `beakr kb proposals ls` (add --status accepted for applied ones).",
         )
     err_console.print(
-        f"{len(matches)} proposals have an id starting with {given!r}; give more of the id:",
+        f"{len(matches)} proposals have an id starting with {visible(given)!r}; "
+        "give more of the id:",
         markup=False,
     )
     for proposal in matches.values():
-        err_console.print(f"  {_label(proposal)}", markup=False, highlight=False, soft_wrap=True)
+        # A page title is what someone wrote: shown, never obeyed by the terminal.
+        err_console.print(
+            f"  {visible(_label(proposal))}", markup=False, highlight=False, soft_wrap=True
+        )
     raise typer.Exit(EXIT_USAGE)

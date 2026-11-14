@@ -120,8 +120,10 @@ def context(
     # The sentence the MCP `context` tool opens with: which Beakr and which
     # organization this context comes from (sandbox run, 2026-11-14).
     from beakr_cli.mcp_workspace import workspace_prefix
+    from beakr_cli.terminal_text import visible
 
-    content = workspace_prefix(result) + content
+    # The organization's name is whatever its admin typed: shown, never obeyed.
+    content = visible(workspace_prefix(result)) + content
     sys.stdout.write(content if content.endswith("\n") else content + "\n")
 
 

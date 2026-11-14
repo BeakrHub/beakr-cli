@@ -135,7 +135,7 @@ def research_next(data: dict[str, Any], project: str | None = None) -> tuple[lis
     from beakr_cli.kb_shell_hints import next_lines
 
     prose, block = next_lines(data, DoorCall("research", {"scope": project}), tool="research")
-    return prose, [visible(line) for line in block]
+    return [visible(line) for line in prose], [visible(line) for line in block]
 
 
 def research_lines(data: dict[str, Any], project: str | None = None) -> list[str]:
