@@ -47,8 +47,17 @@ _MAX_AGENT_CHARS = 200
 _UNSAFE_AGENT_CHARS = re.compile(r"[^A-Za-z0-9._:@+/ -]+")
 
 
+#: MCP clientInfo names that are not the agent's own slug, and the slug the
+#: engine names the agent by (``citation_filer._AGENT_NAMES``: ``codex`` reads as
+#: "Codex"). Codex's MCP client declares ``codex-mcp-client``, which the engine
+#: printed as it is. The slug, not the display name, is sent: ``--via codex``
+#: and every other ``via`` filter match the stored label by prefix.
+_AGENT_SLUGS = {"codex-mcp-client": "codex"}
+
+
 def client_agent(name: str | None, version: str | None) -> str | None:
     """``name/version`` from an MCP clientInfo, as a header-safe agent label."""
+    name = _AGENT_SLUGS.get(str(name or "").strip().lower(), name)
     parts = [_UNSAFE_AGENT_CHARS.sub("-", str(part or "")).strip(" -") for part in (name, version)]
     if not parts[0]:
         return None
@@ -56,9 +65,35 @@ def client_agent(name: str | None, version: str | None) -> str | None:
     return label[:_MAX_AGENT_CHARS]
 
 
+#: The agent whose session variable is set, for the CLI run by an agent: its
+#: slug as the engine names it ("Claude Code", "Codex", "Cursor"). The same
+#: variables ``SESSION_ENV`` reads; nothing else is taken as evidence of an
+#: agent, so a person's own terminal declares none.
+_SESSION_AGENTS = (
+    ("CLAUDE_CODE_SESSION_ID", "claude-code"),
+    ("CODEX_THREAD_ID", "codex"),
+    ("CURSOR_CONVERSATION_ID", "cursor"),
+)
+
+
+def _environment_agent() -> str | None:
+    """The agent that ran this command, from the session variable it sets; else None."""
+    for variable, agent in _SESSION_AGENTS:
+        if os.environ.get(variable, "").strip():
+            return agent
+    return None
+
+
 def _agent() -> str | None:
-    """``BEAKR_AGENT`` when set, else the MCP client being answered (none at a terminal)."""
-    return os.environ.get("BEAKR_AGENT") or MCP_CLIENT_AGENT.get()
+    """Who is acting, for ``X-Beakr-Agent``: never invented.
+
+    ``BEAKR_AGENT`` when set; else the MCP client being answered (its
+    ``initialize`` clientInfo); else the agent whose session variable is set
+    (the CLI run by Claude Code, Codex or Cursor: the engine printed
+    ``beakr-cli 0.6.0`` where the agent belongs, sandbox run 2026-11-14); else
+    none, for a person at their own terminal.
+    """
+    return os.environ.get("BEAKR_AGENT") or MCP_CLIENT_AGENT.get() or _environment_agent()
 
 
 #: Where the agent session behind a request is named, first set wins: an explicit

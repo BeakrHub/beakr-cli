@@ -265,7 +265,7 @@ def test_a_title_quoted_in_a_next_step_is_not_read_as_a_call(title: str) -> None
 
 def test_a_write_action_or_door_command_is_one_the_tool_surface_names() -> None:
     assert shell_hint("Fix it with knowledge_base_write action='edit_rows'.") == (
-        "Fix it with `beakr api knowledge run-wiki-write --action edit_rows`."
+        "Fix it with `beakr api knowledge run-wiki-write --action edit_rows` (prints JSON)."
     )
     unknown = "Fix it with knowledge_base_write action='delete_page'."
     assert shell_hint(unknown) == unknown

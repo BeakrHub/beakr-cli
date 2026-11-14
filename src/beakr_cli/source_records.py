@@ -73,8 +73,29 @@ def native_read_call(retrieval: object) -> dict[str, Any] | None:
 def with_read_call(record: dict[str, Any], source: dict[str, Any]) -> dict[str, Any]:
     """``record`` (a public source built from ``source``) with its read call, when it has one.
 
-    A no-op once the installed SDK forwards the call itself.
+    The one workaround this CLI keeps for an SDK that does not forward the call,
+    and the only place it lives:
+
+    - ``beakr-sdk`` 0.2.x drops a connected item's ``retrieval`` from the record:
+      it is added here from ``source`` (:func:`native_read_call`).
+    - ``beakr-sdk`` 0.3.0 forwards it itself: the record already has it, and it
+      is kept as the SDK built it when it meets this module's rule. The SDK does
+      not test that the tool and argument names are plain identifiers, which the
+      Sources line and the printed command rely on, so a read call that fails
+      the rule is dropped here rather than printed.
+
+    A file's download ``handle`` is the SDK's to forward and is never touched.
+    ``tests/test_source_records_sdk_shapes.py`` runs both SDK shapes.
     """
-    if "retrieval" not in record and (call := native_read_call(source.get("retrieval"))):
-        record["retrieval"] = call
+    forwarded = record.get("retrieval")
+    if forwarded is None:
+        call = native_read_call(source.get("retrieval"))
+        if call:
+            record["retrieval"] = call
+        return record
+    arguments = forwarded.get("arguments") if isinstance(forwarded, dict) else None
+    if isinstance(arguments, dict) and "handle" in arguments:
+        return record
+    if native_read_call(forwarded) is None:
+        del record["retrieval"]
     return record

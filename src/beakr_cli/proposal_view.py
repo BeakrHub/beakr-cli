@@ -11,6 +11,7 @@ payload unchanged.
 from __future__ import annotations
 
 import difflib
+import re
 from typing import Any
 
 #: One rendered line and its Rich style (None for plain text).
@@ -107,9 +108,77 @@ def _object_lines(
     return lines
 
 
-def payload_lines(payload: dict[str, Any]) -> list[Line]:
-    """The payload's fields, a content change last as a diff, for a terminal."""
-    return _object_lines(payload, "", skip=_HEADER_KEYS)
+def payload_lines(payload: dict[str, Any], *, raw: bool = False) -> list[Line]:
+    """The payload's fields, a content change last as a diff, for a terminal.
+
+    Page text is shown as a page read shows it (:func:`readable_payload`);
+    ``raw`` keeps it as stored, section markers and citation tokens included.
+    """
+    shown = payload if raw else readable_payload(payload)
+    return _object_lines(shown, "", skip=_HEADER_KEYS)
+
+
+# ---------------------------------------------------------------------------
+# Page text as a read shows it
+# ---------------------------------------------------------------------------
+
+#: The payload fields that hold page text as it is stored.
+_PAGE_TEXT_KEYS = frozenset(
+    {"content", "current_content", "proposed_content", "body", "new_section_body"}
+)
+_SECTION_MARKER = re.compile(r"[ \t]*<!--\s*sec:[^>\n]*-->[ \t]*\n?")
+_CITATION_TOKEN = re.compile(r"\{\{([^{}\n]+)\}\}")
+
+
+def _cited_titles(value: Any, titles: dict[str, str]) -> None:
+    """Every citation key the payload declares, with the title of what it cites."""
+    if isinstance(value, list):
+        for item in value:
+            _cited_titles(item, titles)
+    elif isinstance(value, dict):
+        key, title = value.get("key"), value.get("source_title")
+        if isinstance(key, str) and isinstance(title, str) and title.strip():
+            titles.setdefault(key.strip(), " ".join(title.split()))
+        for item in value.values():
+            _cited_titles(item, titles)
+
+
+def readable_text(text: str, titles: dict[str, str]) -> str:
+    """Stored page text as a page read prints it.
+
+    A ``<!-- sec:id -->`` marker is dropped (the section's id is on its own
+    line of the payload), and a ``{{key}}`` citation token reads as the
+    reference a read prints: the cited source's title in parentheses where the
+    payload declares it, else the key.
+    """
+
+    def cited(match: re.Match[str]) -> str:
+        key = match[1].strip()
+        return f"({titles.get(key, key)})"
+
+    return _CITATION_TOKEN.sub(cited, _SECTION_MARKER.sub("", text))
+
+
+def readable_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """``payload`` with its page text readable; every other field as it is.
+
+    ``beakr kb proposals show`` printed the stored text, with its section
+    markers and ``{{conversation:label}}`` tokens (sandbox run, 2026-11-14),
+    where every page read prints references a reader can follow.
+    """
+    titles: dict[str, str] = {}
+    _cited_titles(payload, titles)
+
+    def walk(value: Any, key: str | None = None) -> Any:
+        if isinstance(value, dict):
+            return {name: walk(item, name) for name, item in value.items()}
+        if isinstance(value, list):
+            return [walk(item, key) for item in value]
+        if isinstance(value, str) and key in _PAGE_TEXT_KEYS:
+            return readable_text(value, titles)
+        return value
+
+    return walk(payload)
 
 
 def filed_by_line(proposal: dict[str, Any]) -> str | None:

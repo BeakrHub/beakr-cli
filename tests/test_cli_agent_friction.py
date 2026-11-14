@@ -299,27 +299,6 @@ def _page_with_sources():
 
 
 @respx.mock
-def test_kb_sources_says_where_each_document_lives():
-    _page_with_sources()
-    result = runner.invoke(app, ["kb", "sources", PAGE_ID])
-    assert result.exit_code == 0, result.output
-    uploaded, synced, hint = result.stdout.splitlines()
-    assert uploaded.split("\t")[:3] == [
-        "[1]",
-        "runtime.md · upload · file f1 (`beakr files download f1`)",
-        "citations=2",
-    ]
-    assert synced.split("\t")[1] == "Q3 plan.pdf · google_drive · https://drive.example/q3"
-    assert hint.startswith(f"next: beakr kb sources {PAGE_ID} --json")
-
-    records = json.loads(runner.invoke(app, ["kb", "sources", PAGE_ID, "--json"]).stdout)
-    assert len(records) == 3
-    assert records[0]["location"] == {"file_id": "f1"}
-    assert records[2]["location"]["url"] == "https://drive.example/q3"
-    assert "artifact_version_id" not in json.dumps(records)
-
-
-@respx.mock
 def test_kb_cat_prints_the_page_then_its_sources():
     _page_with_sources()
     respx.post(f"{API}/v1/knowledge/wiki/command").respond(

@@ -15,7 +15,15 @@ decided by where the file is and what it is called, not by who asked:
   wherever it is and whether the call named it or a folder holding it. The
   working directory is no exception: an agent's can be ``/`` or the home folder;
 - a link inside a folder being uploaded that leads outside that folder is not
-  followed (:func:`outside_link`): a folder is what is in it.
+  followed (:func:`outside_link`): a folder is what is in it;
+- a link named directly whose target is outside the folder the link sits in is
+  not followed either (:func:`named_path_refusal`): ``link-out.txt`` pointing at
+  a file elsewhere sent that file under the link's name (sandbox run,
+  2026-11-14). The person can upload the target by naming it;
+- a relative path that leaves the working folder (``../outside/secret.txt``) is
+  sent only when it lands in the person's home folder, and then under the
+  rules above (:func:`named_path_refusal`): an agent's working folder is where
+  it was asked to work.
 
 Places are compared without case on macOS and Windows, whose filesystems have
 none (``~/.SSH``, ``/ETC`` and ``~/library`` are the same places), and names
@@ -35,7 +43,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-__all__ = ["BY_HAND", "MAX_UPLOAD_BYTES", "outside_link", "refused_path"]
+__all__ = ["BY_HAND", "MAX_UPLOAD_BYTES", "named_path_refusal", "outside_link", "refused_path"]
 
 #: What every refusal ends with. ``beakr upload`` is the person's own command:
 #: it sends the paths it is given and does not apply these rules.
@@ -196,6 +204,39 @@ def refused_path(path: Path) -> str | None:
         reason = _why_not(candidate)
         if reason:
             return f"{reason}. {BY_HAND}"
+    return None
+
+
+def named_path_refusal(given: str, path: Path, cwd: Path) -> str | None:
+    """Why a path the call named (``given``, as ``path`` from ``cwd``) is not sent, or None.
+
+    Two cases on top of :func:`refused_path`, which is still applied:
+
+    - ``path`` is a symlink whose target is outside the folder the link sits
+      in: the link's name would stand for a file somewhere else. The person
+      can upload the target itself by naming it.
+    - ``given`` is relative and leaves ``cwd`` (``..``): it is sent only when
+      it lands in the home folder.
+    """
+    absolute = path if path.is_absolute() else cwd / path
+    if absolute.is_symlink():
+        target = absolute.resolve()
+        folder = absolute.parent.resolve()
+        if _below(target, folder) is None:
+            return (
+                f"it is a link to {target}, outside {folder}, the folder the link is in; "
+                f"to upload that file, name it itself ({target})"
+            )
+    if not Path(given).expanduser().is_absolute() and not str(given).startswith("~"):
+        resolved = absolute.resolve()
+        if (
+            _below(resolved, cwd.resolve()) is None
+            and _below(resolved, Path.home().resolve()) is None
+        ):
+            return (
+                f"it leads out of the working folder to {resolved}, which is not in your home "
+                f"folder. {BY_HAND}"
+            )
     return None
 
 

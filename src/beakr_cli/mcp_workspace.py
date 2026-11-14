@@ -52,6 +52,26 @@ def workspace_prefix(data: Any) -> str:
     return f"{line}\n\n"
 
 
+def connected_line_now() -> str:
+    """:func:`connected_line` for a command line: "" without a credential, never an error.
+
+    ``beakr version`` and ``beakr context`` print the same sentence the MCP
+    tools open with. Without a credential nothing is asked: there is no
+    organization to name, and the version is still worth printing.
+    """
+    from beakr_sdk.credentials import resolve_credential
+    from beakr_sdk.errors import BeakrError
+
+    try:
+        resolve_credential()
+    except BeakrError:
+        return ""
+    try:
+        return asyncio.run(connected_line())
+    except Exception:
+        return ""
+
+
 async def connected_line() -> str:
     """The ``Connected to: ...`` sentence for ``beakr_version``, or "" when nothing is known."""
     try:
