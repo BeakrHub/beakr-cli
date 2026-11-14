@@ -384,7 +384,13 @@ def cat(
         ),
     ),
     json_out: bool = typer.Option(
-        False, "--json", "-j", help="The bounded read as JSON: {content, coverage, next, sources}."
+        False,
+        "--json",
+        "-j",
+        help=(
+            "The bounded read as JSON: {content, coverage, next, sources}; with --outline, "
+            "the outline itself (title, sections, edges)."
+        ),
     ),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
@@ -397,8 +403,9 @@ def cat(
     names how to continue (section_id=, lines=, source_offset=); --section-id,
     --lines and --source-offset take those, and --outline lists the sections.
     --json prints that same bounded read as {content, coverage, next, sources},
-    whichever options select it. --raw exports the whole stored page record and
-    all its sources as JSON instead, with no size bound.
+    and with --outline the outline's data (title, sections, edges). --raw
+    exports the whole stored page record and all its sources as JSON instead,
+    with no size bound.
     """
     if source_offset is not None and not full:
         err_console.print("--source-offset pages the records of a --full read; add --full.")
@@ -475,6 +482,22 @@ def _door_read(
     )
 
 
+def _outline_data(result: dict) -> object:
+    """A ``cat --outline`` reply's outline: its ``outline`` field, else its JSON text.
+
+    The engine answers outside callers with the outline as text in ``content``
+    and the data in ``outline``; an older one sent the data as JSON text. A
+    reply that is neither (a refusal) is printed whole.
+    """
+    if isinstance(result.get("outline"), dict):
+        return result["outline"]
+    try:
+        data = json.loads(result_text(result))
+    except ValueError:
+        return result
+    return data if isinstance(data, dict) and isinstance(data.get("sections"), list) else result
+
+
 def _outline_text(content: str) -> str:
     """A ``cat --outline`` reply (the door's JSON outline) as lines a person reads; the
     text as it came when it is not that JSON."""
@@ -543,13 +566,20 @@ def _door_print(
     with get_sdk() as sdk:
         result = sdk.knowledge.command(command, scope=scope, check=False, **arguments)
     outcome = result.get("outcome") if isinstance(result.get("outcome"), dict) else {}
-    if json_out:
+    outline = command == "cat" and bool(arguments.get("outline"))
+    if json_out and outline:
+        # The outline as data: the door's `outline` field, or (an engine that
+        # still answers with JSON text) that text read as JSON.
+        print_json(_outline_data(result))
+    elif json_out:
         print_json(result)
     else:
         from beakr_cli.mcp_render import _page_named_in
 
         content = result_text(result)
-        if command == "cat" and arguments.get("outline"):
+        if outline and not isinstance(result.get("outline"), dict):
+            # An engine that answers with the outline as JSON text; a current one
+            # sends it as text in `content`, which is printed as it is.
             content = _outline_text(content)
         # The Knowledge pages the text already names are left out of Sources, as the
         # MCP tools' default list leaves them out: a sections reply listed every hit
@@ -782,6 +812,7 @@ def log(
     page: str | None = typer.Argument(None, help="Page title or UUID. Omit for global."),
     by: str | None = author.by_opt,
     via: str | None = author.via_opt,
+    session: str | None = author.session_opt,
     kind: str | None = author.kind_opt,
     accepted_by: str | None = author.accepted_by_opt,
     since: str | None = author.since_opt,
@@ -795,14 +826,16 @@ def log(
 ) -> None:
     """Show revision history for a page, or recent revisions across the knowledge base.
 
-    --by, --via, --kind, --accepted-by, --since and --until keep the revisions
-    a person or an agent wrote, for one page or across the scope. The filtered
+    --by, --via, --session, --kind, --accepted-by, --since and --until keep the
+    revisions a person or an agent wrote, for one page or across the scope
+    (--session: one agent session, by a prefix of its id). The filtered
     history is the Knowledge door's `log`: it opens with the filters applied,
     and a cut one names the --offset that continues it.
     """
     filters = author.history_arguments(
         by=by,
         via=via,
+        session=session,
         kind=kind,
         accepted_by=accepted_by,
         since=since,
@@ -1837,6 +1870,7 @@ def proposals_list(
     ),
     by: str | None = author.by_opt,
     via: str | None = author.via_opt,
+    session: str | None = author.session_opt,
     kind: str | None = author.kind_opt,
     accepted_by: str | None = author.accepted_by_opt,
     since: str | None = author.since_opt,
@@ -1853,8 +1887,9 @@ def proposals_list(
 ) -> None:
     """List wiki proposals, one page at a time (--cursor continues).
 
-    --by, --via, --kind, --accepted-by, --since and --until keep the proposals
-    a person filed or an agent filed them through (--since and --until bound
+    --by, --via, --session, --kind, --accepted-by, --since and --until keep the
+    proposals a person filed or an agent filed them through (--session: one
+    agent session, by a prefix of its id) (--since and --until bound
     when it was filed; --accepted-by lists accepted ones). The filtered listing
     is the Knowledge door's `proposals`: it opens with the filters applied, and
     a cut one names the --offset that continues it.
@@ -1862,6 +1897,7 @@ def proposals_list(
     filters = author.history_arguments(
         by=by,
         via=via,
+        session=session,
         kind=kind,
         accepted_by=accepted_by,
         since=since,

@@ -457,3 +457,71 @@ def test_context_shows_a_hostile_organization_name_escaped():
     _no_raw_controls(out)
     assert "\\x1b[2K" in out and "\\u202e" in out
     assert as_json == reply
+
+
+# --- kb cat --outline with the engine's outline field (2026-11-14) ---------------------
+# The engine now answers an outside caller's outline as text in `content` and the
+# data in `outline`; the CLI prints that text as it is and reads `outline` for --json.
+
+OUTLINE_DATA = {
+    "title": "beakr-engine",
+    "page_type": "topic",
+    "revision": 292,
+    "sections": [{"section_id": "sec_facts", "title": "Facts", "lines": "6-431"}],
+}
+OUTLINE_TEXT = (
+    "beakr-engine (topic, revision 292)\n\nSections (1):\n- Facts (sec_facts): lines 6-431"
+)
+
+
+@respx.mock
+def test_cat_outline_prints_the_engines_text_and_json_reads_its_outline_field():
+    _page()
+    reply = {
+        "content": [{"type": "text", "text": OUTLINE_TEXT}],
+        "outcome": {"status": "success"},
+        "outline": OUTLINE_DATA,
+    }
+    respx.post(COMMAND).mock(return_value=Response(200, json=reply))
+
+    text = runner.invoke(app, ["kb", "cat", PAGE, "--outline"]).stdout
+    as_json = json.loads(runner.invoke(app, ["kb", "cat", PAGE, "--outline", "--json"]).stdout)
+
+    assert text.startswith(OUTLINE_TEXT)
+    assert as_json == OUTLINE_DATA
+
+
+@respx.mock
+def test_cat_outline_json_reads_an_older_engines_json_text():
+    _page()
+    reply = {
+        "content": [{"type": "text", "text": json.dumps(OUTLINE_DATA)}],
+        "outcome": {"status": "success"},
+    }
+    respx.post(COMMAND).mock(return_value=Response(200, json=reply))
+
+    as_json = json.loads(runner.invoke(app, ["kb", "cat", PAGE, "--outline", "--json"]).stdout)
+
+    assert as_json == OUTLINE_DATA
+
+
+# --- --session on kb log and kb proposals ls ------------------------------------------
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "argv",
+    [["kb", "log", "--session", "332aa138"], ["kb", "proposals", "ls", "--session", "332aa138"]],
+)
+def test_session_filters_log_and_proposals_by_a_session_prefix(argv):
+    door = respx.post(COMMAND).mock(
+        return_value=Response(
+            200, json={"content": [{"type": "text", "text": "none"}], "outcome": {}}
+        )
+    )
+
+    result = runner.invoke(app, argv)
+
+    assert result.exit_code == 0, result.output
+    assert _sent(door)["session"] == "332aa138"
+    assert _sent(door)["command"] == argv[1]
