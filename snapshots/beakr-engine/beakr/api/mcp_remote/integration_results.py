@@ -25,6 +25,7 @@ from ``beakr``: the two servers share no package.
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 COMMANDS = ("list", "describe", "call")
@@ -246,15 +247,58 @@ def tool_detail(row: dict[str, Any]) -> dict[str, Any]:
 
 def _source_line(source: dict[str, Any]) -> str:
     location = source.get("location") if isinstance(source.get("location"), dict) else {}
-    key = source.get("citation_key")
     parts = [_one_line(source.get("name") or source.get("filename") or "source", 160)]
     for value in (source.get("provider"), location.get("url")):
         if value:
             parts.append(str(value))
     if source.get("source_ref"):
         parts.append(f"source_ref {source['source_ref']}")
-    head = f"{{{{{key}}}}} " if key else ""
-    return f"- {head}" + " · ".join(parts)
+    # No ``{{key}}`` token at the head: an outside caller cannot cite by it, and
+    # the line already names the item (``_strip_citation_tokens``).
+    return "- " + " · ".join(parts)
+
+
+#: Fields a provider tool's JSON carries for Ask's citation tokens. Ask cites an
+#: item by ``{{key}}``; an outside caller cannot (a write refuses the token with
+#: citation_not_citeable), so its copy of the result leaves them out and the
+#: Sources list names each item by title and url instead (direct MCP audit,
+#: 2026-11-13: results told agents to "use each item's citation token inline").
+_TOKEN_FIELDS = frozenset({"cite", "citation", "USE_CITATION", "NOTE"})
+_TOKEN = re.compile(r"\s*\{\{[a-z_]+:[A-Za-z0-9_.:\-]+\}\}")
+
+
+def _strip_citation_tokens(value: Any) -> Any:
+    """``value`` without Ask's citation-token fields and inline ``{{key}}`` tokens."""
+    if isinstance(value, dict):
+        return {
+            key: _strip_citation_tokens(item)
+            for key, item in value.items()
+            if not (key in _TOKEN_FIELDS and isinstance(item, str) and _is_token_text(key, item))
+        }
+    if isinstance(value, list):
+        return [_strip_citation_tokens(item) for item in value]
+    if isinstance(value, str):
+        return _TOKEN.sub("", value)
+    return value
+
+
+def _is_token_text(key: str, text: str) -> bool:
+    # ``NOTE`` is dropped only when it is the citation instruction, never a real note.
+    return key != "NOTE" or "citation" in text
+
+
+def readable_tool_text(content: Any) -> str:
+    """A tool's result as an outside caller reads it: no citation tokens."""
+    if isinstance(content, str):
+        stripped = content.strip()
+        if stripped[:1] in "{[":
+            try:
+                parsed = json.loads(stripped)
+            except ValueError:
+                return _TOKEN.sub("", stripped)
+            return json.dumps(_strip_citation_tokens(parsed), ensure_ascii=False, indent=2)
+        return _TOKEN.sub("", stripped)
+    return json.dumps(_strip_citation_tokens(content), ensure_ascii=False)
 
 
 def sources_block(sources: list[Any]) -> str:
@@ -263,7 +307,11 @@ def sources_block(sources: list[Any]) -> str:
     if not records:
         return ""
     lines = [
-        f"Sources ({len(records)}; cite one in a Knowledge write by its source_ref):",
+        # Not "by its source_ref": a write accepts that only for an item Knowledge
+        # already holds, and refused it for every item read here that it did not.
+        f"Sources ({len(records)}). To cite one in a Knowledge write, pass it as a web "
+        "source (its url, title and the passage you quote), or its source_ref once "
+        "Knowledge holds the item:",
     ]
     used = len(lines[0])
     shown = 0
@@ -282,8 +330,7 @@ def sources_block(sources: list[Any]) -> str:
 def call_result(data: dict[str, Any]) -> dict[str, Any]:
     """``call``: the tool's text, cut to leave room for its Sources, then the Sources."""
     content = data.get("content")
-    text = content if isinstance(content, str) else json.dumps(content, ensure_ascii=False)
-    text = text.strip()
+    text = readable_tool_text(content)
     if data.get("is_error"):
         return error(
             TOOL_REPORTED_ERROR,

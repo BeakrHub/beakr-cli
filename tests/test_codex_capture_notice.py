@@ -184,3 +184,48 @@ def test_a_block_without_a_notice_is_left_for_the_next_refresh(tmp_path, monkeyp
     assert "Legacy context" in _agents()
     assert _refresh(repo)
     assert "capture is off" in _notice()
+
+
+# Root cause (2026-11-11): the engine's context arrives already wrapped in the
+# same beakr:context markers, and the CLI wrapped it again. The block then ended
+# at the engine's inner end marker, so every rewrite replaced only up to there
+# and left the old capture notice and an orphaned end marker behind.
+ENGINE_CONTEXT = (
+    f"{agent_hooks.AGENTS_START}\n# Beakr context\n\nP1 FACTS\n{agent_hooks.AGENTS_END}"
+)
+
+
+def test_engine_context_wrapped_in_markers_is_written_as_one_block(tmp_path, monkeypatch):
+    repo = _repo(tmp_path, monkeypatch, capture=True)
+
+    assert _refresh(repo, content=ENGINE_CONTEXT)
+    assert _refresh(repo, content=ENGINE_CONTEXT)
+
+    text = _agents()
+    assert text.count(agent_hooks.AGENTS_START) == 1
+    assert text.count(agent_hooks.AGENTS_END) == 1
+    assert text.count("<!-- beakr:capture-notice:start -->") == 1
+    assert text.rstrip().endswith(agent_hooks.AGENTS_END)
+    assert "P1 FACTS" in (read_block().facts if read_block() else "")
+
+
+def test_a_block_left_nested_by_an_earlier_write_heals_on_the_next_rewrite(tmp_path, monkeypatch):
+    repo = _repo(tmp_path, monkeypatch, capture=True)
+    notice = "<!-- beakr:capture-notice:start -->\nold notice\n<!-- beakr:capture-notice:end -->"
+    agent_hooks.codex_agents_path().parent.mkdir(parents=True, exist_ok=True)
+    agent_hooks.codex_agents_path().write_text(
+        "My own instructions.\n\n"
+        f"{agent_hooks.AGENTS_START}\n<!-- beakr:context:meta {{}} -->\n\n"
+        f"{ENGINE_CONTEXT}\n\n{notice}\n{agent_hooks.AGENTS_END}\n\n"
+        "Instructions after the block.\n"
+    )
+
+    assert _refresh(repo, content=ENGINE_CONTEXT)
+
+    text = _agents()
+    assert text.count(agent_hooks.AGENTS_START) == 1
+    assert text.count(agent_hooks.AGENTS_END) == 1
+    assert "old notice" not in text
+    assert text.startswith("My own instructions.")
+    assert text.rstrip().endswith("Instructions after the block.")
+    assert "capture is on" in _notice()

@@ -150,7 +150,7 @@ wheels = [
 
 [[package]]
 name = "beakr-cli"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "beakr-sdk" },
@@ -185,7 +185,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'bench'", specifier = ">=1.13.0" },
-    { name = "beakr-sdk", specifier = ">=0.1.0,<0.2" },
+    { name = "beakr-sdk", specifier = ">=0.2.0,<0.3" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "keyring", specifier = ">=25" },
     { name = "mcp", specifier = ">=1.9,<2" },
@@ -208,16 +208,16 @@ dev = [{ name = "types-pyyaml", specifier = ">=6.0.12.20260906" }]
 
 [[package]]
 name = "beakr-sdk"
-version = "0.1.0"
+version = "0.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "httpx" },
     { name = "keyring" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/7a/2e/7d838677dbee05834db42a1cfa5801687d7fd212e480fb21b13149b1a5ec/beakr_sdk-0.1.0.tar.gz", hash = "sha256:e7131f254d4b7945a510937b61002d91b042e7209762bb5f681eda8631d04a28", size = 215991, upload-time = "2026-11-02T23:04:35.214Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/aa/35/bc032593472c4313d67dba1312f89bb4da065c70f6f4bb83e3e905a33d8d/beakr_sdk-0.2.0.tar.gz", hash = "sha256:fde7efdf4a764bacb76503355ab587a6df476ab780f05dd0f56fe5723b51c7e6", size = 219003, upload-time = "2026-11-10T17:03:01.737Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/9c/a0e161b4935dff3625d099198d844af76264deba7ae6065a1856e4b27d5f/beakr_sdk-0.1.0-py3-none-any.whl", hash = "sha256:484898661fd0fadbb17b1fed5e6cc7bb3d1957d6bf1a261fadef753ad30d8261", size = 208292, upload-time = "2026-11-02T23:04:33.539Z" },
+    { url = "https://files.pythonhosted.org/packages/63/6e/654e88ec96931ef2aafdb71035c2a9c85ef55d113487e9e85c41fc7bf878/beakr_sdk-0.2.0-py3-none-any.whl", hash = "sha256:9d4719b82d38155bf8867eb169aa3fe4dea47b80c1a59f0e9b37e9d78046f6d1", size = 209028, upload-time = "2026-11-10T17:02:59.992Z" },
 ]
 
 [[package]]

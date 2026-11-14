@@ -244,17 +244,44 @@ def claude_hooks_installed() -> list[str]:
 # ---------------------------------------------------------------------------
 
 
+def _without_block_markers(content: str) -> str:
+    """``content`` with any Beakr block marker lines removed.
+
+    The engine's context already arrives wrapped in these same markers, so
+    wrapping it again nested one block inside another (2026-11-11).
+    """
+    kept = [line for line in content.splitlines() if line.strip() not in (AGENTS_START, AGENTS_END)]
+    return "\n".join(kept)
+
+
 def render_agents_block(content: str) -> str:
-    return f"{AGENTS_START}\n{content.strip()}\n{AGENTS_END}"
+    return f"{AGENTS_START}\n{_without_block_markers(content).strip()}\n{AGENTS_END}"
+
+
+def _block_span(text: str) -> tuple[int, int] | None:
+    """Where the Beakr block starts and where its last end marker ends, or None.
+
+    The LAST end marker, not the first: a block written while the engine's
+    markers were nested inside it ends at its inner marker, and replacing only
+    up to that one left the old notice and an orphaned end marker behind on
+    every rewrite. Only Beakr writes these markers, so everything from the
+    first start to the last end is Beakr's and one rewrite heals the file.
+    """
+    start = text.find(AGENTS_START)
+    if start == -1:
+        return None
+    end = text.rfind(AGENTS_END)
+    if end < start:
+        return None
+    return start, end + len(AGENTS_END)
 
 
 def _split_block(text: str) -> tuple[str, str] | None:
     """Text before and after the Beakr block, or None when there is no block."""
-    start = text.find(AGENTS_START)
-    end = text.find(AGENTS_END, start + 1) if start != -1 else -1
-    if start == -1 or end == -1:
+    span = _block_span(text)
+    if span is None:
         return None
-    return text[:start], text[end + len(AGENTS_END) :]
+    return text[: span[0]], text[span[1] :]
 
 
 def write_agents_block(content: str) -> Path:
@@ -296,11 +323,11 @@ def read_agents_block() -> str | None:
     if not path.exists():
         return None
     text = path.read_text()
-    start = text.find(AGENTS_START)
-    end = text.find(AGENTS_END, start + 1) if start != -1 else -1
-    if start == -1 or end == -1:
+    span = _block_span(text)
+    if span is None:
         return None
-    return text[start + len(AGENTS_START) : end]
+    inner = text[span[0] + len(AGENTS_START) : span[1] - len(AGENTS_END)]
+    return _without_block_markers(inner)
 
 
 def agents_block_installed() -> bool:

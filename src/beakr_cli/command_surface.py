@@ -122,6 +122,9 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "files download",
         "files rm",
         "documents search",
+        "documents grep",
+        "documents ls",
+        "documents read",
         # Skills: browse every group, install, write, review, sync with local agents.
         "skills ls",
         "skills show",
@@ -145,6 +148,11 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb grep",
         "kb search",
         "kb sources",
+        # The door's graph and lineage reads, which a read's own hints name.
+        "kb hover",
+        "kb links",
+        "kb timeline",
+        "kb provenance",
         "kb log",
         "kb entities",
         "kb agent-review show",

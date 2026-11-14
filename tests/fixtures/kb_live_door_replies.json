@@ -1,0 +1,427 @@
+{
+  "about": "Knowledge door replies recorded by the live end-to-end check of 2026-11-13 (beakr CLI against a local engine on the read-friction branch). `json` entries are the door's reply as `--json` printed it; `text` entries are the content and next hints the CLI printed for the door call named beside them, before hints were translated. The door has since changed how it words four things, and the entries were brought to its current wording by hand (2026-11-13), nothing else in them changed: a section marker in a page read is `[section_id=<id>]` (was the stored `<!-- sec:<id> -->` comment), a `Filters:` line says a typed value back as a JSON string, and a `sources` reply opens with its distinct sources and citations and closes with how many of each are listed.",
+  "json": {
+    "sections": {
+      "command": "sections",
+      "arguments": {
+        "query": "Helios stability results and candidate status",
+        "limit": 3
+      },
+      "reply": {
+        "content": [
+          {
+            "type": "text",
+            "text": "No strong match; the closest section results are only moderate matches. Verify before relying on any of them; the corpus may not cover this.\n\n3 section result(s) across 3 page(s) for: 'Helios stability results and candidate status'\n\n1. [[Helios HX-01 Thermal Stability Screen]] › Status [match: moderate]\n   (experiment; in Project Helios; 2 backlinks)\n   ## Status\n\nComplete (helios-q2-review-deck.pptx › block 1).\n   documents: helios-q2-review-deck.pptx › block 1\n   page_id: 0b0a632e-2250-4e91-b624-79fafba622cf  section_id: sec_status\n2. [[Compound NW-231]] › Findings [match: moderate]\n   (compound; 2026-11-13)\n   ## Findings\n\n- **2026-11-04** · decision · The team agreed Compound NW-231 is 'backup candidate' after the day-14 readout (Granola: Helios weekly sync 2026-11-04)\n- **2026-10-20** · result · Day-14 activity retained was 81 percent (stability-protocol.md › block 4)\n- **2026-10-22** · discussion · Blake flagged the HPLC column lot in Slack ...\n   documents: stability-protocol.md › block 4 · (untitled) · Chat with Avery about the HPLC re-run · #helios-stability thread 2026-10-22\n   page_id: c9dc7cfd-b604-4ce8-9e4c-1f42e4fd0c4b  section_id: sec_findings\n3. [[Helios weekly sync 2026-11-04]] › Summary [match: moderate]\n   (meeting; 4 backlinks)\n   ## Summary\n\nThe weekly Helios sync reviewed the day-14 stability readout and agreed NW-214 stays the lead candidate (Granola: Helios weekly sync 2026-11-04).\n   documents: (untitled)\n   page_id: e9ad78c3-ffff-473f-8c15-e70dafbb937a  section_id: sec_summary\n\nDocuments these sections cite:\n  helios-q2-review-deck.pptx › block 1  (1 cited passage)\n  stability-protocol.md › block 4  (1 cited passage)\n  (untitled)  (Granola: Helios weekly sync 2026-11-04)  (1 cited passage)\n  Chat with Avery about the HPLC re-run  (1 cited passage)\n  #helios-stability thread 2026-10-22  (1 cited passage)\n\nRead a hit with cat {page, section_id}: it prints the section's text with each citation as a readable reference, and a long section is cut with the call that continues it. sources {page} lists every passage a page cites; documents read (read_file in MCP) with a path above and its place (memo.pdf › p. 7) opens the document there."
+          }
+        ],
+        "outcome": {
+          "protocol": "beakr.wiki_tool_outcome.v1",
+          "status": "success",
+          "error_code": null,
+          "committed_page_ids": [],
+          "committed_revisions": {},
+          "commit_ids": []
+        },
+        "coverage": {
+          "command": "sections",
+          "status": "success",
+          "scope": {
+            "all_readable": true,
+            "project_ids": []
+          },
+          "returned": 3,
+          "total": 3,
+          "limit": 3,
+          "offset": null,
+          "next_offset": null,
+          "complete": true,
+          "truncated": false
+        },
+        "next": [
+          "Open a hit with cat {page, section_id} using the hit's section id; hover {page} shows its parent record, children and links to walk next."
+        ],
+        "sources": [
+          {
+            "source_ref": "beakr-source:v1:a2471229-822b-4e8f-9082-8278a8dcc1f3",
+            "citation_key": "artifact:a9e62d02-d8a7-4cc4-8780-5eb023ad8f06-document-block-1",
+            "filename": "helios-q2-review-deck.pptx",
+            "location": {
+              "file_id": "422c393b-e790-446c-bf65-d98e9e446689",
+              "display_path": "helios-q2-review-deck.pptx",
+              "unit_locator": "block 1"
+            },
+            "cited_passages": 1,
+            "cited_places": [
+              "block 1"
+            ],
+            "excerpts": [
+              {
+                "citation_key": "artifact:a9e62d02-d8a7-4cc4-8780-5eb023ad8f06-document-block-1",
+                "unit_locator": "block 1",
+                "text": "Q2 review: HX-01, HX-02 and HX-03 are complete; HX-04 is superseded by HX-06."
+              }
+            ]
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:0b0a632e-2250-4e91-b624-79fafba622cf#sec_status",
+            "citation_key": "wiki:0b0a632e-2250-4e91-b624-79fafba622cf-s582bb957",
+            "name": "Helios HX-01 Thermal Stability Screen › Status"
+          },
+          {
+            "source_ref": "beakr-source:v1:cc35af65-01b6-435d-9905-f2d3d6893995",
+            "citation_key": "artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc-document-block-4",
+            "filename": "stability-protocol.md",
+            "location": {
+              "file_id": "36f2fd11-b5f0-4103-8db4-14f1f89cf767",
+              "display_path": "stability-protocol.md",
+              "unit_locator": "block 4"
+            },
+            "cited_passages": 1,
+            "cited_places": [
+              "block 4"
+            ],
+            "excerpts": [
+              {
+                "citation_key": "artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc-document-block-4",
+                "unit_locator": "block 4",
+                "text": "P004. Stability protocol step 4: hold compound NW-214 lot LB-404 at 25 degrees Celsius for 35 days, then assay by HPLC and record percent activity retained against the day-zero reference standard."
+              }
+            ]
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:c9dc7cfd-b604-4ce8-9e4c-1f42e4fd0c4b#sec_findings",
+            "citation_key": "wiki:c9dc7cfd-b604-4ce8-9e4c-1f42e4fd0c4b-s7e727a07",
+            "name": "Compound NW-231 › Findings"
+          },
+          {
+            "source_ref": "beakr-source:v1:13c633bc-7b0f-4c5c-98ee-98ad7fd093ad",
+            "citation_key": "external_item:1acfce00-071f-4b58-84f4-9a3d6c721ddc",
+            "name": "Granola: Helios weekly sync 2026-11-04",
+            "retrieval": {
+              "tool": "granola_get_note",
+              "arguments": {
+                "note_id": "not_LiveRf00000001"
+              }
+            }
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:e9ad78c3-ffff-473f-8c15-e70dafbb937a#sec_summary",
+            "citation_key": "wiki:e9ad78c3-ffff-473f-8c15-e70dafbb937a-s5d6b6223",
+            "name": "Helios weekly sync 2026-11-04 › Summary"
+          },
+          {
+            "source_ref": "beakr-source:v1:c41dbc28-37ef-42e8-8cf1-458387ed98a6",
+            "citation_key": "conversation:hplc-rerun",
+            "name": "Chat with Avery about the HPLC re-run"
+          },
+          {
+            "source_ref": "beakr-source:v1:b9716f5a-e9ee-4e39-9fce-9a314642c1ee",
+            "citation_key": "external_item:9bf25f5c-c06b-4f0e-8b1f-2cfeb398c8c9",
+            "name": "#helios-stability thread 2026-10-22",
+            "retrieval": {
+              "tool": "slack_get_thread",
+              "arguments": {
+                "channel_id": "C04K10YTMN0",
+                "thread_ts": "1742744865.524899"
+              }
+            }
+          }
+        ]
+      }
+    },
+    "cat": {
+      "command": "cat",
+      "arguments": {
+        "page": "d2a90aa9-9553-4036-8edf-0c67f419bcb6"
+      },
+      "reply": {
+        "content": [
+          {
+            "type": "text",
+            "text": "# Compound NW-214\nKB page ID: d2a90aa9-9553-4036-8edf-0c67f419bcb6\nPath: Compound NW-214 (root)\nType: compound | Rev: 3 | Created: 2026-11-13 | Updated: 2026-11-13 | Sources: 5 | Wiki: Helios Team (project id bfe240a3-c424-429f-b120-eba95dd60260)\nLinks to: Helios weekly sync 2026-11-04, Project Helios\n\n[section_id=sec_description]\n## Description\n\nCompound NW-214 is a member of the NW-200 scaffold series tracked by the Helios stability protocol (stability-protocol.md › block 1).\n\n[section_id=sec_facts]\n## Facts\n\n| Attribute | Value | When | Evidence |\n| --- | --- | --- | --- |\n| Status | Screening | 2026-09-01 | (stability-protocol.md › block 1) |\n| Status | Lead candidate | 2026-11-04 | (Granola: Helios weekly sync 2026-11-04) |\n| Activity retained at day 14 | 92 percent | 2026-10-20 | (stability-protocol.md › block 2) |\n| Batch size | 2.4 mg | 2026-10-01 | (stability-protocol.md › block 2) |\n| Hold temperature | 35 degrees Celsius | 2026-10-20 | (stability-protocol.md › block 2) |\n\n[section_id=sec_connections]\n## Connections\n\n| Relation | To | When | Evidence |\n| --- | --- | --- | --- |\n| Part of | [[Project Helios]] | 2026-09-01 | (stability-protocol.md › block 1) |\n| Discussed in | [[Helios weekly sync 2026-11-04]] | 2026-11-04 | (Granola: Helios weekly sync 2026-11-04) |\n\n[section_id=sec_findings]\n## Findings\n\n- **2026-11-04** · decision · The team agreed Compound NW-214 is 'lead candidate' after the day-14 readout (Granola: Helios weekly sync 2026-11-04)\n- **2026-10-20** · result · Day-14 activity retained was 92 percent (stability-protocol.md › block 2)\n- **2026-10-22** · discussion · Blake flagged the HPLC column lot in Slack (#helios-stability thread 2026-10-22)\n- **2026-11-13** · decision · Compound NW-214 will be re-assayed on a fresh HPLC column lot before the portfolio committee review, because the day-14 readout used a column flagged as suspect (Chat with Avery about the HPLC re-run)\n\n\n---\nSources cited above:\n  - [artifact:upload:live] stability-protocol.md  (stability-protocol.md › block 2)\n  - [conversation] Chat with Avery about the HPLC re-run\n  - [external_item:connector:granola] Granola: Helios weekly sync 2026-11-04\n  - [external_item:connector:slack] #helios-stability thread 2026-10-22\n\nNote: This page is an AI-compiled summary, and the documents above are the ones its text cites. Each citation in the body names its document and the place in it (memo.pdf › p. 7), which documents read (read_file in MCP) opens. Excerpts, the section(s) each source supports or contradicts, and this page's other 1 source record(s) are NOT shown here -- run `sources Compound NW-214` or `provenance Compound NW-214` for those. Open the original before quoting or before resting a conclusion on it."
+          }
+        ],
+        "outcome": {
+          "protocol": "beakr.wiki_tool_outcome.v1",
+          "status": "success",
+          "error_code": null,
+          "committed_page_ids": [],
+          "committed_revisions": {},
+          "commit_ids": []
+        },
+        "coverage": {
+          "command": "cat",
+          "status": "success",
+          "scope": {
+            "all_readable": true,
+            "project_ids": []
+          },
+          "returned": null,
+          "total": null,
+          "limit": null,
+          "offset": null,
+          "next_offset": null,
+          "complete": null
+        },
+        "next": [
+          "Walk its edges rather than searching again: open a child (its documents) or a Linked from page with cat; links {page, page_type} or {page, direction: out} lists a group in full; timeline {page} gives this record's dated events.",
+          "Check where a claim came from with provenance {page} or sources {page}."
+        ],
+        "sources": [
+          {
+            "source_ref": "beakr-source:v1:702fc2c7-befd-4ca7-8191-ebb18d18889c",
+            "citation_key": "external_item:1acfce00-071f-4b58-84f4-9a3d6c721ddc",
+            "name": "Granola: Helios weekly sync 2026-11-04",
+            "retrieval": {
+              "tool": "granola_get_note",
+              "arguments": {
+                "note_id": "not_LiveRf00000001"
+              }
+            }
+          },
+          {
+            "source_ref": "beakr-source:v1:34000214-5199-4bb8-989c-82dea36aab01",
+            "citation_key": "external_item:9bf25f5c-c06b-4f0e-8b1f-2cfeb398c8c9",
+            "name": "#helios-stability thread 2026-10-22",
+            "retrieval": {
+              "tool": "slack_get_thread",
+              "arguments": {
+                "channel_id": "C04K10YTMN0",
+                "thread_ts": "1742744865.524899"
+              }
+            }
+          },
+          {
+            "source_ref": "beakr-source:v1:4be4776f-c3bf-4cb0-acba-0331bee68cef",
+            "citation_key": "conversation:hplc-rerun",
+            "name": "Chat with Avery about the HPLC re-run",
+            "excerpts": [
+              {
+                "citation_key": "conversation:hplc-rerun",
+                "text": "Let's re-run the assay on a new column lot before the committee meets."
+              }
+            ]
+          },
+          {
+            "source_ref": "beakr-source:v1:2a987eff-fe8d-42f9-a6fa-dcf968096e8f",
+            "citation_key": "artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc-document-block-2",
+            "filename": "stability-protocol.md",
+            "location": {
+              "file_id": "36f2fd11-b5f0-4103-8db4-14f1f89cf767",
+              "display_path": "stability-protocol.md",
+              "unit_locator": "block 2"
+            },
+            "cited_passages": 2,
+            "cited_places": [
+              "block 2",
+              "block 1"
+            ],
+            "excerpts": [
+              {
+                "citation_key": "artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc-document-block-2",
+                "unit_locator": "block 2",
+                "text": "P002. Stability protocol step 2: hold compound NW-214 lot LB-402 at 35 degrees Celsius for 21 days, then assay by HPLC and record percent activity retained against the day-zero reference standard."
+              },
+              {
+                "citation_key": "artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc-document-block-1",
+                "section_id": "sec_description",
+                "unit_locator": "block 1",
+                "text": "P001. Stability protocol step 1: hold compound NW-214 lot LB-401 at 30 degrees Celsius for 14 days, then assay by HPLC and record percent activity retained against the day-zero reference standard."
+              }
+            ]
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:d2a90aa9-9553-4036-8edf-0c67f419bcb6",
+            "citation_key": "wiki:d2a90aa9-9553-4036-8edf-0c67f419bcb6",
+            "name": "Compound NW-214"
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:d2a90aa9-9553-4036-8edf-0c67f419bcb6#sec_facts",
+            "citation_key": "wiki:d2a90aa9-9553-4036-8edf-0c67f419bcb6-s8c72db04",
+            "name": "Compound NW-214 › Facts"
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:d2a90aa9-9553-4036-8edf-0c67f419bcb6#sec_findings",
+            "citation_key": "wiki:d2a90aa9-9553-4036-8edf-0c67f419bcb6-s240033d5",
+            "name": "Compound NW-214 › Findings"
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:e9ad78c3-ffff-473f-8c15-e70dafbb937a",
+            "citation_key": "wiki:e9ad78c3-ffff-473f-8c15-e70dafbb937a",
+            "name": "Helios weekly sync 2026-11-04"
+          },
+          {
+            "source_ref": "beakr-source:v1:wiki:28013f8a-9696-4b49-a763-6c641ae8906f",
+            "citation_key": "wiki:28013f8a-9696-4b49-a763-6c641ae8906f",
+            "name": "Project Helios"
+          }
+        ]
+      }
+    }
+  },
+  "text": {
+    "cat_cut": {
+      "capture": "cli/05_cat.txt",
+      "command": "cat",
+      "arguments": {
+        "page": "caf937ee-d99b-4b5e-8e62-44f15bf084ed"
+      },
+      "content": "# Helios Operating Handbook\nKB page ID: caf937ee-d99b-4b5e-8e62-44f15bf084ed\nPath: Helios Operating Handbook (root)\nType: protocol | Rev: 1 | Created: 2026-11-13 | Updated: 2026-11-13 | Sources: 1 | Wiki: Helios Team (project id bfe240a3-c424-429f-b120-eba95dd60260)\n\n[section_id=sec_scope]\n## Scope\n\nThis handbook governs every Helios assay (stability-protocol.md › block 10).",
+      "next": [
+        "Cut to fit the response budget: 378 of 43140 characters are shown (page lines 1-4 of 1-533, revision 1). Continue exactly where this stops: cat {page: \"caf937ee-d99b-4b5e-8e62-44f15bf084ed\", lines: \"5-533\"}. Sections not shown: sec_rules, sec_changes. Read one with cat {page: \"caf937ee-d99b-4b5e-8e62-44f15bf084ed\", section_id: \"sec_rules\"}.",
+        "Walk its edges rather than searching again: open a child (its documents) or a Linked from page with cat; links {page, page_type} or {page, direction: out} lists a group in full; timeline {page} gives this record's dated events.",
+        "Check where a claim came from with provenance {page} or sources {page}."
+      ]
+    },
+    "cat_lines": {
+      "capture": "cli/10_cat_lines.txt",
+      "command": "cat",
+      "arguments": {
+        "page": "caf937ee-d99b-4b5e-8e62-44f15bf084ed",
+        "lines": "5-533"
+      },
+      "content": "iation class 0 is escalated within 2 days.\n\nH0127. Handbook rule 127: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 1 is escalated within 3 days.\n\nH0128. Handbook rule 128: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 2 is escalated within 4 days.\n\nH0129. Handbook rule 129: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 3 is escalated within 5 days.\n\nH0130. Handbook rule 130: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 4 is escalated within 1 days.\n\nH0131. Handbook rule 131: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 5 is escalated within 2 days.\n\nH0132. Handbook rule 132: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 6 is escalated within 3 days.\n\nH0133. Handbook rule 133: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 0 is escalated within 4 days.\n\nH0134. Handbook rule 134: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 1 is escalated within 5 days.\n\nH0135. Handbook rule 135: every Helios assay plate carries a barcode, an operator initial and the calibration lot; deviation class 2 is escalated within 1 days.",
+      "next": [
+        "Cut to fit the response budget: 21841 of 42192 characters are shown (page lines 5-277 of 5-533, revision 1). Continue exactly where this stops: cat {page: \"caf937ee-d99b-4b5e-8e62-44f15bf084ed\", lines: \"278-533\"}. Sections not shown: sec_changes. Read one with cat {page: \"caf937ee-d99b-4b5e-8e62-44f15bf084ed\", section_id: \"sec_changes\"}.",
+        "Walk its edges rather than searching again: open a child (its documents) or a Linked from page with cat; links {page, page_type} or {page, direction: out} lists a group in full; timeline {page} gives this record's dated events.",
+        "Check where a claim came from with provenance {page} or sources {page}."
+      ]
+    },
+    "sections": {
+      "capture": "cli/02_sections.txt",
+      "command": "sections",
+      "arguments": {
+        "query": "Helios stability results and candidate status",
+        "limit": 10
+      },
+      "content": "No strong match; the closest section results are only moderate matches. Verify before relying on any of them; the corpus may not cover this.\n\n10 section result(s) across 7 page(s) for: 'Helios stability results and candidate status'\n\n1. [[Helios HX-01 Thermal Stability Screen]] › Status [match: moderate]\n   (experiment; in Project Helios; 2 backlinks)\n   ## Status\n\nComplete (helios-q2-review-deck.pptx › block 1).\n   documents: helios-q2-review-deck.pptx › block 1\n   page_id: 0b0a632e-2250-4e91-b624-79fafba622cf  section_id: sec_status\n   5. also § Results (Helios HX-01 Thermal Stability Screen › Results) [match: moderate]\n      ## Results\n\nNW-217 melted at 71.4 degrees Celsius, 9.2 degrees above the parent (hx-01-thermal-stability-report.pdf › block 2). Three variants that aggregated were dropped....\n      documents: hx-01-thermal-stability-report.pdf › block 2 (+1)\n      section_id: sec_results\n2. [[Compound NW-231]] › Findings [match: moderate]\n   (compound; 2026-11-13)\n   ## Findings\n\n- **2026-11-04** · decision · The team agreed Compound NW-231 is 'backup candidate' after the day-14 readout (Granola: Helios weekly sync 2026-11-04)\n- **2026-10-20** · result · Day-14 activity retained was 81 percent (stability-protocol.md › block 4)\n- **2026-10-22** · discussion · Blake flagged the HPLC column lot in Slack ...\n   documents: #helios-stability thread 2026-10-22 · stability-protocol.md › block 4 · (untitled) · Chat with Avery about the HPLC re-run\n   page_id: c9dc7cfd-b604-4ce8-9e4c-1f42e4fd0c4b  section_id: sec_findings\n   9. also § Connections (Compound NW-231 › Connections) [match: tangential]\n      ## Connections\n\n| Relation | To | When | Evidence |\n| --- | --- | --- | --- |\n| Part of | [[Project Helios]] | 2026-09-01 | (stability-protocol.md › block 3) |\n| Discu...\n      documents: stability-protocol.md › block 3 · (untitled)\n      section_id: sec_connections\n3. [[Helios weekly sync 2026-11-04]] › Summary [match: moderate]\n   (meeting; 4 backlinks)\n   ## Summary\n\nThe weekly Helios sync reviewed the day-14 stability readout and agreed NW-214 stays the lead candidate (Granola: Helios weekly sync 2026-11-04).\n   documents: (untitled)\n   page_id: e9ad78c3-ffff-473f-8c15-e70dafbb937a  section_id: sec_summary\n4. [[Helios Q2 2024 Review]] › Experiment status [match: moderate]\n   (meeting; 2024-06-27; in Project Helios)\n   ## Experiment status\n\nHX-01, HX-02 and HX-03 are complete, and HX-04 has been superseded by HX-06 (helios-q2-review-deck.pptx › block 1).\n   documents: helios-q2-review-deck.pptx › block 1\n   page_id: 6d24cc6a-5b28-4b73-be17-4a0176d04285  section_id: sec_experiment_status\n6. [[Compound NW-214]] › Findings [match: moderate]\n   (compound; 2026-11-13)\n   ## Findings\n\n- **2026-11-04** · decision · The team agreed Compound NW-214 is 'lead candidate' after the day-14 readout (Granola: Helios weekly sync 2026-11-04)\n- **2026-10-20** · result · Day-14 activity retained was 92 percent (stability-protocol.md › block 2)\n- **2026-10-22** · discussion · Blake flagged the HPLC column lot in Slack ...\n   documents: #helios-stability thread 2026-10-22 · (untitled) · Chat with Avery about the HPLC re-run · stability-protocol.md › block 2\n   page_id: d2a90aa9-9553-4036-8edf-0c67f419bcb6  section_id: sec_findings\n   8. also § Connections (Compound NW-214 › Connections) [match: tangential]\n      ## Connections\n\n| Relation | To | When | Evidence |\n| --- | --- | --- | --- |\n| Part of | [[Project Helios]] | 2026-09-01 | (stability-protocol.md › block 1) |\n| Discu...\n      documents: (untitled) · stability-protocol.md › block 1\n      section_id: sec_connections\n7. [[Compound NW-266]] › Findings [match: tangential]\n   (compound; 2026-11-04)\n   ## Findings\n\n- **2026-11-04** · decision · The team agreed Compound NW-266 is 'screening' after the day-14 readout (Granola: Helios weekly sync 2026-11-04)\n- **2026-10-20** · result · Day-14 activity retained was 67 percent (stability-protocol.md › block 8)\n- **2026-10-22** · discussion · Blake flagged the HPLC column lot in Slack ...\n   documents: #helios-stability thread 2026-10-22 · stability-protocol.md › block 8 · (untitled)\n   page_id: 285055d2-0b97-46a8-8994-2a1e56d642d8  section_id: sec_findings\n10. [[Helios HX-05 Scale-up Feasibility (Draft)]] › Status [match: tangential]\n   (experiment; in Project Helios)\n   ## Status\n\nDraft. Not approved and not started (hx-05-scale-up-plan-draft.docx › block 2).\n   documents: hx-05-scale-up-plan-draft.docx › block 2\n   page_id: 20c7fbaa-3c21-4b16-be4c-5ea9050ada1c  section_id: sec_status\n\nDocuments these sections cite:\n  helios-q2-review-deck.pptx › block 1  (1 cited passage)\n  #helios-stability thread 2026-10-22  (1 cited passage)\n  stability-protocol.md › block 4  (5 cited passages)\n  (untitled)  (Granola: Helios weekly sync 2026-11-04)  (1 cited passage)\n  Chat with Avery about the HPLC re-run  (1 cited passage)\n  hx-01-thermal-stability-report.pdf › block 2  (2 cited passages)\n  hx-05-scale-up-plan-draft.docx › block 2  (1 cited passage)\n\nRead a hit with cat {page, section_id}: it prints the section's text with each citation as a readable reference, and a long section is cut with the call that continues it. sources {page} lists every passage a page cites; documents read (read_file in MCP) with a path above and its place (memo.pdf › p. 7) opens the document there.",
+      "next": [
+        "Open a hit with cat {page, section_id} using the hit's section id; hover {page} shows its parent record, children and links to walk next."
+      ]
+    },
+    "grep_hit": {
+      "capture": "cli/03_grep_hit.txt",
+      "command": "grep",
+      "arguments": {
+        "query": "NW-217"
+      },
+      "content": "6 page(s) contain 'NW-217' in their prose:\n\nDecision: Helios Lead Selection  (1 matching line)\n  §sec_decision:4  [2024-09-09]  (Decision: Helios Lead Selection › Decision)\n      NW-217 was approved as the lead candidate on 9 September 2024.\n      cites: (helios-go-decision-memo.docx › block 1)\n  page_id: 17d2ebe2-37eb-411b-9a76-3ca2430e5e41\n\nHelios HX-01 Thermal Stability Screen  (1 matching line)\n  §sec_results:9  (Helios HX-01 Thermal Stability Screen › Results)\n      NW-217 melted at 71.4 degrees Celsius, 9.2 degrees above the parent. Three variants that aggregated were dropped.\n      cites: (hx-01-thermal-stability-report.pdf › block 2, block 3)\n  page_id: 0b0a632e-2250-4e91-b624-79fafba622cf\n\nHelios HX-02 Buffer Blocking Optimization  (1 matching line)\n  §sec_question:4  (Helios HX-02 Buffer Blocking Optimization › Question)\n      Which blocking agent gives the lowest background in the NW-217 binding ELISA? Casein, BSA and a protein-free buffer were compared.\n      cites: (hx-02-blocking-buffer-notebook.docx › block 1)\n  page_id: 39f3239b-e3a4-4f59-ad57-e0ce2f30e232\n\nHelios HX-04 Dose Response in Primary Cells  (1 matching line)\n  §sec_results:4  [2024-04-22]  (Helios HX-04 Dose Response in Primary Cells › Results)\n      NW-217 inhibited cytokine release in primary macrophages at an IC50 of 42 nM.\n      cites: (hx-04-dose-response-report.pdf › block 1)\n  page_id: fe1feb32-b5e3-4d4a-9487-5734623f5405\n\nHelios HX-05 Scale-up Feasibility (Draft)  (1 matching line)\n  §sec_plan:4  (Helios HX-05 Scale-up Feasibility (Draft) › Plan)\n      Produce 5 grams of NW-217 at 10-litre scale, with [[Kestrel Analytical CRO]] doing release testing.\n      cites: (hx-05-scale-up-plan-draft.docx › block 1)\n  page_id: 20c7fbaa-3c21-4b16-be4c-5ea9050ada1c\n\nProject Helios  (1 matching line)\n  §sec_lead_decision:19  [2024-09-09]  (Project Helios › Lead decision)\n      The portfolio committee approved NW-217 as the lead on 9 September 2024.\n      cites: (helios-go-decision-memo.docx › block 1)\n  page_id: 28013f8a-9696-4b49-a763-6c641ae8906f\n\nAll 6 matching page(s) are listed above.\nRead a hit with `cat <page> section_id=<id>`. Cite a hit with the reference on its address line (Page Title › Section), or with the reference after `cites:` for that exact claim.\nThis is an exact-text match on page prose (citation markup is not searched): pages that say the same thing in other words are not listed. Use `sections` to search by meaning. Page titles are not searched here: find a page by its title with target=title, or by title prefix with `completions`.",
+      "next": [
+        "Open the best hit with cat {page, section_id?}; hover {page} shows the record it belongs to and what links to it."
+      ]
+    },
+    "grep_zero": {
+      "capture": "cli/03_grep_zero.txt",
+      "command": "grep",
+      "arguments": {
+        "query": "zebrafish thermostable quokka"
+      },
+      "content": "0 exact matches for 'zebrafish thermostable quokka'; showing the closest pages by meaning instead. These are not matches: they may not contain 'zebrafish thermostable quokka' at all. (Prefer `sections` for long phrases; grep target=title for exact titles.) If these are not what you need, the exact text may be in a source file rather than on a Knowledge page (Knowledge maps files; it does not copy spreadsheet rows or every line): try documents grep for 'zebrafish thermostable quokka'.\n\nNo strong match; the closest related sections are tangential: they touch the subject without being about it. Verify before relying on any of them; the corpus may not cover this.\n\n5 section(s) related by meaning, on 3 page(s), for: 'zebrafish thermostable quokka'\n\n1. [[Helios HX-01 Thermal Stability Screen]] › Status [related by meaning; closeness: tangential]\n   (experiment; in Project Helios; 2 backlinks)\n   ## Status\n\nComplete (helios-q2-review-deck.pptx › block 1).\n   documents: helios-q2-review-deck.pptx › block 1\n   page_id: 0b0a632e-2250-4e91-b624-79fafba622cf  section_id: sec_status\n   2. also § Design (Helios HX-01 Thermal Stability Screen › Design) [related by meaning; closeness: tangential]\n      ## Design\n\nTwelve NW-200 variants were screened by differential scanning fluorimetry following [[Protocol: Thermal Shift Assay]] (hx-01-thermal-stability-report.pdf › block 1).\n      documents: hx-01-thermal-stability-report.pdf › block 1\n      section_id: sec_design\n3. [[Protocol: Thermal Shift Assay]] › Run [related by meaning; closeness: tangential]\n   (protocol; 1 backlink)\n   ## Run\n\nRamp from 25 to 95 degrees Celsius at 1 degree per minute (sop-thermal-shift-assay.pdf › block 2). First used in [[Helios HX-01 Thermal Stability Screen]].\n   documents: sop-thermal-shift-assay.pdf › block 2\n   page_id: 8b21246b-3baa-473d-adeb-1f80e8c690e3  section_id: sec_run\n   4. also § Setup (Protocol: Thermal Shift Assay › Setup) [related by meaning; closeness: tangential]\n      ## Setup\n\n2 micromolar protein with 5x SYPRO Orange in 20 microlitre reactions (sop-thermal-shift-assay.pdf › block 1).\n      documents: sop-thermal-shift-assay.pdf › block 1\n      section_id: sec_setup\n5. [[Compound NW-999 Sealed]] › Facts [related by meaning; closeness: tangential]\n   (compound; 2026-11-02)\n   ## Facts\n\n| Attribute | Value | When | Evidence |\n| --- | --- | --- | --- |\n| Status | Sealed candidate | 2026-11-02 |  |\n| Secret potency | 9.9 nM zebrafish | 2026-11-02 |  |\n   page_id: 1aa6e569-13a4-4a8e-b95f-61b5a4b32a6d  section_id: sec_facts\n\nDocuments these sections cite:\n  helios-q2-review-deck.pptx › block 1  (1 cited passage)\n  hx-01-thermal-stability-report.pdf › block 1  (1 cited passage)\n  sop-thermal-shift-assay.pdf › block 2  (2 cited passages)\n\nRead a hit with cat {page, section_id}: it prints the section's text with each citation as a readable reference, and a long section is cut with the call that continues it. sources {page} lists every passage a page cites; documents read (read_file in MCP) with a path above and its place (memo.pdf › p. 7) opens the document there.",
+      "next": [
+        "grep found 0 exact matches: the entries shown are related by meaning and may not state the term. Read one with cat {page, section_id} before relying on it, or search the source files for the exact text (documents grep)."
+      ]
+    },
+    "hover": {
+      "capture": "cli/07_hover.txt",
+      "command": "hover",
+      "arguments": {
+        "page": "Compound NW-214"
+      },
+      "content": "Compound NW-214\n  Type: compound\n  Rev: 3 | Created: 2026-11-13 | Updated: 2026-11-13\n  Sources: 5 | Sections: 4 | Linked from: 0\n  Wiki: Helios Team\n  Summary: Compound NW-214: lead candidate in Helios stability work.\n  Links to: 2 page(s) -- links direction=out lists them",
+      "next": [
+        "Follow an edge it lists (ls {parent}, links {page, page_type}, links {page, direction: out}) or read the page with cat {page}."
+      ]
+    },
+    "links": {
+      "capture": "cli/07_links.txt",
+      "command": "links",
+      "arguments": {
+        "page": "Project Helios"
+      },
+      "content": "7 page(s) link here (by type: compound 4, person 2, organization 1):\n\n  - Compound NW-214 [compound; Part of]\n  - Compound NW-231 [compound; Part of]\n  - Compound NW-250 [compound; Part of]\n  - Compound NW-266 [compound; Part of]\n  - Dana Whitfield [person]\n  - Maja Lindqvist [person]\n  - Northwind Biosciences [organization]",
+      "next": [
+        "Open a neighbour with cat {page}; narrow with page_type or relation, or switch direction (in: pages linking here, out: pages this one links to)."
+      ]
+    },
+    "timeline": {
+      "capture": "cli/07_timeline.txt",
+      "command": "timeline",
+      "arguments": {
+        "page": "Compound NW-214"
+      },
+      "content": "11 event(s):\n\n  2026-09-01 [compound] Part of Project Helios\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Connections)\n  2026-09-01 [compound] Status: Screening\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Facts)\n  2026-10-01 [compound] Batch size: 2.4 mg\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Facts)\n  2026-10-20 [compound] result: Day-14 activity retained was 92 percent\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Findings)\n  2026-10-20 [compound] Activity retained at day 14: 92 percent\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Facts)\n  2026-10-20 [compound] Hold temperature: 35 degrees Celsius\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Facts)\n  2026-10-22 [compound] discussion · Blake flagged the HPLC column lot in Slack\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Findings)\n  2026-11-04 [compound] Discussed in Helios weekly sync 2026-11-04\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Connections)\n  2026-11-04 [compound] decision: The team agreed Compound NW-214 is 'lead candidate' after the day-14 readout\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Findings)\n  2026-11-04 [compound] Status: Lead candidate\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Facts)\n  2026-11-13 [compound] decision: Compound NW-214 will be re-assayed on a fresh HPLC column lot before the portfolio committee review, because the day-14 readout used a column flagged as suspect\n    Page: Compound NW-214 (d2a90aa9) (Compound NW-214 › Findings)",
+      "next": [
+        "Open an event's page with cat {page}; timeline {page} keeps one record."
+      ]
+    },
+    "provenance": {
+      "capture": "cli/07_provenance.txt",
+      "command": "provenance",
+      "arguments": {
+        "page": "Compound NW-214"
+      },
+      "content": "KB page ID: d2a90aa9-9553-4036-8edf-0c67f419bcb6\nPage: Compound NW-214\n\nSection: Facts\n  - [support, inline] stability-protocol.md (artifact, upload:live, rev 1, key artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc-document-block-1) (stability-protocol.md › block 1)\n    source_ref: beakr-source:v1:84dc8d37-092b-4afd-a93f-3b54c48baed1\n    \"P001. Stability protocol step 1: hold compound NW-214 lot LB-401 at 30 degrees Celsius for 14 days, then assay by HPLC and record percent activity retained against the day-zero reference standard.\"\n    artifact_id: 36f2fd11-b5f0-4103-8db4-14f1f89cf767\n  - [support, inline] stability-protocol.md (artifact, upload:live, rev 1, key artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc-document-block-2) (stability-protocol.md › block 2)\n    source_ref: beakr-source:v1:40633073-2140-45ca-a365-88a92d1fb938\n    \"P002. Stability protocol step 2: hold compound NW-214 lot LB-402 at 35 degrees Celsius for 21 days, then assay by HPLC and record percent activity retained against the day-zero reference standard.\"\n    artifact_id: 36f2fd11-b5f0-4103-8db4-14f1f89cf767\n  - [support, inline] Granola: Helios weekly sync 2026-11-04 (external_item, connector:granola, rev 1, key external_item:1acfce00-071f-4b58-84f4-9a3d6c721ddc)\n    source_ref: beakr-source:v1:a1280ebf-4c63-468b-8ca5-43c9a091e6fa\n\nSection: Findings\n  - [support] (stability-protocol.md › block 2) -- the passage shown under Facts\n  - [support] (Granola: Helios weekly sync 2026-11-04) -- the passage shown under Facts\n  - [support, inline] #helios-stability thread 2026-10-22 (external_item, connector:slack, rev 1, key external_item:9bf25f5c-c06b-4f0e-8b1f-2cfeb398c8c9)\n    source_ref: beakr-source:v1:34000214-5199-4bb8-989c-82dea36aab01\n  - [support, inline] Chat with Avery about the HPLC re-run (conversation, rev 2, key conversation:hplc-rerun)\n    source_ref: beakr-source:v1:4be4776f-c3bf-4cb0-acba-0331bee68cef\n    written by: Avery Stone via claude-code/1 (beakr-mcp/0.6.0), run stdio:d7447b41368b4b6db500a1599f6b9d36, session 332aa138-2d35-49f9-bd7a-9bcf69df3a68\n    \"Let's re-run the assay on a new column lot before the committee meets.\"\n\nSection: \n  - [support] (stability-protocol.md › block 1) -- the passage shown under Facts\n\nSection: \n  - [support] (stability-protocol.md › block 1) -- the passage shown under Facts\n  - [support] (Granola: Helios weekly sync 2026-11-04) -- the passage shown under Facts",
+      "next": [
+        "List the cited sources and how to open each with sources {page}."
+      ]
+    },
+    "log_filtered": {
+      "capture": "cli/12_log_project.txt",
+      "command": "log",
+      "arguments": {
+        "by": "Blake Rivers",
+        "scope": "bfe240a3-c424-429f-b120-eba95dd60260"
+      },
+      "content": "Recent changes (3 revision(s)):\nFilters: by \"Blake Rivers\".\nA revision written from a proposal you cannot open names no person or agent to you, so it matches no by, via or accepted_by.\n\n  2026-11-12 [Authored Alpha] (project 'Helios Team', page 6448c182-9043-4ffb-b95c-cae6d5a447ba) rev 8 by Blake Rivers via chatgpt\n  2026-11-10 [Authored Alpha] (project 'Helios Team', page 6448c182-9043-4ffb-b95c-cae6d5a447ba) rev 6 by Blake Rivers via beakr-cli (applied directly)\n  2026-11-07 [Authored Alpha] (project 'Helios Team', page 6448c182-9043-4ffb-b95c-cae6d5a447ba) rev 4 by gpt-6-luna (for Blake Rivers via codex/1.4)",
+      "next": [
+        "Compare revisions with diff {page, rev, rev2?} or read one with show."
+      ]
+    },
+    "ls_filtered": {
+      "capture": "cli/14_ls_changed_by.txt",
+      "command": "ls",
+      "arguments": {
+        "changed_by": "me",
+        "scope": "bfe240a3-c424-429f-b120-eba95dd60260"
+      },
+      "content": "1 matching page(s):\nFilters: changed by \"me\".\n\n  - [topic] Authored Alpha  [Helios Team]",
+      "next": [
+        "Open a page with cat {page}, or list a record's documents with ls {parent}."
+      ]
+    },
+    "proposals_limit1": {
+      "capture": "cli/13_proposals_limit1.txt",
+      "command": "proposals",
+      "arguments": {
+        "status": "accepted",
+        "limit": 1,
+        "by": "me",
+        "scope": "bfe240a3-c424-429f-b120-eba95dd60260"
+      },
+      "content": "1 accepted proposal(s) (now on the pages; each says whether a person or auto-approve accepted it):\nFilters: filed by \"me\".\n\n  2026-11-13  [edit] Compound NW-231\n      Add fact: Hold temperature: 35 degrees Celsius\n      filed by Avery Stone via remote-mcp\n      accepted by Avery Stone on 2026-11-13\nMore accepted proposals match: continue with proposals {\"status\": \"accepted\", \"scope\": \"bfe240a3-c424-429f-b120-eba95dd60260\", \"limit\": 1, \"offset\": 1, \"by\": \"me\"}.",
+      "next": [
+        "Not everything is shown: call proposals again with offset=1 to read the rest.",
+        "Review one with show_proposal, then accept_proposal or dismiss_proposal."
+      ]
+    },
+    "add_finding": {
+      "capture": "cli/22_add_finding.txt",
+      "command": "add_finding",
+      "arguments": {},
+      "proposal_id": "3d145cf5-734f-4a08-8b4c-07a3d9432482",
+      "content": "Proposed section edit to \"Compound NW-250\" (section: sec_findings, rev 1).\nProposal id: 3d145cf5-734f-4a08-8b4c-07a3d9432482\nSummary: Add lesson finding: Dropped compounds keep their card so the reason stays findable\nApproval state: pending. It waits for someone to accept it in Beakr; call accept_proposal only when the user asks you to accept this proposal.\nProposal filed by Avery Stone via beakr-cli/0.6.0.\ncontent_hash: 15e3ca499115b3c09c080ce8204556b93e1934fd696780b561dede307c57d2f7",
+      "next": []
+    },
+    "sources_door": {
+      "capture": "out/07_sources__page.stdio.txt",
+      "command": "sources",
+      "arguments": {
+        "page": "Compound NW-214"
+      },
+      "content": "KB page ID: d2a90aa9-9553-4036-8edf-0c67f419bcb6\n3 distinct source(s), cited 5 time(s) (one citation per cited passage), for Compound NW-214:\n\n  - #helios-stability thread 2026-10-22 (external_item:9bf25f5c-c06b-4f0e-8b1f-2cfeb398c8c9, origin: connector:slack)\n     also drawn on by 4 page(s): Compound NW-231, Compound NW-250, Compound NW-266, Helios weekly sync 2026-11-04\n     source_ref: beakr-source:v1:34000214-5199-4bb8-989c-82dea36aab01\n     Slack\n     url: https://northwind.slack.com/archives/C04K10YTMN0/p1742744865524899\n     fetch: slack_get_thread with channel_id=C04K10YTMN0, thread_ts=1742744865.524899\n  - Granola: Helios weekly sync 2026-11-04 (external_item:1acfce00-071f-4b58-84f4-9a3d6c721ddc, origin: connector:granola)\n     also drawn on by 4 page(s): Compound NW-231, Compound NW-250, Compound NW-266, Helios weekly sync 2026-11-04\n     source_ref: beakr-source:v1:702fc2c7-befd-4ca7-8191-ebb18d18889c\n     Granola\n     url: https://notes.granola.ai/d/0c2f4c1e-5a53-4e0e-a3a0-6b6f6d1c9f11\n     fetch: granola_get_note with note_id=not_LiveRf00000001\n  - stability-protocol.md (artifact:9fa9f7c3-94aa-4df5-a418-31f25cb2eccc, origin: upload:live)\n     also drawn on by 3 page(s): Compound NW-231, Compound NW-250, Compound NW-266\n     source_ref: beakr-source:v1:da5ab23a-f1e4-4bf5-94aa-15ba5afb5263\n     file: stability-protocol.md\n     passages cited (2):\n       (stability-protocol.md › block 1) \"P001. Stability protocol step 1: hold compound NW-214 lot LB-401 at 30 degrees Celsius for 14 days, then assay by HPLC and record percent activity retained aga…\" -- backs Description; Facts: Status; Connections: Part of Project Helios\n       (stability-protocol.md › block 2) \"P002. Stability protocol step 2: hold compound NW-214 lot LB-402 at 35 degrees Celsius for 21 days, then assay by HPLC and record percent activity retained aga…\" -- backs Facts: Activity retained at day 14; Facts: Batch size; Findings\n\nAll 3 source(s) are listed above, with all 5 citation(s).",
+      "next": [
+        "Open a source by what its entry gives: a file with read_file and its file id or path; a connected item with the call on its `fetch:` line; an entry with only a url has no reader here, so use its excerpt and the url."
+      ]
+    }
+  }
+}

@@ -305,11 +305,18 @@ def test_propose_create_prints_the_door_reply_and_no_accept_hint_under_auto_appr
 
     assert result.exit_code == 0, result.output
     # Piped, the reply is on stderr and stdout stays the proposal.
-    for line in _AUTO_REPLY.splitlines()[2:]:
+    # The door's `accept_proposal` reads as the command a terminal has for it.
+    shown = _AUTO_REPLY.replace(
+        "do not call accept_proposal", f"do not run `beakr kb proposals accept {PROPOSAL}`"
+    )
+    for line in shown.splitlines()[2:]:
         assert " ".join(line.split()) in " ".join(result.stderr.split())
+    assert "accept_proposal" not in result.output
     assert "Auto-approve" not in result.stdout
     assert PROPOSAL in result.stdout
-    assert f"beakr kb proposals accept {PROPOSAL}" not in result.output
+    # No hint to accept it: the only mention is the reply's "do not run".
+    assert f"beakr kb proposals accept {PROPOSAL}" not in result.stdout
+    assert " ".join(result.stderr.split()).count(f"beakr kb proposals accept {PROPOSAL}") == 1
     assert f"beakr kb proposals show {PROPOSAL}" in result.stdout
     assert not accept.called
 

@@ -1,0 +1,10 @@
+def workspace_line(environment: str | None, organization: Mapping[str, Any] | None) -> str:
+    """One sentence saying where a call landed, from what is known of it."""
+    place = f"Beakr {environment}" if environment else "Beakr"
+    name = str((organization or {}).get("name") or "").strip()
+    slug = str((organization or {}).get("slug") or "").strip()
+    if name and slug:
+        return f'Connected to: {place}, organization "{name}" (slug {slug}).'
+    if name or slug:
+        return f'Connected to: {place}, organization "{name or slug}".'
+    return f"Connected to: {place}."

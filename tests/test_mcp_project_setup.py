@@ -98,12 +98,14 @@ def _file(directory: Path, name: str, text: str = "lot LB-400 passed") -> Path:
 # --- Listing -----------------------------------------------------------------------------
 
 
-async def test_the_tools_are_listed_in_the_discovery_tier_with_their_own_text() -> None:
+async def test_the_tools_are_listed_in_the_discovery_tier_with_the_shared_text() -> None:
+    # The self-hosted engine's surface describes them since the read friction port (#2745).
     listed = {tool.name: tool for tool in await mcp_server.mcp.list_tools()}
     key = tool_surface.document()["tier_meta_key"]
     for name in TOOLS:
-        assert listed[name].description == mcp_tools_projects.DESCRIPTIONS[name]
+        assert listed[name].description == tool_surface.description(name)
         assert listed[name].meta == {key: "discovery"}
+        assert name in tool_surface.document()["discovery"]
     assert listed["upload_status"].annotations.readOnlyHint is True
     assert listed["upload_files"].annotations.readOnlyHint is False
     # No tool here invites anyone into the organization.
