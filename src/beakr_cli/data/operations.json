@@ -3072,7 +3072,7 @@
       "type": "string"
      },
      {
-      "description": "cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take.",
+      "description": "cat and provenance. cat: read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. provenance: that one section's citations, in the same shape.",
       "name": "section_id",
       "required": false,
       "type": "string"
