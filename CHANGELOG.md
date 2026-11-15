@@ -511,6 +511,31 @@ Each release lists the public API changes it supports, taken from the API change
     and a credential that can read only that project. A `picked` session gets no
     lock notice either (its log and status still record the lock). The session's
     log records one `boundary:held` event per held project.
+  - More reads follow a session's rules. A session token can now call them, and a
+    request joined to a session by `X-Beakr-Session` gets the session's rules on
+    them (before, it ran as the plain key): the Knowledge graph and timeline, a
+    page's links, history and exports, card rows, entities and conflicts, recent
+    changes, ingestion events, a proposal's conflict, the activity feed, and a
+    file's preview and parsed pages. Each is confined to the session's projects;
+    naming a project, or reading a page, file or proposal, is a read of its
+    project (held, confirmed and locked like any read); and one that names no
+    project leaves out the locked projects the session has not touched. Getting a
+    download link (`GET /v1/artifacts/versions/{version_id}/download-url`,
+    `POST /v1/artifacts/download-url`) is now a read of the file's project too.
+    The MCP `wiki_graph` tool takes `confirm_lock`. A project-restricted API key
+    and an end-user token can call these reads too, confined to their own
+    projects as a page read is: the graph and timeline, for one, answer only from
+    the credential's projects, and naming another project, or focusing the graph
+    on its page, is refused or not found.
+  - Refused inside any session, joined by `X-Beakr-Session` or with a session
+    token, with `403 session_route_unavailable` (`message` says what and why,
+    `fix` how to call it instead): a write's read trail
+    (`GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail`,
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail`), which
+    shows what was read in other projects, and three views of the web app (a
+    project's Knowledge status, suggested projects for a file, a folder's delete
+    preview).
   - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
     they are valid and, for each project the person can read, whether it can be
     added to read or to write, with the reason when not.
@@ -684,6 +709,10 @@ Each release lists the public API changes it supports, taken from the API change
   the server never asks. `read_file` and `upload_files` answer the hold too,
   rather than a read conflict or a failed file. The instructions say how a held
   call goes in.
+- `beakr mcp`'s `wiki_graph` takes `confirm_lock` too (the surface's list). Inside a
+  session `beakr kb proposals show --trail` says a person reads a write's trail when
+  the API refuses it to the session with `session_route_unavailable` (it answered
+  `read_trail_forbidden` before), as for the earlier refusals.
 - `beakr kb log`, `beakr kb proposals ls` and `beakr kb ls` filter by who wrote a
   change and through which agent. `kb log [page]` and `kb proposals ls` take
   `--by`, `--via`, `--kind`, `--accepted-by`, `--since`, `--until` and `--offset`

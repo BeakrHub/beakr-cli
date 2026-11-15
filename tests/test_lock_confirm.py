@@ -47,9 +47,10 @@ FIX = f'Repeat this call with confirm_lock="{A}" (over HTTP, send X-Beakr-Confir
 INVALID_FIX = (
     "Pass the project id a session_lock_confirm answer named, as confirm_lock, or leave it out."
 )
-#: The engine's tools (docs/api/agent-tool-surface.json ``confirm_lock``), as of 370f67a.
+#: The engine's tools (docs/api/agent-tool-surface.json ``confirm_lock``), as of 2157a4e.
 CONFIRM_LOCK_TOOLS = {
     "context",
+    "wiki_graph",
     "knowledge_base",
     "knowledge_base_write",
     "read_file",

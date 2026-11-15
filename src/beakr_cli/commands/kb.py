@@ -1972,6 +1972,7 @@ def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict | str:
     """
     from beakr_cli import scope_session
     from beakr_cli.session_trail import (
+        SESSION_ROUTE_UNAVAILABLE,
         TRAIL_FORBIDDEN,
         proposal_trail_path,
         write_trail_as_person,
@@ -1981,12 +1982,19 @@ def _write_trail(sdk: PrivateBeakr, proposal_id: str) -> dict | str:
     try:
         return sdk.request("GET", proposal_trail_path(proposal_id))
     except PermissionDeniedError as exc:
-        # Two refusals: the public gate's (insufficient_scope) for a session or a
-        # project-restricted key, and the route's own (read_trail_forbidden), to a
-        # session or to a person who may not see this write's trail.
-        if exc.code not in {"insufficient_scope", "session_project_required", TRAIL_FORBIDDEN}:
+        # The refusals: the public gate's (insufficient_scope) for a session or a
+        # project-restricted key, the route's own (read_trail_forbidden) to a person
+        # who may not see this write's trail, and session_route_unavailable to a
+        # session (it answered read_trail_forbidden before).
+        refusals = {
+            "insufficient_scope",
+            "session_project_required",
+            TRAIL_FORBIDDEN,
+            SESSION_ROUTE_UNAVAILABLE,
+        }
+        if exc.code not in refusals:
             raise
-        if scope_session.sent_in_session(exc):
+        if exc.code == SESSION_ROUTE_UNAVAILABLE or scope_session.sent_in_session(exc):
             return write_trail_as_person(proposal_id)
         if exc.code == TRAIL_FORBIDDEN:
             return write_trail_not_yours(proposal_id)

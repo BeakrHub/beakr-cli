@@ -43,6 +43,8 @@ def write_trail_as_person(proposal_id: str) -> str:
 
 #: A write trail's own refusal (the person may not see it, or a session asked).
 TRAIL_FORBIDDEN = "read_trail_forbidden"
+#: A route no session may call (a write's trail among them): asked inside a session.
+SESSION_ROUTE_UNAVAILABLE = "session_route_unavailable"
 
 
 def write_trail_not_yours(proposal_id: str) -> str:

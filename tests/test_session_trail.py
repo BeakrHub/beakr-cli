@@ -324,6 +324,25 @@ def test_proposals_show_trail_says_a_person_reads_it_for_either_session_refusal(
 
 
 @respx.mock
+def test_proposals_show_trail_says_a_person_reads_it_when_no_session_may_call_it(monkeypatch):
+    """Engine max/lock-confirm-reads: a session asking a write's trail gets
+    session_route_unavailable (read_trail_forbidden before): the same line."""
+    _setup(monkeypatch)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-1")
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}").respond(
+        json={"id": PROPOSAL, "proposal_type": "create", "status": "pending"}
+    )
+    respx.get(f"{API}/v1/knowledge/wiki/proposals/{PROPOSAL}/trail").respond(
+        403, json=_forbidden("session_route_unavailable", "Not inside a session.")
+    )
+
+    result = runner.invoke(app, ["kb", "proposals", "show", PROPOSAL, "--trail"])
+
+    assert result.exit_code == 0, result.output
+    assert "A write's read trail is shown to a person" in " ".join(result.output.split())
+
+
+@respx.mock
 def test_proposals_show_trail_says_when_a_person_may_not_see_it(monkeypatch):
     """Outside any session read_trail_forbidden means this person may not see it."""
     _setup(monkeypatch)
