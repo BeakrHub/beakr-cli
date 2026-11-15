@@ -82,6 +82,27 @@ def eager_tools() -> list[str]:
     return list(document()["eager"])
 
 
+@cache
+def confirm_lock_tools() -> frozenset[str]:
+    """The tools that take ``confirm_lock``: their calls can touch a project (boundaries)."""
+    return frozenset(document().get("confirm_lock") or ())
+
+
+def listed_schema(name: str, schema: dict[str, Any]) -> dict[str, Any]:
+    """A tool's input schema as listed: with ``confirm_lock`` where its calls can touch a project.
+
+    The shared surface's one property (``confirm_lock_property``), as the hosted
+    server lists it (``server._listed_schema``); :meth:`BeakrFastMCP.call_tool`
+    takes it off the call before the tool's own schema checks it.
+    """
+    from beakr_cli.lock_confirm import ARGUMENT
+
+    prop = document().get("confirm_lock_property")
+    if name not in confirm_lock_tools() or not isinstance(prop, dict):
+        return schema
+    return {**schema, "properties": {**(schema.get("properties") or {}), ARGUMENT: dict(prop)}}
+
+
 #: Tools that read the pinned project when given none (``mcp_server._project_by_name_or_id``),
 #: and the parameters that name a project for them.
 PINNABLE_TOOLS = frozenset({"documents", "research", "wiki_stats", "wiki_graph"})
@@ -303,6 +324,12 @@ class TieredFastMCP(FastMCP):
                 without_project_parameters(tool) if tool.name in PINNABLE_TOOLS else tool
                 for tool in tools
             ]
+        tools = [
+            tool.model_copy(update={"inputSchema": listed_schema(tool.name, tool.inputSchema)})
+            if tool.name in confirm_lock_tools()
+            else tool
+            for tool in tools
+        ]
         hidden = self._hidden | await self._unserved([tool.name for tool in tools])
         tools = [tool for tool in tools if tool.name not in hidden]
         if lists_every_tool():
@@ -321,9 +348,26 @@ class TieredFastMCP(FastMCP):
         project that names nothing and an error outcome become ``{status,
         error_code, message, fix}`` marked ``isError``.
         """
-        from beakr_cli import session_notice
+        from beakr_cli import lock_confirm, session_notice
         from beakr_cli.sdk import MCP_CLIENT_AGENT
 
+        # confirm_lock enters the locked project a held call named: taken off the
+        # call before anything checks its arguments, and sent on every request it
+        # makes (X-Beakr-Confirm-Lock), as the hosted server takes it.
+        try:
+            arguments, confirmed = lock_confirm.take(
+                name, dict(arguments or {}), confirm_lock_tools()
+            )
+        except lock_confirm.InvalidConfirmLock as exc:
+            return _error_result(
+                {
+                    "status": "error",
+                    "error_code": "invalid_arguments",
+                    "message": str(exc),
+                    "fix": "Pass the project id a session_lock_confirm answer named, as "
+                    "confirm_lock, or leave it out.",
+                }
+            )
         # Writes are attributed to the agent that made them: the MCP client's
         # clientInfo, unless BEAKR_AGENT names one (sdk._agent).
         agent = self._client_agent()
@@ -331,7 +375,7 @@ class TieredFastMCP(FastMCP):
         try:
             # A request that locked the session says so on the result's first line,
             # in the API's words, as the hosted server does.
-            with session_notice.collecting() as notices:
+            with session_notice.collecting() as notices, lock_confirm.confirming(confirmed):
                 result = await self._gated_call(name, arguments, agent)
             return _with_notices(result, notices)
         except ToolError as exc:

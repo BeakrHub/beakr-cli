@@ -193,7 +193,7 @@ are stable:
 | 0 | ok |
 | 1 | error |
 | 2 | usage (bad flags, a confirmation needed without `--yes`, or picked session lists that break a project boundary: `session_selection_invalid`) |
-| 3 | not signed in, the credential lacks a scope, or the session may not write the project (`session_write_scope`, `session_locked_to_project`, `session_read_only`, `cross_project_write_refused`, `project_content_locked`) |
+| 3 | not signed in, the credential lacks a scope, or the session may not write the project (`session_write_scope`, `session_locked_to_project`, `session_read_only`, `cross_project_write_refused`, `project_content_locked`), or a request held before entering a locked project (`session_lock_confirm`) |
 | 4 | not found |
 | 5 | conflict |
 | 6 | a person must do it: the project requires a person to accept proposals, commit Knowledge or approve an agent's upload (`person_review_required`), or the person has not yet chosen the projects of the session a write waited for (`session_needs_selection`) |
@@ -567,6 +567,21 @@ API's message and code (`session_locked_to_project`, `session_read_only`,
 `cross_project_write_refused`, `project_content_locked`,
 `session_selection_invalid`, `session_already_started`), exit 3 for a refused
 write.
+
+Entering a locked project after the session has already worked in another one
+cuts that work off, so the first such request is held (`session_lock_confirm`)
+and nothing is read or written. At a terminal the command asks first:
+
+```text
+Enter Partner A? This session will only be able to write to Partner A. [y/N]
+```
+
+and on yes goes in. Without a terminal (a script, an agent's shell) it exits 3
+with Beakr's warning and the command to repeat, `beakr --confirm-lock <project
+id> <command>` (or `BEAKR_CONFIRM_LOCK=<project id>`). In `beakr mcp` the agent
+repeats the held tool call with `confirm_lock="<project id>"`, as on the hosted
+server. A session's first touch, a picked or read-everything session, and a
+project the session already touched are never held.
 
 Inside an agent conversation the `beakr session` commands read only that
 conversation's own session (through its token), and a person's own acts that

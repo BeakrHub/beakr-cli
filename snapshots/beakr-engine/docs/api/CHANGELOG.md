@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=b2b79e45fa5666d196cd46be9291f14d95a615ab8b5495c76c1740f96dc2e334 -->
+<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=f26203e30b9ce2639d1101146b65e33e712f9cbabdd140292482576056cab1c8 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -507,6 +507,20 @@ The first public version.
     `X-Beakr-Session-Lock`, and the Knowledge operations
     (`POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`) also
     `session_notice`.
+  - Confirm before entering a locked project: in an `automatic` session that has
+    already read or written another project, the first request that touches a
+    `locked` project it has not touched answers `409 session_lock_confirm` and
+    reads, writes and records nothing. `detail` (and `error`, beside `code`)
+    carries `message` (one line: what entering costs and how to go in), `fix`,
+    `session_id`, `project` (`id`, `name`), `cost` and `confirm_lock`, the id to
+    send back. The same request with `X-Beakr-Confirm-Lock: <project id>`
+    (several ids comma-separated) goes in, with the usual lock notice; anything
+    but project ids in it answers `422 invalid_arguments`. Never held: a
+    session's first touch, a project it already touched or is locked to, a
+    session that is already read-only, `picked` and `read_everything` sessions,
+    and a credential that can read only that project. A `picked` session gets no
+    lock notice either (its log and status still record the lock). The session's
+    log records one `boundary:held` event per held project.
   - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
     they are valid and, for each project the person can read, whether it can be
     added to read or to write, with the reason when not.

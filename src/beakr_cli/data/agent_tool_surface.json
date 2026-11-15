@@ -3,6 +3,26 @@
     "workboard",
     "wiki_graph"
   ],
+  "confirm_lock": [
+    "context",
+    "knowledge_base",
+    "knowledge_base_write",
+    "read_file",
+    "research",
+    "workboard",
+    "documents",
+    "get_profile",
+    "show_proposal",
+    "accept_proposal",
+    "dismiss_proposal",
+    "upload_files",
+    "set_project_profile",
+    "add_project_member"
+  ],
+  "confirm_lock_property": {
+    "description": "The id of a locked project a session_lock_confirm answer named, to enter it. Pass it only to repeat that call.",
+    "type": "string"
+  },
   "discovery": [
     "documents",
     "get_profile",

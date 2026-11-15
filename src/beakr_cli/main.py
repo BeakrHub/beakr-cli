@@ -133,12 +133,29 @@ def _main(
         callback=_print_version,
         help="Print the CLI version and exit (`beakr version` also checks for updates).",
     ),
+    confirm_lock: str | None = typer.Option(
+        None,
+        "--confirm-lock",
+        envvar="BEAKR_CONFIRM_LOCK",
+        metavar="PROJECT_ID",
+        help=(
+            "Enter this locked project when a command's session is held before it "
+            "(session_lock_confirm): the id the held command named, comma-separate several. "
+            "At a terminal the command asks instead."
+        ),
+    ),
 ) -> None:
     """Move any key an older CLI left in config.json; tell an interactive user they are behind."""
     import sys
 
-    from beakr_cli import config
+    from beakr_cli import config, lock_confirm
     from beakr_cli.output import err_console
+
+    try:
+        # A str from the command line or the environment (a direct call passes the default).
+        lock_confirm.declare(confirm_lock if isinstance(confirm_lock, str) else None)
+    except lock_confirm.InvalidConfirmLock as exc:
+        raise typer.BadParameter(str(exc), param_hint="--confirm-lock") from None
 
     try:
         # CLI 0.3.x saved API keys in plain text in config.json (0644).
@@ -384,8 +401,11 @@ def mcp() -> None:
     """
     # No --json: stdout carries the MCP protocol itself (see JSON_EXEMPT_COMMANDS
     # in tests/test_cli_json_everywhere.py).
+    from beakr_cli import lock_confirm
     from beakr_cli.mcp_server import run_server
 
+    # The agent confirms a held call itself, with the tool's confirm_lock argument.
+    lock_confirm.serve_without_asking()
     run_server()
 
 
