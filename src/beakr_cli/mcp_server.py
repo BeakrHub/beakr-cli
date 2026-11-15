@@ -95,11 +95,11 @@ _INSTRUCTIONS_TEMPLATE = (
     "learned, add_connection {page, relation, to, evidence} for how two things relate; if "
     "it does not exist, create it with action 'new' and the most specific card type from "
     "knowledge_base command='ontology', then add its rows. Then tell the user in one line "
-    "what you saved. Writing is safe: "
-    "knowledge_base_write stages a PROPOSAL (page_type and sort_table apply at once): call "
-    "accept_proposal only when the user "
-    "asks to accept that proposal. If the result says auto-approve is on, Beakr applies it "
-    "itself: do not ask for approval or call accept_proposal. Cite this chat as a "
+    "what you saved. Writing is safe: every change stages a PROPOSAL (a table sort, which "
+    "changes no content, applies at once) that a person or the project's auto-approve "
+    "decides. Never accept one unless the user asks to accept that specific proposal, and "
+    "do not ask for approval when the write result says auto-approve is on. One that needs "
+    "a person to accept is the user's to accept in Beakr, never yours. Cite this chat as a "
     "'conversation' source keyed conversation:<label> with meta.excerpt, and put "
     "{{conversation:<label>}} after the claim it supports. Cite a record in a system "
     "outside Beakr (CDD Vault, Torx) by its link, {source_type: external_record, url, "
@@ -702,7 +702,11 @@ def _profile_text(data: Any, profile_type: str) -> str:
     """
     if not data:
         return f"No {profile_type} profile found."
-    lines = [f"# {data.get('name', 'Untitled')} ({profile_type} profile)"]
+    # A profile saved with no name (set_project_profile asks for none) printed
+    # "#  (project profile)" (sandbox, 2026-11-14): ``get`` defaulted only a
+    # missing name, not an empty one.
+    name = str(data.get("name") or "").strip() or "Untitled"
+    lines = [f"# {name} ({profile_type} profile)"]
     if data.get("description"):
         lines.append(str(data["description"]))
     if data.get("industry"):
@@ -1105,9 +1109,13 @@ async def knowledge_base_write(
     arguments: dict | None = None,
     scope: str | None = None,
 ) -> dict[str, Any]:
-    """Propose a knowledge-base change. Nothing is written until accept_proposal --
-    unless the result says the user's auto-approve is on, in which case Beakr
-    applies it automatically (new, edit and edit_section only).
+    """Propose a change to Knowledge. It is applied at once where auto-approve is on
+    (the result says so), otherwise when a person accepts it; proposing never needs
+    permission. page_type and sort_table apply at once.
+
+    The description MCP clients receive is the shared one
+    (``tool_surface.description("knowledge_base_write")``, the engine's text); this
+    docstring summarises the actions for readers of this file.
 
     Pass the action as ``action`` and its fields as a flat ``arguments`` object.
     Every change except page_type needs ``rationale``; edits also take ``edit_note``.

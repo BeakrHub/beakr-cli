@@ -170,13 +170,14 @@ CASES: list[SnapshotCase] = [
     c("kb-sections", "kb", "sections", "Helios lead", "--project", PROJECT),
     c("kb-blame", "kb", "blame", PAGE, "--project", PROJECT),
     c("kb-log", "kb", "log", PAGE, "--project", PROJECT),
-    c("kb-sources", "kb", "sources", PAGE, "--project", PROJECT),
     c("kb-section-provenance", "kb", "section-provenance", PAGE, "--project", PROJECT),
     c("kb-backlinks", "kb", "backlinks", PAGE, "--project", PROJECT),
     c("kb-events", "kb", "events", "--project", PROJECT),
     # The door's graph and lineage reads. The replay holds one recorded door
     # reply (a `cat`), so these pin the request each sends and the rendering.
     c("kb-hover", "kb", "hover", PAGE, "--project", PROJECT),
+    # `kb sources` reads the door too since 2026-11-14 (the REST route names no read call).
+    c("kb-sources", "kb", "sources", PAGE, "--project", PROJECT),
     c("kb-provenance", "kb", "provenance", PAGE, "--project", PROJECT),
     c("kb-links", "kb", "links", PAGE, "--direction", "out", "--project", PROJECT),
     c("kb-timeline", "kb", "timeline", PAGE, "--project", PROJECT),

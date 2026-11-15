@@ -306,7 +306,7 @@ def test_a_name_nobody_can_see_is_still_not_found():
     result = runner.invoke(app, ["kb", "ls", "-P", "Nowhere"])
 
     assert result.exit_code == 2
-    assert "No project with id, slug or name 'Nowhere'" in _text(result)
+    assert "No project with id, name or slug 'Nowhere'" in _text(result)
     assert not looked.called
 
 

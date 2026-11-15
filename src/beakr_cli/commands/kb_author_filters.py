@@ -20,6 +20,11 @@ by_opt = typer.Option(
 via_opt = typer.Option(
     None, "--via", help="Only changes made through this client or agent (prefix), e.g. codex."
 )
+session_opt = typer.Option(
+    None,
+    "--session",
+    help="Only changes from this agent session (a prefix of the session id the change records).",
+)
 kind_opt = typer.Option(
     None, "--kind", help="Only changes by this kind of writer: person, agent, beakr or system."
 )
@@ -67,12 +72,15 @@ def history_arguments(
     since: str | None,
     until: str | None,
     offset: int | None,
+    session: str | None = None,
+    limit: int | None = None,
 ) -> dict[str, object]:
     """The door arguments of a filtered ``log`` or ``proposals``; empty when none is given."""
     arguments = _given(
         {
             "by": by,
             "via": via,
+            "session": session,
             "kind": kind,
             "accepted_by": accepted_by,
             "since": since,
@@ -82,6 +90,8 @@ def history_arguments(
     if offset:
         # Offset 0 is the first window, which the unfiltered read already is.
         arguments["offset"] = offset
+    if limit is not None:
+        arguments["limit"] = limit
     return arguments
 
 

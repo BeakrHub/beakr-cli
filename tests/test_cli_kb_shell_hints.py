@@ -178,7 +178,8 @@ def test_the_doors_other_spelling_of_a_call_is_translated_in_a_next_step() -> No
     assert "Use `beakr kb sections <query>` to search by meaning" in text
     assert (
         "by title prefix with `beakr api knowledge run-wiki-command --command completions "
-        "--prefix <prefix>`."
+        # The door's own command prints the reply as JSON, and the hint says so.
+        "--prefix <prefix>` (prints JSON)."
     ) in text
 
 
@@ -271,11 +272,12 @@ def test_every_option_of_every_kb_command_becomes_its_flag(command: str) -> None
             "beakr api knowledge run-wiki-command --command ls --after-title 'Matter 12' "
             f"--project {PROJECT}",
         ),
+        # `kb provenance` has no sources_per_section flag.
         (
-            "sources",
-            {"page": "Assay", "after_title": "memo.pdf", "after_source_id": "s-1"},
-            "beakr api knowledge run-wiki-command --command sources --page Assay "
-            "--after-title memo.pdf --after-source-id s-1",
+            "provenance",
+            {"page": "Assay", "sources_per_section": 2},
+            "beakr api knowledge run-wiki-command --command provenance --page Assay "
+            "--sources-per-section 2",
         ),
         (
             "query",
@@ -533,7 +535,12 @@ def test_a_name_from_a_reply_never_reaches_the_shell_unquoted(tmp_path):
             (
                 "sources",
                 {"page": title, "after_title": title},
-                {"b__page": title, "b__after_title": title},
+                {"page": title, "after_title": title},
+            ),
+            (
+                "links",
+                {"page": title, "relation": title},
+                {"b__page": title, "b__relation": title},
             ),
         ]
         for command, arguments, expected in calls:
@@ -705,6 +712,14 @@ def test_the_doors_own_spelling_of_a_continuation_repeats_the_cli_flags() -> Non
             "beakr kb log --by me --offset 40",
         ),
         (
+            # A log cut at a limit continues with that limit (sandbox, 2026-11-15:
+            # `kb log` had no --limit, so this was spelled as the generic door call).
+            "log_limit",
+            {"next_offset": 5},
+            "Not everything is shown: call log again with offset=5 to read the rest.",
+            "beakr kb log --limit 5 --by me --offset 5",
+        ),
+        (
             "rows",
             {"next_cursor": "c0522cf7-d82a-4d2a-89b3-16819eecc5bc"},
             "Later candidates remain: call rows with "
@@ -716,7 +731,12 @@ def test_the_doors_own_spelling_of_a_continuation_repeats_the_cli_flags() -> Non
 def test_next_offset_and_next_cursor_continue_the_call_that_was_made(
     command: str, coverage: dict[str, Any], hint: str, expected: str
 ) -> None:
-    arguments = {"by": "me"} if command == "log" else {"table": "facts"}
+    arguments = {
+        "log": {"by": "me"},
+        "log_limit": {"limit": 5, "by": "me"},
+        "rows": {"table": "facts"},
+    }[command]
+    command = command.removesuffix("_limit")
     call = with_cursor(DoorCall(command, arguments), {"complete": False, **coverage})
 
     translated = shell_hint(hint, call)
@@ -819,6 +839,10 @@ def test_every_kb_command_that_prints_the_doors_text_translates_its_next_steps(
     assert out.startswith(_DOOR_TEXT)
     if arguments[0] != "rows":
         # `kb rows` prints the reply's text only, not its `next` steps.
-        assert "next: Open a hit with `beakr kb cat <page> --section-id <section_id>`." in out
+        # In the project the command ran in: pasted, the step reads the same place.
+        assert (
+            "next: Open a hit with `beakr kb cat <page> --section-id <section_id> "
+            f"--project {PROJECT}`." in out
+        )
     for command in printed_commands(out):
         parse_command(command)

@@ -219,6 +219,10 @@ def file_read(data: dict[str, Any]) -> dict[str, Any]:
         if data.get("next_offset") is not None:
             hints.append(f"More text follows: call read_file again with offset={end}.")
     header = f"{where} ({position}; file {file.get('id')} version {file.get('version_id')})"
+    if data.get("agent_written") and data.get("agent_written_note"):
+        # The line documents read leads a Beakr-written file with, said the same here.
+        name = file.get("display_path") or file.get("title") or "this file"
+        header = f"Written by Beakr: {name}. {data['agent_written_note']}\n\n{header}"
     more = bool(data.get("has_more"))
     # No blank stretch where a window past the end has no text.
     body = "\n\n".join([header, *([text] if text or not past_end else []), *hints])

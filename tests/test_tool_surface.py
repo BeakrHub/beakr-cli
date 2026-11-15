@@ -70,7 +70,7 @@ def test_the_knowledge_tools_are_compact_and_point_at_help_for_asks_full_text():
     # call away as `command: "help"` / `action: "help"` (dogfood row 18).
     read = tool_surface.description("knowledge_base")
     write = tool_surface.description("knowledge_base_write")
-    assert "Use the narrowest read that answers the question" in read
+    assert "Use the narrowest read that answers it" in read
     assert "help {topic?}" in read
     assert "What Beakr's own agent is told" not in read + write
     assert len(read) // 4 < 1050 and len(write) // 4 < 1050
