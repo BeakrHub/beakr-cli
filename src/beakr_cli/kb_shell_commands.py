@@ -210,7 +210,13 @@ COMMANDS: dict[str, _Spec] = {
     "hover": _Spec("kb hover", "page"),
     "blame": _Spec("kb blame", "page"),
     "provenance": _Spec(
-        "kb provenance", "page", options={"limit": "--limit", "after_section": "--after-section"}
+        "kb provenance",
+        "page",
+        options={
+            "limit": "--limit",
+            "after_section": "--after-section",
+            "section_id": "--section-id",
+        },
     ),
     "links": _Spec(
         "kb links",

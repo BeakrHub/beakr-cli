@@ -980,6 +980,9 @@ def provenance(
     after_section: str | None = typer.Option(
         None, "--after-section", help="Continue after this section (as a cut reply names)."
     ),
+    section_id: str | None = typer.Option(
+        None, "--section-id", help="Only this section's citations (its section id)."
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
@@ -993,6 +996,7 @@ def provenance(
         page=page,
         limit=limit,
         after_section=after_section,
+        section_id=section_id,
     )
 
 
