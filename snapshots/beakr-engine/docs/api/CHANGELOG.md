@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=f396872662a6a5053e053ca599c59c4ab021839371db1ab0f448819a827b7f64 changelog sha256=6b6e637792636f26179c61ef6604d2607ecb893cb4deebdd6492d4d403049937 -->
+<!-- contract-stamp: public-openapi sha256=f396872662a6a5053e053ca599c59c4ab021839371db1ab0f448819a827b7f64 changelog sha256=992d9be72180d2ca8e2beeb186ee3b844a2f5985fa06d289b7eb871ac612be79 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -441,7 +441,10 @@ The first public version.
   organization's members: a name that several of them share is refused with
   `person_ambiguous` and their names, and anyone else (a name nobody has, a
   colleague who wrote nothing there, a user id) is not an error, it lists
-  nothing. The `Filters:` line says a person back as you typed it. A revision written from a proposal
+  nothing. An email address names you, or a person the history prints by
+  that address because they have no display name; anyone else's email
+  address lists nothing, as a name nobody has does. The `Filters:` line says
+  a person back as you typed it. A revision written from a proposal
   you cannot open names only the person who applied it in `log`, so it matches
   `by` for that person and no `via` or `accepted_by`. Calls without these
   options answer as before. The
