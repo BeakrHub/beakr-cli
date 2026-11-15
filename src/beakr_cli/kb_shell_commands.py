@@ -237,7 +237,9 @@ COMMANDS: dict[str, _Spec] = {
         },
         switches={("include_content", True): "--content"},
     ),
-    "log": _Spec("kb log", "page", required=False, options={**_AUTHOR, **_WINDOW}),
+    "log": _Spec(
+        "kb log", "page", required=False, options={"limit": "--limit", **_AUTHOR, **_WINDOW}
+    ),
     "proposals": _Spec(
         "kb proposals ls",
         options={"status": "--status", "limit": "--limit", **_AUTHOR, **_WINDOW},

@@ -73,6 +73,7 @@ def history_arguments(
     until: str | None,
     offset: int | None,
     session: str | None = None,
+    limit: int | None = None,
 ) -> dict[str, object]:
     """The door arguments of a filtered ``log`` or ``proposals``; empty when none is given."""
     arguments = _given(
@@ -89,6 +90,8 @@ def history_arguments(
     if offset:
         # Offset 0 is the first window, which the unfiltered read already is.
         arguments["offset"] = offset
+    if limit is not None:
+        arguments["limit"] = limit
     return arguments
 
 

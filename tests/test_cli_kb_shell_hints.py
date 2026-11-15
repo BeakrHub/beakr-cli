@@ -712,6 +712,14 @@ def test_the_doors_own_spelling_of_a_continuation_repeats_the_cli_flags() -> Non
             "beakr kb log --by me --offset 40",
         ),
         (
+            # A log cut at a limit continues with that limit (sandbox, 2026-11-15:
+            # `kb log` had no --limit, so this was spelled as the generic door call).
+            "log_limit",
+            {"next_offset": 5},
+            "Not everything is shown: call log again with offset=5 to read the rest.",
+            "beakr kb log --limit 5 --by me --offset 5",
+        ),
+        (
             "rows",
             {"next_cursor": "c0522cf7-d82a-4d2a-89b3-16819eecc5bc"},
             "Later candidates remain: call rows with "
@@ -723,7 +731,12 @@ def test_the_doors_own_spelling_of_a_continuation_repeats_the_cli_flags() -> Non
 def test_next_offset_and_next_cursor_continue_the_call_that_was_made(
     command: str, coverage: dict[str, Any], hint: str, expected: str
 ) -> None:
-    arguments = {"by": "me"} if command == "log" else {"table": "facts"}
+    arguments = {
+        "log": {"by": "me"},
+        "log_limit": {"limit": 5, "by": "me"},
+        "rows": {"table": "facts"},
+    }[command]
+    command = command.removesuffix("_limit")
     call = with_cursor(DoorCall(command, arguments), {"complete": False, **coverage})
 
     translated = shell_hint(hint, call)
