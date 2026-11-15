@@ -414,3 +414,26 @@ def test_unfiltered_log_names_the_person_and_agent_not_the_storage_stamp() -> No
         "by=system",
     ]
     assert "proposal:" not in result.stdout and "api:" not in result.stdout
+
+
+# Root cause (sandbox, 2026-11-15): `beakr kb log` had --offset but no --limit,
+# although the door's `log` takes one and every other listing has the flag, so
+# an agent could not ask for fewer or more revisions, and a cut reply's
+# continuation carrying a limit could not be spelled as `kb log`.
+@respx.mock
+def test_log_limit_reaches_the_door():
+    door = respx.post(COMMAND).respond(json=_door("rev 4  Launch Plan"))
+    result = runner.invoke(app, ["kb", "log", "--project", PROJECT, "--limit", "5"])
+    assert result.exit_code == 0, result.output
+    assert _sent(door) == {"command": "log", "scope": PROJECT, "limit": 5}
+
+
+@respx.mock
+def test_log_of_one_page_with_a_limit_reads_the_door_not_the_revisions_route():
+    respx.get(f"{PAGES}/{PAGE_ID}").respond(json=PAGE)
+    revisions = respx.get(f"{PAGES}/{PAGE_ID}/revisions").respond(json=_envelope([]))
+    door = respx.post(COMMAND).respond(json=_door("rev 2  Ali Chen via codex"))
+    result = runner.invoke(app, ["kb", "log", PAGE_ID, "--project", PROJECT, "-n", "3"])
+    assert result.exit_code == 0, result.output
+    assert not revisions.called
+    assert _sent(door) == {"command": "log", "scope": PROJECT, "page": PAGE_ID, "limit": 3}

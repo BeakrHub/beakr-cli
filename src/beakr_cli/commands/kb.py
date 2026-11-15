@@ -828,6 +828,9 @@ def log(
     offset: int | None = typer.Option(
         None, "--offset", min=0, help="The first revision to return (a cut reply names it)."
     ),
+    limit: int | None = typer.Option(
+        None, "--limit", "-n", min=1, help="Max revisions (the door's default when not given)."
+    ),
     json_out: bool = typer.Option(False, "--json", "-j", help="Output raw JSON."),
     project: str | None = _project_opt,
     mine: bool = _mine_opt,
@@ -838,7 +841,8 @@ def log(
     revisions a person or an agent wrote, for one page or across the scope
     (--session: one agent session, by a prefix of its id). The filtered
     history is the Knowledge door's `log`: it opens with the filters applied,
-    and a cut one names the --offset that continues it.
+    and a cut one names the --offset that continues it. --limit caps how many
+    revisions one reply shows, as it does for the door's `log`.
     """
     filters = author.history_arguments(
         by=by,
@@ -849,6 +853,7 @@ def log(
         since=since,
         until=until,
         offset=offset,
+        limit=limit,
     )
     if page:
         page_data = _resolve_page(page, project=project, mine=mine)
@@ -856,7 +861,7 @@ def log(
             return
         page_id = page_data["id"]
         if filters:
-            # The revisions route takes no author filter; the door's `log` does.
+            # The revisions route takes no author filter or limit; the door's `log` does.
             _door_read(
                 "log", project=project, mine=mine, json_out=json_out, page=str(page_id), **filters
             )
