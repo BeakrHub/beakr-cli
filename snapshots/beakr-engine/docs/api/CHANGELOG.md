@@ -11,11 +11,31 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a0c6fd996fc58bc24b347d68c57ed3b18d80ee6cfcc814796296d79b3de2c922 changelog sha256=b7a9c70a865afdcbdc6139823a96d24a1b3430dc89ed3739c9745b2e55600e5f -->
+<!-- contract-stamp: public-openapi sha256=fa4e4ceefc11cbf6d1f93b1727a46b11fd653e41f4423f858f3bfa47f8f68f49 changelog sha256=38ad20fa8ea343d37950f0a0bfed8642c13620cdc79650cab945f85c89a6fe6b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/artifacts/read`: a file with no extracted text of its own whose
+  bytes are not text (an Ask notebook, or any other format Beakr indexes
+  without a stored extraction) now reads as the text `POST
+  /v1/knowledge/documents` `read` gives it, line for line; it answered
+  `no_readable_text`. The new `agent_written` and `agent_written_note` fields
+  say when Beakr wrote the file, with the sentence `documents` `read` gives.
+- `POST /v1/artifacts/read` and `POST /v1/artifacts/download-url`: a
+  same-name label (`<name> · id <8 hex>`, `<name> · <date>`) now finds its
+  file however many files share the name; it answered `ambiguous_reference`
+  when more than 50 did. An `ambiguous_reference` refusal now says how many
+  files the reference names (the new `total` field), that those beyond the
+  listed 20 are not shown, lists the most recently updated first, and says
+  how to name one; `next_calls` holds a `read_file` call for each of the
+  first ten, with the request's `project`.
+- `POST /v1/knowledge/documents` `read` and `grep`: an `ambiguous_reference`
+  refusal says the same, lists the most recently updated first, and its
+  `next_calls` hold one `documents` call per listed document.
+- `POST /v1/knowledge/wiki/command` `provenance`: the new `section_id` option
+  returns that one section's citations, in the same shape; it was refused as
+  an option `provenance` does not take.
 - `POST /v1/knowledge/wiki/command` `sources`: `next_calls` now names the read
   of each of the first five sources the reply lists, in listing order, one per
   document: `read_file` with `artifact_id` set to the source's reference and
