@@ -284,7 +284,6 @@ GENERIC_ONLY: dict[str, frozenset[str]] = {
     "ls": frozenset({"sort_by"}),
     "grep": frozenset({"page_type", "matches_per_page", "detail"}),
     "sections": frozenset({"detail"}),
-    "log": frozenset({"limit"}),
     "provenance": frozenset({"sources_per_section"}),
     "links": frozenset({"relation", "page_type"}),
     "timeline": frozenset({"include_approx", "include_children"}),
