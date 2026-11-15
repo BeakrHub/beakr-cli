@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=38530709774d178d20b91a2d0e08f33ddf7669eb972a2e9d77240235439eca75 -->
+<!-- contract-stamp: public-openapi sha256=45f37b396e38edd32a9a7e70a3268bf932287e671a52179e6ccecd60bc7c406c changelog sha256=d1cb91f51bd46b1b996d037e39652c8e9e8f1104631751327a16cf9e461c5346 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -546,6 +546,11 @@ The first public version.
     shows what was read in other projects, and three views of the web app (a
     project's Knowledge status, suggested projects for a file, a folder's delete
     preview).
+  - The hosted MCP server's `session_status` takes `trail` (true also lists what
+    the session read, newest first, from `GET /v1/sessions/{session_id}/trail`) and
+    `proposal_id` (says where a person reads that write's trail, which no session
+    may read), as the beakr CLI's `beakr mcp` does, in the same words. Called with
+    neither, it answers as before.
   - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
     they are valid and, for each project the person can read, whether it can be
     added to read or to write, with the reason when not.

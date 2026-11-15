@@ -536,6 +536,11 @@ Each release lists the public API changes it supports, taken from the API change
     shows what was read in other projects, and three views of the web app (a
     project's Knowledge status, suggested projects for a file, a folder's delete
     preview).
+  - The hosted MCP server's `session_status` takes `trail` (true also lists what
+    the session read, newest first, from `GET /v1/sessions/{session_id}/trail`) and
+    `proposal_id` (says where a person reads that write's trail, which no session
+    may read), as the beakr CLI's `beakr mcp` does, in the same words. Called with
+    neither, it answers as before.
   - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
     they are valid and, for each project the person can read, whether it can be
     added to read or to write, with the reason when not.
@@ -709,6 +714,12 @@ Each release lists the public API changes it supports, taken from the API change
   the server never asks. `read_file` and `upload_files` answer the hold too,
   rather than a read conflict or a failed file. The instructions say how a held
   call goes in.
+- `beakr mcp` lists the hosted MCP server's arguments. `research`, `wiki_stats`
+  and `wiki_graph` no longer list `project_id` (it is still read as `project`);
+  `upload_files` takes the hosted server's `files` (each `{name, text}` or `{name,
+  content_base64}`, checked in its words) and `folder` beside `paths`, which is no
+  longer required. Only `session_scope` (the local shell session) and
+  `upload_files`' `resume_upload_id` are this server's alone.
 - `beakr mcp`'s `wiki_graph` takes `confirm_lock` too (the surface's list). Inside a
   session `beakr kb proposals show --trail` says a person reads a write's trail when
   the API refuses it to the session with `session_route_unavailable` (it answered
