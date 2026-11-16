@@ -100,17 +100,23 @@ def save_api_key(api_key: str, base_url: str) -> None:
 def migrate_secrets() -> bool:
     """Move an ``api_key`` an older CLI saved in ``config.json`` into the token store.
 
-    The key is filed under the API it was saved for (``api_url``, else
-    production), removed from the file, and the file is rewritten at 0600.
-    Returns whether anything moved. Safe to call on every run.
+    The key is filed under the API it was saved for (``api_url``, else the
+    deployment ``BEAKR_BASE_URL`` names), removed from the file, and the file is
+    rewritten at 0600. With neither, the key stays where it is: a self-hosted
+    build never files it under Beakr's hosted API. Returns whether anything
+    moved. Safe to call on every run.
     """
-    from beakr_sdk.credentials import DEFAULT_BASE_URL, TokenStore
+    from beakr_sdk.credentials import TokenStore
+
+    from beakr_cli.deployment import configured_base_url
 
     data = _read()
-    api_key = data.pop("api_key", None)
-    if not api_key:
+    if not data.get("api_key"):
         return False
-    base_url = str(data.get("api_url") or DEFAULT_BASE_URL)
+    base_url = configured_base_url(data.get("api_url"))
+    if base_url is None:
+        return False
+    api_key = data.pop("api_key")
     existing = TokenStore().load(base_url)
     # A newer sign-in for the same API already outranks the old key; keep it.
     if existing is None:

@@ -173,10 +173,15 @@ def binding_applies(binding: dict[str, Any]) -> bool:
     is ignored, as if the directory were unbound. An org that cannot be
     determined (offline, an older binding without ``org_id``) keeps the binding.
     """
-    from beakr_sdk.credentials import normalize_origin, resolve_base_url
+    from beakr_sdk.credentials import normalize_origin
+
+    from beakr_cli.deployment import configured_base_url
 
     bound_url = binding.get("base_url")
-    if bound_url and normalize_origin(str(bound_url)) != normalize_origin(resolve_base_url()):
+    current_url = configured_base_url()
+    if bound_url and (
+        current_url is None or normalize_origin(str(bound_url)) != normalize_origin(current_url)
+    ):
         return False
     bound_org = binding.get("org_id")
     if not bound_org:
@@ -189,11 +194,16 @@ def credential_org_id() -> str | None:
     """The organization the configured credential acts in, or None if unknown."""
     import hashlib
 
-    from beakr_sdk.credentials import beakr_home, resolve_base_url, resolve_credential
+    from beakr_sdk.credentials import beakr_home, resolve_credential
     from beakr_sdk.errors import BeakrError
 
+    from beakr_cli.deployment import configured_base_url
+
+    base_url = configured_base_url()
+    if base_url is None:
+        return None
     try:
-        credential = resolve_credential()
+        credential = resolve_credential(base_url=base_url)
     except BeakrError:
         return None
     if credential.tokens is not None and credential.tokens.org_id:
@@ -201,7 +211,6 @@ def credential_org_id() -> str | None:
     secret = credential.token
     if not secret:
         return None
-    base_url = resolve_base_url()
     fingerprint = hashlib.sha256(f"{base_url}\n{secret}".encode()).hexdigest()[:32]
     cache_path = beakr_home() / _ORG_CACHE_FILE
     try:

@@ -174,6 +174,45 @@ def test_beakr_mcp_starts_a_session_with_the_persons_credential(tmp_path, monkey
     assert _bearer(created) == f"Bearer {PERSON_KEY}"
 
 
+# Root cause (deep QA, 16 Nov): `beakr mcp` ended its session when the process exited,
+# so a resumed or reconnected Claude Code conversation (or the restart after an update)
+# got session_ended on every tool for the rest of that conversation. A conversation's
+# session is left open now, and the restarted server joins it again by the same id.
+@respx.mock
+def test_beakr_mcp_leaves_a_conversations_session_open_on_exit(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-restart")
+    created = respx.post(f"{API}/v1/sessions").respond(201, json=_created())
+    ended = respx.post(url__regex=rf"{API}/v1/sessions/.*/end")
+
+    first = asyncio.run(scope_session.start_for_mcp())
+    asyncio.run(scope_session.release_for_mcp())
+
+    assert first is not None and not ended.called
+    assert scope_session.ACTIVE is None
+    # The next server for the same conversation asks for the same agent session.
+    second = asyncio.run(scope_session.start_for_mcp())
+    assert second is not None and second.id == first.id
+    sent = [json.loads(call.request.content) for call in created.calls]
+    assert [body["agent_session"] for body in sent] == ["conv-restart", "conv-restart"]
+    asyncio.run(scope_session.release_for_mcp())
+    assert not ended.called
+
+
+@respx.mock
+def test_beakr_mcp_still_ends_a_session_no_conversation_can_join_again(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    for name in ("BEAKR_SESSION", "CLAUDE_CODE_SESSION_ID", "CODEX_THREAD_ID"):
+        monkeypatch.delenv(name, raising=False)
+    respx.post(f"{API}/v1/sessions").respond(201, json=_created())
+    ended = respx.post(f"{API}/v1/sessions/{SID}/end").respond(json=_session("ended"))
+
+    asyncio.run(scope_session.start_for_mcp())
+    asyncio.run(scope_session.release_for_mcp())
+
+    assert ended.called
+
+
 @respx.mock
 def test_without_sessions_on_the_installation_beakr_mcp_runs_as_before():
     respx.post(f"{API}/v1/sessions").respond(404, json={"detail": "Not Found"})

@@ -280,7 +280,11 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
             "or sign in with `beakr auth login`."
         )
     if isinstance(exc, AuthenticationError):
-        return f"{exc}\nRun `beakr auth login` (or set BEAKR_API_KEY)."
+        from beakr_cli.deployment import API_KEY_LOGIN, BASE_URL_REQUIRED
+
+        if exc.code == BASE_URL_REQUIRED:
+            return str(exc)
+        return f"{exc}\nRun `{API_KEY_LOGIN}` (or set BEAKR_BASE_URL and BEAKR_API_KEY)."
     return str(exc)
 
 

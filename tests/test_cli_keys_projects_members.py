@@ -43,7 +43,8 @@ def test_keys_create_opens_the_web_page_and_never_mints_a_key(monkeypatch):
 
     assert result.exit_code == 0, result.output
     body = json.loads(result.stdout)
-    assert body["url"].startswith("https://app.thebeakr.com/settings?tab=api-keys&newKey=")
+    # With no app URL reported or saved, the deployment's own origin, never Beakr's.
+    assert body["url"].startswith(f"{API}/settings?tab=api-keys&newKey=")
     assert opened == [body["url"]]
     # Every key records a client, so even a bare request names the CLI.
     assert _decoded_request(body["url"]) == {
@@ -352,7 +353,8 @@ def test_keys_create_with_scopes_opens_a_prefilled_page_and_mints_nothing(monkey
 
     assert result.exit_code == 0, result.output
     body = json.loads(result.stdout)
-    assert body["url"].startswith("https://app.thebeakr.com/settings?tab=api-keys&newKey=")
+    # With no app URL reported or saved, the deployment's own origin, never Beakr's.
+    assert body["url"].startswith(f"{API}/settings?tab=api-keys&newKey=")
     assert opened == [body["url"]]
     assert (
         _decoded_request(body["url"])

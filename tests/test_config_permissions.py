@@ -47,7 +47,9 @@ def test_reading_moves_a_key_an_older_release_left_world_readable():
     home = config.config_dir()
     home.mkdir(mode=0o755, parents=True)
     home.chmod(0o755)
-    config.config_file().write_text(json.dumps({"api_key": KEY}) + "\n")
+    config.config_file().write_text(
+        json.dumps({"api_key": KEY, "api_url": "https://beakr.example.com"}) + "\n"
+    )
     config.config_file().chmod(0o644)
 
     config.load()
@@ -55,6 +57,19 @@ def test_reading_moves_a_key_an_older_release_left_world_readable():
     assert "api_key" not in json.loads(config.config_file().read_text())
     assert _mode(home) == 0o700
     assert _mode(config.config_file()) == 0o600
+
+
+def test_a_key_saved_with_no_url_is_never_filed_under_the_hosted_api():
+    # A self-hosted build has no hosted default (deep QA, 16 Nov): an old key with
+    # no api_url stays where it is until a deployment URL is set.
+    from beakr_sdk.credentials import TokenStore
+
+    config.config_dir().mkdir(mode=0o700, parents=True, exist_ok=True)
+    config.config_file().write_text(json.dumps({"api_key": KEY}) + "\n")
+
+    config.load()
+
+    assert TokenStore().load("https://api.thebeakr" + ".com") is None
 
 
 def test_saving_tightens_an_existing_world_readable_file():

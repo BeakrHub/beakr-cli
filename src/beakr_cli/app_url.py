@@ -15,9 +15,9 @@ import re
 from dataclasses import dataclass
 from urllib.parse import urlsplit
 
-from beakr_sdk.credentials import DEFAULT_BASE_URL, read_cli_config, resolve_base_url
+from beakr_sdk.credentials import read_cli_config
 
-DEFAULT_APP_URL = "https://app.thebeakr.com"
+from beakr_cli.deployment import require_base_url
 
 #: Where the API keys tab lives in beakr-web (app/(signed-in)/settings).
 API_KEYS_PATH = "/settings?tab=api-keys"
@@ -54,14 +54,14 @@ def app_url() -> AppUrl:
     """``BEAKR_APP_URL``, then the API's own report, then a saved URL, then a guess.
 
     The guess maps a local API port to the web dev server (8000+N -> 3000+N)
-    and anything else to Beakr's hosted app; a self-hosted box (API on
-    localhost:8000, app on https://localhost:8443) is why the API's report
-    comes first.
+    and anything else to the API's own origin (a full deployment serves both
+    there); never Beakr's hosted app. A self-hosted box (API on localhost:8000,
+    app on https://localhost:8443) is why the API's report comes first.
     """
     explicit = os.environ.get("BEAKR_APP_URL")
     if explicit:
         return AppUrl(explicit.rstrip("/"), guessed=False)
-    base = resolve_base_url()
+    base = require_base_url()
     reported = _reported_app_url(base)
     if reported:
         return AppUrl(reported, guessed=False)
@@ -72,7 +72,7 @@ def app_url() -> AppUrl:
     if local:
         port = int(local.group(2))
         return AppUrl(f"{local.group(1)}:{3000 + max(0, port - 8000)}", guessed=True)
-    return AppUrl(DEFAULT_APP_URL, guessed=base != DEFAULT_BASE_URL)
+    return AppUrl(origin_of(base) or base, guessed=True)
 
 
 _reported: dict[str, str | None] = {}

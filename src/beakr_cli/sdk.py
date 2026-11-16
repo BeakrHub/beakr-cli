@@ -165,7 +165,10 @@ def get_sdk(
     to send instead (an agent conversation's own session, read by ``beakr session``).
     """
     from beakr_cli import scope_session
+    from beakr_cli.deployment import require_base_url
 
+    # No hosted default on a self-hosted build: refused before any request.
+    base_url = require_base_url(base_url)
     if token is None:
         token = scope_session.shell_token() if scoped else None
     return PrivateBeakr(
@@ -203,11 +206,14 @@ def get_async_sdk(
     the API answers for that conversation's session as the hosted server's calls do.
     """
     from beakr_cli import scope_session
+    from beakr_cli.deployment import require_base_url
 
+    base_url = require_base_url()
     token = scope_session.active_token() if scoped else None
     run = os.environ.get("BEAKR_RUN") or (MCP_RUN_LABEL if client_name == MCP_CLIENT_NAME else None)
     return AsyncPrivateBeakr(
         api_key=token,
+        base_url=base_url,
         client_name=client_name,
         agent=_agent(),
         run=run,

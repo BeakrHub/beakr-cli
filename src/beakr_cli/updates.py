@@ -370,9 +370,11 @@ _deployments: dict[str, str | None] = {}
 
 def server_deployment() -> str | None:
     """``hosted``, ``self_hosted``, or None when the configured API does not say."""
-    from beakr_sdk.credentials import resolve_base_url
+    from beakr_cli.deployment import configured_base_url
 
-    base_url = resolve_base_url()
+    base_url = configured_base_url()
+    if base_url is None:
+        return None
     if base_url not in _deployments:
         _deployments[base_url] = _read_deployment(base_url)
     return _deployments[base_url]

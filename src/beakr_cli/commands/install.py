@@ -199,17 +199,15 @@ def _mcp_env() -> dict[str, str]:
     API key never is: it stays in the token store under ``BEAKR_HOME``, which
     the server reads.
     """
-    from beakr_sdk.credentials import (
-        DEFAULT_BASE_URL,
-        beakr_home,
-        normalize_origin,
-        resolve_base_url,
-    )
+    from beakr_sdk.credentials import beakr_home
+
+    from beakr_cli.deployment import configured_base_url
 
     env: dict[str, str] = {}
-    base_url = resolve_base_url()
-    if normalize_origin(base_url) != normalize_origin(DEFAULT_BASE_URL):
-        env["BEAKR_BASE_URL"] = base_url.rstrip("/")
+    # No hosted default: the deployment's URL is always written when one is set.
+    base_url = configured_base_url()
+    if base_url:
+        env["BEAKR_BASE_URL"] = base_url
     home = beakr_home()
     if os.path.abspath(home) != os.path.abspath(Path.home() / ".beakr"):
         env["BEAKR_HOME"] = os.path.abspath(home)
@@ -589,13 +587,12 @@ def _sign_in_new() -> None:
     ``$BEAKR_API_KEY``; setup no longer asks for one because a browser login
     works for SSO-only orgs and needs no key to be created first.
     """
-    from beakr_sdk.credentials import resolve_base_url
-
     from beakr_cli.commands.auth import _login_with_oauth
+    from beakr_cli.deployment import API_KEY_LOGIN, require_base_url
 
     console.print("\n[bold]Beakr sign-in[/bold]")
-    console.print("[dim]To use an API key instead, run: beakr auth login --with-api-key[/dim]")
-    _login_with_oauth(resolve_base_url(), open_browser=sys.stdin.isatty(), device=False)
+    console.print(f"[dim]To use an API key instead, run: {escape(API_KEY_LOGIN)}[/dim]")
+    _login_with_oauth(require_base_url(), open_browser=sys.stdin.isatty(), device=False)
 
 
 def _verified_identity() -> str | None:
@@ -624,13 +621,14 @@ def _save_env_key(env_key: str) -> None:
     origin given only by ``$BEAKR_BASE_URL`` was otherwise unreachable from
     anything started without that variable (a plugin's MCP server, a new
     shell, an SDK script): they resolved production and found "No Beakr
-    credentials for https://api.thebeakr.com".
+    credentials for <the hosted API>".
     """
-    from beakr_sdk.credentials import TokenStore, resolve_base_url
+    from beakr_sdk.credentials import TokenStore
 
     from beakr_cli import config as beakr_config
+    from beakr_cli.deployment import require_base_url
 
-    base_url = resolve_base_url()
+    base_url = require_base_url()
     beakr_config.set_key("api_url", base_url)
     beakr_config.save_api_key(env_key, base_url)
     where = "the keychain" if TokenStore().backend == "keyring" else "the Beakr credentials file"
