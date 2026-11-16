@@ -564,27 +564,18 @@ async def start_session(
         write_ids: list[str] | None = None
         if read or write:
             read_ids, write_ids = await _resolve_lists(session, read, write)
-        if not session.agent and scope_session.chosen_by_person(current):
-            # The server's own session, changed with the person's key: an agent may
-            # only narrow what the person chose (an agent conversation's session is
-            # checked by the API, which keeps a widening as a proposal).
-            change: dict[str, Any] = (
-                {"read_everything": True}
-                if read_everything
-                else {"read_project_ids": read_ids or [], "write_project_ids": write_ids or []}
-            )
-            if scope_session.widens(current, change):
-                return _persons_to_widen(session.picker_url or "")
         started = await session.declare(
             read=read_ids, write=write_ids, read_everything=read_everything
         )
     except BeakrError as exc:
         if scope_session.needs_person(exc):
+            # The API keeps an agent's widening as a proposal: the person confirms it.
             return _proposed(
                 scope_session.picker_url_of(exc) or session.picker_url or "",
                 read,
                 write,
                 read_everything=read_everything,
+                fix=exc.fix,
             )
         reasons = [
             str(r["message"]) for r in scope_session.selection_reasons(exc) if r.get("message")
@@ -613,7 +604,9 @@ def _already_started(session: dict[str, Any]) -> dict[str, Any] | None:
     return _error(
         scope_session.ALREADY_STARTED,
         f"This session has already worked in {names}, so its projects can't be chosen now.",
-        f"Ask the person to end this session in Beakr ({url}) and start a new conversation.",
+        # The API's own words for its 409.
+        "End this session in Beakr (Settings, Sessions) and start a new agent conversation to "
+        "choose its projects.",
         **({"picker_url": url} if url else {}),
     )
 
@@ -634,7 +627,12 @@ async def _the_persons_choice(session: scope_session.McpSession) -> dict[str, An
 
 
 def _proposed(
-    url: str, read: list[str], write: list[str], *, read_everything: bool
+    url: str,
+    read: list[str],
+    write: list[str],
+    *,
+    read_everything: bool,
+    fix: str | None = None,
 ) -> dict[str, Any]:
     """The answer to a declaration the API kept as a proposal: the person confirms it on
     the session's page, where it is preselected."""
@@ -648,18 +646,9 @@ def _proposed(
         scope_session.WIDEN_NEEDS_PERSON,
         f"Proposed for this session ({what}); only the person can confirm it. Confirm in "
         f"your browser: {url}",
-        f'Tell the user: "I\'ve proposed these projects; confirm them at {url}", then retry '
-        "once they have.",
-        picker_url=url,
-    )
-
-
-def _persons_to_widen(url: str) -> dict[str, Any]:
-    """The refusal of a widening of what the person chose, without a proposal."""
-    return _error(
-        scope_session.WIDEN_REFUSED,
-        "The person chose this session's projects; an agent can only narrow them.",
-        f"Show the user this link to change them: {url}",
+        fix
+        or "Show the person the link. The projects asked for are preselected there: they "
+        "confirm with Save, then retry the call.",
         picker_url=url,
     )
 
@@ -719,6 +708,7 @@ async def _declare_conversation(
                 read,
                 write,
                 read_everything=read_everything,
+                fix=exc.fields.get("fix"),
             )
         reasons = [
             str(r["message"])

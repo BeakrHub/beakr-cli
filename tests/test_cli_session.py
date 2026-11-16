@@ -728,8 +728,16 @@ def test_in_must_pick_the_forms_choice_is_proposed_and_confirmed_in_the_browser(
         json={
             "error": {
                 "code": "session_widen_needs_person",
-                "message": "Only the person can widen this agent session.",
-                "details": {"picker_url": page, "proposed_read": [A]},
+                "message": (
+                    f"Only a person can choose this agent's session's projects: open {page}."
+                ),
+                "details": {
+                    "session_id": SID,
+                    "picker_url": page,
+                    "proposed_read_project_ids": [A],
+                    "proposed_write_project_ids": [],
+                    "proposed_read_everything": False,
+                },
             }
         },
     )

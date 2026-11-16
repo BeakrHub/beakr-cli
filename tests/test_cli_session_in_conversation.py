@@ -246,7 +246,7 @@ def test_a_persons_own_act_is_refused_inside_an_agent_conversation(conversation,
 
 OWN_PAGE = f"https://app.test/sessions/{OWN}"
 LEADERSHIP = "01cd300f-a774-4df8-91f5-a2e7d417e6b4"
-PROPOSED = "Only the person can widen this agent session; the request is kept as a proposal."
+PROPOSED = f"Only a person can widen this agent's session: open {OWN_PAGE}."
 
 
 def _own_session(**extra) -> None:
@@ -276,7 +276,17 @@ def _needs_person() -> dict:
         "error": {
             "code": "session_widen_needs_person",
             "message": PROPOSED,
-            "details": {"picker_url": OWN_PAGE, "proposed_read": [PROJECT, LEADERSHIP]},
+            "fix": (
+                "Show the person the link. The projects asked for are preselected there: "
+                "they confirm with Save, then retry the call."
+            ),
+            "details": {
+                "session_id": OWN,
+                "picker_url": OWN_PAGE,
+                "proposed_read_project_ids": [PROJECT, LEADERSHIP],
+                "proposed_write_project_ids": [],
+                "proposed_read_everything": False,
+            },
         }
     }
 
@@ -313,8 +323,9 @@ def test_widening_the_conversations_session_is_proposed_with_the_persons_link(co
 
     assert result.exit_code == 3, result.output
     text = _text(result)
+    # The API's message names the link; it is printed whole, nothing added.
     assert PROPOSED in text
-    assert f"Confirm it in your browser: {OWN_PAGE}" in text
+    assert "they confirm with Save, then retry the call." in text
     assert proposed.called
 
 
@@ -403,7 +414,7 @@ def test_a_person_at_a_terminal_widening_an_agent_session_gets_the_link(monkeypa
     result = runner.invoke(app, ["session", "edit", OWN, "--read-everything"])
 
     assert result.exit_code == 3, result.output
-    assert f"Confirm it in your browser: {OWN_PAGE}" in _text(result)
+    assert PROPOSED in _text(result)
 
 
 @respx.mock

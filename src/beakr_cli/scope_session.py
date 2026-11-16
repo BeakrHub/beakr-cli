@@ -1304,31 +1304,6 @@ def refuse_inside_conversation(what: str, where: str) -> None:
     )
 
 
-def widens(session: dict[str, Any], change: dict[str, Any]) -> bool:
-    """Whether ``change`` (a ``PATCH /v1/sessions/{id}`` body) lets ``session`` reach more:
-    read everything, become automatic (it may then touch any project), or read or
-    write a project it does not. Dropping projects, a label or ``remember_folder``
-    widen nothing."""
-    if change.get("read_everything") or change.get("mode") == AUTOMATIC:
-        return True
-    reads = set(project_ids(session.get("read_projects")))
-    writes = set(project_ids(session.get("write_projects")))
-    wanted_writes = {str(p) for p in change.get("write_project_ids") or []}
-    if not wanted_writes <= writes:
-        return True
-    wanted_reads = {str(p) for p in change.get("read_project_ids") or []}
-    return not reads_everything(session) and not wanted_reads <= reads
-
-
-def chosen_by_person(session: dict[str, Any]) -> bool:
-    """Whether the person chose this session's projects (picked, or read everything, and
-    not pending): from then on an agent may only narrow it. ``selected_at`` says when
-    they chose; an API without the field is taken as chosen for any such session."""
-    if session.get("status") == "pending" or mode_of(session) not in (PICKED, READ_EVERYTHING):
-        return False
-    return "selected_at" not in session or bool(session.get("selected_at"))
-
-
 def needs_person(exc: BaseException) -> bool:
     """The API's refusal of a widening by a key or token: the change is proposed, and the
     person confirms it on the session's page (``403 session_widen_needs_person``)."""
@@ -1896,11 +1871,11 @@ class McpSession:
 
         async with self._person() as person:
             try:
-                options = await person.request(
-                    "POST",
-                    "/v1/sessions/options",
-                    json={"read_project_ids": read, "write_project_ids": write},
-                )
+                body: dict[str, Any] = {"read_project_ids": read, "write_project_ids": write}
+                if self.id:
+                    # What the session has already done binds the lists too.
+                    body["session_id"] = self.id
+                options = await person.request("POST", "/v1/sessions/options", json=body)
             except NotFoundError:
                 return None
         return options if isinstance(options, dict) else None

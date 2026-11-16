@@ -859,8 +859,8 @@ def test_start_session_in_a_conversation_after_touching_a_project_is_refused():
         "This session has already worked in Partner A, so its projects can't be chosen now."
     )
     assert refused["fix"] == (
-        f"Ask the person to end this session in Beakr (https://app.test/sessions/{SID}) and "
-        "start a new conversation."
+        "End this session in Beakr (Settings, Sessions) and start a new agent conversation to "
+        "choose its projects."
     )
     assert not declared.called
 
@@ -868,15 +868,23 @@ def test_start_session_in_a_conversation_after_touching_a_project_is_refused():
 PAGE = f"https://app.test/sessions/{SID}"
 
 
+#: The API's refusal, as engine #2835's tests have it.
+FIX = (
+    "Show the person the link. The projects asked for are preselected there: they confirm "
+    "with Save, then retry the call."
+)
+
+
 def _needs_person() -> dict:
     return _refusal(
         403,
         "session_widen_needs_person",
-        "Only the person can widen this agent session; the request is kept as a proposal.",
-        f"Confirm it at {PAGE}.",
+        f"Only a person can widen this agent's session: open {PAGE}.",
+        FIX,
+        session_id=SID,
         picker_url=PAGE,
-        proposed_read=[A],
-        proposed_write=[],
+        proposed_read_project_ids=[A],
+        proposed_write_project_ids=[],
         proposed_read_everything=False,
     )
 
@@ -897,7 +905,7 @@ def test_start_session_on_a_pending_session_proposes_the_agents_lists():
         "Proposed for this session (read Partner A; write nothing); only the person can "
         f"confirm it. Confirm in your browser: {PAGE}"
     )
-    assert f"I've proposed these projects; confirm them at {PAGE}" in answer["fix"]
+    assert answer["fix"] == FIX
     assert answer["picker_url"] == PAGE
     assert held.id == SID and held.token == "bk_st_first"
 
@@ -923,16 +931,17 @@ def test_start_session_may_only_narrow_what_the_person_chose():
 
 
 @respx.mock
-def test_without_a_conversation_id_start_session_cannot_widen_what_the_person_chose():
+def test_without_a_conversation_id_a_widening_is_proposed_too():
+    # beakr mcp's own session (client_name "beakr mcp") is an agent's session to the API.
     chosen = {**_session("picked"), "selected_at": "2026-11-15T23:00:00Z", "picker_url": PAGE}
     _active(_current(chosen), agent=None)
-    patched = respx.patch(f"{API}/v1/sessions/{SID}")
+    proposed = respx.patch(f"{API}/v1/sessions/{SID}").respond(403, json=_needs_person())
 
-    refused = asyncio.run(mcp_session.start_session(read_everything=True))
+    answer = asyncio.run(mcp_session.start_session(read_everything=True))
 
-    assert refused["error_code"] == "session_widen_refused"
-    assert refused["picker_url"] == PAGE
-    assert not patched.called
+    assert _body(proposed) == {"read_everything": True}
+    assert answer["error_code"] == "session_widen_needs_person"
+    assert answer["picker_url"] == PAGE
 
 
 @respx.mock
