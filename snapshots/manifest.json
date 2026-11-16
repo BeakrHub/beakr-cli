@@ -20,9 +20,9 @@
         "docs/api/agent-tool-surface.json": "sha256:e7911db50048b97920567d99189c2f1a6ea997a84c508097e6c96cc6a6c1639b",
         "docs/api/cli-private-openapi.json": "sha256:d0244af6e0267c96e24d8cdeea01fe9778534042689b03a3c8eac30804606a61",
         "docs/api/public-openapi.json": "sha256:12acbb3bb553e4c02e216ce0f48f356594e0ffdb15948049289107c7b1de8960",
-        "docs/api/still-served-openapi.json": "sha256:0a7c2dbca8e8ba0ed938ad861a65b896dd4d77dcbd7f088b291454f5ff3122b9",
-        "release-base/e464bf209d200147486b6b99c9998f59a7090775/docs/api/CHANGELOG.md": "sha256:8cf9a3c23247d737f8f855cd44f80478c716f14446b32937ab81cb2c4875a4d2",
-        "release-base/e464bf209d200147486b6b99c9998f59a7090775/docs/api/public-openapi.json": "sha256:62df6eb6d684926b122000636ef3719b72a85c1ab9c5de622d2b07518e90b5bb"
+        "docs/api/still-served-openapi.json": "sha256:6312c2034f4401a49826e4d7b77a44d618f8343b886ff5c9deedeb6518059085",
+        "release-base/481074b639e8b4bf0a8a0616d6d0648cafb36c26/docs/api/CHANGELOG.md": "sha256:9068a61cbce98bbd19a75f581608f57a7c6b859d750c273ced4bcfea9e559881",
+        "release-base/481074b639e8b4bf0a8a0616d6d0648cafb36c26/docs/api/public-openapi.json": "sha256:f396872662a6a5053e053ca599c59c4ab021839371db1ab0f448819a827b7f64"
       }
     }
   }
