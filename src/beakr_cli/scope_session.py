@@ -1526,12 +1526,18 @@ class McpSession:
         from beakr_sdk.errors import NotFoundError
 
         remembered = remembered_selection(self.folder) if self.reuse_remembered else None
+        # An agent conversation may already have a session (a restarted or resumed
+        # server): join it with a plain request, and offer the folder's remembered
+        # lists only to a session that has not started yet (below). Sending them
+        # with the join was refused once the session had touched a project (409),
+        # or widened it (403), and the restarted server's tools stopped working.
+        offered = None if self.agent else remembered
         body = session_body(
             client_name="beakr mcp",
             label=_label(None, self.folder),
             folder=self.folder,
-            read=remembered[0] if remembered else None,
-            write=remembered[1] if remembered else None,
+            read=offered[0] if offered else None,
+            write=offered[1] if offered else None,
             agent=self.agent,
         )
         async with self._person() as person:
@@ -1549,10 +1555,35 @@ class McpSession:
                             raise ended from exc
                         raise
                     body = again
+            if self.agent and remembered and _not_started(session):
+                session = await self._offer_remembered(person, body, session, remembered)
         token, expires_at = _token_of(session)
         self.state = TokenState(str(session["id"]), token, expires_at)
         self.session = session
         return True
+
+    async def _offer_remembered(
+        self,
+        person: Any,
+        body: dict[str, Any],
+        joined: dict[str, Any],
+        remembered: tuple[list[str], list[str]],
+    ) -> dict[str, Any]:
+        """Declare the folder's remembered lists for the conversation's session that has
+        not started yet; the session as joined when the API does not apply them (in an
+        organization where every session must pick they become the person's proposal)."""
+        declared = {
+            **body,
+            "read_project_ids": list(remembered[0]),
+            "write_project_ids": list(remembered[1]),
+        }
+        try:
+            session = await person.request("POST", "/v1/sessions", json=declared)
+        except BeakrError:
+            return joined
+        if not isinstance(session, dict) or str(session.get("id")) != str(joined.get("id")):
+            return joined
+        return session
 
     async def ensure_started(self) -> None:
         """Start the session now if starting it failed before; raise when it still fails."""
@@ -1977,6 +2008,14 @@ def key_refused(exc: BaseException) -> SessionScopeError | None:
     if isinstance(exc, AuthenticationError) and getattr(exc, "response", None) is not None:
         return SessionScopeError(KEY_REFUSED_MESSAGE, code=KEY_REFUSED, fix=KEY_REFUSED_FIX)
     return None
+
+
+def _not_started(session: dict[str, Any]) -> bool:
+    """A session whose projects may still be declared: untouched, and automatic or
+    pending (never one whose projects were already chosen)."""
+    if session.get("touched_projects"):
+        return False
+    return session.get("status") == "pending" or mode_of(session) == AUTOMATIC
 
 
 def _no_credential(exc: Exception) -> bool:
