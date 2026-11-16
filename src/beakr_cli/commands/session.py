@@ -856,9 +856,11 @@ def edit(
     current choice. A session that has touched a project can't change its mode
     (409 session_already_started).
     """
-    # Inside an agent conversation only the person changes a session: refused before
-    # any project name is looked up.
-    scope_session.refuse_widening_inside_conversation("beakr session edit")
+    chosen = _session_id(session_id)
+    # Inside an agent conversation only its own session is changed here, and the API
+    # keeps anything wider as a proposal for the person: refused before any project
+    # name is looked up.
+    scope_session.refuse_session_change_inside_conversation("beakr session edit", session_id=chosen)
     read, write = _person_project_refs(read), _person_project_refs(write)
     _refuse_together(
         **{
@@ -867,7 +869,6 @@ def edit(
             "--automatic": automatic,
         }
     )
-    chosen = _session_id(session_id)
     with get_sdk(scoped=False) as sdk:
         current = sdk.request("GET", f"/v1/sessions/{chosen}")
         where = f"on the session's page ({current.get('picker_url')})"

@@ -99,6 +99,8 @@ _ISOLATION_REFUSALS = frozenset(
         "session_lock_confirm",
         # A session change only the person may make (inside an agent conversation).
         "session_widen_refused",
+        # A widening of an agent's session, proposed for the person to confirm.
+        "session_widen_needs_person",
     }
 )
 #: Picked lists that break a project boundary: the caller's arguments (exit 2).
@@ -247,8 +249,13 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
 
     if isinstance(exc, BeakrError) and lock_confirm.held(exc):
         return lock_confirm.cli_message(exc, command)
-    from beakr_cli.scope_session import SessionScopeError
+    from beakr_cli.scope_session import SessionScopeError, needs_person, picker_url_of
 
+    if needs_person(exc):
+        assert isinstance(exc, BeakrError)
+        link = picker_url_of(exc)
+        text = str(exc)
+        return text if not link or link in text else f"{text}\nConfirm it in your browser: {link}"
     # A session refusal the CLI has already said with its own fix (one code,
     # session_required, also names the web app's browser session).
     if (

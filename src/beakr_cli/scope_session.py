@@ -56,6 +56,8 @@ MAX_PROJECTS = 200
 
 NEEDS_SELECTION = "session_needs_selection"
 WIDEN_REFUSED = "session_widen_refused"
+#: A widening by a key or token of an agent conversation's session: kept as a proposal.
+WIDEN_NEEDS_PERSON = "session_widen_needs_person"
 WRITE_SCOPE = "session_write_scope"
 SESSION_ENDED = "session_ended"
 #: What :meth:`McpSession.recover` did after the API refused the session's token.
@@ -1318,17 +1320,41 @@ def widens(session: dict[str, Any], change: dict[str, Any]) -> bool:
     return not reads_everything(session) and not wanted_reads <= reads
 
 
-def refuse_widening_inside_conversation(
-    what: str, *, session_id: str | None = None, change: dict[str, Any] | None = None
-) -> None:
-    """Refuse, inside an agent conversation, a session change only the person may make.
+def chosen_by_person(session: dict[str, Any]) -> bool:
+    """Whether the person chose this session's projects (picked, or read everything, and
+    not pending): from then on an agent may only narrow it. ``selected_at`` says when
+    they chose; an API without the field is taken as chosen for any such session."""
+    if session.get("status") == "pending" or mode_of(session) not in (PICKED, READ_EVERYTHING):
+        return False
+    return "selected_at" not in session or bool(session.get("selected_at"))
 
-    Starting a session, minting a session's token, changing another session, or
-    any change that widens the conversation's own (:func:`widens`) acts with the
-    person's own key and would let the agent reach more. A ``change`` to the
-    conversation's own session that only narrows it goes through. The refusal
-    gives the person's link to the session; the API refuses the same
-    (``403 session_widen_refused``).
+
+def needs_person(exc: BaseException) -> bool:
+    """The API's refusal of a widening by a key or token: the change is proposed, and the
+    person confirms it on the session's page (``403 session_widen_needs_person``)."""
+    return isinstance(exc, BeakrError) and exc.code == WIDEN_NEEDS_PERSON
+
+
+def open_in_browser(url: str | None) -> bool:
+    """Open the person's link in their browser where this machine can; False otherwise."""
+    if not url:
+        return False
+    import webbrowser
+
+    try:
+        return bool(webbrowser.open(url))
+    except Exception:  # noqa: BLE001 - the link is given as text anyway
+        return False
+
+
+def refuse_session_change_inside_conversation(what: str, *, session_id: str | None = None) -> None:
+    """Refuse, inside an agent conversation, a session change the API would not stop:
+    starting a session or minting a session's token (``session_id`` None), or changing a
+    session other than this conversation's own.
+
+    A change to the conversation's own session goes to the API, which applies a
+    narrowing and keeps anything wider as a proposal for the person to confirm
+    (``403 session_widen_needs_person``, with the link).
     """
     from beakr_cli.sdk import get_sdk
 
@@ -1339,17 +1365,12 @@ def refuse_widening_inside_conversation(
     try:
         own_id = conversation_session_id(agent)
         if own_id:
+            if session_id == own_id:
+                return
             with get_sdk(scoped=False) as person:
                 own = person.request("GET", f"/v1/sessions/{own_id}")
     except BeakrError:
         own = None
-    if (
-        own is not None
-        and change is not None
-        and session_id == str(own.get("id"))
-        and not widens(own, change)
-    ):
-        return
     link = (own or {}).get("picker_url") or "the web app (Settings, Sessions)"
     raise SessionScopeError(
         f"`{what}` is refused inside an agent conversation ({agent}): only a person can "

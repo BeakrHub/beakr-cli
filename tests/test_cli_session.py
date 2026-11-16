@@ -710,6 +710,41 @@ def test_a_choice_refused_twice_answers_why_with_the_link_not_a_bare_422():
     assert "Show the user this link" in refusal["fix"]
 
 
+# In an organization where every session must pick, the API keeps a pending agent
+# session's first choice by the key as a proposal (403 session_widen_needs_person): the
+# person confirms it in the browser, where it is preselected. The form is for choosing;
+# its ticks are submitted as the proposal, and the browser opened on the link.
+@respx.mock
+def test_in_must_pick_the_forms_choice_is_proposed_and_confirmed_in_the_browser(monkeypatch):
+    opened = []
+    monkeypatch.setattr("webbrowser.open", lambda url: opened.append(url) or True)
+    page = f"https://app.test/sessions/{SID}"
+    _active(_session("pending", read=(), write=()))
+    respx.get(f"{API}/v1/sessions/current").respond(json=_session("pending", read=(), write=()))
+    respx.get(f"{API}/v1/projects").respond(json={"data": [{"id": A, "name": "Helios"}]})
+    _options_allow_all()
+    proposed = respx.patch(f"{API}/v1/sessions/{SID}").respond(
+        403,
+        json={
+            "error": {
+                "code": "session_widen_needs_person",
+                "message": "Only the person can widen this agent session.",
+                "details": {"picker_url": page, "proposed_read": [A]},
+            }
+        },
+    )
+    server, asked = _answers({"read_0": True})
+
+    refusal = asyncio.run(mcp_session.gate(server, "knowledge_base", None))
+
+    assert json.loads(proposed.calls.last.request.content)["read_project_ids"] == [A]
+    assert refusal["error_code"] == "session_widen_needs_person"
+    assert refusal["message"] == f"Confirm in your browser: {page}"
+    assert refusal["picker_url"] == page
+    assert opened == [page]
+    assert len(asked) == 1
+
+
 @respx.mock
 def test_more_projects_than_a_session_holds_gets_the_link():
     refusal, asked, sent = _form(_many(scope_session.MAX_PROJECTS + 1), {"read_all": True})

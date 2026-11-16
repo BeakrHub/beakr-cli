@@ -865,66 +865,73 @@ def test_start_session_in_a_conversation_after_touching_a_project_is_refused():
     assert not declared.called
 
 
-@respx.mock
-def test_start_session_on_a_pending_session_leaves_the_choice_to_the_person(monkeypatch):
-    monkeypatch.setattr(mcp_session, "_SERVER", None)
-    pending = {
-        **_session("picked"),
-        "status": "pending",
-        "agent_session": CONVERSATION,
-        "picker_url": f"https://app.test/sessions/{SID}",
-    }
-    _active(_current(pending))
-    declared = respx.post(f"{API}/v1/sessions")
-    patched = respx.patch(f"{API}/v1/sessions/{SID}")
+PAGE = f"https://app.test/sessions/{SID}"
 
-    refused = asyncio.run(mcp_session.start_session(read=["Partner A"]))
 
-    assert refused["error_code"] == "session_needs_selection"
-    assert refused["message"] == (
-        "In this organization the person chooses this session's projects, not the agent."
+def _needs_person() -> dict:
+    return _refusal(
+        403,
+        "session_widen_needs_person",
+        "Only the person can widen this agent session; the request is kept as a proposal.",
+        f"Confirm it at {PAGE}.",
+        picker_url=PAGE,
+        proposed_read=[A],
+        proposed_write=[],
+        proposed_read_everything=False,
     )
-    assert refused["picker_url"] == f"https://app.test/sessions/{SID}"
-    assert not declared.called and not patched.called
 
 
 @respx.mock
-def test_start_session_on_a_pending_session_asks_the_person_in_chat(monkeypatch):
-    from types import SimpleNamespace
-
-    asked = []
-
-    async def elicit_form(message, schema):
-        asked.append(schema)
-        return SimpleNamespace(action="accept", content={"read_1": True})
-
-    client = SimpleNamespace(
-        client_params=SimpleNamespace(
-            capabilities=SimpleNamespace(elicitation=SimpleNamespace(form=None, url=None))
-        ),
-        elicit_form=elicit_form,
-    )
-    monkeypatch.setattr(
-        mcp_session, "_SERVER", SimpleNamespace(get_context=lambda: SimpleNamespace(session=client))
-    )
+def test_start_session_on_a_pending_session_proposes_the_agents_lists():
     pending = {**_session("picked"), "status": "pending", "agent_session": CONVERSATION}
-    held = _active(_current(pending))
+    held = _active(_current({**pending, "picker_url": PAGE}))
+    respx.get(f"{API}/v1/projects").respond(json={"data": [_project(A)], "has_more": False})
+    proposed = respx.post(f"{API}/v1/sessions").respond(403, json=_needs_person())
+
+    answer = asyncio.run(mcp_session.start_session(read=["Partner A"]))
+
+    # The lists go to the API, which keeps them as a proposal for the person.
+    assert _body(proposed)["read_project_ids"] == [A]
+    assert answer["error_code"] == "session_widen_needs_person"
+    assert answer["message"] == (
+        "Proposed for this session (read Partner A; write nothing); only the person can confirm it."
+    )
+    assert f"I've proposed these projects; confirm them at {PAGE}" in answer["fix"]
+    assert answer["picker_url"] == PAGE
+    assert held.id == SID and held.token == "bk_st_first"
+
+
+@respx.mock
+def test_start_session_may_only_narrow_what_the_person_chose():
+    chosen = {
+        **_session("picked"),
+        "agent_session": CONVERSATION,
+        "selected_at": "2026-11-15T23:00:00Z",
+        "picker_url": PAGE,
+    }
+    _active(_current(chosen))
     respx.get(f"{API}/v1/projects").respond(
         json={"data": [_project(A), _project(CHEM)], "has_more": False}
     )
-    respx.post(OPTIONS).respond(json=_valid())
-    chosen = respx.patch(f"{API}/v1/sessions/{SID}").respond(
-        json={**_session("picked"), "summary": "Picked session: reads Chemistry; writes nothing."}
-    )
+    respx.post(f"{API}/v1/sessions").respond(403, json=_needs_person())
 
-    text = asyncio.run(mcp_session.start_session(read=["Partner A"], write=["Partner A"]))
+    widened = asyncio.run(mcp_session.start_session(read_everything=True))
 
-    assert asked, "the person was asked"
-    # The person's answer (Chemistry, read), not the agent's lists (Partner A).
-    assert _body(chosen) == {"read_project_ids": [CHEM], "write_project_ids": []}
-    assert _bearer(chosen) == f"Bearer {PERSON_KEY}"
-    assert text == "Session started. Picked session: reads Chemistry; writes nothing."
-    assert not held.pending
+    assert widened["error_code"] == "session_widen_needs_person"
+    assert widened["message"].startswith("Proposed for this session (read every project")
+
+
+@respx.mock
+def test_without_a_conversation_id_start_session_cannot_widen_what_the_person_chose():
+    chosen = {**_session("picked"), "selected_at": "2026-11-15T23:00:00Z", "picker_url": PAGE}
+    _active(_current(chosen), agent=None)
+    patched = respx.patch(f"{API}/v1/sessions/{SID}")
+
+    refused = asyncio.run(mcp_session.start_session(read_everything=True))
+
+    assert refused["error_code"] == "session_widen_refused"
+    assert refused["picker_url"] == PAGE
+    assert not patched.called
 
 
 @respx.mock
@@ -1011,24 +1018,16 @@ def test_start_session_without_a_held_session_declares_the_conversations(convers
 
 
 @respx.mock
-def test_start_session_without_a_held_session_leaves_a_pending_choice_to_the_person(
-    conversation,
-):
+def test_start_session_without_a_held_session_proposes_on_a_pending_session(conversation):
     respx.get(f"{API}/v1/sessions/current").respond(
-        json={
-            **_session("picked"),
-            "status": "pending",
-            "agent_session": CONVERSATION,
-            "picker_url": f"https://app.test/sessions/{SID}",
-        }
+        json={**_session("picked"), "status": "pending", "agent_session": CONVERSATION}
     )
-    declared = respx.post(f"{API}/v1/sessions")
+    respx.post(f"{API}/v1/sessions").respond(403, json=_needs_person())
 
-    refused = asyncio.run(mcp_session.start_session(read_everything=True))
+    answer = asyncio.run(mcp_session.start_session(read_everything=True))
 
-    assert refused["error_code"] == "session_needs_selection"
-    assert refused["picker_url"] == f"https://app.test/sessions/{SID}"
-    assert not declared.called
+    assert answer["error_code"] == "session_widen_needs_person"
+    assert answer["picker_url"] == PAGE
 
 
 @respx.mock

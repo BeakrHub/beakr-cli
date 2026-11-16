@@ -339,6 +339,18 @@ async def elicit_choice(
                 read_everything=bool(content.get(READ_EVERYTHING)),
             )
         except BeakrError as exc:
+            if scope_session.needs_person(exc):
+                # Chosen with the key, the ticks are kept as a proposal: the person
+                # confirms them in the browser, where they are preselected.
+                url = scope_session.picker_url_of(exc) or session.picker_url or ""
+                scope_session.open_in_browser(url)
+                return _error(
+                    scope_session.WIDEN_NEEDS_PERSON,
+                    f"Confirm in your browser: {url}",
+                    "The choice is proposed there, preselected; once the person confirms it, "
+                    "retry.",
+                    picker_url=url,
+                )
             if exc.code != scope_session.SELECTION_INVALID:
                 raise
             refused = exc
@@ -542,7 +554,7 @@ async def start_session(
         current = await session.refresh()
     except BeakrError as exc:
         return _refused(exc)
-    if session.pending:
+    if session.pending and not session.agent:
         return await _the_persons_choice(session)
     started = _already_started(current)
     if started is not None:
@@ -552,10 +564,28 @@ async def start_session(
         write_ids: list[str] | None = None
         if read or write:
             read_ids, write_ids = await _resolve_lists(session, read, write)
+        if not session.agent and scope_session.chosen_by_person(current):
+            # The server's own session, changed with the person's key: an agent may
+            # only narrow what the person chose (an agent conversation's session is
+            # checked by the API, which keeps a widening as a proposal).
+            change: dict[str, Any] = (
+                {"read_everything": True}
+                if read_everything
+                else {"read_project_ids": read_ids or [], "write_project_ids": write_ids or []}
+            )
+            if scope_session.widens(current, change):
+                return _persons_to_widen(session.picker_url or "")
         started = await session.declare(
             read=read_ids, write=write_ids, read_everything=read_everything
         )
     except BeakrError as exc:
+        if scope_session.needs_person(exc):
+            return _proposed(
+                scope_session.picker_url_of(exc) or session.picker_url or "",
+                read,
+                write,
+                read_everything=read_everything,
+            )
         reasons = [
             str(r["message"]) for r in scope_session.selection_reasons(exc) if r.get("message")
         ]
@@ -603,6 +633,35 @@ async def _the_persons_choice(session: scope_session.McpSession) -> dict[str, An
     return _persons_to_choose(session.picker_url or "")
 
 
+def _proposed(
+    url: str, read: list[str], write: list[str], *, read_everything: bool
+) -> dict[str, Any]:
+    """The answer to a declaration the API kept as a proposal: the person confirms it on
+    the session's page, where it is preselected."""
+    if read_everything:
+        what = "read every project, write none"
+    else:
+        reads = ", ".join(dict.fromkeys([*read, *write]))
+        what = f"read {reads}; write {', '.join(write) or 'nothing'}"
+    return _error(
+        scope_session.WIDEN_NEEDS_PERSON,
+        f"Proposed for this session ({what}); only the person can confirm it.",
+        f'Tell the user: "I\'ve proposed these projects; confirm them at {url}", then retry '
+        "once they have.",
+        picker_url=url,
+    )
+
+
+def _persons_to_widen(url: str) -> dict[str, Any]:
+    """The refusal of a widening of what the person chose, without a proposal."""
+    return _error(
+        scope_session.WIDEN_REFUSED,
+        "The person chose this session's projects; an agent can only narrow them.",
+        f"Show the user this link to change them: {url}",
+        picker_url=url,
+    )
+
+
 def _persons_to_choose(url: str) -> dict[str, Any]:
     """The refusal of the agent's lists for a pending session: the person chooses."""
     return _error(
@@ -638,8 +697,6 @@ async def _declare_conversation(
     except ApiCallError:
         current = None  # none yet: the API refuses a touched one (409) anyway
     if isinstance(current, dict) and current.get("agent_session") == agent:
-        if current.get("status") == "pending":
-            return _persons_to_choose(str(current.get("picker_url") or ""))
         started = _already_started(current)
         if started is not None:
             return started
@@ -654,6 +711,13 @@ async def _declare_conversation(
     try:
         started = await _call_api()(lambda sdk: sdk.request("POST", "/v1/sessions", json=body))
     except ApiCallError as exc:
+        if exc.fields.get("error_code") == scope_session.WIDEN_NEEDS_PERSON:
+            return _proposed(
+                str((_details(exc.response) or {}).get("picker_url") or ""),
+                read,
+                write,
+                read_everything=read_everything,
+            )
         reasons = [
             str(r["message"])
             for r in ((_details(exc.response) or {}).get("reasons") or [])

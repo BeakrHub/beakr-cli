@@ -113,6 +113,13 @@ def uploads_read_no_review_policy(request, monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def no_browser(monkeypatch):
+    """No test opens the person's browser (a proposal's confirm link); a test that checks
+    the link was opened replaces this with its own."""
+    monkeypatch.setattr("webbrowser.open", lambda url, *args, **kwargs: False)
+
+
 def pytest_configure(config):
     config.addinivalue_line(
         "markers", "real_project_refs: resolve --project slugs and names through the API"
