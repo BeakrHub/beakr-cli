@@ -11,11 +11,17 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=12acbb3bb553e4c02e216ce0f48f356594e0ffdb15948049289107c7b1de8960 changelog sha256=93d2c64b02654278910d1c3dada695ee270d5e65a493402aadad2f2c7fc2cf62 -->
+<!-- contract-stamp: public-openapi sha256=68dba5cd91b19ce918e4aa416ac838fba362ffd459c224b309ef8de8532b3155 changelog sha256=7a24d1ca66cb2da6951971fba2000690f33272849a52e6abcbd8b0bc4d5bd357 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
+  cites where the caller can read it now carries `knowledge_reference` (how
+  Knowledge's newest citation of it names it), and its `source_ref` is then the
+  item reference a Knowledge write accepts as a citation. Cite such an item by
+  that `source_ref`; cite any other item as an `external_record`. A credential
+  confined to some projects sees only citations on pages in those projects.
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a record in
   a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
