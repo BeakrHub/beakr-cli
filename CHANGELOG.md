@@ -4,7 +4,7 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.6.1 (2026-11-16)
+## beakr-cli 0.7.0 (2026-11-16)
 
 ### Client changes
 
@@ -18,9 +18,18 @@ Each release lists the public API changes it supports, taken from the API change
   hold as an outside record (its service and its own id) rather than a web page.
   An outside record's line in a Sources list reads `System › record_id`, with its
   excerpt marked `(unverified)`.
+- An `integrations` result marks each item Knowledge already cites (`in
+  Knowledge`) and tells the agent to cite it by its `source_ref`; only an item
+  Knowledge does not hold is cited as an outside record.
 
 ### Changes
 
+- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
+  cites where the caller can read it now carries `knowledge_reference` (how
+  Knowledge's newest citation of it names it), and its `source_ref` is then the
+  item reference a Knowledge write accepts as a citation. Cite such an item by
+  that `source_ref`; cite any other item as an `external_record`. A credential
+  confined to some projects sees only citations on pages in those projects.
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a record in
   a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
@@ -40,7 +49,6 @@ Each release lists the public API changes it supports, taken from the API change
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
-
 ## beakr-cli 0.6.0 (2026-11-15)
 
 ### Changes
