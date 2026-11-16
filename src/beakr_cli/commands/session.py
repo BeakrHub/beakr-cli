@@ -432,6 +432,17 @@ def _refuse_automatic_where_must_pick(sdk: Any) -> None:
         )
 
 
+def _refuse_pending_where_automatic(sdk: Any) -> None:
+    if _org_session_mode(sdk) == scope_session.AUTOMATIC:
+        raise SessionScopeError(
+            "Your organization starts sessions automatic, so a session without lists would read "
+            "every project: it can't start pending here.",
+            code="session_cannot_start_pending",
+            fix="Choose its projects with --read/--write (or --read-everything), run "
+            "`beakr session start` at a terminal to pick them, or start it open with --automatic.",
+        )
+
+
 def _start_line(session: dict[str, Any]) -> str:
     """The one line an agent gets back: the API's summary, else the lists."""
     if session.get("summary"):
@@ -497,7 +508,11 @@ def start(
     write_all: bool = _write_all_opt,
     label: str | None = typer.Option(None, "--label", help="How the session is shown to you."),
     pending: bool = typer.Option(
-        False, "--pending", help="Start without projects; choose them at the picker link."
+        False,
+        "--pending",
+        help="Start without projects and choose them at the picker link. Only where every "
+        "session must pick (session mode must_pick): elsewhere a session without lists "
+        "starts automatic, so --pending is refused.",
     ),
     env: bool = typer.Option(
         False,
@@ -512,7 +527,8 @@ def start(
     (a choice that breaks one is refused with the reason); --read-everything reads
     every project and writes none; --automatic starts it open. With none of them it
     opens a checkbox picker (preselecting what you remembered for this folder); not
-    at a terminal, the session starts pending and you choose at the link it prints.
+    at a terminal, where every session must pick, the session starts pending and you
+    choose at the link it prints (elsewhere give the lists, or --automatic).
 
     Inside an agent conversation it declares that conversation's own session, before
     it has read or written anything, as the start_session MCP tool does.
@@ -562,6 +578,10 @@ def start(
         if agent:
             session = None
         else:
+            if lists is None and not (read_everything or automatic):
+                # Without lists the API starts the organization's mode: open (automatic)
+                # unless every session must pick. Never start open when asked for pending.
+                _refuse_pending_where_automatic(sdk)
             session, state = scope_session.create_session(
                 sdk,
                 client_name="beakr-cli",

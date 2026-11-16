@@ -1571,6 +1571,10 @@ class McpSession:
                 raise
             except Exception as exc:  # noqa: BLE001 - reported to the agent
                 self.start_error = str(exc)
+                # A revoked or invalid key is not transient: say so, never "retry".
+                refused = key_refused(exc)
+                if refused is not None:
+                    raise refused from exc
                 raise SessionScopeError(
                     f"Beakr could not start this session: {exc}",
                     code="session_unavailable",
@@ -1721,6 +1725,9 @@ class McpSession:
         except Exception as exc:  # noqa: BLE001 - reported to the agent
             # ensure_started retries on the next tool call; never the person's reach.
             self.start_error = str(exc)
+            refused = key_refused(exc)
+            if refused is not None:
+                raise refused from exc
             raise SessionScopeError(
                 f"{REPLACED_MESSAGE} Beakr could not start the new session yet: {exc}",
                 code=SESSION_ENDED,
@@ -1948,6 +1955,28 @@ async def start_for_mcp() -> McpSession | None:
         session.start_error = str(exc)
     ACTIVE = session
     return session
+
+
+#: The refusal of a revoked or invalid key: not transient, so never "retry shortly".
+KEY_REFUSED = "unauthorized"
+KEY_REFUSED_MESSAGE = (
+    "Beakr refused this MCP server's API key: it was revoked or is invalid, so no session "
+    "can start."
+)
+KEY_REFUSED_FIX = (
+    "Your key was revoked or is invalid; make a new one in Beakr (Settings › Developer), "
+    "put it in the MCP server's settings (BEAKR_API_KEY), and restart the MCP server. "
+    "Retrying won't help."
+)
+
+
+def key_refused(exc: BaseException) -> SessionScopeError | None:
+    """The non-retryable refusal for a key the API answered 401 for, or None."""
+    from beakr_sdk.errors import AuthenticationError
+
+    if isinstance(exc, AuthenticationError) and getattr(exc, "response", None) is not None:
+        return SessionScopeError(KEY_REFUSED_MESSAGE, code=KEY_REFUSED, fix=KEY_REFUSED_FIX)
+    return None
 
 
 def _no_credential(exc: Exception) -> bool:
