@@ -1781,15 +1781,38 @@ class McpSession:
             self.session = await person.request("PATCH", f"/v1/sessions/{self.id}", json=patch)
         return self.session
 
-    async def choose(self, read: list[str], write: list[str], *, remember: bool) -> dict[str, Any]:
+    async def choose(
+        self, read: list[str], write: list[str], *, remember: bool, read_everything: bool = False
+    ) -> dict[str, Any]:
         """The person's choice from the in-chat form, applied with their own credential."""
-        body: dict[str, Any] = {"read_project_ids": read, "write_project_ids": write}
+        body: dict[str, Any] = (
+            {"read_everything": True}
+            if read_everything
+            else {"read_project_ids": read, "write_project_ids": write}
+        )
         if remember and self.folder:
             body["remember_folder"] = True
         async with self._person() as person:
             self.session = await person.request("PATCH", f"/v1/sessions/{self.id}", json=body)
         self._keep_if_remembered()
         return self.session
+
+    async def options(self, read: list[str], write: list[str]) -> dict[str, Any] | None:
+        """``POST /v1/sessions/options`` for these lists, with the person's own credential:
+        whether they are valid and what each project allows with them. None from an
+        API without the route."""
+        from beakr_sdk.errors import NotFoundError
+
+        async with self._person() as person:
+            try:
+                options = await person.request(
+                    "POST",
+                    "/v1/sessions/options",
+                    json={"read_project_ids": read, "write_project_ids": write},
+                )
+            except NotFoundError:
+                return None
+        return options if isinstance(options, dict) else None
 
     async def person_projects(self, limit: int = MAX_PROJECTS + 1) -> list[dict[str, Any]]:
         """The projects the person can see, at most ``limit`` (one more than a session

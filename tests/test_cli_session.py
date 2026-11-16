@@ -344,6 +344,7 @@ def test_after_replacing_it_the_in_chat_form_says_why_and_the_choice_applies():
     with pytest.raises(SessionScopeError):
         asyncio.run(call_api(lambda sdk: sdk.me.get()))
     respx.get(f"{API}/v1/projects").respond(json={"data": [{"id": A, "name": "Helios"}]})
+    _options_allow_all()
     chosen = respx.patch(f"{API}/v1/sessions/{SID2}").mock(
         side_effect=lambda request: httpx.Response(
             200,
@@ -442,6 +443,23 @@ def _server(*, elicitation=None, answer=None):
     return server
 
 
+OPTIONS = f"{API}/v1/sessions/options"
+EVERYTHING = "Reads every project you can read; writes nothing."
+
+
+def _options_allow_all():
+    """The boundaries allow every choice: nothing is left out of the form."""
+    return respx.post(OPTIONS).respond(
+        json={
+            "valid": True,
+            "reasons": [],
+            "notes": [],
+            "projects": [],
+            "read_everything": {"summary": EVERYTHING},
+        }
+    )
+
+
 @respx.mock
 def test_a_pending_session_answers_with_the_picker_link():
     _active(_session("pending", read=(), write=()))
@@ -464,6 +482,7 @@ def test_where_the_client_supports_forms_the_person_chooses_in_chat(tmp_path):
     respx.get(f"{API}/v1/projects").respond(
         json={"data": [{"id": A, "name": "Helios"}, {"id": B, "name": "Assays"}]}
     )
+    _options_allow_all()
     chosen = respx.patch(f"{API}/v1/sessions/{SID}").mock(
         side_effect=lambda request: httpx.Response(
             200,
@@ -508,6 +527,7 @@ def _form(projects: list[dict], content: dict):
     _active(_session("pending", read=(), write=()))
     respx.get(f"{API}/v1/sessions/current").respond(json=_session("pending", read=(), write=()))
     respx.get(f"{API}/v1/projects").respond(json={"data": projects})
+    _options_allow_all()
     chosen = respx.patch(f"{API}/v1/sessions/{SID}").mock(
         side_effect=lambda request: httpx.Response(
             200,
@@ -532,9 +552,10 @@ def test_the_in_chat_form_offers_read_all_and_write_all_first():
 
     assert refusal is None
     fields = list(schema["properties"])
-    assert fields[:2] == ["read_all", "write_all"] and "read_0" in fields
+    assert fields[:3] == ["read_all", "write_all", "read_everything"] and "read_0" in fields
     assert schema["properties"]["write_all"]["title"] == "Write all projects (also reads them)"
-    assert "Tick Read all or Write all, or choose per project below" in message
+    assert schema["properties"]["read_everything"]["title"] == "Read all projects, no writes"
+    assert "Tick one of the choices for all projects, or choose per project below" in message
     assert "created later are not added" in message
     # Write all reads and writes every project the person has now.
     assert sent == {"read_project_ids": [A, B], "write_project_ids": [A, B]}
@@ -561,11 +582,132 @@ def test_past_the_row_limit_the_form_offers_only_all():
     refusal, (message, schema), sent = _form(projects, {"read_all": True})
 
     assert refusal is None
-    assert list(schema["properties"]) == ["read_all", "write_all"]
+    assert list(schema["properties"]) == ["read_all", "write_all", "read_everything"]
     assert f"You have {len(projects)} projects, too many to list here" in message
     assert f"https://app.test/sessions/{SID}" in message
     assert sent["read_project_ids"] == [p["id"] for p in projects]
     assert sent["write_project_ids"] == []
+
+
+# Root cause (15 Nov, fdoctant): with a siloed project, "Write all" (and "Read all"
+# with writes elsewhere) breaks its boundary, but the form offered them anyway and
+# the API's bare 422 came back as the tool's answer. The agent then picked its own
+# lists. The form now offers only what the boundaries allow, asks again once after
+# a refusal, and answers a second refusal with why and the person's link.
+LOCKS = "Reading Partner (siloed) locks this session's writes to Partner (siloed)."
+
+
+def _siloed_options(request: httpx.Request) -> httpx.Response:
+    """Helios is internal, Partner (siloed): reading Partner locks writes to it."""
+    body = json.loads(request.content)
+    read, write = body["read_project_ids"], body["write_project_ids"]
+    rows = [
+        {"id": A, "name": "Helios", "can_read": True, "can_write": not read},
+        {"id": B, "name": "Partner (siloed)", "can_read": True, "can_write": True},
+    ]
+    breaks = B in read and any(p != B for p in write)
+    return httpx.Response(
+        200,
+        json={
+            "valid": not breaks,
+            "reasons": [{"code": "locked_read", "message": LOCKS}] if breaks else [],
+            "notes": [],
+            "projects": rows,
+            "read_everything": {"summary": EVERYTHING},
+        },
+    )
+
+
+def _answers(*contents: dict):
+    """A form client that answers each request with the next of ``contents``."""
+    server = _server(elicitation=SimpleNamespace(form=None, url=None))
+    queue = list(contents)
+    asked: list = []
+
+    async def elicit_form(message, schema):
+        asked.append((message, schema))
+        return SimpleNamespace(action="accept", content=queue.pop(0))
+
+    server.get_context().session.elicit_form = elicit_form
+    return server, asked
+
+
+def _siloed_pending(patched):
+    _active(_session("pending", read=(), write=()))
+    respx.get(f"{API}/v1/sessions/current").respond(json=_session("pending", read=(), write=()))
+    respx.get(f"{API}/v1/projects").respond(
+        json={"data": [{"id": A, "name": "Helios"}, {"id": B, "name": "Partner (siloed)"}]}
+    )
+    respx.post(OPTIONS).mock(side_effect=_siloed_options)
+    return respx.patch(f"{API}/v1/sessions/{SID}").mock(side_effect=patched)
+
+
+def _refused(_request=None) -> httpx.Response:
+    return httpx.Response(
+        422,
+        json={
+            "error": {
+                "code": "session_selection_invalid",
+                "message": LOCKS,
+                "details": {"reasons": [{"code": "locked_read", "message": LOCKS}]},
+            }
+        },
+    )
+
+
+@respx.mock
+def test_the_form_leaves_out_the_choices_a_siloed_project_forbids():
+    _siloed_pending(
+        lambda request: httpx.Response(200, json=_session("pending", read=(), write=()))
+    )
+    server, asked = _answers({"read_everything": True})
+
+    asyncio.run(mcp_session.gate(server, "knowledge_base", None))
+
+    message, schema = asked[0]
+    fields = schema["properties"]
+    assert "write_all" not in fields
+    assert fields["read_all"]["description"].endswith(
+        "With it, only these can also be written: Partner (siloed)."
+    )
+    assert fields["read_everything"]["description"] == EVERYTHING
+    assert "Not offered: " + LOCKS in message
+
+
+@respx.mock
+def test_a_refused_choice_is_asked_again_with_the_choices_that_work():
+    def patched(request):
+        if b"read_everything" in request.content:
+            return httpx.Response(200, json=_session(read=(A, B), write=()))
+        return _refused()
+
+    chosen = _siloed_pending(patched)
+    server, asked = _answers({"read_all": True, "write_0": True}, {"read_everything": True})
+
+    refusal = asyncio.run(mcp_session.gate(server, "knowledge_base", None))
+
+    assert refusal is None
+    again = asked[1][0]
+    assert again.startswith("That choice can't be used: " + LOCKS)
+    assert "Choices that work: Read all projects, no writes;" in again
+    assert "Read all projects, writing only Partner (siloed)" in again
+    assert json.loads(chosen.calls.last.request.content) == {"read_everything": True}
+
+
+@respx.mock
+def test_a_choice_refused_twice_answers_why_with_the_link_not_a_bare_422():
+    _siloed_pending(_refused)
+    server, asked = _answers(
+        {"read_all": True, "write_0": True}, {"read_0": True, "write_0": True, "read_1": True}
+    )
+
+    refusal = asyncio.run(mcp_session.gate(server, "knowledge_base", None))
+
+    assert len(asked) == mcp_session.FORM_ATTEMPTS
+    assert refusal["error_code"] == "session_selection_invalid"
+    assert refusal["message"] == LOCKS
+    assert refusal["picker_url"] == f"https://app.test/sessions/{SID}"
+    assert "Show the user this link" in refusal["fix"]
 
 
 @respx.mock

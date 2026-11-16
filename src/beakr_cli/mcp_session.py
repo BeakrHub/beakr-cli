@@ -46,6 +46,7 @@ while the server holds a session.
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from typing import Any
 
 from beakr_sdk.errors import BeakrError
@@ -74,6 +75,7 @@ SESSION_TOOLS = frozenset({SESSION_SCOPE_TOOL})
 FORM_MAX_PROJECTS = 25
 READ_ALL = "read_all"
 WRITE_ALL = "write_all"
+READ_EVERYTHING = "read_everything"
 
 SESSION_SCOPE_DESCRIPTION = (
     "Show which Beakr projects this session may read and write, or drop projects from it. "
@@ -117,34 +119,115 @@ def supports_form_elicitation(server: Any) -> bool:
     return form is not None or url is None
 
 
+@dataclass
+class Offer:
+    """The choices the projects' boundaries allow (``POST /v1/sessions/options``).
+
+    A form's fields are flat booleans, so a choice the boundaries forbid is left
+    out rather than greyed out. An API without the options route allows them all,
+    as before: the API still refuses a choice that breaks a boundary.
+    """
+
+    #: "Write all": reading and writing every project together is valid.
+    write_all: bool = True
+    #: "Read all" with per-project writes: some project can still be written.
+    read_all: bool = True
+    #: The projects that can be written with "Read all"; None for any.
+    read_all_writes: set[str] | None = None
+    #: The projects that can't be read, or written, even on their own.
+    no_read: set[str] = field(default_factory=set)
+    no_write: set[str] = field(default_factory=set)
+    #: What "Read all, no writes" reads (the API's words), when it says.
+    read_everything: str | None = None
+    #: Why each left-out choice can't be used, for the person.
+    why: list[str] = field(default_factory=list)
+
+
+def _names(projects: list[dict[str, Any]], ids: set[str]) -> str:
+    return ", ".join(str(p.get("name") or p.get("id")) for p in projects if str(p["id"]) in ids)
+
+
+async def offer_for(session: scope_session.McpSession, projects: list[dict[str, Any]]) -> Offer:
+    """What the in-chat form may offer for ``projects``, checked against their boundaries."""
+    every = [str(project["id"]) for project in projects]
+    alone = await session.options([], [])
+    if alone is None:
+        return Offer()
+    whole = await session.options(every, every) or {}
+    reading = await session.options(every, []) or {}
+    offer = Offer(write_all=whole.get("valid") is not False)
+    if not offer.write_all:
+        offer.why.extend(str(r["message"]) for r in scope_session.selection_reasons(whole)[:1])
+    rows = [r for r in reading.get("projects") or [] if isinstance(r, dict)]
+    if reading.get("valid") is False:
+        offer.read_all = False
+        offer.why.extend(str(r["message"]) for r in scope_session.selection_reasons(reading)[:1])
+    elif rows:
+        # Reading every project, which can still be written? None: "Read all" is
+        # then the same as "Read all, no writes", which is offered anyway.
+        offer.read_all_writes = {str(r["id"]) for r in rows if r.get("can_write")}
+        offer.read_all = bool(offer.read_all_writes)
+    for row in alone.get("projects") or []:
+        if not isinstance(row, dict):
+            continue
+        if row.get("can_read") is False:
+            offer.no_read.add(str(row["id"]))
+        if row.get("can_write") is False:
+            offer.no_write.add(str(row["id"]))
+    summary = (alone.get("read_everything") or {}).get("summary")
+    offer.read_everything = str(summary) if summary else None
+    return offer
+
+
 def picker_schema(
-    projects: list[dict[str, Any]], *, folder: str | None
+    projects: list[dict[str, Any]], *, folder: str | None, offer: Offer | None = None
 ) -> tuple[dict[str, Any], dict[str, str]]:
     """The form's schema (flat booleans) and each per-project field's project id.
 
-    "Read all" and "Write all" come first; the per-project rows follow while there
-    are at most :data:`FORM_MAX_PROJECTS` projects.
+    "Read all", "Write all" and "Read all, no writes" come first, each only where
+    the boundaries allow it (``offer``); the per-project rows follow while there are
+    at most :data:`FORM_MAX_PROJECTS` projects, without a Read or Write the
+    boundaries forbid.
     """
+    offer = offer or Offer()
     every = f"All {len(projects)} projects you can see now; projects created later are not added."
-    properties: dict[str, Any] = {
-        READ_ALL: {
+    properties: dict[str, Any] = {}
+    if offer.read_all:
+        writes = every
+        if offer.read_all_writes is not None and len(offer.read_all_writes) < len(projects):
+            writes = (
+                f"{every} With it, only these can also be written: "
+                f"{_names(projects, offer.read_all_writes)}."
+            )
+        properties[READ_ALL] = {
             "type": "boolean",
             "title": "Read all projects",
-            "description": every,
+            "description": writes,
             "default": False,
-        },
-        WRITE_ALL: {
+        }
+    if offer.write_all:
+        properties[WRITE_ALL] = {
             "type": "boolean",
             "title": "Write all projects (also reads them)",
             "description": every,
             "default": False,
-        },
+        }
+    properties[READ_EVERYTHING] = {
+        "type": "boolean",
+        "title": "Read all projects, no writes",
+        "description": offer.read_everything or "Reads every project you can read; writes nothing.",
+        "default": False,
     }
     fields: dict[str, str] = {}
     if len(projects) <= FORM_MAX_PROJECTS:
         for index, project in enumerate(projects):
             name = str(project.get("name") or project.get("id"))
-            for kind, label in (("read", "Read"), ("write", "Write")):
+            for kind, label, left_out in (
+                ("read", "Read", offer.no_read),
+                ("write", "Write", offer.no_write),
+            ):
+                if str(project["id"]) in left_out:
+                    continue
                 key = f"{kind}_{index}"
                 properties[key] = {"type": "boolean", "title": f"{label}: {name}", "default": False}
                 fields[key] = str(project["id"])
@@ -180,21 +263,51 @@ def selection_from(
     return list(dict.fromkeys(read)), list(dict.fromkeys(write))
 
 
+def _working_choices(offer: Offer, projects: list[dict[str, Any]]) -> str:
+    """The choices that work, in words, for a person whose choice was refused."""
+    choices = ["Read all projects, no writes"]
+    if offer.write_all:
+        choices.append("Write all projects")
+    if offer.read_all:
+        if offer.read_all_writes is not None and len(offer.read_all_writes) < len(projects):
+            choices.append(
+                f"Read all projects, writing only {_names(projects, offer.read_all_writes)}"
+            )
+        else:
+            choices.append("Read all projects, with any writes")
+    choices.append("projects chosen one by one, within their boundaries")
+    return "; ".join(choices)
+
+
+#: How many times the form is shown for one request: once, and again after a refusal.
+FORM_ATTEMPTS = 2
+
+
 async def elicit_choice(
     server: Any, session: scope_session.McpSession, *, replaced: bool = False
-) -> bool:
-    """Ask the person in chat; True when they chose at least one project."""
+) -> bool | dict[str, Any]:
+    """Ask the person in chat; True when they chose at least one project.
+
+    Only choices the projects' boundaries allow are offered. A choice the API
+    refuses anyway is asked again once, with why and the choices that work; refused
+    again, the answer is the refusal with the picker link (a dict), never the API's
+    bare 422.
+    """
     projects = await session.person_projects()
     if not projects or len(projects) > scope_session.MAX_PROJECTS:
         return False
-    schema, fields = picker_schema(projects, folder=session.folder)
+    try:
+        offer = await offer_for(session, projects)
+    except BeakrError:
+        offer = Offer()
+    schema, fields = picker_schema(projects, folder=session.folder, offer=offer)
     if fields:
-        how = "Tick Read all or Write all, or choose per project below."
+        how = "Tick one of the choices for all projects, or choose per project below."
         later = f" You can change this later at {session.picker_url}"
     else:
         how = (
-            f"You have {len(projects)} projects, too many to list here: tick Read all or "
-            f"Write all, or choose some of them at {session.picker_url}"
+            f"You have {len(projects)} projects, too many to list here: tick one of the "
+            f"choices for all projects, or choose some of them at {session.picker_url}"
         )
         later = ""
     message = (
@@ -203,18 +316,50 @@ async def elicit_choice(
         "All means the projects you have now; ones created later are not added. Writing a "
         f"project also lets it read it.{later}"
     )
-    try:
-        result = await server.get_context().session.elicit_form(message, schema)
-    except Exception:  # noqa: BLE001 - a client that refuses the request gets the link
-        return False
-    if getattr(result, "action", None) != "accept" or not isinstance(result.content, dict):
-        return False
+    if offer.why:
+        message += " Not offered: " + " ".join(offer.why)
     every = [str(project["id"]) for project in projects]
-    read, write = selection_from(result.content, fields, every)
-    if not read:
-        return False
-    await session.choose(read, write, remember=bool(result.content.get("remember")))
-    return not session.pending
+    refused: BeakrError | None = None
+    for _ in range(FORM_ATTEMPTS):
+        try:
+            result = await server.get_context().session.elicit_form(message, schema)
+        except Exception:  # noqa: BLE001 - a client that refuses the request gets the link
+            break
+        if getattr(result, "action", None) != "accept" or not isinstance(result.content, dict):
+            break
+        content = result.content
+        read, write = selection_from(content, fields, every)
+        if not (read or content.get(READ_EVERYTHING)):
+            break
+        try:
+            await session.choose(
+                read,
+                write,
+                remember=bool(content.get("remember")),
+                read_everything=bool(content.get(READ_EVERYTHING)),
+            )
+        except BeakrError as exc:
+            if exc.code != scope_session.SELECTION_INVALID:
+                raise
+            refused = exc
+            reasons = [
+                str(r["message"]) for r in scope_session.selection_reasons(exc) if r.get("message")
+            ] or [exc.message]
+            message = (
+                "That choice can't be used: "
+                + " ".join(reasons)
+                + f" Choices that work: {_working_choices(offer, projects)}."
+            )
+            continue
+        return not session.pending
+    if refused is not None:
+        return _error(
+            scope_session.SELECTION_INVALID,
+            scope_session.selection_invalid(refused).message,
+            f"Show the user this link to choose the projects: {session.picker_url or ''}",
+            picker_url=session.picker_url or "",
+        )
+    return False
 
 
 async def gate(server: Any, tool: str, agent: str | None) -> dict[str, Any] | None:
@@ -233,10 +378,12 @@ async def gate(server: Any, tool: str, agent: str | None) -> dict[str, Any] | No
     replaced = session.take_replaced()
     if not session.pending:
         return None
-    if supports_form_elicitation(server) and await elicit_choice(
-        server, session, replaced=replaced
-    ):
-        return None
+    if supports_form_elicitation(server):
+        chosen = await elicit_choice(server, session, replaced=replaced)
+        if isinstance(chosen, dict):
+            return chosen
+        if chosen:
+            return None
     return needs_selection(session, replaced=replaced)
 
 
