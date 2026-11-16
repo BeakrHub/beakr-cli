@@ -284,8 +284,6 @@ def _needs_person() -> dict:
 @pytest.mark.parametrize(
     "argv",
     [
-        ["session", "edit", OWN, "--read-everything"],
-        ["session", "edit", "--read", PROJECT, "--read", LEADERSHIP],
         [
             "api",
             "sessions",
@@ -293,6 +291,14 @@ def _needs_person() -> dict:
             OWN,
             "--data",
             json.dumps({"read_project_ids": [PROJECT, LEADERSHIP], "write_project_ids": []}),
+        ],
+        [
+            "api",
+            "sessions",
+            "update-session",
+            OWN,
+            "--data",
+            json.dumps({"read_everything": True}),
         ],
     ],
 )
@@ -315,7 +321,11 @@ def test_widening_the_conversations_session_is_proposed_with_the_persons_link(co
 @pytest.mark.parametrize(
     ("argv", "what"),
     [
+        # `beakr session edit` is refused wholesale inside a conversation, its own
+        # session included; the agent proposes through start_session.
         (["session", "edit", OTHER, "--read", "Leadership"], "beakr session edit"),
+        (["session", "edit", OWN, "--read-everything"], "beakr session edit"),
+        (["session", "edit", "--read", "Leadership", "--read", "Restricted"], "beakr session edit"),
         (
             [
                 "api",
@@ -394,3 +404,25 @@ def test_a_person_at_a_terminal_widening_an_agent_session_gets_the_link(monkeypa
 
     assert result.exit_code == 3, result.output
     assert f"Confirm it in your browser: {OWN_PAGE}" in _text(result)
+
+
+@respx.mock
+def test_the_apis_session_token_refusal_prints_its_link():
+    # session_widen_refused (a session token asked to widen) is printed with its link too.
+    respx.post(f"{API}/v1/sessions/{OWN}/tokens").respond(
+        403,
+        json={
+            "error": {
+                "code": "session_widen_refused",
+                "message": "A session token can't widen a session.",
+                "details": {"picker_url": OWN_PAGE},
+            }
+        },
+    )
+
+    result = runner.invoke(app, ["api", "sessions", "mint-session-token", OWN, "--data", "{}"])
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert "A session token can't widen a session." in text
+    assert f"Confirm it in your browser: {OWN_PAGE}" in text

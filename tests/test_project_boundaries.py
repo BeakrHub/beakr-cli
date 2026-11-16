@@ -894,7 +894,8 @@ def test_start_session_on_a_pending_session_proposes_the_agents_lists():
     assert _body(proposed)["read_project_ids"] == [A]
     assert answer["error_code"] == "session_widen_needs_person"
     assert answer["message"] == (
-        "Proposed for this session (read Partner A; write nothing); only the person can confirm it."
+        "Proposed for this session (read Partner A; write nothing); only the person can "
+        f"confirm it. Confirm in your browser: {PAGE}"
     )
     assert f"I've proposed these projects; confirm them at {PAGE}" in answer["fix"]
     assert answer["picker_url"] == PAGE

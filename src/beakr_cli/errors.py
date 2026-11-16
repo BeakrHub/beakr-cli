@@ -249,9 +249,18 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
 
     if isinstance(exc, BeakrError) and lock_confirm.held(exc):
         return lock_confirm.cli_message(exc, command)
-    from beakr_cli.scope_session import SessionScopeError, needs_person, picker_url_of
+    from beakr_cli.scope_session import (
+        WIDEN_REFUSED,
+        SessionScopeError,
+        needs_person,
+        picker_url_of,
+    )
 
-    if needs_person(exc):
+    if needs_person(exc) or (
+        isinstance(exc, BeakrError)
+        and exc.code == WIDEN_REFUSED
+        and not isinstance(exc, SessionScopeError)
+    ):
         assert isinstance(exc, BeakrError)
         link = picker_url_of(exc)
         text = str(exc)

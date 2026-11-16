@@ -856,11 +856,10 @@ def edit(
     current choice. A session that has touched a project can't change its mode
     (409 session_already_started).
     """
+    # Inside an agent conversation only the person changes a session: refused before any
+    # project name is looked up (the agent's own proposals go through start_session).
+    scope_session.refuse_session_change_inside_conversation("beakr session edit")
     chosen = _session_id(session_id)
-    # Inside an agent conversation only its own session is changed here, and the API
-    # keeps anything wider as a proposal for the person: refused before any project
-    # name is looked up.
-    scope_session.refuse_session_change_inside_conversation("beakr session edit", session_id=chosen)
     read, write = _person_project_refs(read), _person_project_refs(write)
     _refuse_together(
         **{

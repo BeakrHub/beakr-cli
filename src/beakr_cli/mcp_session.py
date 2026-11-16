@@ -643,9 +643,11 @@ def _proposed(
     else:
         reads = ", ".join(dict.fromkeys([*read, *write]))
         what = f"read {reads}; write {', '.join(write) or 'nothing'}"
+    scope_session.open_in_browser(url)
     return _error(
         scope_session.WIDEN_NEEDS_PERSON,
-        f"Proposed for this session ({what}); only the person can confirm it.",
+        f"Proposed for this session ({what}); only the person can confirm it. Confirm in "
+        f"your browser: {url}",
         f'Tell the user: "I\'ve proposed these projects; confirm them at {url}", then retry '
         "once they have.",
         picker_url=url,
