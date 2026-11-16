@@ -196,17 +196,7 @@ ORG = "0b1c2d3e-4f5a-4b6c-8d7e-9f0a1b2c3d4e"
     ("argv", "what", "where"),
     [
         # `beakr session start` declares the conversation's own session instead
-        # (tests/test_project_boundaries.py).
-        (
-            ["session", "edit", OWN, "--write-all"],
-            "beakr session edit",
-            "Change a session's projects",
-        ),
-        (
-            ["session", "edit", "--read", PROJECT],
-            "beakr session edit",
-            "Change a session's projects",
-        ),
+        # (tests/test_project_boundaries.py); `beakr session edit` is below.
         (
             ["org", "isolation", "set", "--org", ORG, "--guard", "allow", "--yes"],
             "beakr org isolation set",
@@ -242,3 +232,141 @@ def test_a_persons_own_act_is_refused_inside_an_agent_conversation(conversation,
     assert f"{where} in the web app or a terminal outside the agent conversation" in text
     assert "`!` in Claude Code" in text
     assert not api.called
+
+
+# --- Only the person widens a session -----------------------------------------------------
+#
+# Root cause (15 Nov, fdoctant): inside an agent conversation the agent read the person's
+# key, and `beakr api sessions update-session` widened its session from one project to six
+# (`beakr session edit` failed only on resolving a name, before its own refusal ran). Inside
+# an agent conversation a session change only the person may make is refused now, before any
+# name is resolved, with the person's link; a change that only narrows the conversation's own
+# session goes through.
+
+OWN_PAGE = f"https://app.test/sessions/{OWN}"
+WIDEN = f"only a person can widen this session: {OWN_PAGE}"
+
+
+def _own_session(**extra) -> None:
+    """The conversation's session, as the person's key lists and reads it."""
+    session = _session(
+        **{
+            "mode": "picked",
+            "read_projects": [{"id": PROJECT, "name": "Internal"}],
+            "write_projects": [],
+            **extra,
+        }
+    )
+    respx.get(f"{API}/v1/sessions").respond(json={"data": [session], "has_more": False})
+    respx.get(f"{API}/v1/sessions/{OWN}").respond(json=session)
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["session", "edit", OWN, "--write-all"],
+        ["session", "edit", "--read", PROJECT],
+        ["session", "edit", "--read", "Leadership", "--read", "Restricted"],
+    ],
+)
+@respx.mock
+def test_session_edit_is_refused_inside_a_conversation_with_the_persons_link(conversation, argv):
+    _own_session()
+    listed = respx.get(f"{API}/v1/projects")
+    changed = respx.patch(url__regex=rf"{API}/v1/sessions/.*")
+
+    result = runner.invoke(app, argv)
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert f"`beakr session edit` is refused inside an agent conversation ({CONVERSATION})" in text
+    assert WIDEN in text
+    assert "No project with id" not in text
+    assert not changed.called and not listed.called
+
+
+LEADERSHIP = "01cd300f-a774-4df8-91f5-a2e7d417e6b4"
+
+
+@pytest.mark.parametrize(
+    ("argv", "what"),
+    [
+        (
+            [
+                "api",
+                "sessions",
+                "update-session",
+                OWN,
+                "--data",
+                json.dumps({"read_project_ids": [PROJECT, LEADERSHIP], "write_project_ids": []}),
+            ],
+            "beakr api sessions update-session",
+        ),
+        (
+            ["api", "sessions", "update-session", OWN, "--data", '{"read_everything": true}'],
+            "beakr api sessions update-session",
+        ),
+        (
+            [
+                "api",
+                "sessions",
+                "update-session",
+                OTHER,
+                "--data",
+                json.dumps({"read_project_ids": [PROJECT], "write_project_ids": []}),
+            ],
+            "beakr api sessions update-session",
+        ),
+        (
+            [
+                "api",
+                "sessions",
+                "create-session",
+                "--data",
+                json.dumps({"read_project_ids": [LEADERSHIP], "write_project_ids": []}),
+            ],
+            "beakr api sessions create-session",
+        ),
+    ],
+)
+@respx.mock
+def test_the_raw_session_routes_cannot_widen_from_inside_a_conversation(conversation, argv, what):
+    _own_session()
+    changed = respx.patch(url__regex=rf"{API}/v1/sessions/.*")
+    created = respx.post(f"{API}/v1/sessions")
+
+    result = runner.invoke(app, argv)
+
+    assert result.exit_code == 3, result.output
+    text = _text(result)
+    assert f"`{what}` is refused inside an agent conversation ({CONVERSATION})" in text
+    assert WIDEN in text
+    assert not changed.called and not created.called
+
+
+@respx.mock
+def test_a_change_that_only_narrows_the_conversations_session_goes_through(conversation):
+    _own_session(
+        read_projects=[{"id": PROJECT, "name": "Internal"}, {"id": LEADERSHIP, "name": "Lead"}]
+    )
+    # An organization where every session must pick: the call runs with the person's key.
+    respx.get(f"{API}/v1/me/organization").respond(json={"id": ORG})
+    respx.get(f"{API}/v1/organizations/{ORG}/project-isolation").respond(
+        json={"session_mode": "must_pick", "available": {"server_agent_sessions": True}}
+    )
+    changed = respx.patch(f"{API}/v1/sessions/{OWN}").respond(json=_session())
+
+    result = runner.invoke(
+        app,
+        [
+            "api",
+            "sessions",
+            "update-session",
+            OWN,
+            "--data",
+            json.dumps({"read_project_ids": [PROJECT], "write_project_ids": []}),
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert changed.called

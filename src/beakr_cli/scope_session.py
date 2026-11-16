@@ -1302,6 +1302,66 @@ def refuse_inside_conversation(what: str, where: str) -> None:
     )
 
 
+def widens(session: dict[str, Any], change: dict[str, Any]) -> bool:
+    """Whether ``change`` (a ``PATCH /v1/sessions/{id}`` body) lets ``session`` reach more:
+    read everything, become automatic (it may then touch any project), or read or
+    write a project it does not. Dropping projects, a label or ``remember_folder``
+    widen nothing."""
+    if change.get("read_everything") or change.get("mode") == AUTOMATIC:
+        return True
+    reads = set(project_ids(session.get("read_projects")))
+    writes = set(project_ids(session.get("write_projects")))
+    wanted_writes = {str(p) for p in change.get("write_project_ids") or []}
+    if not wanted_writes <= writes:
+        return True
+    wanted_reads = {str(p) for p in change.get("read_project_ids") or []}
+    return not reads_everything(session) and not wanted_reads <= reads
+
+
+def refuse_widening_inside_conversation(
+    what: str, *, session_id: str | None = None, change: dict[str, Any] | None = None
+) -> None:
+    """Refuse, inside an agent conversation, a session change only the person may make.
+
+    Starting a session, minting a session's token, changing another session, or
+    any change that widens the conversation's own (:func:`widens`) acts with the
+    person's own key and would let the agent reach more. A ``change`` to the
+    conversation's own session that only narrows it goes through. The refusal
+    gives the person's link to the session; the API refuses the same
+    (``403 session_widen_refused``).
+    """
+    from beakr_cli.sdk import get_sdk
+
+    agent = agent_session_id()
+    if not agent:
+        return
+    own: dict[str, Any] | None = None
+    try:
+        own_id = conversation_session_id(agent)
+        if own_id:
+            with get_sdk(scoped=False) as person:
+                own = person.request("GET", f"/v1/sessions/{own_id}")
+    except BeakrError:
+        own = None
+    if (
+        own is not None
+        and change is not None
+        and session_id == str(own.get("id"))
+        and not widens(own, change)
+    ):
+        return
+    link = (own or {}).get("picker_url") or "the web app (Settings, Sessions)"
+    raise SessionScopeError(
+        f"`{what}` is refused inside an agent conversation ({agent}): only a person can "
+        f"widen this session: {link}",
+        code=WIDEN_REFUSED,
+        fix=(
+            f"Ask the person to change the session's projects at {link}. Commands typed with "
+            "`!` in Claude Code share the agent's environment, so they are refused the same way."
+        ),
+    )
+
+
 def _join_conversation(agent: str, key: str) -> TokenState | None:
     """Join (or start) the conversation's session where sessions start automatic."""
     from beakr_cli.sdk import get_sdk

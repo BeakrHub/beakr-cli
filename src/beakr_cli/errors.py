@@ -97,6 +97,8 @@ _ISOLATION_REFUSALS = frozenset(
         "project_content_locked",
         # A request held before entering a locked project (beakr_cli.lock_confirm).
         "session_lock_confirm",
+        # A session change only the person may make (inside an agent conversation).
+        "session_widen_refused",
     }
 )
 #: Picked lists that break a project boundary: the caller's arguments (exit 2).

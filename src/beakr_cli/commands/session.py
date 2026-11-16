@@ -811,11 +811,27 @@ def list_sessions(
     emit(rows, json_out=json_out, render=render)
 
 
+#: ``session edit``'s --read/--write: resolved in the command, after the refusal inside
+#: an agent conversation (a callback would resolve them first).
+_edit_read_opt = typer.Option(
+    [],
+    "--read",
+    "-r",
+    help="Projects the session may read (ids, slugs or names), comma-separated or repeated.",
+)
+_edit_write_opt = typer.Option(
+    [],
+    "--write",
+    "-w",
+    help="Projects the session may write (it also reads them), comma-separated or repeated.",
+)
+
+
 @app.command("edit")
 def edit(
     session_id: str | None = typer.Argument(None, help="Defaults to this shell's session."),
-    read: list[str] = _read_opt,
-    write: list[str] = _write_opt,
+    read: list[str] = _edit_read_opt,
+    write: list[str] = _edit_write_opt,
     read_all: bool = _read_all_opt,
     write_all: bool = _write_all_opt,
     read_everything: bool = _read_everything_opt,
@@ -840,7 +856,10 @@ def edit(
     current choice. A session that has touched a project can't change its mode
     (409 session_already_started).
     """
-    scope_session.refuse_inside_conversation("beakr session edit", "Change a session's projects")
+    # Inside an agent conversation only the person changes a session: refused before
+    # any project name is looked up.
+    scope_session.refuse_widening_inside_conversation("beakr session edit")
+    read, write = _person_project_refs(read), _person_project_refs(write)
     _refuse_together(
         **{
             "--read/--write": bool(read or write or read_all or write_all),
