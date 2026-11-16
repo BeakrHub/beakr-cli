@@ -309,9 +309,12 @@ def sources_block(sources: list[Any]) -> str:
     lines = [
         # Not "by its source_ref": a write accepts that only for an item Knowledge
         # already holds, and refused it for every item read here that it did not.
-        f"Sources ({len(records)}). To cite one in a Knowledge write, pass it as a web "
-        "source (its url, title and the passage you quote), or its source_ref once "
-        "Knowledge holds the item:",
+        # An outside record keeps the service and the item's id, which a web
+        # source drops, and a later write cites it again as ``Service › id``.
+        f"Sources ({len(records)}). To cite one in a Knowledge write, pass it as an "
+        "outside record {source_type: external_record, url, title, meta: {system: the "
+        "service, record_id: the item's id, excerpt: the passage you quote}}, or its "
+        "source_ref once Knowledge holds the item:",
     ]
     used = len(lines[0])
     shown = 0

@@ -53,7 +53,7 @@ _evidence_opt = typer.Option(
     "--evidence",
     help=(
         "The source: {{key}} token(s) or the reference a read prints (memo.pdf › p. 7). "
-        "Optional with --cite-conversation."
+        "Optional with --cite-conversation or --cite-record."
     ),
 )
 _conversation_opt = typer.Option(
@@ -64,18 +64,45 @@ _conversation_opt = typer.Option(
         "(cited as {{conversation:LABEL}}); needs --excerpt."
     ),
 )
+_record_opt = typer.Option(
+    None,
+    "--cite-record",
+    help=(
+        "Cite a record in a system outside Beakr (an ELN entry, a registry compound, a "
+        "Slack message Knowledge does not hold yet) by its http(s) link; needs "
+        "--record-system and --record-id or --source-title. Beakr never opens the link."
+    ),
+)
+_record_system_opt = typer.Option(
+    None,
+    "--record-system",
+    help="With --cite-record: the system the record is in (Benchling, CDD Vault, Slack).",
+)
+_record_id_opt = typer.Option(
+    None, "--record-id", help="With --cite-record: the record's id in that system."
+)
 _excerpt_opt = typer.Option(
-    None, "--excerpt", help="With --cite-conversation: the words in it that state this."
+    None,
+    "--excerpt",
+    help="With --cite-conversation or --cite-record: the words in it that state this.",
 )
 _source_title_opt = typer.Option(
     None,
     "--source-title",
-    help="With --cite-conversation: what the conversation was (default: its label).",
+    help=(
+        "With --cite-conversation: what the conversation was (default: its label). "
+        "With --cite-record: the record's name."
+    ),
 )
 
 #: The label an inline conversation citation may key itself by (the engine's
 #: ``outside_citations._OWN_KEY``, past its ``conversation:``).
 _CONVERSATION_LABEL = re.compile(r"[A-Za-z0-9_.:/-]{1,120}")
+#: A character the engine's own record key (``outside_external_records.own_record_key``)
+#: may not hold; each run of them becomes one ``-`` in the label the CLI derives.
+_RECORD_LABEL_DISALLOWED = re.compile(r"[^A-Za-z0-9_.:/-]+")
+#: The longest label the engine accepts after ``record:``.
+_RECORD_LABEL_LENGTH = 120
 
 
 def _scope(explicit: str | None) -> str | None:
@@ -128,19 +155,29 @@ def _cited(
     conversation: str | None,
     excerpt: str | None,
     source_title: str | None,
+    record: str | None = None,
+    record_system: str | None = None,
+    record_id: str | None = None,
 ) -> tuple[str, list[dict[str, Any]] | None]:
-    """The row's ``evidence`` and, citing a conversation, its inline ``citations``.
+    """The row's ``evidence`` and, citing a conversation or a record, its inline ``citations``.
 
     A conversation is no stored source, so the door cites it as the MCP tools
     do: ``{{conversation:<label>}}`` in the evidence and a declared citation
     of source_type ``conversation`` with ``source_title`` and the words cited
-    (``meta.excerpt``). Without it the token named nothing citeable.
+    (``meta.excerpt``). Without it the token named nothing citeable. A record
+    in a system outside Beakr is cited the same way (:func:`_cited_record`).
     """
+    if conversation is not None and record is not None:
+        _usage("Pass --cite-conversation or --cite-record, not both.")
+    if record is not None:
+        return _cited_record(evidence, record, record_system, record_id, source_title, excerpt)
+    if record_system is not None or record_id is not None:
+        _usage("--record-system and --record-id go with --cite-record.")
     if conversation is None:
         if excerpt is not None or source_title is not None:
-            _usage("--excerpt and --source-title go with --cite-conversation.")
+            _usage("--excerpt and --source-title go with --cite-conversation or --cite-record.")
         if not (evidence or "").strip():
-            _usage("Pass --evidence, or --cite-conversation with --excerpt.")
+            _usage("Pass --evidence, --cite-conversation with --excerpt, or --cite-record.")
         return str(evidence), None
     label = conversation.strip().strip("{}").strip()
     label = label.removeprefix("conversation:")
@@ -161,6 +198,58 @@ def _cited(
     given = (evidence or "").strip()
     cited = f"{given} {token}" if given else token
     return cited, [citation]
+
+
+def _cited_record(
+    evidence: str | None,
+    url: str,
+    system: str | None,
+    record_id: str | None,
+    title: str | None,
+    excerpt: str | None,
+) -> tuple[str, list[dict[str, Any]]]:
+    """The row's ``evidence`` and the declared ``external_record`` citation it cites.
+
+    The engine stores the record as given and never opens its link; it checks the
+    link and the field limits itself, so only what the CLI needs to build the
+    citation is checked here. The record is cited in the evidence by a key of its
+    own (``{{record:<label>}}``), which the engine renames to the record's one key.
+    """
+    link = url.strip()
+    if not link.lower().startswith(("http://", "https://")):
+        _usage("--cite-record takes the record's http(s) link.")
+    named_system = (system or "").strip()
+    if not named_system:
+        _usage("--cite-record needs --record-system: the system the record is in.")
+    named_id = (record_id or "").strip()
+    name = (title or "").strip()
+    if not (named_id or name):
+        _usage("--cite-record needs --record-id or --source-title: the record's id or name.")
+    label = _record_label(named_id or name)
+    key = f"record:{label}"
+    meta: dict[str, Any] = {"system": named_system}
+    if named_id:
+        meta["record_id"] = named_id
+    if (excerpt or "").strip():
+        meta["excerpt"] = str(excerpt).strip()
+    citation: dict[str, Any] = {
+        "key": key,
+        "source_type": "external_record",
+        "url": link,
+        "meta": meta,
+    }
+    if name:
+        citation["title"] = name
+    token = "{{" + key + "}}"
+    given = (evidence or "").strip()
+    cited = f"{given} {token}" if given else token
+    return cited, [citation]
+
+
+def _record_label(name: str) -> str:
+    """A label the engine accepts after ``record:``, read off the record's id or name."""
+    label = _RECORD_LABEL_DISALLOWED.sub("-", name).strip("-")[:_RECORD_LABEL_LENGTH]
+    return label.strip("-") or "record"
 
 
 def _usage(message: str) -> None:
@@ -402,6 +491,9 @@ def add_fact(
     evidence: str | None = _evidence_opt,
     when: str | None = typer.Option(None, "--when", help="YYYY-MM-DD, YYYY-MM, YYYY-Qn or YYYY."),
     cite_conversation: str | None = _conversation_opt,
+    cite_record: str | None = _record_opt,
+    record_system: str | None = _record_system_opt,
+    record_id: str | None = _record_id_opt,
     excerpt: str | None = _excerpt_opt,
     source_title: str | None = _source_title_opt,
     rationale: str = _rationale_opt,
@@ -409,7 +501,9 @@ def add_fact(
     json_out: bool = _json_opt,
 ) -> None:
     """Propose one Facts row on a project-map card."""
-    cited, citations = _cited(evidence, cite_conversation, excerpt, source_title)
+    cited, citations = _cited(
+        evidence, cite_conversation, excerpt, source_title, cite_record, record_system, record_id
+    )
     with get_sdk() as sdk:
         result = sdk.knowledge.add_fact(
             page,
@@ -431,6 +525,9 @@ def add_connection(
     evidence: str | None = _evidence_opt,
     when: str | None = typer.Option(None, "--when", help="When the connection held."),
     cite_conversation: str | None = _conversation_opt,
+    cite_record: str | None = _record_opt,
+    record_system: str | None = _record_system_opt,
+    record_id: str | None = _record_id_opt,
     excerpt: str | None = _excerpt_opt,
     source_title: str | None = _source_title_opt,
     rationale: str = _rationale_opt,
@@ -438,7 +535,9 @@ def add_connection(
     json_out: bool = _json_opt,
 ) -> None:
     """Propose one Connections row on a project-map card."""
-    cited, citations = _cited(evidence, cite_conversation, excerpt, source_title)
+    cited, citations = _cited(
+        evidence, cite_conversation, excerpt, source_title, cite_record, record_system, record_id
+    )
     with get_sdk() as sdk:
         result = sdk.knowledge.add_connection(
             page,
@@ -463,6 +562,9 @@ def add_finding(
     finding_scope: str | None = typer.Option(None, "--finding-scope", help="Where it holds."),
     supersedes: str | None = typer.Option(None, "--supersedes", help="Finding it replaces."),
     cite_conversation: str | None = _conversation_opt,
+    cite_record: str | None = _record_opt,
+    record_system: str | None = _record_system_opt,
+    record_id: str | None = _record_id_opt,
     excerpt: str | None = _excerpt_opt,
     source_title: str | None = _source_title_opt,
     rationale: str = _rationale_opt,
@@ -471,7 +573,9 @@ def add_finding(
 ) -> None:
     """Propose one dated Findings bullet on a project-map card."""
     _choice(kind, _FINDING_KINDS, "--kind")
-    cited, citations = _cited(evidence, cite_conversation, excerpt, source_title)
+    cited, citations = _cited(
+        evidence, cite_conversation, excerpt, source_title, cite_record, record_system, record_id
+    )
     about_value: str | list[str] | None = None
     if about:
         about_value = about[0] if len(about) == 1 else list(about)
