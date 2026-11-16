@@ -1204,6 +1204,22 @@ def conversation_token() -> str | None:
     return state.token
 
 
+def conversation_session_id(agent: str) -> str | None:
+    """The session of agent conversation ``agent``: the one this terminal kept for it,
+    else the one among the person's sessions that names it (ended ones too: a
+    conversation has one session, which never starts again)."""
+    from beakr_cli.sdk import get_sdk
+
+    kept = (_terminal_record(f"agent:{agent}") or {}).get("session_id")
+    if kept:
+        return str(kept)
+    with get_sdk(scoped=False) as person:
+        for row in person.paginate("/v1/sessions", include_ended=True):
+            if row.get("agent_session") == agent:
+                return str(row.get("id"))
+    return None
+
+
 def conversation_state(agent: str) -> TokenState:
     """A token for this agent conversation's own session, joined (or started) when this
     terminal holds none. For ``beakr session`` inside an agent conversation, whose reads

@@ -122,16 +122,9 @@ def _session_id(session_id: str | None) -> str:
 
 
 def _conversation_session_id() -> str | None:
-    """The open session of the agent conversation this command runs in, if it has one."""
+    """The session of the agent conversation this command runs in, if it has one."""
     agent = scope_session.agent_session_id()
-    if not agent:
-        return None
-    # Ended ones too: a conversation has one session, which never starts again.
-    with get_sdk(scoped=False) as sdk:
-        for row in sdk.paginate("/v1/sessions", include_ended=True):
-            if row.get("agent_session") == agent:
-                return str(row.get("id"))
-    return None
+    return scope_session.conversation_session_id(agent) if agent else None
 
 
 # --- Inside an agent conversation --------------------------------------------------------

@@ -220,10 +220,13 @@ def resolve_project_ref(ref: str, *, param_hint: str = "--project") -> str:
         return ref
     from beakr_cli import scope_session
 
-    # A shell session's token reads only its projects: resolved per session.
+    # A shell session's token reads only its projects, and so does an agent
+    # conversation's session: resolved per session.
     session_id = scope_session.token_session_id()
-    if (session_id, ref) in _resolved:
-        return _resolved[(session_id, ref)]
+    agent = scope_session.agent_session_id()
+    held = session_id or (f"agent:{agent}" if agent else None)
+    if (held, ref) in _resolved:
+        return _resolved[(held, ref)]
     from beakr_cli.sdk import get_sdk
 
     with get_sdk() as sdk:
@@ -231,27 +234,33 @@ def resolve_project_ref(ref: str, *, param_hint: str = "--project") -> str:
     try:
         found = pick_project(projects, ref)
     except ProjectNotResolved as refused:
-        if not refused.ambiguous and session_id is not None:
-            outside = _outside_session(session_id, ref)
+        if not refused.ambiguous and held is not None:
+            outside = _outside_session(session_id, ref, agent=agent)
             if outside:
                 raise typer.BadParameter(outside, param_hint=param_hint) from refused
         raise typer.BadParameter(str(refused), param_hint=param_hint) from refused
-    _resolved[(session_id, ref)] = str(found["id"])
-    return _resolved[(session_id, ref)]
+    _resolved[(held, ref)] = str(found["id"])
+    return _resolved[(held, ref)]
 
 
-def _outside_session(session_id: str, ref: str) -> str | None:
-    """Why ``ref`` did not resolve in this shell's session, when it is a project the person
-    can see that the session does not read; None when it is not (or that cannot be told).
+def _outside_session(session_id: str | None, ref: str, *, agent: str | None) -> str | None:
+    """Why ``ref`` did not resolve in this shell's session (or, without one, the agent
+    conversation's), when it is a project the person can see that the session does
+    not read; None when it is not (or that cannot be told).
 
     Only the name is resolved with the person's own credential; the command still
-    runs with the session's token.
+    runs in the session. Inside an agent conversation only the person can add a
+    project, on the session's page: ``beakr session edit`` is refused there.
     """
     from beakr_sdk.errors import BeakrError
 
+    from beakr_cli import scope_session
     from beakr_cli.sdk import get_sdk
 
     try:
+        session_id = session_id or (scope_session.conversation_session_id(agent) if agent else None)
+        if session_id is None:
+            return None
         with get_sdk(scoped=False) as person:
             if find_project(list(person.projects.list() or []), ref) is None:
                 return None
@@ -259,10 +268,11 @@ def _outside_session(session_id: str, ref: str) -> str | None:
     except BeakrError:
         return None
     reads = ", ".join(str(p.get("name") or p.get("id")) for p in session.get("read_projects") or [])
-    return (
-        f"{ref!r} isn't one of this session's projects (it reads: {reads or 'none'}). "
-        f"Add it with `beakr session edit {session_id}` or at {session.get('picker_url')}."
-    )
+    outside = f"{ref!r} isn't one of this session's projects (it reads: {reads or 'none'})."
+    picker = session.get("picker_url")
+    if agent:
+        return f"{outside} Only the person can add it: {picker}"
+    return f"{outside} Add it with `beakr session edit {session_id}` or at {picker}."
 
 
 def project_ref_callback(value: Any) -> Any:
