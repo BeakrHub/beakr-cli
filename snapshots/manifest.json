@@ -2,12 +2,12 @@
   "sources": {
     "beakr-engine": {
       "repository": "BeakrHub/beakr-engine",
-      "commit": "97a213f28d3c77db5530ca5f08a4d88ad2cd55e3",
+      "commit": "4ebdd7844d11e8a1ee54428fdf13a2417030c507",
       "uncommitted_changes": false,
       "files": {
         "beakr/api/mcp_remote/document_listing.py": "sha256:375389207c8e84b6d0f2a45075ede6d52a50cc5cd3fae64d9a54dc0712e2486e",
         "beakr/api/mcp_remote/formatting.py": "sha256:64e9b5727cb421baedca6669edf94bb20cf4401b26133665c811abd4721a0895",
-        "beakr/api/mcp_remote/integration_results.py": "sha256:17db0c3580e403f395cd5f9c6074f764f1f2e4a5cbb321a634147e492399be4e",
+        "beakr/api/mcp_remote/integration_results.py": "sha256:28f93f4da0d6bf689e550f747c4dfa37a0b80368c8b1b5762148ded1c2411ace",
         "beakr/api/mcp_remote/knowledge_status.py": "sha256:2e5c56d818dfe185b6b02055b6551f53e8e4ad3b1507fc1953c14bb448d14563",
         "beakr/api/mcp_remote/render.py": "sha256:5a6c2114564bdeb0eca4e2e463f7ce3c50c2134e786d7b06cc03d7df63222848",
         "beakr/api/public/compat.py": "sha256:1b89503c00b6e5451ff3ad02e8e8b8016d4dd0a5f9220717d1649d52e6deb7ee",
