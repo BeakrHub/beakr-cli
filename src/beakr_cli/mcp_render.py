@@ -236,8 +236,14 @@ def _document_key(record: dict[str, Any]) -> str:
 def _display_name(record: dict[str, Any]) -> str:
     """The name a Sources line leads with: where the source lives, else its name."""
     location = record.get("location") or {}
+    # An outside record is named as the text cites it, ``CDD Vault › MOL-1234``.
+    outside_reference = record.get("reference") if _kind(record) == _RECORD else None
     return str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
+        location.get("display_path")
+        or record.get("filename")
+        or outside_reference
+        or record.get("name")
+        or "source"
     )
 
 
@@ -463,8 +469,11 @@ def approval_state_line(state: Any, text: str) -> str:
 #: one, and printed with no label, it read as a file with no place (S18-9).
 _DOCUMENT = "document"
 _PAGE = "Knowledge page"
+#: A record in a system outside Beakr, cited by its link and never opened.
+_RECORD = "record"
 _KINDS: tuple[tuple[str, str], ...] = (
     (_DOCUMENT, "documents"),
+    (_RECORD, "records"),
     ("conversation", "conversations"),
     ("agent note", "agent notes"),
     ("note", "notes"),
@@ -476,6 +485,8 @@ _KIND_BY_SOURCE_TYPE = {
     "conversation": "conversation",
     "agent_note": "agent note",
     "user_note": "note",
+    "external_record": _RECORD,
+    "record": _RECORD,
 }
 
 
@@ -527,6 +538,7 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     record = entry["record"]
     location = record.get("location") or {}
     places = entry.get("places") or []
+    outside_record = _kind(record) == _RECORD
     shown = ", ".join(places[:PLACES_PER_DOCUMENT])
     if len(places) > PLACES_PER_DOCUMENT:
         shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
@@ -554,7 +566,13 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
     head = f"{name}{LOCATION_SEPARATOR}{shown}" if shown else name
     lines = [f"- {_line_label(record)}{head}{tail}".rstrip()]
     if entry["excerpt"]:
-        label = " (paraphrase)" if entry.get("excerpt_authored") else ""
+        if entry.get("excerpt_authored"):
+            label = " (paraphrase)"
+        elif outside_record:
+            # Its writer's words for a record Beakr never opens.
+            label = " (unverified)"
+        else:
+            label = ""
         lines.append(f'  "{_one_line(entry["excerpt"], EXCERPT_CHARS)}"{label}')
     return lines
 
