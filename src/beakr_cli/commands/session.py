@@ -122,16 +122,9 @@ def _session_id(session_id: str | None) -> str:
 
 
 def _conversation_session_id() -> str | None:
-    """The open session of the agent conversation this command runs in, if it has one."""
+    """The session of the agent conversation this command runs in, if it has one."""
     agent = scope_session.agent_session_id()
-    if not agent:
-        return None
-    # Ended ones too: a conversation has one session, which never starts again.
-    with get_sdk(scoped=False) as sdk:
-        for row in sdk.paginate("/v1/sessions", include_ended=True):
-            if row.get("agent_session") == agent:
-                return str(row.get("id"))
-    return None
+    return scope_session.conversation_session_id(agent) if agent else None
 
 
 # --- Inside an agent conversation --------------------------------------------------------
@@ -818,11 +811,27 @@ def list_sessions(
     emit(rows, json_out=json_out, render=render)
 
 
+#: ``session edit``'s --read/--write: resolved in the command, after the refusal inside
+#: an agent conversation (a callback would resolve them first).
+_edit_read_opt = typer.Option(
+    [],
+    "--read",
+    "-r",
+    help="Projects the session may read (ids, slugs or names), comma-separated or repeated.",
+)
+_edit_write_opt = typer.Option(
+    [],
+    "--write",
+    "-w",
+    help="Projects the session may write (it also reads them), comma-separated or repeated.",
+)
+
+
 @app.command("edit")
 def edit(
     session_id: str | None = typer.Argument(None, help="Defaults to this shell's session."),
-    read: list[str] = _read_opt,
-    write: list[str] = _write_opt,
+    read: list[str] = _edit_read_opt,
+    write: list[str] = _edit_write_opt,
     read_all: bool = _read_all_opt,
     write_all: bool = _write_all_opt,
     read_everything: bool = _read_everything_opt,
@@ -847,7 +856,11 @@ def edit(
     current choice. A session that has touched a project can't change its mode
     (409 session_already_started).
     """
-    scope_session.refuse_inside_conversation("beakr session edit", "Change a session's projects")
+    # Inside an agent conversation only the person changes a session: refused before any
+    # project name is looked up (the agent's own proposals go through start_session).
+    scope_session.refuse_session_change_inside_conversation("beakr session edit")
+    chosen = _session_id(session_id)
+    read, write = _person_project_refs(read), _person_project_refs(write)
     _refuse_together(
         **{
             "--read/--write": bool(read or write or read_all or write_all),
@@ -855,7 +868,6 @@ def edit(
             "--automatic": automatic,
         }
     )
-    chosen = _session_id(session_id)
     with get_sdk(scoped=False) as sdk:
         current = sdk.request("GET", f"/v1/sessions/{chosen}")
         where = f"on the session's page ({current.get('picker_url')})"

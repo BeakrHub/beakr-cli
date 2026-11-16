@@ -296,6 +296,39 @@ def test_a_project_outside_the_session_is_named_as_outside_it():
     assert _bearers(listed) == [f"Bearer {SHELL_TOKEN}", f"Bearer {PERSON_KEY}"]
 
 
+# Root cause: inside an agent conversation with no shell session the CLI sends the
+# person's key with X-Beakr-Session, which the API answers with the conversation's
+# session's projects only. A project outside it was "No project with id, name or
+# slug", so the agent went looking for other ways in (and widened the session with
+# `beakr api sessions update-session`). It is named as outside the session now,
+# with the person's link: inside a conversation only the person can add it.
+@respx.mock
+def test_a_project_outside_an_agent_conversations_session_is_named_with_the_persons_link(
+    monkeypatch,
+):
+    monkeypatch.delenv(scope_session.SESSION_ENV)
+    monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "conv-123")
+
+    def listed(request: httpx.Request) -> httpx.Response:
+        joined = request.headers.get("x-beakr-session") == "conv-123"
+        return httpx.Response(200, json=_projects(A, B) if joined else _projects(A, B, C))
+
+    respx.get(f"{API}/v1/projects").mock(side_effect=listed)
+    respx.get(f"{API}/v1/sessions").respond(
+        json={"data": [{**_session(), "agent_session": "conv-123"}], "has_more": False}
+    )
+    respx.get(f"{API}/v1/sessions/{SID}").respond(json=_session())
+
+    result = runner.invoke(app, ["kb", "ls", "-P", "Session C"])
+
+    assert result.exit_code == 2
+    text = _text(result)
+    assert "'Session C' isn't one of this session's projects (it reads: Helios, Assays)." in text
+    assert f"Only the person can add it: {PICKER}" in text
+    assert "beakr session edit" not in text
+    assert "No project with id" not in text
+
+
 @respx.mock
 def test_a_name_nobody_can_see_is_still_not_found():
     respx.get(f"{API}/v1/projects").mock(

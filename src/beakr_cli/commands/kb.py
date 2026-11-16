@@ -9,7 +9,13 @@ from pathlib import Path
 
 import click
 import typer
-from beakr_sdk.errors import BeakrError, KnowledgeCommandError, NotFoundError, PermissionDeniedError
+from beakr_sdk.errors import (
+    BeakrError,
+    KnowledgeCommandError,
+    NotFoundError,
+    PermissionDeniedError,
+    ValidationError,
+)
 from beakr_sdk.resources.knowledge import result_text
 from rich.markup import escape
 
@@ -2214,6 +2220,12 @@ def _title_key(text: str) -> str:
     return "-".join(re.findall(r"[^\W_]+", text.casefold()))
 
 
+#: A lookup that missed: the next way of finding the page is tried. Anything else (no
+#: access, a session that holds the read, a lock to confirm, the server down) is the
+#: answer, raised as it came: it used to be swallowed into "Page not found".
+_MISSED = (NotFoundError, ValidationError, ValueError)
+
+
 def _resolve_page(
     ref: str,
     *,
@@ -2232,6 +2244,8 @@ def _resolve_page(
     The closest titles are the server's own when its 404 names them
     (``error.details.suggestions``, ranked under the caller's access); a
     server without that field gets them from a search.
+
+    Only a lookup that missed (:data:`_MISSED`) moves on to the next one.
     """
     suggestions: list[str] = []
     wanted = _title_key(ref)
@@ -2245,7 +2259,7 @@ def _resolve_page(
                 if not _page_matches_scope(data, project=project, mine=mine):
                     raise ValueError("Page is outside the requested scope.")
                 return data
-            except Exception:
+            except _MISSED:
                 pass
 
         # Try exact title (resolves through alias table -- current + previous)
@@ -2256,7 +2270,7 @@ def _resolve_page(
             reported = exc.details.get("suggestions")
             if isinstance(reported, list):
                 server_suggestions = [str(title) for title in reported if title]
-        except Exception:
+        except ValidationError:
             pass
 
         if server_suggestions is not None:
@@ -2269,7 +2283,7 @@ def _resolve_page(
             # An older server names no suggestions: search for them.
             try:
                 hits = page_rows(pages.search(ref, project_id=scope_id, limit=5))
-            except Exception:
+            except _MISSED:
                 hits = []
         for hit in hits:
             title = str(hit.get("title") or "")

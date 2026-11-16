@@ -56,6 +56,8 @@ MAX_PROJECTS = 200
 
 NEEDS_SELECTION = "session_needs_selection"
 WIDEN_REFUSED = "session_widen_refused"
+#: A widening by a key or token of an agent conversation's session: kept as a proposal.
+WIDEN_NEEDS_PERSON = "session_widen_needs_person"
 WRITE_SCOPE = "session_write_scope"
 SESSION_ENDED = "session_ended"
 #: What :meth:`McpSession.recover` did after the API refused the session's token.
@@ -1204,6 +1206,22 @@ def conversation_token() -> str | None:
     return state.token
 
 
+def conversation_session_id(agent: str) -> str | None:
+    """The session of agent conversation ``agent``: the one this terminal kept for it,
+    else the one among the person's sessions that names it (ended ones too: a
+    conversation has one session, which never starts again)."""
+    from beakr_cli.sdk import get_sdk
+
+    kept = (_terminal_record(f"agent:{agent}") or {}).get("session_id")
+    if kept:
+        return str(kept)
+    with get_sdk(scoped=False) as person:
+        for row in person.paginate("/v1/sessions", include_ended=True):
+            if row.get("agent_session") == agent:
+                return str(row.get("id"))
+    return None
+
+
 def conversation_state(agent: str) -> TokenState:
     """A token for this agent conversation's own session, joined (or started) when this
     terminal holds none. For ``beakr session`` inside an agent conversation, whose reads
@@ -1282,6 +1300,60 @@ def refuse_inside_conversation(what: str, where: str) -> None:
             f"{where} in the web app or a terminal outside the agent conversation. Commands "
             "typed with `!` in Claude Code share the agent's environment, so they are refused "
             "the same way."
+        ),
+    )
+
+
+def needs_person(exc: BaseException) -> bool:
+    """The API's refusal of a widening by a key or token: the change is proposed, and the
+    person confirms it on the session's page (``403 session_widen_needs_person``)."""
+    return isinstance(exc, BeakrError) and exc.code == WIDEN_NEEDS_PERSON
+
+
+def open_in_browser(url: str | None) -> bool:
+    """Open the person's link in their browser where this machine can; False otherwise."""
+    if not url:
+        return False
+    import webbrowser
+
+    try:
+        return bool(webbrowser.open(url))
+    except Exception:  # noqa: BLE001 - the link is given as text anyway
+        return False
+
+
+def refuse_session_change_inside_conversation(what: str, *, session_id: str | None = None) -> None:
+    """Refuse, inside an agent conversation, a session change the API would not stop:
+    starting a session or minting a session's token (``session_id`` None), or changing a
+    session other than this conversation's own.
+
+    A change to the conversation's own session goes to the API, which applies a
+    narrowing and keeps anything wider as a proposal for the person to confirm
+    (``403 session_widen_needs_person``, with the link).
+    """
+    from beakr_cli.sdk import get_sdk
+
+    agent = agent_session_id()
+    if not agent:
+        return
+    own: dict[str, Any] | None = None
+    try:
+        own_id = conversation_session_id(agent)
+        if own_id:
+            if session_id == own_id:
+                return
+            with get_sdk(scoped=False) as person:
+                own = person.request("GET", f"/v1/sessions/{own_id}")
+    except BeakrError:
+        own = None
+    link = (own or {}).get("picker_url") or "the web app (Settings, Sessions)"
+    raise SessionScopeError(
+        f"`{what}` is refused inside an agent conversation ({agent}): only a person can "
+        f"widen this session: {link}",
+        code=WIDEN_REFUSED,
+        fix=(
+            f"Ask the person to change the session's projects at {link}. Commands typed with "
+            "`!` in Claude Code share the agent's environment, so they are refused the same way."
         ),
     )
 
@@ -1741,6 +1813,16 @@ class McpSession:
                     if ended is not None:
                         raise ended from exc
                     raise
+            if self.id is not None and str(session.get("id")) != self.id:
+                # Declaring changes this conversation's session; it never moves the
+                # server to another one (which would leave the person's choice behind).
+                raise SessionScopeError(
+                    f"Beakr answered with session {session.get('id')}, not this "
+                    f"conversation's ({self.id}); this server keeps its own.",
+                    code="session_mismatch",
+                    fix="Ask the person to check this session in Beakr: "
+                    f"{self.picker_url or 'Settings, Sessions'}.",
+                )
             token, expires_at = _token_of(session)
             self.state = TokenState(str(session["id"]), token, expires_at)
             self.session = session
@@ -1765,15 +1847,38 @@ class McpSession:
             self.session = await person.request("PATCH", f"/v1/sessions/{self.id}", json=patch)
         return self.session
 
-    async def choose(self, read: list[str], write: list[str], *, remember: bool) -> dict[str, Any]:
+    async def choose(
+        self, read: list[str], write: list[str], *, remember: bool, read_everything: bool = False
+    ) -> dict[str, Any]:
         """The person's choice from the in-chat form, applied with their own credential."""
-        body: dict[str, Any] = {"read_project_ids": read, "write_project_ids": write}
+        body: dict[str, Any] = (
+            {"read_everything": True}
+            if read_everything
+            else {"read_project_ids": read, "write_project_ids": write}
+        )
         if remember and self.folder:
             body["remember_folder"] = True
         async with self._person() as person:
             self.session = await person.request("PATCH", f"/v1/sessions/{self.id}", json=body)
         self._keep_if_remembered()
         return self.session
+
+    async def options(self, read: list[str], write: list[str]) -> dict[str, Any] | None:
+        """``POST /v1/sessions/options`` for these lists, with the person's own credential:
+        whether they are valid and what each project allows with them. None from an
+        API without the route."""
+        from beakr_sdk.errors import NotFoundError
+
+        async with self._person() as person:
+            try:
+                body: dict[str, Any] = {"read_project_ids": read, "write_project_ids": write}
+                if self.id:
+                    # What the session has already done binds the lists too.
+                    body["session_id"] = self.id
+                options = await person.request("POST", "/v1/sessions/options", json=body)
+            except NotFoundError:
+                return None
+        return options if isinstance(options, dict) else None
 
     async def person_projects(self, limit: int = MAX_PROJECTS + 1) -> list[dict[str, Any]]:
         """The projects the person can see, at most ``limit`` (one more than a session

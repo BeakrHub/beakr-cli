@@ -322,6 +322,25 @@ def _operation_projects(entry: dict[str, Any], values: dict[str, Any]) -> list[s
     return None
 
 
+#: Session operations refused from inside an agent conversation: starting one and minting
+#: a session's token always; changing one other than the conversation's own (the API keeps
+#: a widening of its own as a proposal for the person).
+_SESSION_STARTS = frozenset({"POST /v1/sessions", "POST /v1/sessions/{session_id}/tokens"})
+_SESSION_CHANGE = "PATCH /v1/sessions/{session_id}"
+
+
+def _refuse_session_change(entry: dict[str, Any], path: str) -> None:
+    """Inside an agent conversation, refuse what ``beakr session edit`` refuses there."""
+    from beakr_cli import scope_session
+
+    op = entry["op"]
+    if op not in _SESSION_STARTS and op != _SESSION_CHANGE:
+        return
+    what = f"beakr api {entry['area']} {entry['action']}"
+    session_id = path.rsplit("/", 1)[-1] if op == _SESSION_CHANGE else None
+    scope_session.refuse_session_change_inside_conversation(what, session_id=session_id)
+
+
 def _invoke(
     entry: dict[str, Any],
     values: dict[str, Any],
@@ -404,6 +423,8 @@ def _invoke(
             f"{entry['summary'] or entry['op']}: this cannot be undone. Continue?",
             values.get("yes", False),
         )
+
+    _refuse_session_change(entry, path)
 
     kind = entry["response"]
     # An operation the contract marks anonymous (``security: []``) is sent
