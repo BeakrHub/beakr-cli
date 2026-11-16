@@ -247,7 +247,7 @@
       "tier": "discovery"
     },
     {
-      "description": "Choose this session's projects before anything else: `read` and `write` (project names or ids; a write project is read too), or read_everything=true to read every project, locked ones included, and write nothing. Lists that break a project's boundary are refused with each reason. Without it the session is automatic: the server tracks what it touches. Once the session has read or written a project its projects can no longer be chosen; start a new agent conversation instead.",
+      "description": "Choose this session's projects before anything else: `read` and `write` (project names or ids; a write project is read too), or read_everything=true to read every project, locked ones included, and write nothing. Lists that break a project's boundary are refused with each reason. Without it the session is automatic: the server tracks what it touches. In a Must-pick organization start_session proposes: the person confirms at the link it returns (show it to them), and nothing is read until they do. Only the person can widen a session later. Once the session has read or written a project its projects can no longer be chosen; start a new agent conversation instead.",
       "name": "start_session",
       "surfaces": [
         "remote",

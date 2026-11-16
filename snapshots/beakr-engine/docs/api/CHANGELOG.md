@@ -11,11 +11,37 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=fa4e4ceefc11cbf6d1f93b1727a46b11fd653e41f4423f858f3bfa47f8f68f49 changelog sha256=3bffe130fa4efa7372261f563ccebd5b2fffa5e1b3550e720ebf1b9fe574a3e8 -->
+<!-- contract-stamp: public-openapi sha256=f3f6f883dce1552cb0d6b98fe6cdd557f1256c472e073bef6a17aa1ff6c79855 changelog sha256=80b12fa200de04939a00f59cd718a3d0bc3ba7234059bb3a897656f0d9ebf882 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/sessions` and `PATCH /v1/sessions/{session_id}`: an agent's
+  session (one started for an agent conversation with `agent_session`, or held
+  by `beakr mcp`) is widened only by the person, in the Beakr web app. An API
+  key or session token that adds a project, moves the session between picked,
+  read everything and automatic, or makes the first choice of a pending
+  session is refused with `403 session_widen_needs_person` and its
+  `picker_url`. In a `must_pick` organization a new agent session declared
+  with lists or `read_everything` starts pending, with that refusal. What was
+  asked for is kept, never applied, in the session's new
+  `proposed_read_projects`, `proposed_write_projects`,
+  `proposed_read_everything`, `proposed_at` and `proposed_reasons` fields, and
+  the refusal carries `proposed_read_project_ids`,
+  `proposed_write_project_ids` and `proposed_read_everything`. Dropping
+  projects still works with any credential. A shell's own session is
+  unchanged.
+- `PATCH /v1/sessions/{session_id}`: lists that what the session has already
+  done rules out (a write other than the project it is locked to, or a write
+  into a project that takes no content from others after it read another) are
+  refused with `422 session_selection_invalid` and that reason; they were
+  stored.
+- `POST /v1/sessions/options`: the new `session_id` checks the lists against
+  what that session has already done, with the same reasons.
+- Session responses: `summary` names the session's lock once it has one
+  ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
+  session_already_started` refusal says to end the session and start a new
+  agent conversation.
 - `POST /v1/artifacts/read`: a file with no extracted text of its own whose
   bytes are not text (an Ask notebook, or any other format Beakr indexes
   without a stored extraction) now reads as the text `POST
