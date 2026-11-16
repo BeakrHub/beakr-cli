@@ -241,8 +241,7 @@ def test_log_without_a_page_reads_the_door_log():
 @respx.mock
 def test_cat_missing_page_fails():
     respx.get(f"{PAGES}/by-title").respond(404, json={"error": {"code": "not_found"}})
-    respx.get(url__regex=rf"{PAGES}/search.*").respond(json=_envelope([]))
-    respx.get(url__regex=rf"{API}/v1/knowledge/search.*").respond(json=_envelope([]))
+    respx.get(url__regex=rf"{API}/v1/knowledge/wiki/search.*").respond(json=_envelope([]))
     result = runner.invoke(app, ["kb", "cat", "No Such Page"])
     # Not found is exit 4 everywhere; a missing page used to exit 1.
     assert result.exit_code == 4
@@ -665,6 +664,53 @@ def test_cat_a_missing_title_shows_the_servers_suggestions_without_searching():
     assert '"Kestrel Widget"' in result.stderr and '"Kestrel Notes"' in result.stderr
     assert "Search Hit" not in result.stderr
     assert not search.called
+
+
+# Root cause: _resolve_page swallowed every error from its lookups, so a read the
+# server refused (no access, a session that must first choose its projects, a lock
+# to confirm) was reported as "Page not found" (exit 4) and the reason was lost.
+# Only a lookup that missed moves on now; the refusal is the answer.
+@respx.mock
+def test_cat_a_title_the_server_refuses_reports_the_refusal_not_page_not_found():
+    respx.get(f"{PAGES}/by-title").respond(
+        403,
+        json={
+            "error": {
+                "code": "session_needs_selection",
+                "message": "This session has no projects yet.",
+                "fix": "Choose them at https://app.test/sessions/s1",
+            }
+        },
+    )
+    search = respx.get(url__regex=rf"{API}/v1/knowledge/wiki/search.*").respond(json=_envelope([]))
+
+    result = runner.invoke(app, ["kb", "cat", "Onboarding"])
+
+    assert result.exit_code == 3, result.output
+    assert "This session has no projects yet." in result.stderr
+    assert "Page not found" not in result.stderr
+    assert not search.called
+
+
+@respx.mock
+def test_cat_by_id_a_held_read_reports_the_hold_not_page_not_found():
+    respx.get(f"{PAGES}/{PAGE_ID}").respond(
+        409,
+        json={
+            "error": {
+                "code": "session_lock_confirm",
+                "message": "Reading Onboarding locks this session's writes to it.",
+            }
+        },
+    )
+    by_title = respx.get(f"{PAGES}/by-title").respond(404, json={"error": {"code": "not_found"}})
+
+    result = runner.invoke(app, ["kb", "cat", PAGE_ID])
+
+    assert result.exit_code == 5, result.output
+    assert "locks this session's writes" in result.stderr
+    assert "Page not found" not in result.stderr
+    assert not by_title.called
 
 
 @respx.mock
