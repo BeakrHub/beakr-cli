@@ -115,6 +115,7 @@ def test_status_without_credentials_exits_3():
 
 
 def test_status_reports_env_key_source(monkeypatch):
+    monkeypatch.setenv("BEAKR_BASE_URL", "https://beakr.example.com")
     monkeypatch.setenv("BEAKR_API_KEY", "bk_live_env")
 
     result = CliRunner().invoke(app, ["auth", "status", "--json"])
@@ -125,9 +126,15 @@ def test_status_reports_env_key_source(monkeypatch):
     assert report["kind"] == "api_key"
 
 
-def test_status_reports_device_tokens_with_expiry():
+def test_status_reports_device_tokens_with_expiry(monkeypatch):
+    monkeypatch.setenv("BEAKR_BASE_URL", "https://beakr.example.com")
     TokenStore().save(
-        StoredTokens(access_token="bk_at_1", refresh_token="bk_rt_1", expires_at=4_000_000_000)
+        StoredTokens(
+            access_token="bk_at_1",
+            refresh_token="bk_rt_1",
+            expires_at=4_000_000_000,
+            base_url="https://beakr.example.com",
+        )
     )
 
     result = CliRunner().invoke(app, ["auth", "status", "--json"])

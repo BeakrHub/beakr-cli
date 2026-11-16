@@ -123,20 +123,30 @@ def upload_command(
             )
             raise typer.Exit(2)
 
+    from beakr_cli.folder_upload import summary_lines, upload_folder_skipping
+
     results: list[dict[str, Any]] = []
+    skipped: list[dict[str, Any]] = []
     with get_sdk(timeout=300.0) as sdk:
         for path in paths:
             if path.is_dir():
                 count = len(iter_folder_files(path))
                 err_console.print(f"Uploading {path}/ ({count} files)...", markup=False)
-                uploaded = sdk.files.upload_folder(
+                # A file the server refuses for itself is skipped, not the rest after it.
+                uploaded, refused = upload_folder_skipping(
+                    sdk,
                     path,
                     project_id=str(project_id),
                     folder_id=folder,
                     mirror_folders=not no_mirror,
                     ingest=ingest,
                 )
+                for row in refused:
+                    err_console.print(
+                        f"Skipped {row['path']}: {row['message']}", highlight=False, markup=False
+                    )
                 results.extend(uploaded)
+                skipped.extend(refused)
             else:
                 err_console.print(f"Uploading {path}...", markup=False)
                 uploaded_one = sdk.files.upload(
@@ -256,6 +266,11 @@ def upload_command(
             waiting_for_person=waiting or None,
         ),
     )
+    if skipped:
+        for line in summary_lines(len(results), skipped):
+            err_console.print(line, highlight=False, markup=False)
+        if not results:
+            raise typer.Exit(1)  # nothing was uploaded
     if waited and not all_uploaded(list(states.values())):
         raise typer.Exit(1)
     if wait_knowledge and (knowledge_failed or knowledge_incomplete or not knowledge_settled):

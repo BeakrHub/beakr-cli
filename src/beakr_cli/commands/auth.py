@@ -94,11 +94,6 @@ def _identity_line(data: dict[str, Any]) -> tuple[str, str]:
     return identity, org_name
 
 
-_ENV_URLS = {
-    "prod": "https://api.thebeakr.com",
-    "sandbox": "https://api-sandbox.thebeakr.com",
-}
-
 #: Config keys that select a credential. Logout clears all of them.
 _CREDENTIAL_CONFIG_KEYS = (
     "api_key",
@@ -111,16 +106,21 @@ _CREDENTIAL_CONFIG_KEYS = (
 
 
 def _resolve_login_url(env: str | None, api_url: str | None) -> str | None:
-    """The base URL a login targets, or None to keep the configured one."""
+    """The base URL a login targets, or None to keep the configured one.
+
+    A self-hosted build has no hosted environments: ``--env`` is refused, never
+    turned into one of Beakr's own URLs.
+    """
     if api_url:
         return api_url.rstrip("/")
     if env is None:
         return None
-    resolved = _ENV_URLS.get(env)
-    if not resolved:
-        err_console.print(f"Unknown environment: {env}. Use 'prod' or 'sandbox'.", markup=False)
-        raise typer.Exit(2)
-    return resolved
+    err_console.print(
+        f"--env {env}: this build signs in to your own installation only. Use "
+        "--api-url https://<your Beakr host> instead.",
+        markup=False,
+    )
+    raise typer.Exit(2)
 
 
 def _read_key_from_stdin_or_prompt() -> str:
@@ -291,8 +291,10 @@ def login(
         "--with-api-key",
         help="Sign in with an API key: read from stdin when piped, else a hidden prompt.",
     ),
-    env: str | None = typer.Option(None, "--env", "-e", help="Environment: prod or sandbox."),
-    api_url: str | None = typer.Option(None, help="Custom API base URL (overrides --env)."),
+    env: str | None = typer.Option(None, "--env", "-e", hidden=True),
+    api_url: str | None = typer.Option(
+        None, help="Your installation's API URL (saved for later commands)."
+    ),
     no_browser: bool = typer.Option(
         False, "--no-browser", help="Print the sign-in link without opening a browser."
     ),
@@ -312,10 +314,20 @@ def login(
     The browser sign-in opens your organization's sign-in page and returns to a
     one-time listener on 127.0.0.1; --no-browser prints the link instead.
     """
-    from beakr_sdk.credentials import resolve_base_url
+    from beakr_cli.deployment import API_KEY_LOGIN, BASE_URL_REQUIRED_MESSAGE, configured_base_url
 
     explicit_url = _resolve_login_url(env, api_url)
-    base_url = explicit_url or resolve_base_url()
+    resolved_url = configured_base_url(explicit_url)
+    if resolved_url is None:
+        # No hosted default: neither a key nor a browser sign-in leaves for Beakr's cloud.
+        err_console.print(BASE_URL_REQUIRED_MESSAGE, markup=False)
+        err_console.print(
+            "This installation signs in with an API key: create one in Beakr (Settings, "
+            f"Developer) and run `{API_KEY_LOGIN}`.",
+            markup=False,
+        )
+        raise typer.Exit(3)
+    base_url = resolved_url
     if explicit_url:
         config.set_key("api_url", explicit_url)
 
@@ -360,9 +372,14 @@ def status(
     report = auth_status_report()
 
     def render(data: dict[str, Any]) -> None:
-        console.print(f"Base URL:  {data['base_url']}", markup=False)
+        console.print(
+            f"Base URL:  {data['base_url'] or 'not set (--api-url / BEAKR_BASE_URL)'}",
+            markup=False,
+        )
         if not data["authenticated"]:
-            console.print("Signed in: [red]no[/red] (run beakr auth login)")
+            from beakr_cli.deployment import API_KEY_LOGIN
+
+            console.print(f"Signed in: [red]no[/red] (run {escape(API_KEY_LOGIN)})")
             return
         console.print(
             f"Signed in: yes, via {_SOURCE_LABELS.get(data['source'], data['source'])}",
@@ -450,9 +467,11 @@ def logout(
     current API's login unless ``--all`` is given; it used to revoke and delete
     every login in that shared item, signing out other profiles and servers.
     """
-    from beakr_sdk.credentials import CredentialClearError, TokenStore, resolve_base_url
+    from beakr_sdk.credentials import CredentialClearError, TokenStore
 
-    origin = None if all_logins else resolve_base_url()
+    from beakr_cli.deployment import require_base_url
+
+    origin = None if all_logins else require_base_url()
     revoked = _revoke_stored_tokens(origin)
     try:
         outcome = TokenStore().clear(origin)

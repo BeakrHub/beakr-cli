@@ -228,14 +228,15 @@ class TieredFastMCP(FastMCP):
         from beakr_cli import scope_session
 
         # The session the person chooses this server's projects for
-        # (beakr_cli.scope_session); ended on a clean exit.
+        # (beakr_cli.scope_session). A conversation's session is left open on exit:
+        # the next server for the same conversation joins it again.
         await scope_session.start_for_mcp()
         try:
             await self.fit_instructions()
             async with stdio_server() as (read_stream, write_stream):
                 await self._mcp_server.run(read_stream, write_stream, self.initialization_options())
         finally:
-            await scope_session.end_for_mcp()
+            await scope_session.release_for_mcp()
 
     async def fit_instructions(self) -> None:
         """Rebuild the instructions without the tools this installation does not list."""

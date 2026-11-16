@@ -51,9 +51,27 @@ def test_nothing_configured_signs_in_through_the_browser(monkeypatch) -> None:
         lambda base_url, *, open_browser, device: calls.append((base_url, open_browser)),
     )
 
+    monkeypatch.setenv("BEAKR_BASE_URL", "https://beakr.example.com")
+
     install._maybe_auth()
 
-    assert calls == [("https://api.thebeakr.com", False)]
+    assert calls == [("https://beakr.example.com", False)]
+
+
+def test_setup_with_no_deployment_url_signs_in_nowhere(monkeypatch) -> None:
+    import pytest
+    from beakr_sdk.errors import AuthenticationError
+
+    _non_interactive(monkeypatch)
+    calls: list[str] = []
+    monkeypatch.setattr(
+        "beakr_cli.commands.auth._login_with_oauth",
+        lambda base_url, *, open_browser, device: calls.append(base_url),
+    )
+
+    with pytest.raises(AuthenticationError):
+        install._maybe_auth()
+    assert calls == []
 
 
 @respx.mock

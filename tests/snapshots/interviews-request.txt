@@ -27,7 +27,7 @@ $ beakr interviews request 'Helios retro' --question 'What slowed us?'
 [exit 0]
 --- stdout
 Interview b7d2e940-5c1a-4f83-9e6b-2a8c0d4f7e15: Helios retro
-Send this link (shown once): https://app.thebeakr.com/i/bil_q7Xk2mZp9RvT4wLs8NcYb3HdFj6GaEu1KoPi5VtQrWe
+Send this link (shown once): https://api.test/i/bil_q7Xk2mZp9RvT4wLs8NcYb3HdFj6GaEu1KoPi5VtQrWe
 --- stderr
 Read the answers with `beakr interviews show --link e0a7ca1a-67fe-4413-abf9-9ecc0aa4cf56`.
 

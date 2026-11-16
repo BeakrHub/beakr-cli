@@ -135,6 +135,7 @@ def test_auth_logout_json(monkeypatch):
     from beakr_cli.commands import auth
 
     monkeypatch.setattr(auth, "_revoke_stored_tokens", lambda origin: False)
+    monkeypatch.setenv("BEAKR_BASE_URL", "https://beakr.example.com")
     body = _json(runner.invoke(app, ["auth", "logout", "--json"]))
     assert body["logged_out"] is True
     assert body["tokens_revoked"] is False

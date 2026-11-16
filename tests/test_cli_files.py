@@ -82,6 +82,70 @@ def test_upload_folder_mirrors_subdirectories(tmp_path):
     assert [Path(p).name for p in paths] == ["deep.txt", "top.txt"]
 
 
+def _refusing_unsupported(routes):
+    """The upload route refuses .fcs files for themselves, as the API does."""
+    import httpx
+
+    accept = routes["create"].side_effect
+
+    def create(request):
+        if str(json.loads(request.content).get("path", "")).endswith(".fcs"):
+            return httpx.Response(
+                400,
+                json={
+                    "error": {
+                        "code": "unsupported_file_type",
+                        "message": "File type not supported for 'b_plate1.fcs'",
+                    }
+                },
+            )
+        return accept(request)
+
+    routes["create"].mock(side_effect=create)
+
+
+# Root cause (deep QA, 16 Nov): a folder upload stopped at the first file the server
+# refused for itself (an instrument's .fcs export): the files after it were never sent
+# and nothing said which. It skips that file now, uploads the rest and names each skip.
+@respx.mock
+def test_upload_folder_skips_a_refused_file_and_uploads_the_rest(tmp_path):
+    routes = mock_resumable_uploads(API)
+    _refusing_unsupported(routes)
+    root = tmp_path / "runfolder"
+    root.mkdir()
+    (root / "a_summary.md").write_text("a")
+    (root / "b_plate1.fcs").write_text("b")
+    (root / "c_notes.md").write_text("c")
+    (root / "d_empty.md").write_text("")
+
+    result = CliRunner().invoke(app, ["upload", str(root), "--project", "p1", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert [Path(row["path"]).name for row in json.loads(result.stdout)] == [
+        "a_summary.md",
+        "c_notes.md",
+    ]
+    assert routes["complete"].call_count == 2
+    assert "Skipped" in result.stderr and "b_plate1.fcs" in result.stderr
+    assert "Uploaded 2 of 4 files." in result.stderr
+    assert "Failed: b_plate1.fcs: File type not supported for 'b_plate1.fcs'" in result.stderr
+    assert "Failed: d_empty.md: Beakr does not store empty files." in result.stderr
+
+
+@respx.mock
+def test_upload_folder_with_nothing_uploaded_exits_1(tmp_path):
+    routes = mock_resumable_uploads(API)
+    _refusing_unsupported(routes)
+    root = tmp_path / "only"
+    root.mkdir()
+    (root / "b_plate1.fcs").write_text("b")
+
+    result = CliRunner().invoke(app, ["upload", str(root), "--project", "p1"])
+
+    assert result.exit_code == 1, result.output
+    assert "Uploaded 0 of 1 files." in result.stderr
+
+
 @respx.mock
 def test_upload_folder_reuses_a_folder_name_already_in_the_project(tmp_path):
     # Root cause: upload_folder always created folders, so a second matter with a

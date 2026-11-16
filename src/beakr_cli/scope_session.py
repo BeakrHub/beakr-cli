@@ -493,8 +493,7 @@ def remembered_selection(folder: str | Path | None) -> tuple[list[str], list[str
 
 def remember_selection(folder: str | Path, read: list[str], write: list[str]) -> Path:
     """Keep ``read``/``write`` in the folder's binding (creating ``.beakr/project.json``)."""
-    from beakr_sdk.credentials import resolve_base_url
-
+    from beakr_cli.deployment import require_base_url
     from beakr_cli.project_binding import (
         BINDING_DIR,
         BINDING_FILE,
@@ -507,7 +506,7 @@ def remember_selection(folder: str | Path, read: list[str], write: list[str]) ->
     path = find_binding(folder)
     if path is None:
         path = folder / BINDING_DIR / BINDING_FILE
-        data: dict[str, Any] = {"base_url": resolve_base_url()}
+        data: dict[str, Any] = {"base_url": require_base_url()}
         org_id = credential_org_id()
         if org_id:
             data["org_id"] = org_id
@@ -1958,8 +1957,18 @@ def _no_credential(exc: Exception) -> bool:
     return isinstance(exc, AuthenticationError) and getattr(exc, "response", None) is None
 
 
-async def end_for_mcp() -> None:
+async def release_for_mcp() -> None:
+    """Let go of the server's session when ``beakr mcp`` exits, without ending it.
+
+    An agent conversation's session outlives the process: Claude Code restarts its
+    MCP servers when a conversation is resumed or reconnected, and after an update,
+    and the restarted server joins the same session again by the conversation's id.
+    Ending it on exit (as before) refused every tool for the rest of that
+    conversation (``session_ended``). Only the person ends it, or it expires. A
+    session started without a conversation id can never be joined again, so that
+    one is still ended here.
+    """
     global ACTIVE
     session, ACTIVE = ACTIVE, None
-    if session is not None:
+    if session is not None and not session.agent:
         await session.end()
