@@ -770,7 +770,7 @@ def test_start_session_and_session_status_are_listed_with_a_session():
 
 @respx.mock
 def test_start_session_declares_the_conversations_session_by_name():
-    held = _active({**_session("automatic"), "agent_session": CONVERSATION})
+    held = _active(_current({**_session("automatic"), "agent_session": CONVERSATION}))
     respx.get(f"{API}/v1/projects").respond(
         json={"data": [_project(A), _project(CHEM)], "has_more": False}
     )
@@ -792,7 +792,7 @@ def test_start_session_declares_the_conversations_session_by_name():
 
 @respx.mock
 def test_start_session_read_everything():
-    _active({**_session("automatic"), "agent_session": CONVERSATION})
+    _active(_current({**_session("automatic"), "agent_session": CONVERSATION}))
     declared = respx.post(f"{API}/v1/sessions").respond(
         201, json=_created({**_session("read_everything"), "agent_session": CONVERSATION})
     )
@@ -805,7 +805,7 @@ def test_start_session_read_everything():
 
 @respx.mock
 def test_start_session_says_each_reason_on_its_own_line():
-    _active({**_session("automatic"), "agent_session": CONVERSATION})
+    _active(_current({**_session("automatic"), "agent_session": CONVERSATION}))
     respx.get(f"{API}/v1/projects").respond(
         json={"data": [_project(A), _project(CHEM)], "has_more": False}
     )
@@ -824,6 +824,124 @@ def test_start_session_says_each_reason_on_its_own_line():
 
     assert refused["error_code"] == "session_selection_invalid"
     assert refused["message"] == "- Reason one.\n- Reason two."
+
+
+def _current(session: dict) -> dict:
+    """``session``, also as the API's answer to ``GET /v1/sessions/current``: start_session
+    reads the session before declaring it."""
+    respx.get(f"{API}/v1/sessions/current").respond(json=session)
+    return session
+
+
+# Root cause (15 Nov, fdoctant): start_session applied the agent's lists to a session
+# the person was choosing (must_pick), and an agent asked to "start session" could
+# declare its way out of a session that already had projects. It declares only this
+# conversation's own session now: never once it has touched a project, never on a
+# pending session (the person's choice), and never by moving to another session.
+@respx.mock
+def test_start_session_in_a_conversation_after_touching_a_project_is_refused():
+    _active(
+        _current(
+            {
+                **_session("automatic"),
+                "agent_session": CONVERSATION,
+                "touched_projects": [_ref(A)],
+                "picker_url": f"https://app.test/sessions/{SID}",
+            }
+        )
+    )
+    declared = respx.post(f"{API}/v1/sessions")
+
+    refused = asyncio.run(mcp_session.start_session(read_everything=True))
+
+    assert refused["error_code"] == "session_already_started"
+    assert refused["message"] == (
+        "This session has already worked in Partner A, so its projects can't be chosen now."
+    )
+    assert refused["fix"] == (
+        f"Ask the person to end this session in Beakr (https://app.test/sessions/{SID}) and "
+        "start a new conversation."
+    )
+    assert not declared.called
+
+
+@respx.mock
+def test_start_session_on_a_pending_session_leaves_the_choice_to_the_person(monkeypatch):
+    monkeypatch.setattr(mcp_session, "_SERVER", None)
+    pending = {
+        **_session("picked"),
+        "status": "pending",
+        "agent_session": CONVERSATION,
+        "picker_url": f"https://app.test/sessions/{SID}",
+    }
+    _active(_current(pending))
+    declared = respx.post(f"{API}/v1/sessions")
+    patched = respx.patch(f"{API}/v1/sessions/{SID}")
+
+    refused = asyncio.run(mcp_session.start_session(read=["Partner A"]))
+
+    assert refused["error_code"] == "session_needs_selection"
+    assert refused["message"] == (
+        "In this organization the person chooses this session's projects, not the agent."
+    )
+    assert refused["picker_url"] == f"https://app.test/sessions/{SID}"
+    assert not declared.called and not patched.called
+
+
+@respx.mock
+def test_start_session_on_a_pending_session_asks_the_person_in_chat(monkeypatch):
+    from types import SimpleNamespace
+
+    asked = []
+
+    async def elicit_form(message, schema):
+        asked.append(schema)
+        return SimpleNamespace(action="accept", content={"read_1": True})
+
+    client = SimpleNamespace(
+        client_params=SimpleNamespace(
+            capabilities=SimpleNamespace(elicitation=SimpleNamespace(form=None, url=None))
+        ),
+        elicit_form=elicit_form,
+    )
+    monkeypatch.setattr(
+        mcp_session, "_SERVER", SimpleNamespace(get_context=lambda: SimpleNamespace(session=client))
+    )
+    pending = {**_session("picked"), "status": "pending", "agent_session": CONVERSATION}
+    held = _active(_current(pending))
+    respx.get(f"{API}/v1/projects").respond(
+        json={"data": [_project(A), _project(CHEM)], "has_more": False}
+    )
+    respx.post(OPTIONS).respond(json=_valid())
+    chosen = respx.patch(f"{API}/v1/sessions/{SID}").respond(
+        json={**_session("picked"), "summary": "Picked session: reads Chemistry; writes nothing."}
+    )
+
+    text = asyncio.run(mcp_session.start_session(read=["Partner A"], write=["Partner A"]))
+
+    assert asked, "the person was asked"
+    # The person's answer (Chemistry, read), not the agent's lists (Partner A).
+    assert _body(chosen) == {"read_project_ids": [CHEM], "write_project_ids": []}
+    assert _bearer(chosen) == f"Bearer {PERSON_KEY}"
+    assert text == "Session started. Picked session: reads Chemistry; writes nothing."
+    assert not held.pending
+
+
+@respx.mock
+def test_start_session_never_moves_the_server_to_another_session():
+    held = _active(_current({**_session("automatic"), "agent_session": CONVERSATION}))
+    respx.post(f"{API}/v1/sessions").respond(
+        201,
+        json=_created(
+            {**_session("read_everything"), "id": "another-session", "agent_session": CONVERSATION},
+            token="bk_st_other",
+        ),
+    )
+
+    refused = asyncio.run(mcp_session.start_session(read_everything=True))
+
+    assert refused["error_code"] == "session_mismatch"
+    assert held.id == SID and held.token == "bk_st_first"
 
 
 def test_start_session_read_everything_takes_no_lists():
@@ -880,6 +998,9 @@ def test_start_session_without_a_conversation_id_says_it_works_as_you(monkeypatc
 @respx.mock
 def test_start_session_without_a_held_session_declares_the_conversations(conversation):
     # BEAKR_MCP_SESSIONS=off: the conversation's session, by its id, as the remote does.
+    respx.get(f"{API}/v1/sessions/current").respond(
+        404, json=_refusal(404, "not_found", "No session.")
+    )
     declared = respx.post(f"{API}/v1/sessions").respond(201, json=_session("read_everything"))
 
     text = asyncio.run(mcp_session.start_session(read_everything=True))
@@ -887,6 +1008,27 @@ def test_start_session_without_a_held_session_declares_the_conversations(convers
     body = _body(declared)
     assert body["agent_session"] == CONVERSATION and body["read_everything"] is True
     assert text.startswith("Session started. Read-everything session")
+
+
+@respx.mock
+def test_start_session_without_a_held_session_leaves_a_pending_choice_to_the_person(
+    conversation,
+):
+    respx.get(f"{API}/v1/sessions/current").respond(
+        json={
+            **_session("picked"),
+            "status": "pending",
+            "agent_session": CONVERSATION,
+            "picker_url": f"https://app.test/sessions/{SID}",
+        }
+    )
+    declared = respx.post(f"{API}/v1/sessions")
+
+    refused = asyncio.run(mcp_session.start_session(read_everything=True))
+
+    assert refused["error_code"] == "session_needs_selection"
+    assert refused["picker_url"] == f"https://app.test/sessions/{SID}"
+    assert not declared.called
 
 
 @respx.mock

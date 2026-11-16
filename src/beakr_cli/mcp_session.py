@@ -539,6 +539,15 @@ async def start_session(
         return await _declare_conversation(read, write, read_everything=read_everything)
     try:
         await session.ensure_started()
+        current = await session.refresh()
+    except BeakrError as exc:
+        return _refused(exc)
+    if session.pending:
+        return await _the_persons_choice(session)
+    started = _already_started(current)
+    if started is not None:
+        return started
+    try:
         read_ids: list[str] | None = None
         write_ids: list[str] | None = None
         if read or write:
@@ -563,6 +572,47 @@ async def start_session(
     return "\n".join(lines)
 
 
+def _already_started(session: dict[str, Any]) -> dict[str, Any] | None:
+    """The refusal of ``start_session`` once the session has touched a project: its
+    projects are fixed from then on, and only the person can end it."""
+    touched = session.get("touched_projects") or []
+    if not touched:
+        return None
+    names = ", ".join(str(p.get("name") or p.get("id")) for p in touched if isinstance(p, dict))
+    url = session.get("picker_url") or ""
+    return _error(
+        scope_session.ALREADY_STARTED,
+        f"This session has already worked in {names}, so its projects can't be chosen now.",
+        f"Ask the person to end this session in Beakr ({url}) and start a new conversation.",
+        **({"picker_url": url} if url else {}),
+    )
+
+
+async def _the_persons_choice(session: scope_session.McpSession) -> dict[str, Any] | str:
+    """``start_session`` on a pending session (an organization where every session must
+    pick): the choice is the person's, never the agent's lists. They answer the in-chat
+    form where the client has one, else at the picker link."""
+    if _SERVER is not None and supports_form_elicitation(_SERVER):
+        chosen = await elicit_choice(_SERVER, session)
+        if isinstance(chosen, dict):
+            return chosen
+        if chosen:
+            lines = [f"Session started. {session.session.get('summary') or ''}".strip()]
+            lines.extend(scope_session.note_lines(session.session))
+            return "\n".join(lines)
+    return _persons_to_choose(session.picker_url or "")
+
+
+def _persons_to_choose(url: str) -> dict[str, Any]:
+    """The refusal of the agent's lists for a pending session: the person chooses."""
+    return _error(
+        scope_session.NEEDS_SELECTION,
+        "In this organization the person chooses this session's projects, not the agent.",
+        f"Show the user this link and ask them to choose the projects, then retry: {url}",
+        picker_url=url,
+    )
+
+
 async def _declare_conversation(
     read: list[str], write: list[str], *, read_everything: bool
 ) -> dict[str, Any] | str:
@@ -581,6 +631,18 @@ async def _declare_conversation(
             "Set BEAKR_SESSION for this MCP server (or let the client set its conversation id), "
             "or work without a session.",
         )
+    try:
+        # The person's key with X-Beakr-Session: the API answers for the conversation's
+        # session once it has one.
+        current = await _call_api()(lambda sdk: sdk.request("GET", "/v1/sessions/current"))
+    except ApiCallError:
+        current = None  # none yet: the API refuses a touched one (409) anyway
+    if isinstance(current, dict) and current.get("agent_session") == agent:
+        if current.get("status") == "pending":
+            return _persons_to_choose(str(current.get("picker_url") or ""))
+        started = _already_started(current)
+        if started is not None:
+            return started
     body: dict[str, Any] = {"agent_session": agent, "client_name": MCP_CLIENT_NAME}
     if read_everything:
         body["read_everything"] = True
@@ -673,10 +735,17 @@ def session_projects(session: scope_session.McpSession) -> list[dict[str, Any]]:
     ]
 
 
+#: The server the tools run in, for the in-chat form ``start_session`` may open.
+_SERVER: Any = None
+
+
 def register(mcp: Any) -> None:
     """Register ``start_session`` and ``session_status`` (the shared surface's), and
     ``session_scope`` (listed only while a session is held)."""
     from beakr_cli import tool_surface
+
+    global _SERVER
+    _SERVER = mcp
 
     mcp.tool(
         name=SESSION_SCOPE_TOOL,

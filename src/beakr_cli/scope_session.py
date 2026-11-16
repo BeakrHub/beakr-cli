@@ -1757,6 +1757,16 @@ class McpSession:
                     if ended is not None:
                         raise ended from exc
                     raise
+            if self.id is not None and str(session.get("id")) != self.id:
+                # Declaring changes this conversation's session; it never moves the
+                # server to another one (which would leave the person's choice behind).
+                raise SessionScopeError(
+                    f"Beakr answered with session {session.get('id')}, not this "
+                    f"conversation's ({self.id}); this server keeps its own.",
+                    code="session_mismatch",
+                    fix="Ask the person to check this session in Beakr: "
+                    f"{self.picker_url or 'Settings, Sessions'}.",
+                )
             token, expires_at = _token_of(session)
             self.state = TokenState(str(session["id"]), token, expires_at)
             self.session = session
