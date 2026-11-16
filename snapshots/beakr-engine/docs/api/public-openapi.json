@@ -14500,6 +14500,19 @@
             "title": "Read Project Ids",
             "type": "array"
           },
+          "session_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The person's own session these lists are for. What it has already done binds them: a project it touched that keeps its content in limits writes to it, and a project that takes no content from others can't be written after it read another. Such choices come back invalid with that reason.",
+            "title": "Session Id"
+          },
           "write_project_ids": {
             "description": "The write list chosen so far.",
             "items": {
@@ -15600,6 +15613,49 @@
             "title": "Picker Url",
             "type": "string"
           },
+          "proposed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When its agent asked; null when there is no proposal.",
+            "title": "Proposed At"
+          },
+          "proposed_read_everything": {
+            "default": false,
+            "description": "Its agent asked to read everything, likewise.",
+            "title": "Proposed Read Everything",
+            "type": "boolean"
+          },
+          "proposed_read_projects": {
+            "description": "Read projects its agent asked for and only the person may grant (`403 session_widen_needs_person`). Never applied: the picker preselects them.",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Proposed Read Projects",
+            "type": "array"
+          },
+          "proposed_reasons": {
+            "description": "Why the proposal could not be saved as it stands (a boundary, or what the session has already touched); empty when it can.",
+            "items": {
+              "$ref": "#/components/schemas/SessionNote"
+            },
+            "title": "Proposed Reasons",
+            "type": "array"
+          },
+          "proposed_write_projects": {
+            "description": "Write projects its agent asked for, likewise.",
+            "items": {
+              "$ref": "#/components/schemas/SessionProject"
+            },
+            "title": "Proposed Write Projects",
+            "type": "array"
+          },
           "read_only_at": {
             "anyOf": [
               {
@@ -15671,7 +15727,7 @@
           },
           "summary": {
             "default": "",
-            "description": "The session's projects in one line.",
+            "description": "The session's projects in one line, and its lock once it has one.",
             "title": "Summary",
             "type": "string"
           },

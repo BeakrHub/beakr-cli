@@ -6238,6 +6238,12 @@
       "type": "string"
      },
      {
+      "description": "The person's own session these lists are for. What it has already done binds them: a project it touched that keeps its content in limits writes to it, and a project that takes no content from others can't be written after it read another. Such choices come back invalid with that reason.",
+      "name": "session_id",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "The write list chosen so far.",
       "multiple": true,
       "name": "write_project_ids",
