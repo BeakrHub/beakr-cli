@@ -24,8 +24,9 @@ The first public version.
   stating each), the cards those cards link to most, and how `grep`, `sections`,
   `hover` and `rows` behave at the project's size. Without `scope` it lists the
   projects the caller can read, the largest first. Counts include only pages the
-  caller can read: a caller who reads the whole project gets counts measured
-  after its latest compile; a caller who reads part of it gets counts of those
+  caller can read: a caller who reads the whole project gets the project's
+  stored measurement, dated, with a note when pages compiled since are not
+  counted; a caller who reads part of it gets counts of those
   pages, measured on the call, and a part that could not be measured within its
   time limit is named as left out.
 - `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
