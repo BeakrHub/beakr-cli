@@ -25,7 +25,7 @@ from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.lowlevel import NotificationOptions
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
-from mcp.types import CallToolResult, TextContent
+from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from mcp.types import Tool as MCPTool
 from pydantic import ValidationError
 
@@ -72,9 +72,38 @@ def stdio_tools() -> list[str]:
     return [tool["name"] for tool in document()["tools"] if "stdio" in tool["surfaces"]]
 
 
+#: This server's name in the surface's per-surface annotations.
+SURFACE = "stdio"
+
+
+def title(name: str) -> str:
+    """The human name an MCP client shows for ``name``."""
+    return _tools()[name]["title"]
+
+
+def annotations(name: str) -> ToolAnnotations:
+    """``name``'s MCP annotations on this server: its title and four behavior hints.
+
+    Codex treats a tool not marked read-only as possibly side-effecting: it asks
+    before every call in a read-only sandbox and refuses the call under
+    ``approval_policy="never"`` (any ``codex exec``). The hints are the engine's,
+    decided per tool from what its handler does; a tool that behaves differently
+    here (``update_beakr`` upgrades this installation, ``beakr_version`` checks
+    PyPI) carries a ``surface_annotations`` entry for this server.
+    """
+    tool = _tools()[name]
+    hints = (tool.get("surface_annotations") or {}).get(SURFACE) or tool["annotations"]
+    return ToolAnnotations(title=tool["title"], **hints)
+
+
 def tool_kwargs(name: str) -> dict[str, Any]:
-    """``FastMCP.tool`` keyword arguments: the shared description and tier."""
-    return {"description": description(name), "meta": meta(name)}
+    """``FastMCP.tool`` keyword arguments: the shared description, tier, title and hints."""
+    return {
+        "description": description(name),
+        "meta": meta(name),
+        "title": title(name),
+        "annotations": annotations(name),
+    }
 
 
 def eager_tools() -> list[str]:
