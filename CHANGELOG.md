@@ -21,6 +21,18 @@ Each release lists the public API changes it supports, taken from the API change
 - An `integrations` result marks each item Knowledge already cites (`in
   Knowledge`) and tells the agent to cite it by its `source_ref`; only an item
   Knowledge does not hold is cited as an outside record.
+- **Every `beakr mcp` tool now declares MCP tool annotations and a title**, the
+  same ones the hosted MCP server lists. The reads (`knowledge_base`,
+  `list_projects`, `read_file`, `documents`, `research`, `integrations`,
+  `context`, `skills`, `workboard`, `get_profile`, `wiki_stats`, `wiki_graph`,
+  `show_proposal`, `conversations_search`, `org_audit_log`, `upload_status`,
+  `beakr_version`, `discover_tools`) are marked read-only, so Codex runs them in
+  a read-only sandbox without asking, and `codex exec` (approval policy
+  `never`) no longer refuses them. Writes stay marked as writes:
+  `knowledge_base_write`, `accept_proposal`, `dismiss_proposal`,
+  `set_project_profile`, `add_project_member` and `update_beakr` as able to
+  change what is already there; `import_conversation`, `create_project` and
+  `upload_files` as additive.
 
 ### Changes
 
