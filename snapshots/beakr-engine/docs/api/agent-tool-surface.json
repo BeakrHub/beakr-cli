@@ -226,7 +226,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Show two counts: live pages and page-to-source citations. For what the pages are (card types, what a card holds, hubs, how reads behave at the project's size) use knowledge_base command='orient'.",
+      "description": "Show knowledge base statistics, two counts: live pages and page-to-source citations. For what the pages are (card types, what a card holds, hubs, how reads behave at the project's size) use knowledge_base command='orient'.",
       "name": "wiki_stats",
       "surfaces": [
         "remote",

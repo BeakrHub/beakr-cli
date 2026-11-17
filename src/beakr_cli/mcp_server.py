@@ -735,7 +735,7 @@ async def wiki_stats(
     project: str | None = None,
     project_id: str = "",
 ) -> str:
-    """Show two counts: live pages and page-to-source citations.
+    """Show knowledge base statistics, two counts: live pages and page-to-source citations.
 
     For what the pages are (card types, what a card holds, hubs, how reads
     behave at the project's size) use knowledge_base command='orient'.
