@@ -660,6 +660,9 @@ async def knowledge_base(
     Pass the command name as ``command`` and its options as a flat ``arguments``
     object. There is no ``search`` command: use ``sections`` or ``grep``.
 
+    Start with orient: a project's map (card types, what a card holds, hubs, read
+    limits); without scope, the projects you can read.
+
     Find pages:
       sections   {query, page_type?, limit?}  Semantic section search. START HERE.
       grep       {query, mode?, context_lines?, matches_per_page?, limit?}
@@ -696,6 +699,8 @@ async def knowledge_base(
     History:
       log {page?}   diff {page, rev, rev2?}   show {page, rev}
     Utility:
+      orient {}  With scope: that project's orientation map. Without: the projects
+                 you can read, the largest first.
       diagnostics {}   completions {prefix}   proposals {status?}
                  status: pending (default), accepted or dismissed.
 
@@ -734,7 +739,10 @@ async def wiki_stats(
     project: str | None = None,
     project_id: str = "",
 ) -> str:
-    """Show knowledge base statistics: live pages, and page-to-source citations.
+    """Show knowledge base statistics, two counts: live pages and page-to-source citations.
+
+    For what the pages are (card types, what a card holds, hubs, how reads
+    behave at the project's size) use knowledge_base command='orient'.
 
     Args:
         project: Project name or ID to scope the stats. Omit for everything you can see.

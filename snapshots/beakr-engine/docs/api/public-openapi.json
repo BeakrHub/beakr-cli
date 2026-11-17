@@ -24327,7 +24327,8 @@
                       "proposals",
                       "suggest_parent",
                       "help",
-                      "query"
+                      "query",
+                      "orient"
                     ],
                     "type": "string"
                   },
