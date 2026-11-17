@@ -130,3 +130,40 @@ jobs:
 
       - name: Release versions and notes
         run: uv run python scripts/prepare_release.py check
+
+  bundled-sdk:
+    # uv.lock resolves beakr-sdk from PyPI (the public 0.2.x), but a self-hosted
+    # release bundles this CLI with the self-hosted beakr-sdk (0.3.x): the engine's
+    # full-client-sources.json and the box's client-artifacts.json name that commit.
+    # The job above never ran the pair people install; this one runs every test
+    # with it. Move .github/bundled-sdk-revision with the release's beakr-sdk pin.
+    name: tests-with-bundled-sdk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BEAKR_ENGINE_PATH: ${{ github.workspace }}/snapshots/beakr-engine
+      BEAKR_REQUIRE_ENGINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: uv sync --frozen --extra dev
+
+      - name: Install the beakr-sdk the release bundles
+        run: |
+          set -euo pipefail
+          revision="$(tr -d '[:space:]' < .github/bundled-sdk-revision)"
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo "bad revision: $revision"; exit 1; }
+          uv pip install --no-deps --reinstall \
+            "beakr-sdk @ git+https://github.com/BeakrHub/beakr-python@${revision}"
+          uv run --no-sync python -c \
+            "import importlib.metadata as m; print('beakr-sdk', m.version('beakr-sdk'))" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Tests with it
+        # --no-sync: `uv run` would otherwise put the lock's beakr-sdk back.
+        run: uv run --no-sync pytest -q

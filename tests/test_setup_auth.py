@@ -124,6 +124,9 @@ def test_sign_in_only_setup_needs_no_client(monkeypatch) -> None:
     # --no-hooks), so the plugin docs' "install the CLI and sign in" step
     # failed on a machine with only Cursor, VS Code or Gemini CLI.
     _non_interactive(monkeypatch)
+    # A deployment is named: the self-hosted SDK (0.3.0) refuses the token store
+    # without one, as it should; the test is about wiring no client.
+    monkeypatch.setenv("BEAKR_BASE_URL", "https://beakr.example.com")
     signed_in: list[str] = []
     monkeypatch.setattr(install, "_sign_in_new", lambda: signed_in.append("new"))
 
@@ -140,3 +143,43 @@ def test_sign_in_only_setup_needs_no_client(monkeypatch) -> None:
 
     assert signed_in == ["new"]
     assert result["clients"] == []
+
+
+def test_the_sdks_no_deployment_url_refusal_is_said_in_the_clis_words(monkeypatch):
+    # Root cause (Box 0.1.13 check, 17 Nov): with the self-hosted SDK (0.3.0) and no URL,
+    # `beakr setup` reached the SDK's token store first and printed the SDK's wording
+    # ("pass base_url=... or set BEAKR_BASE_URL"). The CLI's names --api-url and how
+    # to sign in with a key.
+    from beakr_sdk.errors import AuthenticationError
+    from typer.testing import CliRunner
+
+    from beakr_cli.main import internal_app as app
+
+    def refuse() -> None:
+        raise AuthenticationError(
+            "Set your deployment's URL: pass base_url=... or set BEAKR_BASE_URL "
+            "(for example https://beakr.example.com).",
+            code="base_url_required",
+        )
+
+    _non_interactive(monkeypatch)
+    monkeypatch.setattr(install, "_maybe_auth", refuse)
+
+    result = CliRunner().invoke(app, ["setup", "--no-skills", "--no-mcp", "--no-hooks"])
+
+    text = " ".join(result.output.split())
+    assert result.exit_code == 3, result.output
+    assert "Set your deployment's URL: --api-url / BEAKR_BASE_URL" in text
+    assert "beakr auth login --api-url https://<your Beakr host> --with-api-key" in text
+    assert "pass base_url=" not in text
+
+
+def test_describe_error_says_the_sdks_refusal_as_the_cli_does():
+    from beakr_sdk.errors import AuthenticationError
+
+    from beakr_cli.deployment import BASE_URL_REQUIRED_MESSAGE
+    from beakr_cli.errors import describe_error
+
+    sdk = AuthenticationError("pass base_url=... or set BEAKR_BASE_URL", code="base_url_required")
+    assert BASE_URL_REQUIRED_MESSAGE in describe_error(sdk)
+    assert "pass base_url" not in describe_error(sdk)

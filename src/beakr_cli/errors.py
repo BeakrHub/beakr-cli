@@ -223,11 +223,31 @@ def wrong_api_message(exc: BaseException) -> tuple[str, str] | None:
     return wrong_api_page(exc.response) if isinstance(exc, BeakrError) else None
 
 
+def _in_cli_words(exc: BaseException) -> BaseException:
+    """The SDK's own "no deployment URL" refusal, said as the CLI says it.
+
+    The self-hosted SDK (0.3.0) refuses with no URL in its terms ("pass base_url=...
+    or set BEAKR_BASE_URL"); a CLI path that reaches it first (``beakr setup`` reading
+    the token store) printed that. The CLI's refusal names ``--api-url`` and how to
+    sign in with a key (:func:`beakr_cli.deployment.base_url_required`).
+    """
+    from beakr_cli import deployment
+
+    if (
+        isinstance(exc, BeakrError)
+        and exc.code == deployment.BASE_URL_REQUIRED
+        and exc.message != deployment.BASE_URL_REQUIRED_MESSAGE
+    ):
+        return deployment.base_url_required()
+    return exc
+
+
 def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
     """One readable line, with the fix when there is an obvious one.
 
     ``command`` is the CLI command's words, to name what a missing route was for.
     """
+    exc = _in_cli_words(exc)
     page = wrong_api_message(exc)
     if page:
         # Checked before "does not provide": a wrong host's HTML 404 is not a
