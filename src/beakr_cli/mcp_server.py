@@ -560,7 +560,7 @@ async def list_projects(cursor: str = "", limit: PageLimit = 50) -> dict[str, An
         lines.append(f"- {name} ({project_type}, id: {pid}){f' -- {desc}' if desc else ''}")
         lines.extend(_boundary_lines(p))
     projects = "\n".join(lines) if lines else "No projects found."
-    listed = f"{await _organization_line()}\n\n{projects}"
+    listed = _with_organization(await _organization_line(), projects)
     # Where the session can still write is session_status's to say, as on the hosted
     # server: list_projects answers the same text on both.
     # Which listed projects' Knowledge is still building or has failed files,
@@ -658,22 +658,35 @@ async def get_profile(
         resolved = await _project_by_name_or_id(project_ref)
         data = await _call_api(lambda sdk: sdk.profile.project(resolved))
 
-    return f"{await _organization_line()}\n\n{_profile_text(data, profile_type)}"
+    return _with_organization(await _organization_line(), _profile_text(data, profile_type))
 
 
 async def _organization_line() -> str:
-    """Which org this server's calls act in, and what fixed it.
+    """Which org this server's calls act in, and what fixed it; "" when it can't be read.
 
     The hosted server opens get_profile and list_projects with the same line
     (``render.organization_line``): a person in several orgs could not tell
     which one an agent's calls were acting in.
+
+    Root cause (Box 0.1.13 qualification, 17 Nov): a box serves no organization
+    administration, so ``GET`` of the active org answers ``not_provided``, and
+    list_projects and get_profile failed whole for a line that only says where the
+    calls land. Reading it never fails the tool: without it, the line is left out.
     """
 
     async def read(sdk: Any) -> tuple[Any, str | None]:
         return await sdk.me.active_org(), _organization_pin(sdk)
 
-    org, pinned_by = await _call_api(read)
+    try:
+        org, pinned_by = await _call_api(read)
+    except Exception:  # noqa: BLE001 - the tool answers without the line
+        return ""
     return organization_line(org if isinstance(org, dict) else {}, pinned_by=pinned_by)
+
+
+def _with_organization(line: str, text: str) -> str:
+    """``text``, opened with the organization line when there is one."""
+    return f"{line}\n\n{text}" if line else text
 
 
 def _organization_pin(sdk: Any) -> str | None:
