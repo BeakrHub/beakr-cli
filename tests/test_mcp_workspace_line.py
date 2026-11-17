@@ -23,7 +23,9 @@ from tests._engine import engine_derived, refresh_snapshots
 
 API = "https://api.example.com"
 WORKSPACE = {"environment": "sandbox", "organization": {"name": "Acme Labs", "slug": "acme"}}
-LINE = 'Connected to: Beakr sandbox, organization "Acme Labs" (slug acme).'
+# On a self-hosted build the deployment is named by its address, whatever environment
+# the API reports ("production" read as Beakr's cloud).
+LINE = 'Connected to: Beakr installation at api.example.com, organization "Acme Labs" (slug acme).'
 REFUSED = Response(403, json={"error": {"code": "forbidden", "message": "No."}})
 
 _MIRROR = Path(__file__).resolve().parents[1] / "src" / "beakr_cli" / "mcp_workspace.py"
@@ -70,7 +72,10 @@ async def test_context_names_the_environment_alone_when_the_organization_is_unre
         )
     )
 
-    assert await mcp_tools_platform.context() == "Connected to: Beakr production.\n\nctx"
+    assert (
+        await mcp_tools_platform.context()
+        == "Connected to: Beakr installation at api.example.com.\n\nctx"
+    )
 
 
 @respx.mock
@@ -144,13 +149,13 @@ async def test_beakr_version_says_which_environment_and_organization_answered(in
 async def test_beakr_version_names_what_it_could_read(installed):
     _organization(Response(200, json={"id": "o1", "name": "Acme Labs", "slug": "acme"}))
     _context(REFUSED)
-    assert 'Connected to: Beakr, organization "Acme Labs" (slug acme).' in (
-        await mcp_server.beakr_version()
-    )
+    assert LINE in (await mcp_server.beakr_version())
 
     _organization(REFUSED)
     _context(Response(200, json={"content": "", "workspace": {"environment": "production"}}))
-    assert "Connected to: Beakr production." in await mcp_server.beakr_version()
+    assert (
+        "Connected to: Beakr installation at api.example.com." in await mcp_server.beakr_version()
+    )
 
 
 @respx.mock
@@ -184,7 +189,7 @@ async def test_a_self_hosted_installation_is_named_too(monkeypatch):
     lines = (await mcp_server.beakr_version()).splitlines()
 
     assert lines[0].startswith(f"Installed: beakr-cli {mcp_server.__version__}, bundled with")
-    assert lines[1:] == ['Connected to: Beakr production, organization "Acme Labs" (slug acme).']
+    assert lines[1:] == [LINE]
 
 
 async def test_beakr_version_does_not_wait_on_an_api_that_does_not_answer(installed, monkeypatch):

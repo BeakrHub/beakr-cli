@@ -372,7 +372,7 @@ def test_proposals_show_raw_and_json_keep_the_stored_text():
 # --- version and context name where the calls land -------------------------------------
 
 WORKSPACE = {"environment": "sandbox", "organization": {"name": "Beakr", "slug": "beakr"}}
-CONNECTED = 'Connected to: Beakr sandbox, organization "Beakr" (slug beakr).'
+CONNECTED = 'Connected to: Beakr installation at api.test, organization "Beakr" (slug beakr).'
 
 
 @respx.mock
