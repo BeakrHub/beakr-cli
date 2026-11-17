@@ -11,7 +11,6 @@ from pathlib import PurePosixPath
 from typing import Annotated, Any, Literal
 
 from beakr_sdk.sources import public_source as _shared_public_source
-from mcp.types import ToolAnnotations
 from pydantic import Field
 
 from beakr_cli import __version__, tool_surface
@@ -1275,10 +1274,7 @@ async def dismiss_proposal(proposal_id: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-@mcp.tool(
-    **tool_surface.tool_kwargs("beakr_version"),
-    annotations=ToolAnnotations(readOnlyHint=True, openWorldHint=True),
-)
+@mcp.tool(**tool_surface.tool_kwargs("beakr_version"))
 async def beakr_version() -> str:
     """Report this Beakr MCP server's version and whether a newer release exists.
 
@@ -1314,12 +1310,7 @@ async def beakr_version() -> str:
     return "\n".join(lines)
 
 
-@mcp.tool(
-    **tool_surface.tool_kwargs("update_beakr"),
-    annotations=ToolAnnotations(
-        readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True
-    ),
-)
+@mcp.tool(**tool_surface.tool_kwargs("update_beakr"))
 async def update_beakr() -> str:
     """Upgrade beakr-cli to the latest release and refresh its installed skills.
 

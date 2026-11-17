@@ -8,6 +8,12 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- **Every `beakr mcp` tool now declares MCP tool annotations and a title**, taken
+  from the engine's shared tool surface (the hints the hosted server lists).
+  The reads are marked read-only, so Codex runs them in a read-only sandbox
+  without asking, and `codex exec` (approval policy `never`) no longer refuses
+  them. Writes stay marked as writes. `session_status` is a read;
+  `start_session` is a write that is neither destructive nor open-world.
 - `POST /v1/sessions` and `PATCH /v1/sessions/{session_id}`: an agent's
   session (one started for an agent conversation with `agent_session`, or held
   by `beakr mcp`) is widened only by the person, in the Beakr web app. An API
