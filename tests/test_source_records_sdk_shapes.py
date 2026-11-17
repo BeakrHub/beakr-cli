@@ -53,11 +53,14 @@ def _sdk_0_3() -> ModuleType:
     raise AssertionError("unreachable")
 
 
-def test_with_the_installed_sdk_the_read_call_is_added_back():
+def test_with_the_installed_sdk_the_read_call_is_there():
+    # Whichever SDK is installed: 0.2.x drops the read call (what the workaround is
+    # for), the self-hosted 0.3.0 the release bundles keeps it. Either way the CLI's
+    # record has it.
     record = installed_public_source(SLACK)
-    assert "retrieval" not in record  # 0.2.x drops it: what the workaround is for
-
     assert with_read_call(record, SLACK)["retrieval"] == SLACK["retrieval"]
+    if "retrieval" in record:
+        assert with_read_call(record, SLACK) == record
 
 
 def test_with_sdk_0_3_a_well_formed_record_is_left_as_the_sdk_built_it():
