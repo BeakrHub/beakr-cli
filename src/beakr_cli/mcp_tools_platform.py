@@ -12,6 +12,7 @@ an unbounded skill body or conversation list would crowd out the user's work.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 from uuid import UUID
 
@@ -996,6 +997,21 @@ async def _integration_tool(name: str, connector_id: str | None) -> dict[str, An
 _SERVER: FastMCP | None = None
 
 
+def _search_words(search: str | None) -> list[str]:
+    """A search's words, lowercased: ``upload files`` and ``Upload_Files`` alike."""
+    return re.findall(r"[a-z0-9]+", (search or "").lower())
+
+
+def _matches(words: list[str], name: str, description: str | None) -> bool:
+    """Every word of the search is in the tool's name or description.
+
+    The whole search used to be one substring, so ``upload files`` never found
+    ``upload_files`` and two words from its description found nothing.
+    """
+    text = f"{name.replace('_', ' ')} {name} {description or ''}".lower()
+    return all(word in text for word in words)
+
+
 async def discover_tools(search: str = "") -> str | dict[str, Any]:
     """Describe the discovery-tier tools (W8.2); each is callable by name.
 
@@ -1006,7 +1022,7 @@ async def discover_tools(search: str = "") -> str | dict[str, Any]:
     """
     if _SERVER is None:
         return "Discovery is not available on this server."
-    query = (search or "").strip().lower()
+    words = _search_words(search)
     eager = set(tool_surface.eager_tools())
     from mcp.server.fastmcp import FastMCP as _FastMCP
 
@@ -1020,8 +1036,7 @@ async def discover_tools(search: str = "") -> str | dict[str, Any]:
             "read_only": bool(tool.annotations and tool.annotations.readOnlyHint),
         }
         for tool in every
-        if tool.name not in eager
-        and (not query or query in tool.name.lower() or query in (tool.description or "").lower())
+        if tool.name not in eager and _matches(words, tool.name, tool.description)
     ]
     # In the eager listing mode the tools found join the listing, so a client
     # that calls only listed tools (Claude Code) can call them next.
