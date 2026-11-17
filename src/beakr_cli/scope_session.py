@@ -1492,6 +1492,8 @@ class McpSession:
         #: Start with the folder's remembered projects. Off once the person ended a
         #: session: its replacement reaches nothing until they choose again.
         self.reuse_remembered = True
+        #: Tool calls this server has run (``adopt_conversation`` runs before the first).
+        self.calls = 0
 
     # The person's own credential: starting, renewing, choosing (elicitation), ending.
     @staticmethod
@@ -1584,6 +1586,18 @@ class McpSession:
         if not isinstance(session, dict) or str(session.get("id")) != str(joined.get("id")):
             return joined
         return session
+
+    async def adopt(self, agent: str) -> None:
+        """Become agent conversation ``agent``'s session: end this server's own, untouched
+        one, and join the conversation's on the next call (:func:`adopt_conversation`)."""
+        async with self._lock:
+            if self.agent:
+                return
+            await self.end()
+            self.agent = agent
+            self.session = {}
+            self._labelled = False
+            self.start_error = None
 
     async def ensure_started(self) -> None:
         """Start the session now if starting it failed before; raise when it still fails."""
@@ -1959,6 +1973,46 @@ def _label(agent: str | None, folder: str | None) -> str:
 
 #: The session this ``beakr mcp`` process holds, once started.
 ACTIVE: McpSession | None = None
+
+#: Where Codex names its thread on every MCP request (``_meta``). Codex starts
+#: ``beakr mcp`` without its thread id in the environment, while the shell commands it
+#: runs have ``CODEX_THREAD_ID``: without this, the two worked in separate sessions,
+#: and a restarted server started yet another, so a lock did not carry over.
+CODEX_TURN_METADATA = "x-codex-turn-metadata"
+CODEX_THREAD_ENV = "CODEX_THREAD_ID"
+
+
+def codex_thread_id(meta: Any) -> str | None:
+    """The Codex thread a request's ``_meta`` names, when it is a valid conversation id."""
+    extra = getattr(meta, "model_extra", None) or {}
+    turn = extra.get(CODEX_TURN_METADATA)
+    thread = turn.get("thread_id") if isinstance(turn, dict) else None
+    thread = str(thread or extra.get("threadId") or "").strip()
+    return thread if thread and _AGENT_SESSION_ID.fullmatch(thread) else None
+
+
+async def adopt_conversation(thread: str) -> None:
+    """Work in Codex thread ``thread``'s session from now on, as the shell commands do.
+
+    Only before this server has run any tool call: its own session (started at
+    startup, with no conversation id) has touched nothing then, so it is ended and
+    the next call joins (or starts) the thread's session, the one a restarted
+    server joins again. Once a call has run, the server keeps the session it worked
+    in: moving would leave that session's lock behind. A conversation id already
+    in the environment (Claude Code, ``BEAKR_SESSION``) is never replaced.
+    """
+    from beakr_cli.sdk import SESSION_ENV
+
+    if any(os.environ.get(name, "").strip() for name in SESSION_ENV):
+        return
+    session = ACTIVE
+    if session is not None and (session.agent or session.calls):
+        return
+    # The X-Beakr-Session header and every conversation check read the environment.
+    os.environ[CODEX_THREAD_ENV] = thread
+    if session is None:
+        return
+    await session.adopt(thread)
 
 
 def active_token() -> str | None:

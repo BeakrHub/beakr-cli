@@ -393,8 +393,15 @@ class TieredFastMCP(FastMCP):
             MCP_CLIENT_AGENT.reset(token)
 
     async def _gated_call(self, name: str, arguments: dict[str, Any], agent: str | None) -> Any:
-        from beakr_cli import mcp_session
+        from beakr_cli import mcp_session, scope_session
 
+        # Codex names its thread on every call: work in that conversation's session,
+        # the one its shell commands use (decided before the first call runs).
+        thread = scope_session.codex_thread_id(self._request_meta())
+        if thread:
+            await scope_session.adopt_conversation(thread)
+        if scope_session.ACTIVE is not None:
+            scope_session.ACTIVE.calls += 1
         # Until the person chooses this session's projects, answer with the
         # picker (in chat where the client can show a form) instead.
         refusal = await mcp_session.gate(self, name, agent)
@@ -409,6 +416,13 @@ class TieredFastMCP(FastMCP):
         if refusal is not None:
             return _error_result(refusal)
         return await self._call_tool(name, arguments)
+
+    def _request_meta(self) -> Any:
+        """The running request's ``_meta``, when there is one."""
+        try:
+            return self.get_context().request_context.meta
+        except (ValueError, AttributeError, LookupError):
+            return None
 
     def _client_agent(self) -> str | None:
         """``name/version`` of the client that sent ``initialize``, when a request is running."""
