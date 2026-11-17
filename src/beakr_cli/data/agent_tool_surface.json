@@ -67,265 +67,484 @@
   "tier_meta_key": "com.thebeakr/tier",
   "tools": [
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Load onboarding context for this session: who the user is, the org and project profiles, memories, recent changes, skills. Use ONCE at the start of a task.",
       "name": "context",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Session context"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "List projects in the organization, including the user's personal project, each with its boundary in plain words (what touching it does to this session). Pass a project's name or id as `scope` to knowledge_base and knowledge_base_write, or as `project` to research, wiki_stats and wiki_graph. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "list_projects",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "List projects"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Read the organization's Knowledge: the first step for any question about the organization. Pass the command as `command` and its options as a flat `arguments` object; `scope` (a project name or id) narrows the read to one project. There is no `search` command.\n\nUse the narrowest read that answers it:\n- A fact, a count, the latest or largest, a comparison, as of a date: rows, every card's Facts, Connections and Findings as one table (entity, entity_type, table, field, value or to, When, sources). Filter by page_type, entity, attribute (match: exact, similar, meaning), to; order_by when or value; group_by; connected_to; as_of; view: census for one field across every card. It holds only what was structured: 0 rows means no card states it under that name, not that it is absent: confirm a count with ls or grep.\n- An exact name, id, number or phrase: grep (output_mode files_with_matches lists every page with the term, count counts them).\n- Something you can only describe: sections, a ranked selection, not a census. Each hit is Knowledge's own text with the documents it cites; [DISPUTED] marks one a later source contradicts.\n- One record: ls {page_type} lists them; hover, links {page, direction: out}, ls {parent} and timeline {page} walk its parties, documents and events: follow them, not a new search. cat {page, section_id} reads one section; outline: true lists a long page's sections.\n- Where a claim came from, how it changed: sources, provenance, blame; log, diff, show.\nConfirm a deciding detail in the original: sources {page} lists each cited passage and how to open it (read_file for a file; a Slack message, email or call note by the call on its entry). Quote from the source or a cited passage, not a search hit.\nOne reply fits about 100 rows whatever `limit` (rows max 500): page with offset, after_title or `next`.\nGuidance: command='help' {topic?}.\n\nCommand index:\nFind pages: sections {query, page_type?, limit? (max 20)}; grep {query, mode?, output_mode?, target?, after_title?, context_lines?, matches_per_page?, limit?} (mode: text, regex, semantic, history; output_mode: content, files_with_matches, count: listings: exact total, paged by after_title, where results say 'in their prose'; target=title: titles); completions {prefix}; ls {parent?, page_type?, sort_by?: title|updated_at|created_at, limit?, created_by?, created_via?, created_since?, changed_by?, changed_via?, changed_since?}.\nRead: cat {page, section_id?, lines?, outline?, rev?, ledger?}; hover {page} (edges, summary).\nGraph: links {page, direction? (in|out), page_type?, relation?, limit?, offset?}; references {page}; timeline {page?, timeline_query?, start_date?, end_date?, include_content?, include_children?, cursor?}; rows {table: facts|connections|findings, page_type?, entity?, to?, attribute?, query?, start_date?, end_date?, current_only?, as_of?, connected_to?, match?, order_by?, descending?, limit?, offset?, include_evidence?, group_by?, regex?, view?, field_id?} (to: connections into a page; view: fields lists names; view: census, only entity and value, limit 300 by default: one field across all records); query {sql}, e.g. sql: \"SELECT value, COUNT(*) FROM facts WHERE field = 'Governing law' GROUP BY value\" (help: query: if on, ~, rank_fields_by); ontology {include_proposed?}; suggest_parent {page | title, content?}.\nTrust: provenance {page, section_id?}; blame {page}; sources {page}.\nHistory: log {page?, by?, via?, kind?, accepted_by?, since?, until?}; diff {page, rev, rev2?}; show {page, rev}.\nUtility: diagnostics {}; proposals {status?: pending|accepted|dismissed} (+ log's filters); help {topic?}.\n`page`: a slug, title, UUID or citation key (wiki:8f3a0c21). Each result ends with its Sources: per cited document, its path, every place cited in it (p. 7, sheet 2, B4:D9), the id documents read opens and its source_ref. Cite with the readable reference (memo.pdf \u203a p. 7), to people (linked when there is a url) and in writes (reference), or with the source_ref.",
       "name": "knowledge_base",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Read Knowledge"
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Propose a change to Knowledge. It is applied at once where auto-approve is on (the result says so), otherwise when a person accepts it; proposing never needs permission. page_type and sort_table apply at once. Pass `action` and its fields as flat `arguments`; every change except page_type needs `rationale`. Read the page first.\n\nEvery project is a map of cards. One specific thing (person, organization, product, system, model, study, decision, event) is a card. Before your first `new`, run `knowledge_base ontology` and pick the most specific card type. If none fits, propose one with `page_type` rather than writing a topic. Grow cards with add_fact / add_connection / add_finding with evidence. A topic, overview or index page only ties cards together and needs no card shape. A card's Description, 2 to 8 sentences, is its identity, not facts: specifics go in rows.\n\nActions:\n- edit_section: PREFERRED for updates. Replaces ONE section's whole body (### headings included); a missing section_id plus title creates it (after= positions it).\n- edit: surgical patches (help topic='edit'); `sections` REPLACES the whole page (an omitted section is deleted; keep a section's id to keep its citations).\n- new: title, page_type, summary and `sections`; do not author section markers.\n- add_fact, add_connection, add_finding: one row or dated finding on a card, merged into the live table. Facts are what a source says; your conclusions are findings. edit_rows changes, merges or deletes rows; sort_table orders a table. These rows are PROTECTED: edit_section, edit and find_replace may not change them.\n- find_replace: batched replacements in one project. mv within a project; copy to another (scope is the target); archive.\n- merge: a DUPLICATE page, not archive, so links keep resolving; merge_sections names its sections to keep.\n- flag: ask a person to decide (ambiguity, contradiction, unverifiable, likely_error); writes nothing.\nWhen to write: often and unasked, when a task produced something the organization will want again: a decision and why, an assembled answer, a sourced fact, an owner, a status change, a dated event, a correction (reuse rows view=fields names; a relation goes on the more specific card). An old value is not deleted: add the newer dated row. Skip chatter.\nFull guidance: action='help' (`topic`: one action).\n\nAction index:\nedit_section {page, section_id, new_section_body, citations?, section_meta?}; add_fact {page, attribute, value, evidence, when?}; add_connection {page, relation, to, evidence, when?}; add_finding {page, date, kind, text, evidence}; edit_rows; sort_table; new {title, page_type, summary, sections, parent?}; edit {page, patches | sections}.\nDates: a row's `when` is when it held in the world (YYYY-MM-DD, YYYY-MM, YYYY-Qn, YYYY). A section about a dated event carries event_start (YYYY-MM-DD) with date_precision (day|month|quarter|year|approx) and event_end for a period, in its `sections` item or edit_section's section_meta.\n`sections` is an ordered list of {title, body, citations?, event_start?, event_end?, date_precision?}. Cite every claim: in a body, the readable reference a read prints, in parentheses after it (memo.pdf \u203a p. 7); or citations {reference | source_ref, stance: support|qualifies|contradicts}. Cite your conversation as {key: conversation:<label>, source_type: conversation, source_title, meta: {excerpt}} and {{conversation:<label>}} after the claim. Cite only your conversation, a file you uploaded, a web page (url, title, quoted passage), an outside system's record {source_type: external_record, url, title, meta: {system, record_id, excerpt}} or a source Knowledge already cites (else citation_not_citeable).\nExample: new {title: \"AlphaFold\", page_type: \"system\", summary, sections: [{title: \"Description\", body: \"DeepMind's protein-structure model (paper.pdf \u203a p. 1).\"}]}; then add_fact {page: \"AlphaFold\", attribute: \"Release\", value: \"AlphaFold 2\", when: \"2021-07\", evidence: \"(paper.pdf \u203a p. 1)\"}.",
       "name": "knowledge_base_write",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Write to Knowledge"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Read a file's text (PDF, Word, sheet, slides, text, or a canvas): the original a Knowledge citation points at. Use when you need the exact wording or a value the excerpt does not hold. Pass `artifact_id`: the file id (`read_file <id>` in a result's Sources, or location.file_id), a version id, a citation's reference (memo.pdf \u203a p. 7), or the file's path from a Sources line (deals/x/Closing/memo.docx). Add ' \u203a <unit>' (memo.pdf \u203a p. 7, book.xlsx \u203a sheet 2, B4:D9, notes.md \u203a lines 10-30) to get the window around that place. Pass `project` (a name or id) to open only a file in that project. Connected items (Slack, email, calendar, Jira, and files read through a drive connection) are not files: re-read one with the `integrations` call its Sources line gives. Long files and long pages come back in pieces: pass the `offset` a reply gives, with the same reference, to continue.",
       "name": "read_file",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Read a file"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
       "description": "Have Beakr compose one cited answer from the organization's Knowledge and documents. For a lookup (a fact, a count, a name, a status, what a record says) read Knowledge yourself with knowledge_base: it is faster and shows the rows and passages themselves. Use research when you want the answer written for you from several sources. Pass the user's original wording and scope; add context separately. Do not turn a natural-language criterion into a requirement for an exact field or taxonomy label. Quick by default: one search of Knowledge and documents and a short cited answer within 15 seconds. quick=false runs the full researcher (up to 150 seconds), which also reads connected services (Slack, email, calendar, Drive, Jira): use it for a question about those services, not to make an answer complete. For every, how many and all/none questions use knowledge_base rows or ls, and inspect checked/not_checked and coverage here: citations support evidence, not complete population coverage.",
       "name": "research",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Research a question"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "List the user's Beakr skills, or read one skill's SKILL.md (pass a slug, name or id). Use before a task a skill may cover. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "skills",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Read skills"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "See what Knowledge agents are working on right now in one project (or label): who is planning to read or change which pages, and what is waiting. Use before a large Knowledge write to avoid colliding with another agent's work in progress. The result's coverage says whether everything was shown, and next says how to narrow it when it was not.",
       "name": "workboard",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Read the work board"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, this session's projects (start_session, session_status), project setup (create a project, write its profile, upload files, add members), and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
       "name": "discover_tools",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "eager"
+      "tier": "eager",
+      "title": "Discover tools"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Search original indexed file text with command='grep', find passages by meaning with 'search', read a line window with 'read', or browse files with 'ls'. grep for exact wording and every file that mentions a term; search when you do not know the words (a concept or paraphrase): it ranks passages, grouped by document, with a match label and each file's source_ref, file_id and version_id, and is a ranked selection, not a census. Pass command options in arguments and a project ID or name in project. grep accepts pattern, output_mode (content, files_with_matches, count), path/glob, head_limit, offset and after_document; search takes query, limit, offset, passages and path/glob; read takes document and start_line/end_line. Check scan notices: offset pages matches already found; after_document resumes a partial scan. Unindexed files are not searched. Download a file with POST /v1/artifacts/download-url and its source_ref. Requires the documents_api feature; if unavailable use research or read_file.",
       "name": "documents",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Search and read documents"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Get the knowledge profile for the org or a project: goals, focus areas, core people, organizations and topics, and extraction guidance.",
       "name": "get_profile",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Read Knowledge profiles"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Show knowledge base statistics (page count, source count).",
       "name": "wiki_stats",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Knowledge statistics"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Summarize the knowledge graph: the most connected pages and basic stats. Use knowledge_base command='links' to explore one page's neighborhood. The result's coverage says whether everything was shown, and next says how to narrow it when it was not.",
       "name": "wiki_graph",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Knowledge graph summary"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Show one wiki proposal before accepting or dismissing it, or check whether one was applied: a decided proposal says when, and by whom or by auto-approve.",
       "name": "show_proposal",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Show a proposal"
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Accept and apply a wiki proposal. Only after the user explicitly asks to accept this specific proposal. Call show_proposal first and pass its content_hash as reviewed_hash; the accept applies only that reviewed proposal. A proposal show_proposal marks as needing a person is refused to agents (person_review_required): ask the user to accept it in Beakr. One already accepted (often by auto-approve) is not applied again: the result says already accepted, when, and by whom or by auto-approve.",
       "name": "accept_proposal",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Accept a proposal"
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Dismiss a wiki proposal after the user asks to reject it.",
       "name": "dismiss_proposal",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Dismiss a proposal"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Search your past conversations: sessions imported from Claude Code, Codex or ChatGPT, and your Beakr chats. Use when the user refers to earlier work or before redoing a task another session may have worked through. With a query it searches each conversation's index (title, summary, the entities and pages it touched); without one it lists your most recent imported sessions. Not for org knowledge: research and knowledge_base cover that. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "conversations_search",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Search past conversations"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Save an agent session into the user's private Beakr conversations. To add to a session imported before, send only the new messages with base_index set to how many were imported before; without base_index the messages are read as the whole session.",
       "name": "import_conversation",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Import a conversation"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Read the organization's audit trail (sign-ins, key and policy changes), newest first. Requires an organization admin. Pass `before` (an ISO time) to start further back; a next_cursor continues the list. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "org_audit_log",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Organization audit log"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
       "description": "Read the user's connected integrations (Slack, Google Drive, Gmail, Jira, Notion, Benchling and any others they connected) live, as the user, with the read-only tools Beakr's own agent uses. Call shape: command='call', tool='<tool>', arguments={...the tool's own options, its limit and cursor included}; the top-level `limit` and `cursor` page command='list' only. command='list' lists the tools you can call, one line each with its options, under the accounts they read (narrow with `provider` or `connector_id`); command='describe' with `tool` gives one tool's full input schema; pass `connector_id` to a call when the user connected that integration twice. A call answers the tool's text and Sources naming each item with its url; cite one in a Knowledge write as a web source (url, title, quoted passage). Only reads: a tool that sends, creates or changes anything is refused. Use it for live or recent items in a connected service; for what the organization already knows, use research or knowledge_base first. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "integrations",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Read connected services"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Choose this session's projects before anything else: `read` and `write` (project names or ids; a write project is read too), or read_everything=true to read every project, locked ones included, and write nothing. Lists that break a project's boundary are refused with each reason. Without it the session is automatic: the server tracks what it touches. In a Must-pick organization start_session proposes: the person confirms at the link it returns (show it to them), and nothing is read until they do. Only the person can widen a session later. Once the session has read or written a project its projects can no longer be chosen; start a new agent conversation instead.",
       "name": "start_session",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Start this session"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Show this session's mode, what it has read, where it can still write and why it can't write elsewhere (project boundaries). Call it when a write is refused or before writing to a second project.",
       "name": "session_status",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Session status"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Create a Beakr project, for files and Knowledge on one subject. Ask the person first, and use an existing project (list_projects) when one fits. Then agree its Knowledge profile with the person and save it with set_project_profile, entity types first, before any upload; the result says when the organization requires one. Needs permission to create projects.",
       "name": "create_project",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Create a project"
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Write a project's Knowledge profile, which steers what Knowledge builds from its files. Agree it with the person first, entity types first: the kinds of things Knowledge should keep a page for (for example 'compound', 'lot', 'deviation'), with what one instance is and examples in extraction_guidance; then goals, focus areas and the core people, organizations and topics. A first profile needs entity_types. Fields left out keep their saved value; a list given replaces that list. Only the project's owners may write it. get_profile reads it back.",
       "name": "set_project_profile",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Set a project's Knowledge profile"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
       "description": "Upload files into a project, after the person agrees. Knowledge compiles from them within a few minutes (knowledge=false keeps them out). On the beakr CLI's local MCP server pass `paths`: files or folders on this computer (absolute, or relative to the folder the server runs in). A folder keeps its subfolders, hidden files and credential files are refused, and it answers within about 40 seconds: a larger upload carries on in the background and upload_status reports it. The hosted MCP server cannot read the user's disk: pass `files`, a list of {name, text} or {name, content_base64}, with an optional `folder` to put them under, at most 20 files and about 3.5 MB of content in one call (the refusal names the exact limit). For anything larger, or a folder on disk, the hosted server uploads nothing: tell the user to run `beakr upload PATH --project NAME` in a terminal, or to add the files in the Beakr web app.",
       "name": "upload_files",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Upload files"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Check an upload: pass the upload id upload_files gave. On the beakr CLI's local MCP server it reports an upload that was still running when upload_files answered: files sent, failed, and whether it has finished. On the hosted MCP server it reports one uploaded file: whether the upload completed, the file it created, and how far Beakr is with processing it.",
       "name": "upload_status",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Upload status"
     },
     {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
       "description": "Add a person to a project, by email (or user id, or exact name). Someone already in the organization is added at once; anyone else is sent an invitation by email and joins on first sign-in, which only works for the organization's own sign-in domains. Without role, someone new joins as member and an existing member keeps theirs. Needs permission to manage the project's members. Ask the person before adding anyone.",
       "name": "add_project_member",
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Add a project member"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Report Beakr's version and whether a newer beakr-cli release exists. On the beakr CLI's local MCP server: the installed CLI version and the latest release. On the hosted MCP server: the server's version and the latest beakr-cli release the server knows of. Call when the user asks about the Beakr version or updates, or when a Beakr tool behaves as if it is out of date.",
       "name": "beakr_version",
+      "surface_annotations": {
+        "stdio": {
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": true
+        }
+      },
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Beakr version"
     },
     {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
       "description": "Update Beakr. Only call this when the user has asked to update Beakr; it takes no arguments. On the beakr CLI's local MCP server it upgrades the beakr-cli package with the tool that installed it (uv or pipx) and refreshes its installed skills; the running server keeps the old code, so tell the user to restart Claude Code / Codex afterwards. The hosted MCP server cannot change the user's machine: it runs nothing and returns the command to run locally instead (`beakr update`, or the install command when the CLI is not installed).",
       "name": "update_beakr",
+      "surface_annotations": {
+        "stdio": {
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": true,
+          "readOnlyHint": false
+        }
+      },
       "surfaces": [
         "remote",
         "stdio"
       ],
-      "tier": "discovery"
+      "tier": "discovery",
+      "title": "Update Beakr"
     }
   ],
   "version": 1

@@ -77,19 +77,6 @@ _STOPPING_CODES = frozenset(
 
 ProjectRole = Literal["owner", "admin", "member", "viewer"]
 
-#: Each tool's MCP annotations: all of them change something; none deletes.
-ANNOTATIONS: dict[str, dict[str, bool]] = {
-    "create_project": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
-    "set_project_profile": {
-        "readOnlyHint": False,
-        "destructiveHint": False,
-        "idempotentHint": True,
-    },
-    "upload_files": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False},
-    "upload_status": {"readOnlyHint": True, "destructiveHint": False, "idempotentHint": True},
-    "add_project_member": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": True},
-}
-
 
 def _error(code: str, message: str, fix: str | None = None, **extra: Any) -> dict[str, Any]:
     return {"status": "error", "error_code": code, "message": message, "fix": fix, **extra}
@@ -924,16 +911,14 @@ PROJECT_TOOLS = (
 
 
 def register(server: FastMCP) -> None:
-    """Register this module's tools on ``server``."""
-    from mcp.types import ToolAnnotations
+    """Register this module's tools on ``server``.
 
+    Description, tier, title and MCP annotations all come from the shared tool
+    surface (``tool_surface.tool_kwargs``), the hints the hosted server lists.
+    """
     from beakr_cli import tool_surface
 
     global _SERVER
     _SERVER = server
     for tool in PROJECT_TOOLS:
-        name = tool.__name__
-        server.tool(
-            **tool_surface.tool_kwargs(name),
-            annotations=ToolAnnotations(openWorldHint=True, **ANNOTATIONS[name]),
-        )(tool)
+        server.tool(**tool_surface.tool_kwargs(tool.__name__))(tool)

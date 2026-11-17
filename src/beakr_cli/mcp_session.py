@@ -807,24 +807,21 @@ def register(mcp: Any) -> None:
     global _SERVER
     _SERVER = mcp
 
+    # session_scope is this server's own (not on the shared surface): its hints here.
     mcp.tool(
         name=SESSION_SCOPE_TOOL,
         description=SESSION_SCOPE_DESCRIPTION,
+        title="Session scope",
         annotations=ToolAnnotations(
-            readOnlyHint=False, destructiveHint=False, idempotentHint=True, openWorldHint=True
+            title="Session scope",
+            readOnlyHint=False,
+            destructiveHint=False,
+            idempotentHint=True,
+            openWorldHint=True,
         ),
     )(session_scope)
-    mcp.tool(
-        name=SESSION_STATUS_TOOL,
-        **tool_surface.tool_kwargs(SESSION_STATUS_TOOL),
-        annotations=ToolAnnotations(
-            readOnlyHint=True, destructiveHint=False, idempotentHint=True, openWorldHint=True
-        ),
-    )(session_status)
-    mcp.tool(
-        name=START_SESSION_TOOL,
-        **tool_surface.tool_kwargs(START_SESSION_TOOL),
-        annotations=ToolAnnotations(
-            readOnlyHint=False, destructiveHint=False, idempotentHint=False, openWorldHint=True
-        ),
-    )(start_session)
+    # The shared surface's: description, title and hints all come from it.
+    mcp.tool(name=SESSION_STATUS_TOOL, **tool_surface.tool_kwargs(SESSION_STATUS_TOOL))(
+        session_status
+    )
+    mcp.tool(name=START_SESSION_TOOL, **tool_surface.tool_kwargs(START_SESSION_TOOL))(start_session)
