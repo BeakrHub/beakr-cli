@@ -24,6 +24,7 @@ from mcp import types
 
 from beakr_cli import mcp_call_shaping
 from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 
 API = "https://api.example.com"
 PROJECT_ID = "6f1f3a52-3c1e-4f43-8a51-0a4b7c9d2e10"
@@ -37,12 +38,7 @@ def api(monkeypatch):
 
 
 async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 #: Each tool that takes a project, with the rest of a call that reaches its route.
@@ -106,7 +102,7 @@ async def test_any_project_name_reaches_the_route(tool: str, name: str) -> None:
 async def test_two_names_that_disagree_are_refused_before_anything_is_sent(tool: str) -> None:
     route = respx.route(url__startswith=API).mock(return_value=Response(200, json={}))
     result = await _call(tool, {**_CALLS[tool], "scope": PROJECT_ID, "project_id": OTHER_ID})
-    assert result.isError
+    assert result.is_error
     error = json.loads(result.content[0].text)
     assert error["error_code"] == "invalid_arguments"
     assert "name different projects" in error["message"]
@@ -123,7 +119,7 @@ async def test_research_given_project_and_project_id_that_disagree_is_refused() 
     result = await _call(
         "research", {"query": "Who owns billing?", "project": PROJECT_ID, "project_id": OTHER_ID}
     )
-    assert result.isError
+    assert result.is_error
     assert "`project`" in json.loads(result.content[0].text)["message"]
     assert not route.called
 

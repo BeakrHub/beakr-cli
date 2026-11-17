@@ -25,7 +25,7 @@ from httpx import Response
 from mcp import types
 
 from beakr_cli import mcp_render
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 from tests._engine import hosted_render
 
 API = "https://api.example.com"
@@ -52,12 +52,7 @@ def api(monkeypatch):
 
 async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
     """The call as an MCP client makes it: through the server's request handler."""
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 def _assert_shown(text: str) -> None:
@@ -114,7 +109,7 @@ async def test_a_knowledge_read_shows_controls_as_the_hosted_server_does():
         "knowledge_base",
         {"command": "cat", "arguments": _CAT["arguments"], "scope": _CAT["scope"]},
     )
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     text = result.content[0].text
     assert text.startswith(f"# {ESCAPED}\n{PLAIN}")
     _assert_shown(text)
@@ -135,7 +130,7 @@ async def test_a_tool_that_is_not_a_knowledge_read_shows_them_too():
         }
     )
     result = await _call("list_projects", {})
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     text = result.content[0].text
     assert f"- {ESCAPED} (standard, id: p-1) -- {PLAIN}" in text
     _assert_shown(text)
@@ -153,7 +148,7 @@ async def test_an_error_result_is_the_hosted_error_text():
         },
     )
     result = await _call("list_projects", {})
-    assert result.isError
+    assert result.is_error
     text = result.content[0].text
     assert text == hosted_render().error_text(
         message=message, error_code="insufficient_scope", fix="Use another key."
@@ -167,7 +162,7 @@ async def test_an_error_result_is_the_hosted_error_text():
 async def test_a_raised_error_is_shown_the_same_way():
     # A tool error that is raised leaves as its message, not as compact JSON.
     result = await _call(f"no_such_tool {HOSTILE}", {})
-    assert result.isError
+    assert result.is_error
     text = result.content[0].text
     assert ESCAPED in text
     assert hosted_render().visible_controls(text) == text

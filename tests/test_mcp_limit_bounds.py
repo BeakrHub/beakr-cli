@@ -11,14 +11,13 @@ from __future__ import annotations
 
 import json
 
-import anyio
 import pytest
 import respx
-from mcp import ClientSession, types
-from mcp.shared.memory import create_client_server_memory_streams
+from mcp import types
 
 from beakr_cli import __version__, mcp_server
 from beakr_cli.mcp_tools_platform import READ_FILE_CHARS
+from tests import mcp_client
 
 API = "https://api.test"
 ORG = {"id": "o1", "name": "Northwind", "slug": "northwind"}
@@ -38,19 +37,11 @@ def api_env(monkeypatch):
 
 async def _session_call(name: str, arguments: dict, *, listed: list | None = None):
     """Call a tool through a real MCP session, so the input schema is enforced as a client sees."""
-    async with create_client_server_memory_streams() as (client_streams, server_streams):
-        async with anyio.create_task_group() as group:
-            lowlevel = mcp_server.mcp._mcp_server
-            group.start_soon(
-                lambda: lowlevel.run(*server_streams, mcp_server.mcp.initialization_options())
-            )
-            info = types.Implementation(name="claude-code", version="2.1.283")
-            async with ClientSession(*client_streams, client_info=info) as session:
-                await session.initialize()
-                result = await session.call_tool(name, arguments)
-                if listed is not None:
-                    listed.extend((await session.list_tools()).tools)
-            group.cancel_scope.cancel()
+    info = types.Implementation(name="claude-code", version="2.1.283")
+    async with mcp_client.client(client_info=info) as session:
+        result = await session.call_tool(name, arguments)
+        if listed is not None:
+            listed.extend((await session.list_tools()).tools)
     return result
 
 
@@ -59,7 +50,7 @@ def _text(result) -> str:
 
 
 def _limit_schema(tool) -> dict:
-    schema = tool.inputSchema["properties"]["limit"]
+    schema = tool.input_schema["properties"]["limit"]
     # An optional limit is declared as anyOf [integer, null].
     return next((s for s in schema.get("anyOf", []) if s.get("type") == "integer"), schema)
 
@@ -74,11 +65,11 @@ async def test_every_paged_tool_declares_the_hosted_limit_bounds() -> None:
     unbounded = [
         name
         for name, tool in tools.items()
-        if "limit" in tool.inputSchema.get("properties", {})
+        if "limit" in tool.input_schema.get("properties", {})
         and "maximum" not in _limit_schema(tool)
     ]
     assert unbounded == []
-    read_file = tools["read_file"].inputSchema["properties"]
+    read_file = tools["read_file"].input_schema["properties"]
     assert (read_file["limit"]["minimum"], read_file["limit"]["maximum"]) == (1, READ_FILE_CHARS)
     assert read_file["offset"]["minimum"] == 0
 
@@ -92,7 +83,7 @@ async def test_list_projects_over_the_maximum_returns_the_maximum_and_says_so() 
 
     result = await _session_call("list_projects", {"limit": 100})
 
-    assert not result.isError, _text(result)
+    assert not result.is_error, _text(result)
     assert route.calls.last.request.url.params["limit"] == "50"
     assert "Helios" in _text(result)
     assert REDUCED in _text(result)
@@ -130,7 +121,7 @@ async def test_each_paged_tool_reduces_an_over_maximum_limit_with_a_note(
 
     result = await _session_call(tool, arguments)
 
-    assert not result.isError, _text(result)
+    assert not result.is_error, _text(result)
     assert route.calls.last.request.url.params["limit"] == sent
     # The hosted server's repair note, word for word, above the result.
     assert _text(result).startswith(
@@ -154,7 +145,7 @@ async def test_read_file_over_the_maximum_reads_the_largest_window_and_says_so()
 
     result = await _session_call("read_file", {"artifact_id": "f1", "limit": 999_999})
 
-    assert not result.isError, _text(result)
+    assert not result.is_error, _text(result)
     assert json.loads(route.calls.last.request.content)["max_chars"] == READ_FILE_CHARS
     assert f"limit reduced from 999999 to {READ_FILE_CHARS}" in _text(result)
 
@@ -181,10 +172,10 @@ async def test_context_refuses_a_budget_under_the_minimum_as_the_hosted_server_d
 
     result = await _session_call("context", {"budget_chars": 500}, listed=tools)
 
-    assert result.isError
+    assert result.is_error
     assert _text(result) == HOSTED_SMALL_BUDGET_REFUSAL
     assert not route.called
-    schema = next(t for t in tools if t.name == "context").inputSchema["properties"]
+    schema = next(t for t in tools if t.name == "context").input_schema["properties"]
     assert (schema["budget_chars"]["minimum"], schema["budget_chars"]["maximum"]) == (2000, 20000)
 
 
@@ -194,7 +185,7 @@ async def test_context_refuses_a_budget_over_the_maximum() -> None:
 
     result = await _session_call("context", {"budget_chars": 999_999})
 
-    assert result.isError
+    assert result.is_error
     assert "999999 is greater than the maximum of 20000" in _text(result)
     assert not route.called
 
@@ -206,7 +197,7 @@ async def test_context_sends_a_budget_at_either_bound(budget: int) -> None:
 
     result = await _session_call("context", {"budget_chars": budget})
 
-    assert not result.isError, _text(result)
+    assert not result.is_error, _text(result)
     assert json.loads(route.calls.last.request.content)["budget_chars"] == budget
 
 
@@ -223,7 +214,7 @@ async def test_a_read_names_this_server_as_the_client_and_the_mcp_client_as_the_
         "documents", {"command": "read", "arguments": {"document": "f1"}, "project": ""}
     )
 
-    assert not result.isError, _text(result)
+    assert not result.is_error, _text(result)
     headers = route.calls.last.request.headers
     assert headers["X-Beakr-Client"] == f"beakr-mcp/{__version__}"
     assert headers["X-Beakr-Agent"] == "claude-code/2.1.283"

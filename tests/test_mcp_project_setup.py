@@ -78,15 +78,15 @@ async def test_the_tools_are_listed_in_the_discovery_tier_with_the_shared_text()
     # One description serves both servers, so it says what each of them takes.
     upload = listed["upload_files"].description
     assert "`paths`" in upload and "`files`" in upload and "beakr upload PATH" in upload
-    assert set(listed["upload_files"].inputSchema["properties"]) == {
+    assert set(listed["upload_files"].input_schema["properties"]) == {
         "project",
         "paths",
         "folder_id",
         "knowledge",
         "resume_upload_id",
     }
-    assert listed["upload_status"].annotations.readOnlyHint is True
-    assert listed["upload_files"].annotations.readOnlyHint is False
+    assert listed["upload_status"].annotations.read_only_hint is True
+    assert listed["upload_files"].annotations.read_only_hint is False
     # No tool here invites anyone into the organization.
     assert not any("invite_to_org" in name or "organization_invite" in name for name in listed)
     assert "create_project, then its Knowledge profile" in mcp_server.instructions()

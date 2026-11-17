@@ -35,7 +35,7 @@ from httpx import Response
 from mcp import types
 
 from beakr_cli.mcp_render import render
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 from tests._engine import hosted_render
 
 API = "https://api.example.com"
@@ -51,12 +51,7 @@ def api(monkeypatch):
 
 async def _call_tool(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
     """One ``tools/call`` through the stdio server's MCP request handler."""
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 async def _replay(
@@ -78,8 +73,8 @@ async def _replay(
 
     assert route.call_count == 1
     assert json.loads(route.calls.last.request.content) == case["rest_request"]
-    assert not result.isError, result.content
-    assert result.structuredContent is None
+    assert not result.is_error, result.content
+    assert result.structured_content is None
     assert len(result.content) == 1
     assert result.content[0].text == render(tool, case["mcp"])
     # And as the hosted server renders it: a staged write's content_hash, which

@@ -14,6 +14,7 @@ import respx
 
 from beakr_cli import mcp_server
 from beakr_cli.mcp_errors import ApiCallError, describe_error
+from tests import mcp_client
 
 API = "https://api.thebeakr.com"
 
@@ -80,7 +81,7 @@ async def test_mcp_error_keeps_request_id_for_failed_search_diagnosis(monkeypatc
         )
     )
     result = await mcp_server.mcp.call_tool("list_projects", {})
-    assert result.isError
+    assert result.is_error
     body = json.loads(result.content[0].text)
     assert body["request_id"] == "req-search-123"
     assert body["fix"] == "Report the request_id."
@@ -113,3 +114,18 @@ def test_request_id_header_survives_non_json_gateway_error():
     )
     assert error_fields(response)["request_id"] == "req-gateway-1"
     assert "req-gateway-1" in describe_error(response)
+
+
+@pytest.mark.parametrize("mode", mcp_client.MODES)
+async def test_an_unanticipated_failure_still_says_what_to_do(monkeypatch, mode):
+    # Root cause: mcp 2 answers an exception it did not anticipate with only
+    # "Error executing tool <name>", which dropped the one line that tells the
+    # agent what to do ("No Beakr credentials found. Run `beakr auth login`").
+    # The server sends the exception's text as mcp 1 did; it runs on the
+    # person's own machine, for their own agent.
+    monkeypatch.setenv("BEAKR_API_URL", API)
+    result = await mcp_client.call_tool("list_projects", {}, mode=mode)
+    assert result.is_error
+    text = result.content[0].text
+    assert text.startswith("Error executing tool list_projects: No Beakr credentials found.")
+    assert "beakr auth login" in text
