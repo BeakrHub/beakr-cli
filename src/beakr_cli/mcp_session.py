@@ -316,8 +316,6 @@ async def elicit_choice(
         "All means the projects you have now; ones created later are not added. Writing a "
         f"project also lets it read it.{later}"
     )
-    if offer.why:
-        message += " Not offered: " + " ".join(offer.why)
     every = [str(project["id"]) for project in projects]
     refused: BeakrError | None = None
     for _ in range(FORM_ATTEMPTS):
@@ -357,10 +355,14 @@ async def elicit_choice(
             reasons = [
                 str(r["message"]) for r in scope_session.selection_reasons(exc) if r.get("message")
             ] or [exc.message]
+            # Why a choice for all projects is left out is said only now, once the
+            # person has picked something: before, it read as a refusal of nothing.
+            left_out = [why for why in offer.why if why not in reasons]
             message = (
                 "That choice can't be used: "
                 + " ".join(reasons)
                 + f" Choices that work: {_working_choices(offer, projects)}."
+                + (" Not offered: " + " ".join(left_out) if left_out else "")
             )
             continue
         return not session.pending
@@ -484,7 +486,9 @@ async def session_status(trail: bool = False, proposal_id: str = "") -> dict[str
         # conversation, as the hosted server gives it (contract section 7).
         return await _ended_status(session, exc)
     try:
-        lines = [await _status_text(current)]
+        text = await _status_text(current)
+        # The session's id first: an agent asked which session it is in can say.
+        lines = [text if text == NOT_IN_SESSION else f"Session: {session.id}\n{text}"]
     except ApiCallError as exc:
         return _error(
             str(exc.fields.get("error_code") or "session_error"),

@@ -1049,7 +1049,8 @@ def test_session_status_tool_reads_the_status_route():
     text = asyncio.run(mcp_session.session_status())
 
     assert _bearer(route) == "Bearer bk_st_first"
-    assert text.splitlines()[0].startswith("Automatic session. It read Partner A")
+    assert text.splitlines()[0] == f"Session: {SID}"
+    assert text.splitlines()[1].startswith("Automatic session. It read Partner A")
     assert "Can't write Chemistry: This session read Partner A" in text
 
 

@@ -18,6 +18,11 @@ and this server prints the same one, from what the API says:
   publishes that name only there (``GET /health`` gives the raw setting, where
   a developer's machine is ``development``, not ``local``).
 
+On a self-hosted build every API is the person's own installation, which the
+API calls by its deployment setting (``production``): "Beakr production" read as
+Beakr's cloud. The name passed on is the installation's, from its address
+(:func:`installation_name`), never the API's environment.
+
 A read that fails drops what it would have named, and with nothing known the
 line is left out: saying where the calls land must never fail the tool, nor
 hold it up (the two reads share :data:`_READ_SECONDS`).
@@ -48,8 +53,23 @@ def workspace_prefix(data: Any) -> str:
     where = data.get("workspace") if isinstance(data, dict) else None
     if not isinstance(where, dict):
         return ""
-    line = workspace_line(where.get("environment"), where.get("organization"))
+    line = workspace_line(installation_name(where.get("environment")), where.get("organization"))
     return f"{line}\n\n"
+
+
+def installation_name(environment: Any) -> str | None:
+    """What :func:`workspace_line` calls the deployment: on this self-hosted build the
+    installation at its address (``installation at beakr.example.com``), whatever
+    environment name the API gives; None when neither is known."""
+    from urllib.parse import urlsplit
+
+    from beakr_cli.deployment import configured_base_url
+
+    url = configured_base_url()
+    host = urlsplit(url).netloc if url else ""
+    if host:
+        return f"installation at {host}"
+    return "installation" if environment else None
 
 
 def connected_line_now() -> str:
@@ -82,7 +102,7 @@ async def connected_line() -> str:
         return ""
     if not organization and not environment:
         return ""
-    return workspace_line(environment, organization)
+    return workspace_line(installation_name(environment), organization)
 
 
 async def _acting_organization() -> dict[str, str] | None:

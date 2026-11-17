@@ -710,7 +710,8 @@ def test_the_form_leaves_out_the_choices_a_siloed_project_forbids():
         "With it, only these can also be written: Partner (siloed)."
     )
     assert fields["read_everything"]["description"] == EVERYTHING
-    assert "Not offered: " + LOCKS in message
+    # Why Write all is left out is said only once something was picked (the re-ask).
+    assert "Not offered" not in message
 
 
 @respx.mock
@@ -730,6 +731,7 @@ def test_a_refused_choice_is_asked_again_with_the_choices_that_work():
     assert again.startswith("That choice can't be used: " + LOCKS)
     assert "Choices that work: Read all projects, no writes;" in again
     assert "Read all projects, writing only Partner (siloed)" in again
+    assert "Not offered" not in asked[0][0]
     assert json.loads(chosen.calls.last.request.content) == {"read_everything": True}
 
 
