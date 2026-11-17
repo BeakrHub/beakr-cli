@@ -78,13 +78,13 @@ def _window(*, unit: dict | None = None, text: str = "The charter.", **extra) ->
 
 async def _read(arguments: dict) -> str:
     result = await mcp_server.mcp.call_tool("read_file", arguments)
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     return result.content[0].text
 
 
 async def _read_error(arguments: dict) -> dict:
     result = await mcp_server.mcp.call_tool("read_file", arguments)
-    assert result.isError, result.content
+    assert result.is_error, result.content
     return json.loads(result.content[0].text)
 
 

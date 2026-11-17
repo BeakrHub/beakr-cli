@@ -38,7 +38,7 @@ _CLI_HEADERS = {"User-Agent": f"beakr-cli/{__version__}"}
 
 #: The MCP client the stdio server is answering, as ``name/version`` from its
 #: ``initialize`` clientInfo (``claude-code/2.1.283``). Set around each tool
-#: call by ``tool_surface.TieredFastMCP``; unset at a terminal, where the
+#: call by ``tool_surface.TieredMCPServer``; unset at a terminal, where the
 #: person is the actor and no agent is declared.
 MCP_CLIENT_AGENT: ContextVar[str | None] = ContextVar("beakr_mcp_client_agent", default=None)
 

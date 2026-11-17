@@ -91,7 +91,7 @@ COMMAND_AREAS: tuple[tuple[tuple[str, ...], str], ...] = (
 #: The documented operations each MCP tool needs: a tool whose operation the
 #: installation's document leaves out is not listed. Tools over routes outside
 #: the documented contract are judged by their first call instead (a bare 404
-#: hides them, see ``TieredFastMCP``).
+#: hides them, see ``TieredMCPServer``).
 TOOL_OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "context": (("POST", "/v1/context"),),
     "list_projects": (("GET", "/v1/projects"),),

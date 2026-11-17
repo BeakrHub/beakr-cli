@@ -28,12 +28,18 @@ def _requirement(name: str) -> Requirement:
     return next(req for req in map(Requirement, deps) if req.name == name)
 
 
-def test_mcp_dependency_excludes_the_2x_line_the_server_cannot_import() -> None:
+def test_mcp_dependency_is_the_2x_line_that_speaks_2026_07_28() -> None:
+    # `uv tool install` ignores uv.lock, so the specifier alone decides what a
+    # fresh install gets. The server is built on mcp 2's MCPServer
+    # (mcp.server.mcpserver); mcp 1 has no such module and stops at protocol
+    # 2025-11-25, so a 2026-07-28 client paid a refused server/discover probe and
+    # a fallback to initialize on every connection. 2.3 is the first release
+    # this server was built and tested against.
     spec = _requirement("mcp").specifier
-    assert not spec.contains(Version("2.0.0"))
-    # FastMCP tool annotations (used by beakr_version/update_beakr) need 1.9+.
-    assert not spec.contains(Version("1.8.0"))
-    assert spec.contains(Version("1.27.0"))
+    assert not spec.contains(Version("1.27.0"))
+    assert not spec.contains(Version("2.2.0"))
+    assert spec.contains(Version("2.3.0"))
+    assert not spec.contains(Version("3.0.0"))
 
 
 def test_typer_dependency_excludes_the_line_that_vendors_its_own_click() -> None:

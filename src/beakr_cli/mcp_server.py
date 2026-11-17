@@ -185,8 +185,12 @@ def _update_notice() -> str:
 # W8.2: every tool is listed by default; BEAKR_MCP_TOOLS=eager lists the eager
 # set and adds what discover_tools finds.
 _NOTES = tool_surface.discovery_note() + _update_notice()
-mcp = tool_surface.TieredFastMCP(
+mcp = tool_surface.TieredMCPServer(
     "beakr",
+    # serverInfo.version: mcp 1 filled in its own package version when a server
+    # gave none; mcp 2 sends an empty string. This installation's version is
+    # what a client should see.
+    version=__version__,
     instructions=_INSTRUCTIONS + _NOTES,
     # Rebuilt once the installation's tools are known, before `initialize` is answered.
     instructions_for=lambda hidden: instructions(hidden) + _NOTES,

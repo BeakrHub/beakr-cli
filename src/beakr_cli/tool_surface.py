@@ -16,17 +16,19 @@ import inspect
 import json
 import os
 from collections.abc import Callable
+from contextvars import ContextVar
 from functools import cache
 from importlib import resources
 from typing import Any
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.exceptions import ToolError
 from mcp.server.lowlevel import NotificationOptions
+from mcp.server.mcpserver import Context, MCPServer
+from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp.types import CallToolResult, TextContent, ToolAnnotations
 from mcp.types import Tool as MCPTool
+from mcp.types.version import MODERN_PROTOCOL_VERSIONS
 from pydantic import ValidationError
 
 #: The listing mode. Every tool is listed by default; ``BEAKR_MCP_TOOLS=eager``
@@ -97,7 +99,7 @@ def annotations(name: str) -> ToolAnnotations:
 
 
 def tool_kwargs(name: str) -> dict[str, Any]:
-    """``FastMCP.tool`` keyword arguments: the shared description, tier, title and hints."""
+    """``MCPServer.tool`` keyword arguments: the shared description, tier, title and hints."""
     return {
         "description": description(name),
         "meta": meta(name),
@@ -134,7 +136,7 @@ def without_project_parameters(tool: MCPTool) -> MCPTool:
     unset and the tool reads the pinned project. A value passed regardless is
     still honored.
     """
-    schema = dict(tool.inputSchema or {})
+    schema = dict(tool.input_schema or {})
     properties = {
         key: value
         for key, value in (schema.get("properties") or {}).items()
@@ -143,7 +145,7 @@ def without_project_parameters(tool: MCPTool) -> MCPTool:
     schema["properties"] = properties
     if "required" in schema:
         schema["required"] = [key for key in schema["required"] if key not in PROJECT_PARAMETERS]
-    return tool.model_copy(update={"inputSchema": schema})
+    return tool.model_copy(update={"input_schema": schema})
 
 
 def lists_every_tool() -> bool:
@@ -166,9 +168,9 @@ def discovery_note() -> str:
 def _uniform(fn: Callable, tool: str) -> Callable:
     """``fn`` with its result passed through ``mcp_result.finish``.
 
-    The wrapper keeps ``fn``'s parameters (FastMCP builds the input schema from
-    the signature) and declares a dict return, which FastMCP sends as
-    structured content.
+    The wrapper keeps ``fn``'s parameters (MCPServer builds the input schema from
+    the signature) and declares a dict return; :meth:`TieredMCPServer.call_tool`
+    renders that dict as the one text block the client receives.
     """
     from beakr_cli import mcp_result
 
@@ -193,8 +195,12 @@ def _uniform(fn: Callable, tool: str) -> Callable:
     return wrapper
 
 
-class TieredFastMCP(FastMCP):
-    """A FastMCP server whose listing follows the mode and the installation (W8.2).
+#: The request context of the tool call in progress (:meth:`TieredMCPServer.get_context`).
+_CALL_CONTEXT: ContextVar[Context | None] = ContextVar("beakr_mcp_call_context", default=None)
+
+
+class TieredMCPServer(MCPServer):
+    """An MCP server whose listing follows the mode and the installation (W8.2).
 
     Every tool stays registered, so tools/call reaches any of them by name. The
     listing leaves out:
@@ -209,8 +215,13 @@ class TieredFastMCP(FastMCP):
     declares ``tools.listChanged`` so clients re-read the listing.
 
     ``instructions_for(hidden)`` rebuilds the instructions from the tools the
-    installation leaves out, before ``initialize`` is answered, so they never
-    send an agent to a tool it cannot see.
+    installation leaves out, before ``initialize`` (or ``server/discover``) is
+    answered, so they never send an agent to a tool it cannot see.
+
+    One server answers both protocol eras the MCP library serves: the
+    ``initialize`` handshake (2024-11-05 through 2025-11-25) and the
+    per-request envelope of 2026-07-28, whose clients start with
+    ``server/discover``. The first request a client sends decides which.
     """
 
     def __init__(
@@ -228,14 +239,16 @@ class TieredFastMCP(FastMCP):
 
     def initialization_options(self) -> InitializationOptions:
         """The ``initialize`` answer's options, declaring ``tools.listChanged``."""
-        return self._mcp_server.create_initialization_options(
+        return self._lowlevel_server.create_initialization_options(
             NotificationOptions(tools_changed=True)
         )
 
     async def run_stdio_async(self) -> None:
         await self.fit_instructions()
         async with stdio_server() as (read_stream, write_stream):
-            await self._mcp_server.run(read_stream, write_stream, self.initialization_options())
+            await self._lowlevel_server.run(
+                read_stream, write_stream, self.initialization_options()
+            )
 
     async def fit_instructions(self) -> None:
         """Rebuild the instructions without the tools this installation does not list."""
@@ -243,7 +256,7 @@ class TieredFastMCP(FastMCP):
             return
         names = [tool.name for tool in await super().list_tools()]
         hidden = self._hidden | await self._unserved(names)
-        self._mcp_server.instructions = self._instructions_for(hidden)
+        self._lowlevel_server.instructions = self._instructions_for(hidden)
 
     async def reveal(self, names: list[str]) -> None:
         """Add discovery-tier tools to the eager mode's listing."""
@@ -260,14 +273,37 @@ class TieredFastMCP(FastMCP):
             self._hidden.add(name)
             await self._listing_changed()
 
+    def get_context(self) -> Context:
+        """The context of the tool call in progress.
+
+        Outside a call it is a context with no request behind it, whose
+        ``session`` and ``request_context`` raise ``ValueError``, as FastMCP's
+        did; callers use that to tell they are not answering a client.
+        """
+        current = _CALL_CONTEXT.get()
+        if current is not None:
+            return current
+        return Context(mcp_server=self, subscriptions=self._subscriptions)
+
     async def _listing_changed(self) -> None:
-        """Tell the client to read the listing again, when a request is in progress."""
+        """Tell the client to read the listing again, when a request is in progress.
+
+        A handshake-era client hears ``notifications/tools/list_changed`` on
+        its connection. A 2026-07-28 client hears it only on a
+        ``subscriptions/listen`` stream it opened, so the change is published
+        on the server's subscription bus, which feeds those streams; the
+        library drops a bare copy on the shared channel at that version.
+        """
+        context = self.get_context()
         try:
-            session = self.get_context().session
+            session = context.session
         except ValueError:
             return
         try:
-            await session.send_tool_list_changed()
+            if context.protocol_version in MODERN_PROTOCOL_VERSIONS:
+                await context.notify_tools_changed()
+            else:
+                await session.send_tool_list_changed()
         except Exception:
             # The listing is re-read on the next tools/list anyway; a client
             # that went away must not turn a tool result into an error.
@@ -323,7 +359,9 @@ class TieredFastMCP(FastMCP):
         listed = set(eager_tools()) | self._revealed
         return [tool for tool in tools if tool.name in listed]
 
-    async def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+    async def call_tool(
+        self, name: str, arguments: dict[str, Any], context: Context | None = None
+    ) -> Any:
         """Run a tool with forgiving arguments, and return any error compactly.
 
         Top-level Knowledge options and common aliases are normalized first
@@ -333,9 +371,16 @@ class TieredFastMCP(FastMCP):
         validation failure becomes one line naming the fix; an API refusal, a
         project that names nothing and an error outcome become ``{status,
         error_code, message, fix}`` marked ``isError``.
+
+        ``context`` is the request's, passed by the library for a client's
+        tools/call; a direct call (tests, the engine's contract gate) runs
+        without one, as outside a request.
         """
         from beakr_cli.sdk import MCP_CLIENT_AGENT
 
+        if context is None:
+            context = Context(mcp_server=self, subscriptions=self._subscriptions)
+        call_context = _CALL_CONTEXT.set(context)
         # Writes are attributed to the agent that made them: the MCP client's
         # clientInfo, unless BEAKR_AGENT names one (sdk._agent).
         token = MCP_CLIENT_AGENT.set(self._client_agent())
@@ -353,16 +398,22 @@ class TieredFastMCP(FastMCP):
             raise ToolError(shown) from exc
         finally:
             MCP_CLIENT_AGENT.reset(token)
+            _CALL_CONTEXT.reset(call_context)
 
     def _client_agent(self) -> str | None:
-        """``name/version`` of the client that sent ``initialize``, when a request is running."""
+        """``name/version`` of the client, when a request is running.
+
+        A handshake-era client names itself in ``initialize``; a 2026-07-28
+        client in each request's ``_meta``, which the library reads into the
+        same ``client_params``.
+        """
         from beakr_cli.sdk import client_agent
 
         try:
             params = self.get_context().session.client_params
         except ValueError:
             return None
-        info = getattr(params, "clientInfo", None)
+        info = getattr(params, "client_info", None)
         if info is None:
             return None
         return client_agent(info.name, info.version)
@@ -394,10 +445,11 @@ class TieredFastMCP(FastMCP):
             if refusal is not None:
                 return _error_result(refusal)
         try:
-            # The tool's own dict (``mcp_result.finish`` shape), not FastMCP's
-            # conversion of it, which would serialize the whole dict as JSON.
+            # The tool's own dict (``mcp_result.finish`` shape), not the
+            # library's conversion of it, which would serialize the whole dict
+            # as JSON.
             result = await self._tool_manager.call_tool(
-                name, normalized, context=self.get_context(), convert_result=False
+                name, normalized, self.get_context(), convert_result=False
             )
         except ToolError as exc:
             cause = exc.__cause__
@@ -413,6 +465,13 @@ class TieredFastMCP(FastMCP):
                 return _error_result(
                     mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
                 )
+            if isinstance(exc, UnexpectedToolError) and cause is not None:
+                # mcp 2 withholds an unanticipated exception's text ("Error
+                # executing tool <name>"). This server runs on the person's own
+                # machine for their own agent, and that text is what says what
+                # to do: "not signed in, run beakr auth login", a refused
+                # connection to the configured API URL. It is sent as before.
+                raise ToolError(f"Error executing tool {name}: {cause}") from cause
             raise
         body = result if isinstance(result, dict) else {"content": result}
         if body.get("status") == "error":
@@ -442,5 +501,5 @@ def _error_result(body: dict[str, Any]) -> CallToolResult:
     # JSON already escapes everything but DEL, which ``visible_controls`` shows.
     return CallToolResult(
         content=[_text_content(json.dumps(body, separators=(", ", ": ")))],
-        isError=True,
+        is_error=True,
     )
