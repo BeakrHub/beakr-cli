@@ -33,9 +33,27 @@ Each release lists the public API changes it supports, taken from the API change
   `set_project_profile`, `add_project_member` and `update_beakr` as able to
   change what is already there; `import_conversation`, `create_project` and
   `upload_files` as additive.
+- **`knowledge_base` command `orient` returns a project's orientation map**:
+  its card types and how many pages each has, what a card of the main types
+  holds (sections, Facts fields, Connections), the cards they link to most, and
+  how reads behave at the project's size. Without `scope` it lists the projects
+  you can read. `wiki_stats` now ends by pointing at it, as the hosted server's
+  does, and the `knowledge_base` description starts with it.
 
 ### Changes
 
+- `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
+  naming one project it returns that project's orientation map in about 3,000
+  characters: its knowledge profile, how many pages of each card type, what a
+  card of the dominant types looks like (title rule, sections with their
+  `section_id`s and sizes, Facts fields and Connections with the share of cards
+  stating each), the cards those cards link to most, and how `grep`, `sections`,
+  `hover` and `rows` behave at the project's size. Without `scope` it lists the
+  projects the caller can read, the largest first. Counts include only pages the
+  caller can read: a caller who reads the whole project gets counts measured
+  after its latest compile; a caller who reads part of it gets counts of those
+  pages, measured on the call, and a part that could not be measured within its
+  time limit is named as left out.
 - `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
   cites where the caller can read it now carries `knowledge_reference` (how
   Knowledge's newest citation of it names it), and its `source_ref` is then the

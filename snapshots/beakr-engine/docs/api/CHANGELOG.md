@@ -11,11 +11,23 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=68dba5cd91b19ce918e4aa416ac838fba362ffd459c224b309ef8de8532b3155 changelog sha256=7a24d1ca66cb2da6951971fba2000690f33272849a52e6abcbd8b0bc4d5bd357 -->
+<!-- contract-stamp: public-openapi sha256=1ddad5a45e9286b3459896ec61bfb02ca46d417ca02128d65201bd74c97529bb changelog sha256=77c3d955c0de595aae36708fa86a129e5cd5998c83de264a281bfc82698eb673 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
+  naming one project it returns that project's orientation map in about 3,000
+  characters: its knowledge profile, how many pages of each card type, what a
+  card of the dominant types looks like (title rule, sections with their
+  `section_id`s and sizes, Facts fields and Connections with the share of cards
+  stating each), the cards those cards link to most, and how `grep`, `sections`,
+  `hover` and `rows` behave at the project's size. Without `scope` it lists the
+  projects the caller can read, the largest first. Counts include only pages the
+  caller can read: a caller who reads the whole project gets counts measured
+  after its latest compile; a caller who reads part of it gets counts of those
+  pages, measured on the call, and a part that could not be measured within its
+  time limit is named as left out.
 - `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
   cites where the caller can read it now carries `knowledge_reference` (how
   Knowledge's newest citation of it names it), and its `source_ref` is then the

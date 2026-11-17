@@ -89,7 +89,9 @@ def test_stats_say_what_each_count_counts() -> None:
     assert mcp_graph.stats({"pages": 1430, "sources": 2789, "links": 9000}) == (
         "Pages: 1430 (live pages in scope)\n"
         "Sources: 2789 (page-to-source citations: a document cited by three pages "
-        "counts three times)"
+        "counts three times)\n"
+        "What the pages are (card types, what a card holds, hubs, how reads behave at "
+        "this size): knowledge_base command='orient' with the project as scope."
     )
 
 
