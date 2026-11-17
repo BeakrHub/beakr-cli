@@ -19,9 +19,9 @@ from typing import Any
 import pytest
 import respx
 from httpx import Response
-from mcp import types
 
-from beakr_cli.mcp_server import _public_source, mcp
+from beakr_cli.mcp_server import _public_source
+from tests import mcp_client
 from tests._engine import hosted_render
 
 API = "https://api.example.com"
@@ -61,13 +61,8 @@ def api(monkeypatch):
 
 
 async def _knowledge_base(arguments: dict[str, Any]) -> str:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name="knowledge_base", arguments=arguments),
-    )
-    result = (await handler(request)).root
-    assert not result.isError, result.content
+    result = await mcp_client.call_tool("knowledge_base", arguments)
+    assert not result.is_error, result.content
     return result.content[0].text
 
 

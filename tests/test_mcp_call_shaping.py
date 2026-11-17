@@ -18,7 +18,7 @@ import respx
 from httpx import Response
 from mcp import types
 
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 
 API = "https://api.example.com"
 
@@ -30,12 +30,7 @@ def api(monkeypatch):
 
 
 async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 def _door_reply(text: str, *, status: str = "success", code: str | None = None) -> dict:
@@ -62,7 +57,7 @@ async def test_knowledge_budget_hint_survives_without_coverage_sidecar() -> None
     reply["next"] = [hint]
     respx.post(f"{API}/v1/knowledge/wiki/command").mock(return_value=Response(200, json=reply))
     result = await _call("knowledge_base", {"command": "ls", "arguments": {"limit": 500}})
-    assert not result.isError
+    assert not result.is_error
     assert hint in "\n".join(block.text for block in result.content if hasattr(block, "text"))
 
 
@@ -76,7 +71,7 @@ async def test_top_level_knowledge_options_are_folded_into_arguments() -> None:
         "knowledge_base",
         {"command": "grep", "query": "lease", "limit": 5, "arguments": {"limit": 3}, "scope": "P"},
     )
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     sent = json.loads(route.calls.last.request.content)
     # Top-level options reach the door; an explicit ``arguments`` key wins.
     assert sent == {"command": "grep", "query": "lease", "limit": 3, "scope": "P"}
@@ -90,7 +85,7 @@ async def test_research_accepts_question_and_scope_as_aliases() -> None:
     )
     project = "e56b7c9b-4616-4c89-94bc-6c1c49af35cc"
     result = await _call("research", {"question": "How long is a lease?", "scope": project})
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     sent = json.loads(route.calls.last.request.content)
     assert sent["query"] == "How long is a lease?"
     assert project in json.dumps(sent)
@@ -99,7 +94,7 @@ async def test_research_accepts_question_and_scope_as_aliases() -> None:
 @pytest.mark.asyncio
 async def test_a_validation_error_is_one_line_naming_the_fix() -> None:
     result = await _call("research", {"quick": True})
-    assert result.isError
+    assert result.is_error
     text = result.content[0].text
     assert "\n" not in text
     assert "pydantic" not in text
@@ -125,7 +120,7 @@ async def test_an_argument_a_tool_does_not_take_is_refused_not_dropped(
     # scope"). The hosted server refuses it (additionalProperties: false).
     route = respx.route().mock(return_value=Response(200, json={}))
     result = await _call(tool, arguments)
-    assert result.isError
+    assert result.is_error
     body = json.loads(result.content[0].text)
     assert body["error_code"] == "invalid_arguments"
     assert unknown in body["message"]
@@ -142,7 +137,7 @@ async def test_an_error_outcome_is_compact() -> None:
         )
     )
     result = await _call("knowledge_base", {"command": "grep"})
-    assert result.isError and result.structuredContent is None
+    assert result.is_error and result.structured_content is None
     assert json.loads(result.content[0].text) == {
         "status": "error",
         "error_code": "invalid_arguments",
@@ -168,7 +163,7 @@ async def test_an_api_refusal_is_compact_with_the_envelopes_fix() -> None:
         )
     )
     result = await _call("knowledge_base", {"command": "ls", "scope": "Nope"})
-    assert result.isError and result.structuredContent is None
+    assert result.is_error and result.structured_content is None
     assert json.loads(result.content[0].text) == {
         "status": "error",
         "error_code": "not_found",
@@ -197,7 +192,7 @@ async def test_research_resolves_a_project_name() -> None:
         return_value=Response(200, json={"answer": "Five minutes.", "sources": {}})
     )
     result = await _call("research", {"query": "How long is a lease?", "scope": "platform docs"})
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     assert project in json.dumps(json.loads(route.calls.last.request.content))
 
 
@@ -213,7 +208,7 @@ async def test_research_returns_only_the_sources_its_answer_cites() -> None:
         )
     )
     result = await _call("research", {"query": "How long is a lease?"})
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     text = result.content[0].text
     assert "doc 7" in text and "doc 3" in text
     assert "doc 12" not in text
@@ -296,7 +291,7 @@ async def test_scope_is_read_as_project_on_the_tools_that_take_project(
 async def test_scope_and_project_with_different_values_are_refused() -> None:
     other = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
     result = await _call("wiki_stats", {"scope": PROJECT_ID, "project": other})
-    assert result.isError
+    assert result.is_error
     error = json.loads(result.content[0].text)
     assert error["error_code"] == "invalid_arguments"
     assert "name different projects" in error["message"]

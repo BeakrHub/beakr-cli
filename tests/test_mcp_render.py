@@ -24,7 +24,7 @@ _CASES = json.loads(
 async def test_no_tool_declares_an_output_schema():
     # A declared outputSchema obliges every result to carry structuredContent.
     for tool in await mcp_server.mcp.list_tools():
-        assert tool.outputSchema is None, tool.name
+        assert tool.output_schema is None, tool.name
 
 
 def test_a_cat_result_is_smaller_than_the_one_json_copy_it_replaces():

@@ -21,10 +21,9 @@ from typing import Any
 import pytest
 import respx
 from httpx import Response
-from mcp import types
 
 from beakr_cli import mcp_graph
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 from tests._engine import real_engine
 
 API = "https://api.example.com"
@@ -55,12 +54,8 @@ async def _call(name: str, graph: dict[str, Any], stats: dict[str, Any]) -> str:
     with respx.mock:
         respx.get(f"{API}/v1/knowledge/wiki/graph").mock(return_value=Response(200, json=graph))
         respx.get(f"{API}/v1/knowledge/stats").mock(return_value=Response(200, json=stats))
-        handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-        request = types.CallToolRequest(
-            method="tools/call", params=types.CallToolRequestParams(name=name, arguments={})
-        )
-        result = (await handler(request)).root
-    assert not result.isError, result.content
+        result = await mcp_client.call_tool(name, {})
+    assert not result.is_error, result.content
     return result.content[0].text
 
 

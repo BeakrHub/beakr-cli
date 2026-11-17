@@ -21,7 +21,7 @@ from httpx import Response
 from mcp import types
 
 from beakr_cli import mcp_tools_platform
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 
 API = "https://api.example.com"
 PROJECT = "3e1dda3b-6b07-47fa-81b5-100e67e5b2e3"
@@ -54,12 +54,7 @@ def api(monkeypatch):
 
 
 async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 def _documents() -> respx.Route:
@@ -83,7 +78,7 @@ async def test_documents_reads_a_project_id_without_listing_the_organization(
         {"command": "search", "arguments": {"query": "freezer"}, "project": PROJECT},
     )
 
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     assert json.loads(documents.calls.last.request.content)["project_id"] == PROJECT
     assert not listing.called
 
@@ -104,7 +99,7 @@ async def test_research_reads_a_project_id_for_a_credential_without_projects_rea
         "research", {"query": "Who owns ZETA-7?", "quick": True, "project": PROJECT}
     )
 
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     assert research.called
     assert PROJECT in research.calls.last.request.content.decode()
     assert not listing.called
@@ -119,6 +114,6 @@ async def test_a_project_id_that_names_nothing_is_still_refused() -> None:
 
     result = await _call("documents", {"command": "ls", "project": PROJECT})
 
-    assert result.isError
+    assert result.is_error
     assert json.loads(result.content[0].text)["error_code"] == "scope_not_found"
     assert not documents.called

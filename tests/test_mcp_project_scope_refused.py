@@ -22,7 +22,7 @@ from httpx import Response
 from mcp import types
 
 from beakr_cli import mcp_tools_platform
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 
 API = "https://api.example.com"
 SCIENCE = "9939752a-9d48-475c-b72e-1d3fc46c064a"
@@ -58,12 +58,7 @@ def _projects() -> respx.Route:
 
 
 async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 @pytest.mark.parametrize(
@@ -89,7 +84,7 @@ async def test_a_project_that_names_nothing_is_refused_with_the_closest(
 
     result = await _call(tool, arguments)
 
-    assert result.isError
+    assert result.is_error
     body = json.loads(result.content[0].text)
     assert body["error_code"] == "scope_not_found"
     assert body["message"].startswith("No project you can read matches")
@@ -125,11 +120,11 @@ async def test_read_file_keeps_to_the_project_it_names() -> None:
     by_scope = await _call(
         "read_file", {"artifact_id": "Reagents.xlsx", "scope": "science ingest 018"}
     )
-    assert not by_scope.isError, by_scope.content
+    assert not by_scope.is_error, by_scope.content
     assert json.loads(read.calls.last.request.content)["project"] == SCIENCE
 
     unscoped = await _call("read_file", {"artifact_id": "Reagents.xlsx"})
-    assert not unscoped.isError
+    assert not unscoped.is_error
     assert "project" not in json.loads(read.calls.last.request.content)
 
 
@@ -156,7 +151,7 @@ async def test_get_profile_reads_a_project_by_name_with_each_goal_on_its_line() 
 
     result = await _call("get_profile", {"project_id": "Science Ingest 018"})
 
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     assert profile.called
     text = result.content[0].text
     # The org it was read in leads (an API key acts in the org it was issued for).
@@ -172,7 +167,7 @@ async def test_get_profile_reads_a_project_by_name_with_each_goal_on_its_line() 
 async def test_get_profile_without_a_project_says_what_to_pass() -> None:
     result = await _call("get_profile", {"profile_type": "project"})
 
-    assert result.isError
+    assert result.is_error
     body = json.loads(result.content[0].text)
     assert body["error_code"] == "invalid_arguments"
     assert body["message"] == "A project profile needs the project: pass project_id."
@@ -209,7 +204,7 @@ async def test_a_name_in_its_own_case_selects_that_project(name: str, project_id
 
     result = await _call("wiki_stats", {"project": name})
 
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     assert stats.calls.last.request.url.params["project_id"] == project_id
 
 
@@ -220,7 +215,7 @@ async def test_a_name_in_neither_case_is_refused_naming_each_candidate() -> None
 
     result = await _call("wiki_stats", {"project": "Test"})
 
-    assert result.isError
+    assert result.is_error
     # The hosted server's refusal, word for word (project_not_resolved).
     assert json.loads(result.content[0].text) == {
         "status": "error",

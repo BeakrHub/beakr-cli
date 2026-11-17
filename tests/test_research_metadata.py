@@ -22,7 +22,7 @@ async def test_failed_research_records_unknown_cost_and_preserves_tool_error(mon
             return_value=Response(504, json={"detail": "Research agent timed out."})
         )
         result = await mcp_server.mcp.call_tool("research", {"query": "Private matter question"})
-    assert result.isError
+    assert result.is_error
     assert "timed out" in result.content[0].text
     row = json.loads(log.read_text())
     assert row["cost_usd"] is None
