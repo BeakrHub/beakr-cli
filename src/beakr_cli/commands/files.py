@@ -4,10 +4,12 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
 import typer
+from beakr_sdk.errors import BeakrError, PermissionDeniedError
 from beakr_sdk.resources._upload import iter_folder_files
 from rich.markup import escape
 
@@ -264,6 +266,8 @@ def _wait_for_uploaded_knowledge(
     Each file's status is then read from the file itself, so the upload reports
     the word `beakr files ls` prints for it (an incomplete file is neither
     failed nor ready, and the project counts used to read ready over it).
+    Inside an agent session, which may not read the project status, the files'
+    own statuses are the read (:func:`_wait_for_files_knowledge`).
     """
     from beakr_cli.commands.project_knowledge import (
         failed_among,
@@ -274,14 +278,23 @@ def _wait_for_uploaded_knowledge(
     uploaded = {_knowledge_file_id(row) for row in results} - {""}
     err_console.print("Waiting for Knowledge...")
     with get_sdk(timeout=300.0) as sdk:
-        status = wait_for_knowledge(sdk, project_id, timeout=timeout)
-        if status is None:
-            return [], False, {}
-        failed = failed_among(sdk, project_id, status, uploaded)
-        statuses = {
-            file_id: (sdk.files.get(file_id) or {}).get("knowledge_status")
-            for file_id in sorted(uploaded)
-        }
+        try:
+            status = wait_for_knowledge(sdk, project_id, timeout=timeout)
+        except PermissionDeniedError as exc:
+            if exc.code != _SESSION_ROUTE_UNAVAILABLE:
+                raise
+            settled = _wait_for_files_knowledge(sdk, project_id, uploaded, timeout=timeout)
+            if settled is None:
+                return [], False, {}
+            failed, statuses = settled
+        else:
+            if status is None:
+                return [], False, {}
+            failed = failed_among(sdk, project_id, status, uploaded)
+            statuses = {
+                file_id: (sdk.files.get(file_id) or {}).get("knowledge_status")
+                for file_id in sorted(uploaded)
+            }
     for row in failed:
         err_console.print(f"Failed: {failed_file_line(row)}", highlight=False, markup=False)
     for file_id, file_status in statuses.items():
@@ -292,6 +305,77 @@ def _wait_for_uploaded_knowledge(
                 markup=False,
             )
     return failed, True, statuses
+
+
+#: The engine's refusal of a route no agent session may call. The project's
+#: Knowledge status is one (it is a web app view, not narrowed to the session's
+#: projects), so inside Claude Code the wait reads the uploaded files instead.
+_SESSION_ROUTE_UNAVAILABLE = "session_route_unavailable"
+
+#: A file's knowledge_status while it is still on its way into Knowledge.
+_PENDING = frozenset({"queued", "running"})
+
+
+def _wait_for_files_knowledge(
+    sdk: Any, project_id: str, file_ids: set[str], *, timeout: float
+) -> tuple[list[dict[str, Any]], dict[str, str | None]] | None:
+    """Wait until none of ``file_ids`` is queued or running for Knowledge, by
+    reading each file's own ``knowledge_status`` (``GET /v1/artifacts/{id}``).
+
+    The session-safe wait: a session may read its projects' files, but not the
+    project's Knowledge status. Unlike the project wait it does not wait out
+    other files compiling at the same time. Returns the failed files among them
+    and each file's final status, or ``None`` after printing why when
+    ``timeout`` passed first.
+    """
+    from beakr_cli.commands.project_knowledge import progress_line, state_phrase
+
+    deadline = time.monotonic() + timeout
+    interval = 5.0
+    printed: list[str] = []
+    while True:
+        files = {file_id: sdk.files.get(file_id) or {} for file_id in sorted(file_ids)}
+        statuses = {file_id: file.get("knowledge_status") for file_id, file in files.items()}
+        counts = {
+            word: sum(1 for status in statuses.values() if status == word)
+            for word in ("queued", "running", "failed")
+        }
+        line = progress_line(counts)
+        if not printed or printed[-1] != line:
+            err_console.print(line, highlight=False, markup=False)
+            printed.append(line)
+        if not any(status in _PENDING for status in statuses.values()):
+            break
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            waiting = [file_id for file_id, status in statuses.items() if status in _PENDING]
+            err_console.print(
+                f"Knowledge is still {state_phrase(counts)} after {timeout:.0f}s; "
+                f"check later with `beakr files show {waiting[0]}`.",
+                highlight=False,
+                markup=False,
+            )
+            return None
+        time.sleep(min(interval, remaining))
+        interval = min(interval * 1.5, 30.0)
+    failed_ids = {file_id for file_id, status in statuses.items() if status == "failed"}
+    failed: list[dict[str, Any]] = []
+    if failed_ids:
+        try:
+            failed = [
+                row
+                for row in sdk.projects.knowledge_failures(project_id)
+                if str(row.get("artifact_id")) in failed_ids
+            ]
+        except BeakrError:
+            failed = []
+        named = {str(row.get("artifact_id")) for row in failed}
+        # A failure the list did not name is still reported, by the file's title.
+        failed += [
+            {"artifact_id": file_id, "filename": files[file_id].get("title") or file_id}
+            for file_id in sorted(failed_ids - named)
+        ]
+    return failed, statuses
 
 
 def _knowledge_file_id(row: dict[str, Any]) -> str:
