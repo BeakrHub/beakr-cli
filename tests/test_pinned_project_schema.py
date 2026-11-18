@@ -16,7 +16,7 @@ from beakr_cli import mcp_server, project_binding, tool_surface
 
 
 def _schemas() -> dict[str, dict]:
-    return {tool.name: tool.inputSchema for tool in asyncio.run(mcp_server.mcp.list_tools())}
+    return {tool.name: tool.input_schema for tool in asyncio.run(mcp_server.mcp.list_tools())}
 
 
 @pytest.fixture(autouse=True)

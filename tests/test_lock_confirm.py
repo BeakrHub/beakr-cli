@@ -125,7 +125,7 @@ def test_the_vendored_surface_names_the_engines_tools_and_property():
 def test_confirm_lock_is_listed_on_exactly_the_surfaces_tools():
     _active(_session("automatic"))
     tools = asyncio.run(mcp_server.mcp.list_tools())
-    listed = {tool.name: tool.inputSchema for tool in tools}
+    listed = {tool.name: tool.input_schema for tool in tools}
     with_it = {name for name, schema in listed.items() if "confirm_lock" in schema["properties"]}
     assert with_it == CONFIRM_LOCK_TOOLS & set(listed)
     # Every one of them is served here, as on the hosted server.
@@ -176,7 +176,7 @@ def test_anything_but_project_ids_is_refused_in_the_hosted_servers_words(value, 
         )
     )
 
-    assert result.isError and not door.called
+    assert result.is_error and not door.called
     assert result.content[0].text == json.dumps(
         {
             "status": "error",
@@ -214,7 +214,7 @@ def test_a_held_call_answers_the_compact_session_error_and_never_asks(monkeypatc
 
     result = asyncio.run(mcp_server.mcp.call_tool("knowledge_base", {"command": "ls", "scope": A}))
 
-    assert result.isError and door.call_count == 1
+    assert result.is_error and door.call_count == 1
     assert json.loads(result.content[0].text) == {
         "status": "error",
         "error_code": "session_lock_confirm",
@@ -234,7 +234,7 @@ def test_read_file_answers_the_hold_not_a_read_conflict():
         mcp_server.mcp.call_tool("read_file", {"artifact_id": "notes.md", "project": A})
     )
 
-    assert result.isError
+    assert result.is_error
     assert json.loads(result.content[0].text) == {
         "status": "error",
         "error_code": "session_lock_confirm",

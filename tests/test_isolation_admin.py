@@ -766,15 +766,15 @@ def test_no_mcp_tool_can_change_isolation_settings():
 
 
 def test_no_mcp_tool_takes_an_isolation_setting():
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
     from beakr_cli import tool_surface
     from beakr_cli.mcp_server import mcp
 
-    tools = asyncio.run(FastMCP.list_tools(mcp))
+    tools = asyncio.run(MCPServer.list_tools(mcp))
     assert tools
     for tool in tools:
-        schema = json.dumps(tool.inputSchema)
+        schema = json.dumps(tool.input_schema)
         for field in SETTING_FIELDS:
             assert f'"{field}"' not in schema, (tool.name, field)
         assert not any(word in tool.name for word in ("isolation", "guard", "read_trail"))

@@ -26,7 +26,7 @@ from beakr_cli.mcp_workspace import workspace_prefix
 from beakr_cli.scope import scope_params
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from beakr_cli.tool_surface import TieredMCPServer
 
 #: Upper bound on any text a tool returns.
 MAX_TEXT_CHARS = 20_000
@@ -995,7 +995,7 @@ async def _integration_tool(name: str, connector_id: str | None) -> dict[str, An
 
 
 #: The server :func:`discover_tools` describes; set by :func:`register_platform_tools`.
-_SERVER: FastMCP | None = None
+_SERVER: TieredMCPServer | None = None
 
 
 def _search_words(search: str | None) -> list[str]:
@@ -1025,16 +1025,16 @@ async def discover_tools(search: str = "") -> str | dict[str, Any]:
         return "Discovery is not available on this server."
     words = _search_words(search)
     eager = set(tool_surface.eager_tools())
-    from mcp.server.fastmcp import FastMCP as _FastMCP
+    from mcp.server.mcpserver import MCPServer
 
     # The base class lists every registered tool, whatever the listing mode.
-    every = await _FastMCP.list_tools(_SERVER)
+    every = await MCPServer.list_tools(_SERVER)
     found = [
         {
             "name": tool.name,
             "description": tool.description,
-            "input_schema": tool_surface.listed_schema(tool.name, tool.inputSchema),
-            "read_only": bool(tool.annotations and tool.annotations.readOnlyHint),
+            "input_schema": tool_surface.listed_schema(tool.name, tool.input_schema),
+            "read_only": bool(tool.annotations and tool.annotations.read_only_hint),
         }
         for tool in every
         if tool.name not in eager and _matches(words, tool.name, tool.description)
@@ -1065,7 +1065,7 @@ PLATFORM_TOOLS = (
 )
 
 
-def register_platform_tools(server: FastMCP) -> None:
+def register_platform_tools(server: TieredMCPServer) -> None:
     """Register every platform tool on ``server``."""
     global _SERVER
     _SERVER = server
@@ -1073,5 +1073,5 @@ def register_platform_tools(server: FastMCP) -> None:
         # Description and tier come from the shared agent tool surface, the
         # same text the hosted MCP server and Beakr Ask use (W8.4). Every answer
         # is sent as {content, coverage, next} structured content, the hosted
-        # server's shape (TieredFastMCP.tool, SPEC-488).
+        # server's shape (TieredMCPServer.tool, SPEC-488).
         server.tool(**tool_surface.tool_kwargs(tool.__name__))(tool)

@@ -24,10 +24,11 @@ import pytest
 import respx
 from beakr_sdk.capabilities import forget_capabilities
 from mcp import ClientSession, types
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 from mcp.shared.memory import create_client_server_memory_streams
 
 from beakr_cli import mcp_server, tool_surface
+from tests import mcp_client
 
 API = "https://api.test"
 ARTIFACT = "11111111-2222-3333-4444-555555555555"
@@ -54,13 +55,15 @@ def fresh_listing():
 
 def _text(result) -> str:
     """A tool's answer: one text block, never a second structured copy."""
-    assert result.structuredContent is None
+    assert result.structured_content is None
     return "\n".join(getattr(item, "text", "") for item in result.content)
 
 
 async def _shaped(name: str, arguments: dict) -> dict:
     """The tool's own {content, coverage, next, ...} dict (SPEC-488), before rendering."""
-    return await mcp_server.mcp._tool_manager.call_tool(name, arguments, convert_result=False)
+    return await mcp_server.mcp._tool_manager.call_tool(
+        name, arguments, mcp_server.mcp.get_context(), convert_result=False
+    )
 
 
 async def test_the_default_listing_is_every_tool() -> None:
@@ -81,7 +84,7 @@ async def test_the_eager_mode_lists_the_eager_set_plus_discovery(monkeypatch) ->
 def test_the_server_declares_that_its_tool_listing_changes() -> None:
     options = mcp_server.mcp.initialization_options()
     assert options.capabilities.tools is not None
-    assert options.capabilities.tools.listChanged is True
+    assert options.capabilities.tools.list_changed is True
 
 
 async def _session(handler):
@@ -90,7 +93,7 @@ async def _session(handler):
     (client_read, client_write), (server_read, server_write) = await streams.__aenter__()
     group = anyio.create_task_group()
     await group.__aenter__()
-    lowlevel = mcp_server.mcp._mcp_server
+    lowlevel = mcp_server.mcp._lowlevel_server
     group.start_soon(
         lambda: lowlevel.run(server_read, server_write, mcp_server.mcp.initialization_options())
     )
@@ -112,14 +115,12 @@ async def test_eager_mode_discovery_adds_the_found_tools_and_says_so(monkeypatch
     changes: list[str] = []
 
     async def handler(message) -> None:
-        if isinstance(message, types.ServerNotification) and isinstance(
-            message.root, types.ToolListChangedNotification
-        ):
-            changes.append(message.root.method)
+        if isinstance(message, types.ToolListChangedNotification):
+            changes.append(message.method)
 
     session, initialized, close = await _session(handler)
     try:
-        assert initialized.capabilities.tools.listChanged is True
+        assert initialized.capabilities.tools.list_changed is True
         before = {tool.name for tool in (await session.list_tools()).tools}
         assert "wiki_stats" not in before
 
@@ -133,6 +134,30 @@ async def test_eager_mode_discovery_adds_the_found_tools_and_says_so(monkeypatch
         assert changes == ["notifications/tools/list_changed"]
     finally:
         await close()
+
+
+async def test_a_2026_07_28_client_hears_the_listing_change_on_its_listen_stream(
+    monkeypatch,
+) -> None:
+    # At protocol 2026-07-28 a change notification reaches a client only on a
+    # subscriptions/listen stream it opened; the library drops one sent on the
+    # shared channel. The eager mode's discover_tools therefore publishes the
+    # change on the server's subscription bus, or a modern client would never
+    # re-read the listing and could not call the tools it was just told about.
+    monkeypatch.setenv(tool_surface.TOOLS_ENV, "eager")
+    async with mcp_client.client(mode="auto") as client:
+        assert client.protocol_version == "2026-07-28"
+        tools = client.session.server_capabilities.tools
+        assert tools is not None and tools.list_changed is True
+        before = {tool.name for tool in (await client.list_tools()).tools}
+        assert "wiki_stats" not in before
+        async with client.listen(tools_list_changed=True) as subscription:
+            await client.call_tool("discover_tools", {"search": "stat"})
+            with anyio.fail_after(5):
+                event = await subscription.__anext__()
+        assert type(event).__name__ == "ToolsListChanged"
+        after = {tool.name for tool in (await client.list_tools()).tools}
+    assert "wiki_stats" in after and before < after
 
 
 async def test_the_default_mode_discovery_changes_no_listing() -> None:
@@ -193,7 +218,8 @@ async def test_a_hosted_document_with_organization_administration_lists_the_audi
 async def test_the_instructions_name_only_tools_the_installation_lists(monkeypatch) -> None:
     # Root cause: the instructions always sent agents to a 'skills' tool, which
     # a box does not list. They are rebuilt before `initialize` is answered.
-    monkeypatch.setattr(mcp_server.mcp._mcp_server, "instructions", mcp_server.mcp.instructions)
+    lowlevel = mcp_server.mcp._lowlevel_server
+    monkeypatch.setattr(lowlevel, "instructions", mcp_server.mcp.instructions)
     box = {"paths": {"/v1/projects": {"get": {}}, "/v1/context": {"post": {}}}}
     with respx.mock:
         respx.get(f"{API}/v1/public/openapi.json").respond(json=box)
@@ -225,8 +251,8 @@ async def test_a_route_the_installation_lacks_says_so_and_leaves_the_listing() -
     changes: list[str] = []
 
     async def handler(message) -> None:
-        if isinstance(message, types.ServerNotification):
-            changes.append(message.root.method)
+        if not isinstance(message, Exception):
+            changes.append(message.method)
 
     with respx.mock:
         respx.get(f"{API}/v1/skills").respond(404, json={"detail": "Not Found"})
@@ -237,7 +263,7 @@ async def test_a_route_the_installation_lacks_says_so_and_leaves_the_listing() -
         finally:
             await close()
     text = result.content[0].text
-    assert result.isError
+    assert result.is_error
     assert "This Beakr installation does not provide skills." in text
     assert "not_provided" in text
     assert "skills" not in listed
@@ -254,7 +280,7 @@ async def test_a_missing_record_is_still_an_ordinary_not_found() -> None:
             },
         )
         result = await mcp_server.mcp.call_tool("show_proposal", {"proposal_id": "p1"})
-    assert result.isError and "Proposal not found" in result.content[0].text
+    assert result.is_error and "Proposal not found" in result.content[0].text
     assert "show_proposal" in {tool.name for tool in await mcp_server.mcp.list_tools()}
 
 
@@ -274,7 +300,7 @@ async def test_discover_then_call_a_discovered_tool() -> None:
 
 async def test_discovery_lists_every_hidden_tool() -> None:
     found = await _shaped("discover_tools", {})
-    every = {tool.name for tool in await FastMCP.list_tools(mcp_server.mcp)}
+    every = {tool.name for tool in await MCPServer.list_tools(mcp_server.mcp)}
     hidden = every - set(tool_surface.eager_tools())
     assert {tool["name"] for tool in found["tools"]} == hidden
     assert found["coverage"]["returned"] == len(hidden)

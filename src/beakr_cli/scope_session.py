@@ -1983,8 +1983,12 @@ CODEX_THREAD_ENV = "CODEX_THREAD_ID"
 
 
 def codex_thread_id(meta: Any) -> str | None:
-    """The Codex thread a request's ``_meta`` names, when it is a valid conversation id."""
-    extra = getattr(meta, "model_extra", None) or {}
+    """The Codex thread a request's ``_meta`` names, when it is a valid conversation id.
+
+    mcp 2 hands ``_meta`` over as a plain dict; mcp 1 as a model whose unknown
+    keys were its ``model_extra``.
+    """
+    extra = meta if isinstance(meta, dict) else (getattr(meta, "model_extra", None) or {})
     turn = extra.get(CODEX_TURN_METADATA)
     thread = turn.get("thread_id") if isinstance(turn, dict) else None
     thread = str(thread or extra.get("threadId") or "").strip()

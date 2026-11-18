@@ -241,8 +241,14 @@ def _document_key(record: dict[str, Any]) -> str:
 def _display_name(record: dict[str, Any]) -> str:
     """The name a Sources line leads with: where the source lives, else its name."""
     location = record.get("location") or {}
+    # An outside record is named as the text cites it, ``CDD Vault › MOL-1234``.
+    outside_reference = record.get("reference") if _kind(record) == _RECORD else None
     return str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
+        location.get("display_path")
+        or record.get("filename")
+        or outside_reference
+        or record.get("name")
+        or "source"
     )
 
 

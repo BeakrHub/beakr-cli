@@ -153,7 +153,7 @@ def test_the_apis_widen_refusal_reaches_the_agent():
     )
     result = asyncio.run(mcp.call_tool("session_scope", {"drop": [B]}))
     body = json.loads(result.content[0].text)
-    assert result.isError and body["error_code"] == "session_widen_refused"
+    assert result.is_error and body["error_code"] == "session_widen_refused"
 
 
 # --- the server's session -------------------------------------------------------------
@@ -243,7 +243,7 @@ def test_a_failed_start_is_retried_and_never_falls_back_to_the_persons_reach(tmp
         respx.post(f"{API}/v1/sessions").respond(500, json={"detail": "boom"})
         projects = respx.get(f"{API}/v1/projects").respond(json={"data": []})
         result = asyncio.run(mcp.call_tool("knowledge_base", {"command": "ls"}))
-        assert result.isError
+        assert result.is_error
         assert json.loads(result.content[0].text)["error_code"] == "session_unavailable"
         assert not projects.called
 
@@ -359,7 +359,7 @@ def test_after_replacing_it_the_tool_call_answers_with_the_picker():
 
     result = asyncio.run(mcp.call_tool("knowledge_base", {"command": "ls"}))
 
-    assert result.isError
+    assert result.is_error
     answer = json.loads(result.content[0].text)
     assert answer["error_code"] == scope_session.NEEDS_SELECTION
     assert answer["message"].startswith(scope_session.REPLACED_MESSAGE)

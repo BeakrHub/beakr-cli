@@ -106,8 +106,8 @@ async def test_the_tools_are_listed_in_the_discovery_tier_with_the_shared_text()
         assert listed[name].description == tool_surface.description(name)
         assert listed[name].meta == {key: "discovery"}
         assert name in tool_surface.document()["discovery"]
-    assert listed["upload_status"].annotations.readOnlyHint is True
-    assert listed["upload_files"].annotations.readOnlyHint is False
+    assert listed["upload_status"].annotations.read_only_hint is True
+    assert listed["upload_files"].annotations.read_only_hint is False
     # No tool here invites anyone into the organization.
     assert not any("invite_to_org" in name or "organization_invite" in name for name in listed)
     assert "create_project, then its Knowledge profile" in mcp_server.instructions()

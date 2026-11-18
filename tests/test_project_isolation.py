@@ -544,7 +544,7 @@ def test_knowledge_base_write_held_by_the_guard_is_a_normal_result():
         )
     )
 
-    assert not result.isError
+    assert not result.is_error
     text = result.content[0].text
     assert "Held for approval by an owner or admin of Pharma B." in text
 
@@ -791,7 +791,7 @@ def test_the_engines_own_held_line_is_not_said_twice():
     )
 
     text = result.content[0].text
-    assert not result.isError
+    assert not result.is_error
     assert text.lower().count("held for") == 1
 
 

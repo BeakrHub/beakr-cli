@@ -54,7 +54,7 @@ def test_project_id_is_still_read_as_project():
 
     result = asyncio.run(mcp_server.mcp.call_tool("wiki_stats", {"project_id": A}))
 
-    assert not result.isError, result.content[0].text
+    assert not result.is_error, result.content[0].text
     assert stats.calls.last.request.url.params["project_id"] == A
 
 

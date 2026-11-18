@@ -22,6 +22,7 @@ from httpx import Response
 from mcp import types
 
 from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 from tests._engine import hosted_render as load_hosted_render
 
 API = "https://api.example.com"
@@ -40,17 +41,14 @@ def hosted_render():
 
 
 async def _stdio_call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 async def _tool_body(name: str, arguments: dict[str, Any]) -> dict[str, Any]:
     """The tool's own result dict, before either server wraps it in an envelope."""
-    return await mcp._tool_manager.call_tool(name, arguments, convert_result=False)
+    return await mcp._tool_manager.call_tool(
+        name, arguments, mcp.get_context(), convert_result=False
+    )
 
 
 @pytest.mark.asyncio
@@ -75,7 +73,7 @@ async def test_document_listing_tools_call_continues_after_visible_rows(hosted_r
     stdio = await _stdio_call("documents", args)
     body = finish(await _tool_body("documents", args), tool="documents")
     assert _envelope(stdio) == _envelope(_hosted_success(hosted_render, "documents", body))
-    assert len(stdio.content) == 1 and not stdio.isError
+    assert len(stdio.content) == 1 and not stdio.is_error
     assert "structuredContent" not in _envelope(stdio)
     end = body["coverage"]["visible_end"]
     text = stdio.content[0].text
@@ -94,7 +92,7 @@ def _hosted_success(render, name: str, body: dict[str, Any]) -> types.CallToolRe
 
 def _hosted_error(text: str) -> types.CallToolResult:
     # beakr/api/mcp_remote/server.py _error_result.
-    return types.CallToolResult(content=[types.TextContent(type="text", text=text)], isError=True)
+    return types.CallToolResult(content=[types.TextContent(type="text", text=text)], is_error=True)
 
 
 def _envelope(result: types.CallToolResult) -> dict[str, Any]:
@@ -139,7 +137,7 @@ async def test_a_knowledge_result_is_one_text_block_rendered_as_the_hosted_serve
 
     assert _envelope(stdio) == _envelope(_hosted_success(hosted_render, "knowledge_base", body))
     assert "structuredContent" not in _envelope(stdio)
-    assert len(stdio.content) == 1 and not stdio.isError
+    assert len(stdio.content) == 1 and not stdio.is_error
     assert "assay.pdf" in stdio.content[0].text  # the Sources list, rendered once
 
 
@@ -200,10 +198,8 @@ async def test_no_tool_declares_an_output_schema(monkeypatch) -> None:
     # A declared outputSchema obliges every result to repeat itself as
     # structuredContent (MCP spec), which is what doubled the results.
     monkeypatch.setenv("BEAKR_MCP_TOOLS", "all")
-    tools = await mcp._mcp_server.request_handlers[types.ListToolsRequest](
-        types.ListToolsRequest(method="tools/list")
-    )
-    assert [t.name for t in tools.root.tools if t.outputSchema] == []
+    tools = await mcp_client.list_tools()
+    assert [t.name for t in tools if t.output_schema] == []
 
 
 def test_a_compact_records_sources_footer_matches_the_hosted_one(hosted_render) -> None:

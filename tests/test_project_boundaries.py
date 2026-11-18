@@ -759,11 +759,11 @@ def test_instructions_explain_the_two_rules_and_three_modes():
 
 
 def test_start_session_and_session_status_are_listed_with_a_session():
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
     from beakr_cli.mcp_server import mcp
 
-    names = {tool.name for tool in asyncio.run(FastMCP.list_tools(mcp))}
+    names = {tool.name for tool in asyncio.run(MCPServer.list_tools(mcp))}
     assert {"start_session", "session_status"} <= names
     assert "start_session" in mcp_session.UNGATED_TOOLS
 
@@ -1176,7 +1176,7 @@ def test_a_refused_tool_call_keeps_the_apis_words():
     result = asyncio.run(mcp.call_tool("list_projects", {}))
 
     body = json.loads(result.content[0].text)
-    assert result.isError
+    assert result.is_error
     assert body["error_code"] == "session_locked_to_project"
     assert body["message"] == message and body["fix"] == fix
 

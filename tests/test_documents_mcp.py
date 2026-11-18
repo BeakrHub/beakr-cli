@@ -27,7 +27,7 @@ async def test_real_stdio_tool_forwards_explicit_document_window(monkeypatch):
                 "project": project,
             },
         )
-    assert not result.isError
+    assert not result.is_error
     assert "Lines 21-40" in result.content[0].text
     assert json.loads(route.calls[0].request.content) == {
         "command": "read",

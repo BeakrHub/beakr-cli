@@ -89,7 +89,7 @@ async def test_a_validation_refusal_keeps_the_field_and_its_text() -> None:
     # In range for this server, so the call reaches the API (which refuses it here).
     result = await mcp_server.mcp.call_tool("context", {"budget_chars": 2600})
     text = result.content[0].text
-    assert result.isError
+    assert result.is_error
     assert "budget_chars: Input should be greater than or equal to 2000" in text
     assert "HTTP 422" not in text
 
@@ -103,7 +103,9 @@ async def test_context_output_is_bounded() -> None:
     # SPEC-488), and cutting the text marks the result incomplete with a hint.
     from beakr_cli import mcp_server
 
-    result = await mcp_server.mcp._tool_manager.call_tool("context", {}, convert_result=False)
+    result = await mcp_server.mcp._tool_manager.call_tool(
+        "context", {}, mcp_server.mcp.get_context(), convert_result=False
+    )
     assert len(result["content"]) < MAX_TEXT_CHARS + 200
     assert "truncated" in result["content"]
     assert result["coverage"]["complete"] is False
@@ -338,12 +340,12 @@ async def test_import_conversation_validates_client() -> None:
 
 
 async def test_platform_tools_are_registered_on_the_server() -> None:
-    from mcp.server.fastmcp import FastMCP
+    from mcp.server.mcpserver import MCPServer
 
     from beakr_cli.mcp_server import mcp
 
     # Registered (callable) whether or not the default listing shows them.
-    names = {tool.name for tool in await FastMCP.list_tools(mcp)}
+    names = {tool.name for tool in await MCPServer.list_tools(mcp)}
     assert {
         "context",
         "skills",
