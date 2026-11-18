@@ -4,7 +4,7 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.7.0 (2026-11-16)
+## beakr-cli 0.7.0 (2026-11-18)
 
 ### Client changes
 
@@ -42,6 +42,32 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `POST /v1/sessions` and `PATCH /v1/sessions/{session_id}`: an agent's
+  session (one started for an agent conversation with `agent_session`, or held
+  by `beakr mcp`) is widened only by the person, in the Beakr web app. An API
+  key or session token that adds a project, moves the session between picked,
+  read everything and automatic, or makes the first choice of a pending
+  session is refused with `403 session_widen_needs_person` and its
+  `picker_url`. In a `must_pick` organization a new agent session declared
+  with lists or `read_everything` starts pending, with that refusal. What was
+  asked for is kept, never applied, in the session's new
+  `proposed_read_projects`, `proposed_write_projects`,
+  `proposed_read_everything`, `proposed_at` and `proposed_reasons` fields, and
+  the refusal carries `proposed_read_project_ids`,
+  `proposed_write_project_ids` and `proposed_read_everything`. Dropping
+  projects still works with any credential. A shell's own session is
+  unchanged.
+- `PATCH /v1/sessions/{session_id}`: lists that what the session has already
+  done rules out (a write other than the project it is locked to, or a write
+  into a project that takes no content from others after it read another) are
+  refused with `422 session_selection_invalid` and that reason; they were
+  stored.
+- `POST /v1/sessions/options`: the new `session_id` checks the lists against
+  what that session has already done, with the same reasons.
+- Session responses: `summary` names the session's lock once it has one
+  ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
+  session_already_started` refusal says to end the session and start a new
+  agent conversation.
 - `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
   naming one project it returns that project's orientation map in about 3,000
   characters: its knowledge profile, how many pages of each card type, what a
@@ -61,6 +87,226 @@ Each release lists the public API changes it supports, taken from the API change
   item reference a Knowledge write accepts as a citation. Cite such an item by
   that `source_ref`; cite any other item as an `external_record`. A credential
   confined to some projects sees only citations on pages in those projects.
+- Project isolation, for organizations whose projects must not write into one
+  another (each part is available where the organization has it turned on;
+  `GET /v1/organizations/{org_id}/project-isolation` returns which parts are on, under `available`):
+  - Project boundaries: each project has a `boundary` of `content_out`
+    (`allowed` or `locked`) and `content_in` (`allowed`, `owner_approves` or
+    `blocked`), returned on project responses (`GET /v1/projects`,
+    `GET /v1/projects/{project_id}`, `POST /v1/projects`,
+    `PATCH /v1/projects/{project_id}`) with its `preset` (`internal`, `siloed`,
+    `leadership` or `custom`), the project's own `stored` values,
+    `raised_by_minimum`, a plain-words `summary` and `can_change`.
+    `PATCH /v1/projects/{project_id}` and `POST /v1/projects` take `boundary` or
+    `boundary_preset`; changing it needs an owner or admin of the project, or an
+    organization admin, signed in or with their key with `proposals:accept`
+    (`403 person_required` otherwise, `403 forbidden` for anyone else), and a
+    boundary below the organization's minimum answers
+    `422 boundary_below_minimum`. Project responses also carry the deprecated
+    `cross_project_guard` and `cross_project_guard_override` (`content_in` as
+    `allow`, `hold` or `refuse`), and `GET` and `PUT
+    /v1/projects/{project_id}/cross-project-guard` read and set `content_in` in
+    those words.
+  - Settings: `GET /v1/organizations/{org_id}/project-isolation` returns the organization's
+    `session_mode` (`automatic` or `must_pick`), `default_boundary` (what new
+    projects start with), `minimum_boundary` (a floor every project is raised
+    to, or `null`), `agent_writes_require_session` and the `presets`.
+    `PUT /v1/organizations/{org_id}/project-isolation` changes them; it needs an
+    organization admin signed in, or their key with `proposals:accept`, and
+    answers `404 feature_not_enabled` for a part that is not turned on. The
+    retired `cross_project_guard` and `auto_lock_counts_search_results`, and the
+    session modes `picker` and `auto_lock`, answer `422 setting_retired` naming
+    what replaced them. The response still carries the deprecated
+    `cross_project_guard`, `auto_lock_counts_search_results` (always true) and
+    `available.session_auto_lock` (always false).
+  - One session per agent conversation: a request with a person's API key and
+    `X-Beakr-Session: <conversation id>`, and no session token, runs inside that
+    person's session for the conversation, started on its first request, so an
+    MCP server, its subagents and CLI calls in one conversation share it.
+    `POST /v1/sessions` with `agent_session` returns that session, or starts it.
+    A conversation id whose session has ended answers `409 session_ended`.
+  - Session modes: a session is `automatic` (it reads every project the person
+    can, and the server tracks what it touches), `picked` (its
+    `read_project_ids` and `write_project_ids` chosen) or `read_everything`
+    (`POST /v1/sessions` with `read_everything: true`: every project, and no
+    writes). In a `must_pick` organization a session with nothing chosen is
+    pending. `PATCH /v1/sessions/{session_id}` with `mode: "automatic"` makes an
+    untouched session automatic, except in a `must_pick` organization
+    (`422 session_mode_must_pick`). Lists that break a boundary answer `422 session_selection_invalid`
+    with every `reasons` entry; an `owner_approves` project in the lists comes
+    back in `notes`. Choosing the lists or mode of a session that has already
+    read or written a project answers `409 session_already_started`. Session
+    responses carry `mode`, `agent_session`, `lock_state` (`open`, `locked` or
+    `read_only`), `write_project`, `touched_projects`,
+    `read_touched_projects`, `read_only_at`, `read_only_reason`, `summary` and
+    `notes`.
+  - The rules: once a session touches a `locked` project it may write only
+    there (`403 session_locked_to_project`), and after two it is read-only
+    (`403 session_read_only`, also every write of a `read_everything` session).
+    A write into a `blocked` project from a session that read another project
+    answers `403 cross_project_write_refused`; into an `owner_approves` one it is
+    held. A write anywhere, a person's included, that cites, moves or copies a
+    `locked` project's content into another project answers
+    `403 project_content_locked`. A search that names no project leaves out the
+    `locked` projects the session has not touched, except in `read_everything`;
+    every project its results come from counts as read. The response of the
+    request that locked the session carries `X-Beakr-Session-Notice` and
+    `X-Beakr-Session-Lock`, and the Knowledge operations
+    (`POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`) also
+    `session_notice`.
+  - Confirm before entering a locked project: in an `automatic` session that has
+    already read or written another project, the first request that touches a
+    `locked` project it has not touched answers `409 session_lock_confirm` and
+    reads, writes and records nothing. `detail` (and `error`, beside `code`)
+    carries `message` (one line: what entering costs and how to go in), `fix`,
+    `session_id`, `project` (`id`, `name`), `cost` and `confirm_lock`, the id to
+    send back. The same request with `X-Beakr-Confirm-Lock: <project id>`
+    (several ids comma-separated) goes in, with the usual lock notice; anything
+    but project ids in it answers `422 invalid_arguments`. Never held: a
+    session's first touch, a project it already touched or is locked to, a
+    session that is already read-only, `picked` and `read_everything` sessions,
+    and a credential that can read only that project. A `picked` session gets no
+    lock notice either (its log and status still record the lock). The session's
+    log records one `boundary:held` event per held project.
+  - More reads follow a session's rules. A session token can now call them, and a
+    request joined to a session by `X-Beakr-Session` gets the session's rules on
+    them (before, it ran as the plain key): the Knowledge graph and timeline, a
+    page's links, history and exports, card rows, entities and conflicts, recent
+    changes, ingestion events, a proposal's conflict, the activity feed, and a
+    file's preview and parsed pages. Each is confined to the session's projects;
+    naming a project, or reading a page, file or proposal, is a read of its
+    project (held, confirmed and locked like any read); and one that names no
+    project leaves out the locked projects the session has not touched. Getting a
+    download link (`GET /v1/artifacts/versions/{version_id}/download-url`,
+    `POST /v1/artifacts/download-url`) is now a read of the file's project too.
+    The MCP `wiki_graph` tool takes `confirm_lock`. A project-restricted API key
+    and an end-user token can call these reads too, confined to their own
+    projects as a page read is: the graph and timeline, for one, answer only from
+    the credential's projects, and naming another project, or focusing the graph
+    on its page, is refused or not found.
+  - Refused inside any session, joined by `X-Beakr-Session` or with a session
+    token, with `403 session_route_unavailable` (`message` says what and why,
+    `fix` how to call it instead): a write's read trail
+    (`GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail`,
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail`), which
+    shows what was read in other projects, and three views of the web app (a
+    project's Knowledge status, suggested projects for a file, a folder's delete
+    preview).
+  - The hosted MCP server's `session_status` takes `trail` (true also lists what
+    the session read, newest first, from `GET /v1/sessions/{session_id}/trail`) and
+    `proposal_id` (says where a person reads that write's trail, which no session
+    may read), as the beakr CLI's `beakr mcp` does, in the same words. Called with
+    neither, it answers as before.
+  - `POST /v1/sessions/options` says, for a picker's read and write lists, whether
+    they are valid and, for each project the person can read, whether it can be
+    added to read or to write, with the reason when not.
+    `GET /v1/sessions/current/status` and `GET /v1/sessions/{session_id}/status`
+    return where a session stands: its mode and lock, what it has read, where it
+    may still write (`write`) and why not elsewhere, and its latest `events`
+    (rows of its trail, newest first).
+    The session's lock events, refusals and start are also in its trail
+    (`GET /v1/sessions/{session_id}/trail`, `op` `boundary:<kind>`).
+  - A request in a session (a session token, or a key with `X-Beakr-Session`)
+    that must name a project and names none answers
+    `403 session_project_required`, with the session's `session_id` and a `fix`:
+    pass one of the session's projects, which `GET /v1/sessions/current` lists.
+    This applies to every operation that takes a project filter or target, such
+    as `POST /v1/knowledge/research`, `GET` and `POST /v1/folders`,
+    `POST /v1/artifacts`, `POST /v1/artifacts/{artifact_id}/move`,
+    `POST /v1/uploads`, `POST /v1/bulk/prepare` and
+    `POST /v1/knowledge/wiki/proposals`. A project-restricted key outside a
+    session still answers `403 insufficient_scope`.
+  - With `agent_writes_require_session`, a Knowledge or file write made with a
+    person's API key or token outside a session answers `403 session_required`,
+    with a `fix` saying how to start one. Service-account keys are exempt.
+  - A held write: the proposal is staged with `cross_project_hold` (its
+    `reason` names the projects) and `needs_project_admin_to_accept: true`:
+    only an owner or admin of the project, signed in or with a
+    `proposals:accept` key, may accept it, anyone else gets
+    `403 cross_project_owner_required`, and it is never auto-approved. Each
+    project in the hold lists the sources `cited` from it, and on proposal reads
+    `can_accept` says whether the caller may accept it. The write response's
+    `proposal` carries the same `cross_project_hold` and
+    `needs_project_admin_to_accept`. A write that commits without a proposal is
+    allowed into an `owner_approves` project only for an owner or admin of it.
+  - Reading a project's name or metadata (`GET /v1/projects`,
+    `GET /v1/projects/{project_id}`) never counts as reading it.
+    `POST /v1/artifacts/{artifact_id}/knowledge` and its `/approve` accept a
+    session token or `X-Beakr-Session`, confined to the session's projects.
+- Session read trail: what an agent session read before it wrote (available
+  where the organization has it turned on; otherwise these operations answer
+  `404 feature_not_enabled`). Each read a session makes is recorded by
+  reference, never by content: Knowledge reads, documents commands, file reads
+  (`op` `read_file`) and research (one `research` read per run, listing every
+  source it read or cited). A read lists the projects it touched and its
+  `items` (pages, files and interviews with their project; items in connected
+  services with `project_id: null` and `service`, such as `external:slack`),
+  with a summary of the query of at most 200 characters.
+  - `GET /v1/sessions/{session_id}/trail` lists a session's reads, newest
+    first. The session's person and organization admins see every read; an
+    owner or admin of a project the session read sees the reads of their
+    projects.
+  - `GET /v1/knowledge/wiki/proposals/{proposal_id}/trail`,
+    `GET /v1/knowledge/wiki/ingestion-events/{event_id}/trail` and
+    `GET /v1/knowledge/wiki/pages/{page_id}/revisions/{revision}/trail` return
+    the read trail of that write: the reads its session made before it (at
+    most the newest 500, with `truncated`), in `groups` by project: the
+    write's project first, then other projects (`cross_project: true`), then
+    reads outside Beakr projects (`external: true`), beside the `write` itself
+    (its kind, project and time). `recorded: false` means
+    the write was not made in a session with the read trail on. The person
+    whose session made it, an owner or admin of its project and organization
+    admins may read it; anyone else gets `403 read_trail_forbidden`. A read of
+    a project the caller cannot read comes back `redacted`, without its
+    summary or those items' titles.
+  - `GET /v1/organizations/{org_id}/read-trail` returns
+    `read_trail_retention_days` (default 90); `PUT` changes it (1 to 3650
+    days), which needs an organization admin signed in, or their key with
+    `proposals:accept`. Reads older than that are deleted within the hour.
+- Attribution on Knowledge changes: each revision in
+  `GET /v1/knowledge/wiki/pages/{page_id}/revisions` carries `attribution`:
+  who and what wrote it. `kind` is `beakr` (a model or maintenance process
+  Beakr ran, named in `model` or `process`), `agent` (a person's own agent
+  through MCP, the CLI, an SDK or the API, with the `client`, `agent` and
+  `session` it declared in `X-Beakr-Client`, `X-Beakr-Agent` and
+  `X-Beakr-Session`, or the session its session token belongs to), `person`
+  or `system`. `person` names the person behind it and `accepted_by` who
+  accepted a proposal. A file a client uploads records that client, agent and
+  session, so a revision compiled from it names them too.
+- Sessions (`/v1/sessions`): a person chooses which projects one agent session
+  may read and which it may write, and can change them while it runs. Start a
+  session with `POST /v1/sessions` (with `issue_token: true` for its first
+  token) and send its `bk_st_` token as `Authorization: Bearer <token>`. Every
+  request with the token is confined to the session's read projects, and every
+  write to its write projects, read again on each request:
+  - a session started without projects answers `403 session_needs_selection`,
+    with the `picker_url` where the person chooses them, until they do;
+  - a write to a project the session may read but not write answers
+    `403 session_write_scope`, naming the projects it may write;
+  - a session token can only drop projects from its own session
+    (`PATCH /v1/sessions/{session_id}`); naming a project it does not have
+    answers `403 session_widen_refused`. It cannot start sessions or mint tokens;
+  - `GET /v1/projects` with a session token lists only the session's read
+    projects, and `POST /v1/context` without `project_id` answers within them;
+  - `POST /v1/projects` with a session token that may write creates the project
+    and adds it to the session's read and write projects, so the agent can set
+    it up and upload to it. A session that may write nothing answers
+    `403 session_write_scope`, and one started with a project-restricted key
+    answers `403 insufficient_scope`;
+  - `GET /v1/organizations/{org_id}/members` is readable with a session token,
+    so an agent can name a colleague by email when adding them to one of the
+    session's projects (`POST /v1/projects/{project_id}/members`).
+  Every write a session token makes carries the session's `run_label`, so
+  undoing that run reverts the whole session. A token lasts an
+  hour by default (`ttl_seconds`, up to 12 hours); mint another with
+  `POST /v1/sessions/{session_id}/tokens` using the key that started the
+  session. The person can also ask the client to reuse a selection for the
+  folder it runs in (`remember_folder`). Available where the organization has
+  sessions enabled.
+- `POST /v1/runs`: `model` accepts `/`, so an OpenRouter model
+  is named by its vendor-qualified id, for example
+  `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
 - `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
   page and section write operations: an API key or token can cite a record in
   a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
@@ -80,6 +326,17 @@ Each release lists the public API changes it supports, taken from the API change
   citation's `reference`). One record is one citation, keyed `record:<hash>`; to
   cite it in the prose by a name of your own, give it a `key` such as
   `record:mol-1234` and write `{{record:mol-1234}}`.
+- `POST /v1/knowledge/wiki/sources/{source_type}/{source_id}/revert` undoes a
+  source's compiled Knowledge contributions. For an uploaded file use
+  `source_type` `artifact` with the version UUID as `source_id`, and undo
+  versions newest first to remove a whole file's contribution. Requires
+  `kb:write`; a project-restricted credential must supply an allowed
+  `project_id`. File bytes are not deleted. Later edits can prevent a complete
+  undo, so inspect `status`, `skipped`, `conflicts` and `proposals` before
+  deleting files: a `blocked` result can include applied changes, and HTTP 200
+  is not proof that every contribution was removed. An unknown source returns
+  `noop`. `Idempotency-Key` retries replay the original outcome for 24 hours.
+
 ## beakr-cli 0.6.0 (2026-11-15)
 
 ### Changes

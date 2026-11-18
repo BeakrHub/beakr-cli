@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=f3f6f883dce1552cb0d6b98fe6cdd557f1256c472e073bef6a17aa1ff6c79855 changelog sha256=80b12fa200de04939a00f59cd718a3d0bc3ba7234059bb3a897656f0d9ebf882 -->
+<!-- contract-stamp: public-openapi sha256=13d2bdd34b6ca12e93fbaab6eee23abe41ef1185b3cec53d51fa4f1b390702fe changelog sha256=49a0367dbaa35b49a55b7c8d3b49319c42df1d323c42f9afd1ea5d0aead4448e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -42,6 +42,25 @@ The first public version.
   ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
   session_already_started` refusal says to end the session and start a new
   agent conversation.
+- `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
+  naming one project it returns that project's orientation map in about 3,000
+  characters: its knowledge profile, how many pages of each card type, what a
+  card of the dominant types looks like (title rule, sections with their
+  `section_id`s and sizes, Facts fields and Connections with the share of cards
+  stating each), the cards those cards link to most, and how `grep`, `sections`,
+  `hover` and `rows` behave at the project's size. Without `scope` it lists the
+  projects the caller can read, the largest first. Counts include only pages the
+  caller can read: a caller who reads the whole project gets the project's
+  stored measurement, dated, with a note when pages compiled since are not
+  counted; a caller who reads part of it gets counts of those
+  pages, measured on the call, and a part that could not be measured within its
+  time limit is named as left out.
+- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
+  cites where the caller can read it now carries `knowledge_reference` (how
+  Knowledge's newest citation of it names it), and its `source_ref` is then the
+  item reference a Knowledge write accepts as a citation. Cite such an item by
+  that `source_ref`; cite any other item as an `external_record`. A credential
+  confined to some projects sees only citations on pages in those projects.
 - `POST /v1/artifacts/read`: a file with no extracted text of its own whose
   bytes are not text (an Ask notebook, or any other format Beakr indexes
   without a stored extraction) now reads as the text `POST
