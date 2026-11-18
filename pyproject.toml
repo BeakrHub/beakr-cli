@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "beakr-cli"
-version = "0.6.0"
+version = "0.7.0"
 description = "CLI and MCP server for Beakr"
 readme = "README.md"
 license = "Apache-2.0"
@@ -20,17 +20,17 @@ classifiers = [
 ]
 dependencies = [
     # The Python SDK (BeakrHub/beakr-python), from PyPI; see the README's
-    # "The Python SDK dependency" for working against an unreleased SDK. Up to 0.3:
-    # a self-hosted release bundles this CLI with the self-hosted SDK wheel, 0.3.0
-    # since that line took main's 13 Nov release (beakr-python#101).
-    "beakr-sdk>=0.2.0,<0.4",
+    # "The Python SDK dependency" for working against an unreleased SDK. Up to 0.4:
+    # a self-hosted release bundles this CLI with the self-hosted SDK wheel, 0.4.0
+    # since that line took main's 17 Nov release for Full 1.0.6.
+    "beakr-sdk>=0.2.0,<0.5",
     # Capped: typer 0.26 vendors its own click (typer._click), and its error
     # handler no longer catches the real click exceptions `beakr api` raises,
     # so every usage error and even `beakr api --help` ended in a traceback.
     "typer>=0.15,<0.26",
     "httpx>=0.27",
     "rich>=13",
-    "mcp>=1.9,<2",
+    "mcp>=2.3,<3",
     "pydantic>=2",
     "keyring>=25",
     "packaging>=23",

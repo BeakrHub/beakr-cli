@@ -749,8 +749,18 @@ def stats(data: dict) -> str:
     return (
         f"Pages: {data.get('pages', 0)} (live pages in scope)\n"
         f"Sources: {data.get('sources', 0)} (page-to-source citations: a document cited "
-        "by three pages counts three times)"
+        "by three pages counts three times)\n"
+        f"{STATS_ORIENT_POINTER}"
     )
+
+
+#: Closes ``wiki_stats``: the two counts say how much, not what. On the MetaSyn
+#: benchmark (2026-11-16) 85 of 86 runs opened with wiki_stats and 76 then listed
+#: 200 pages alphabetically to learn what the pages were.
+STATS_ORIENT_POINTER = (
+    "What the pages are (card types, what a card holds, hubs, how reads behave at this "
+    "size): knowledge_base command='orient' with the project as scope."
+)
 
 
 def _sources_listing(citations: list[dict], *, mode: str = "full", named_in: str = "") -> list[str]:

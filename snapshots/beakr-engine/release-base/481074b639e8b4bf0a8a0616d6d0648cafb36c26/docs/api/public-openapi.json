@@ -37,6 +37,24 @@
               "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
             ],
             "title": "Project Id"
+          },
+          "truncated": {
+            "default": false,
+            "description": "True when `budget_chars` shortened a block or left one out: a larger budget, or a `question` or `project_id` to focus it, returns more of what matters.",
+            "title": "Truncated",
+            "type": "boolean"
+          },
+          "workspace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Workspace"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Which Beakr answered and for which organization, so a client connected to the wrong environment or organization can tell."
           }
         },
         "required": [
@@ -3597,6 +3615,19 @@
       },
       "DocumentsCoverage": {
         "properties": {
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`grep` or `search`.",
+            "title": "Command"
+          },
           "complete": {
             "description": "Whether this answer covers every match in scope; when false, see `reason`.",
             "title": "Complete",
@@ -3626,6 +3657,19 @@
             "title": "Documents Considered",
             "type": "integer"
           },
+          "limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The page size applied.",
+            "title": "Limit"
+          },
           "next_offset": {
             "anyOf": [
               {
@@ -3638,6 +3682,19 @@
             "default": null,
             "description": "The offset of the next page, if any.",
             "title": "Next Offset"
+          },
+          "offset": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where this page starts.",
+            "title": "Offset"
           },
           "reason": {
             "anyOf": [
@@ -3665,6 +3722,19 @@
             "description": "`grep`: the last document checked, when the scan stopped early.",
             "title": "Resume After Document"
           },
+          "returned": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Entries (`grep`) or documents (`search`) this reply shows, as a Knowledge read's `coverage.returned`.",
+            "title": "Returned"
+          },
           "rows_not_searched": {
             "anyOf": [
               {
@@ -3690,6 +3760,19 @@
             "default": null,
             "description": "Entries found: matching lines (content) or documents.",
             "title": "Total"
+          },
+          "truncated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when the reply's size budget cut this page short of `limit`; `next_offset` is then the first entry not shown. Absent otherwise.",
+            "title": "Truncated"
           }
         },
         "required": [
@@ -3717,7 +3800,7 @@
               }
             ],
             "default": null,
-            "description": "`grep` and `search`: whether the answer is complete, and the next call."
+            "description": "`grep`, `read` and `search`: whether the answer is complete, and the next call."
           },
           "error_code": {
             "anyOf": [
@@ -3731,6 +3814,20 @@
             "default": null,
             "description": "When `is_error`: `invalid_arguments`, `invalid_pattern`, `document_not_found`, `timeout` or `scope_unavailable`.",
             "title": "Error Code"
+          },
+          "file": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`read` of a reference with a place (`memo.pdf \u203a p. 7`): the file opened (`id`, `version_id`, `display_path`). The content is then the text around that place, as `POST /v1/artifacts/read` returns it.",
+            "title": "File"
           },
           "is_error": {
             "default": false,
@@ -3753,6 +3850,22 @@
             "default": null,
             "description": "`search` only: what the response budget left out, and how to get it.",
             "title": "Next"
+          },
+          "next_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NextCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.",
+            "title": "Next Calls"
           },
           "results": {
             "anyOf": [
@@ -3890,7 +4003,7 @@
               }
             ],
             "default": null,
-            "description": "Reusable reference to this passage: a later Knowledge write cites it, `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.",
+            "description": "Reusable reference to this passage's document, the same as its document's `source_ref`: a later Knowledge write cites it (add ` \u203a ` and `unit_locator` for this place, or cite `citation_key` for this passage), `POST /v1/artifacts/read` opens the file, `POST /v1/artifacts/download-url` downloads it.",
             "title": "Source Ref"
           },
           "unit_locator": {
@@ -5017,6 +5130,24 @@
       "FileReadOut": {
         "description": "One window of a file's extracted text.",
         "properties": {
+          "agent_written": {
+            "default": false,
+            "description": "True when Beakr wrote this file (a workflow output, an Ask notebook or an agent's document), as documents read marks it",
+            "title": "Agent Written",
+            "type": "boolean"
+          },
+          "agent_written_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With agent_written: why it is not a source, and what to cite instead (the sentence documents read gives)",
+            "title": "Agent Written Note"
+          },
           "end": {
             "description": "One past the last character of the window",
             "title": "End",
@@ -5034,6 +5165,15 @@
             "title": "Has More",
             "type": "boolean"
           },
+          "next_calls": {
+            "description": "The calls that read on, as data ({tool, command, arguments, why}), so a client never builds one from next_offset and next_reference itself: read_file with the same reference and next_offset, then read_file with next_reference. Empty when nothing follows.",
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Next Calls",
+            "type": "array"
+          },
           "next_offset": {
             "anyOf": [
               {
@@ -5043,7 +5183,7 @@
                 "type": "null"
               }
             ],
-            "description": "Without a unit: the offset that continues this read",
+            "description": "The offset that continues this read with the same reference: through the file without a unit, or through the rest of the unit's page or sheet with one",
             "title": "Next Offset"
           },
           "next_reference": {
@@ -5057,6 +5197,24 @@
             ],
             "description": "With a paged unit: the reference that reads the next page",
             "title": "Next Reference"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With past_end: the plain statement of it, with the length of the text (its characters, lines or pages) and, for an offset, the last valid offset",
+            "title": "Note"
+          },
+          "past_end": {
+            "default": false,
+            "description": "True when the offset, or the place the reference named, lies at or past the end of the text: text is empty and start and end equal total_chars, never a range beyond it",
+            "title": "Past End",
+            "type": "boolean"
           },
           "start": {
             "description": "First character of the window (within the page when paged)",
@@ -5115,7 +5273,7 @@
           },
           "offset": {
             "default": 0,
-            "description": "Without a unit: the first character to return (at most 100,000,000; past the end of the text the window is empty). Ignored with a unit.",
+            "description": "Without a unit: the first character to return (at most 100,000,000). With a unit: the offset into its page, sheet or document that next_offset gave. At or past the end of the text the window is empty, start and end equal total_chars, and past_end is true.",
             "maximum": 100000000.0,
             "minimum": 0.0,
             "title": "Offset",
@@ -5135,7 +5293,7 @@
             "title": "Project"
           },
           "reference": {
-            "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's or source_ref's own passage is its unit. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
+            "description": "The file to read (an upload or a canvas): its id or a version id, a source record's source_ref from a Knowledge read (beakr-source:v1:...), a citation token ({{artifact:<uuid>-p7-layout-4}}), or its path as a Knowledge read prints it (deals/acme/Closing/memo.docx, or a trailing part that names one file). Add ' \u203a <unit>' (or '#<unit>') to read the window around one place instead of the start: p. 7, slide 3, sheet 2, B4:D9, lines 10-30, block 8, u3. A token's own passage is its unit; a file's source_ref names the file, so add the unit to open a place in it. Connected items (Slack, email, calendar, Jira: {{unit:...}}, {{external_item:...}}, or their source_ref) are not stored as files and are refused with not_a_file; a Knowledge page's source_ref is refused with knowledge_page (read it with the knowledge_base cat command).",
             "maxLength": 2048,
             "minLength": 1,
             "title": "Reference",
@@ -5152,7 +5310,7 @@
         "description": "The place the window was opened at.",
         "properties": {
           "found": {
-            "description": "False when the place could not be found in this version; the window is then the start of the file",
+            "description": "False when the place could not be found in this version; the window is then the start of the file, or empty when the place lies past the end of the file (past_end is then true)",
             "title": "Found",
             "type": "boolean"
           },
@@ -6499,6 +6657,126 @@
         "title": "JobStatus",
         "type": "object"
       },
+      "KnowledgeAttribution": {
+        "additionalProperties": true,
+        "description": "Who and what wrote a Knowledge change: a person, their agent and session, or Beakr.",
+        "properties": {
+          "accepted_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The person who accepted the proposal, for one; null when auto-approve accepted it (see `auto_approved`).",
+            "title": "Accepted By"
+          },
+          "agent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The agent as it declared itself (`X-Beakr-Agent`), e.g. `claude-code/2.1`.",
+            "title": "Agent"
+          },
+          "auto_approved": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when the filer's auto-approve setting accepted the proposal rather than a person.",
+            "title": "Auto Approved"
+          },
+          "client": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The client the agent used (`X-Beakr-Client`), e.g. `beakr-mcp/0.4.0`.",
+            "title": "Client"
+          },
+          "kind": {
+            "description": "Who wrote the words: `beakr` (a model or maintenance process Beakr ran), `agent` (a person's own agent through MCP, the CLI, an SDK or the API), `person` (a person in Beakr itself) or `system`.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "For Beakr's own runs, the model alias it ran.",
+            "title": "Model"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The person behind it: who filed, uploaded or edited, or the owner of the connector a compile came from.",
+            "title": "Person"
+          },
+          "process": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "For Beakr's maintenance, the process, e.g. `health_agent` or `growth_reorg`.",
+            "title": "Process"
+          },
+          "session": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The agent session: its own id (`X-Beakr-Session`), else the Beakr session a session token wrote as.",
+            "title": "Session"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "KnowledgeAttribution",
+        "type": "object"
+      },
       "KnowledgeCoverage": {
         "description": "How much a Knowledge read covered (``kb_result_coverage``), on every read.",
         "properties": {
@@ -6520,6 +6798,20 @@
             "description": "True when everything that matched is shown; null when unknowable.",
             "title": "Complete"
           },
+          "continue_with": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a reply cut to its response budget, and on an `ls` window with more pages after it: the arguments that continue it. For `cat`, the whole call's arguments (`page` as the page id, `lines` as the page line range not shown yet, `scope` when the call gave one); for a listing, the arguments to change in the same call (`ls`: `after_title`, with `after_page_id` when the next page shares that title; a date-sorted `ls` has no cursor and gives `sort_by: title`). Null when nothing remains.",
+            "title": "Continue With"
+          },
           "limit": {
             "anyOf": [
               {
@@ -6532,6 +6824,32 @@
             "default": null,
             "description": "The most items to return.",
             "title": "Limit"
+          },
+          "lines_shown": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the page lines shown whole, `first-last`; null when none is.",
+            "title": "Lines Shown"
+          },
+          "lines_total": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the page lines the call asked for, `first-last`.",
+            "title": "Lines Total"
           },
           "next_cursor": {
             "anyOf": [
@@ -6575,6 +6893,52 @@
             "description": "How many items were skipped before this page.",
             "title": "Offset"
           },
+          "projects": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a listing whose pages are of more than one project: each project's `id` and `name`, only projects the caller can read. The text names each page's project; pass an id as `scope` to read one. Absent on a read within one project.",
+            "title": "Projects"
+          },
+          "related": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a `grep` that matched nothing and shows entries related by meaning instead: what those entries are (`by`: meaning; `unit`: sections or pages; `returned`: how many are shown; `total` and `truncated` when the response budget left some out). They are not matches: `returned` and `total` stay 0. Absent otherwise.",
+            "title": "Related"
+          },
+          "requested_limit": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The `limit` the call asked for, when it was above the command's maximum; `limit` is then the maximum that was applied. Absent otherwise.",
+            "title": "Requested Limit"
+          },
           "returned": {
             "anyOf": [
               {
@@ -6587,6 +6951,19 @@
             "default": null,
             "description": "Items shown; null when not a counted list.",
             "title": "Returned"
+          },
+          "revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the page revision that was read.",
+            "title": "Revision"
           },
           "scan_complete": {
             "anyOf": [
@@ -6618,6 +6995,35 @@
             "$ref": "#/components/schemas/KnowledgeScope",
             "description": "The scope it applies to."
           },
+          "sections_not_shown": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: the ids of the sections that start after the cut.",
+            "title": "Sections Not Shown"
+          },
+          "shown_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: characters of text shown, against `total_chars`.",
+            "title": "Shown Chars"
+          },
           "status": {
             "description": "success, empty or error.",
             "title": "Status",
@@ -6635,6 +7041,19 @@
             "default": null,
             "description": "Items that matched, when known.",
             "title": "Total"
+          },
+          "total_chars": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A cut `cat`: characters the uncut text holds.",
+            "title": "Total Chars"
           },
           "truncated": {
             "anyOf": [
@@ -8604,6 +9023,18 @@
       },
       "Message": {
         "properties": {
+          "answer_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether this message contains a completed user-facing answer, independent of transport or worker status. Null for legacy history.",
+            "title": "Answer Complete"
+          },
           "canvases": {
             "anyOf": [
               {
@@ -8680,6 +9111,22 @@
             "description": "Whether the person sent this while a run was in progress.",
             "title": "Injected",
             "type": "boolean"
+          },
+          "injection_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sent",
+                  "seen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Injection status: one of `sent`, `seen`.",
+            "title": "Injection Status"
           },
           "is_ask_user_response": {
             "default": false,
@@ -9856,6 +10303,58 @@
         "title": "ModelRefusalSummary",
         "type": "object"
       },
+      "NextCall": {
+        "description": "One call a `next` step names, as data, so a client never parses the sentence.",
+        "properties": {
+          "arguments": {
+            "additionalProperties": true,
+            "description": "The call's exact arguments, as that REST request takes them: a Knowledge command's options flat, `scope` included; a documents command's options, with `project` beside them when the request named one; `reference` and `offset` for `read_file`. A value the caller must fill is the string `<name>`, e.g. `<page>` or `<section_id>`. A call that continues a partial result is the request's own arguments with `coverage.continue_with` over them.",
+            "title": "Arguments",
+            "type": "object"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The tool's command: a `knowledge_base` or `documents` command (`cat`, `rows`, `grep`), the action of a `knowledge_base_write` (`add_finding`), `call` for `integrations`; null for a tool that has none.",
+            "title": "Command"
+          },
+          "tool": {
+            "description": "The tool to call, by the name both MCP servers give it. Over REST: `knowledge_base` is `POST /v1/knowledge/wiki/command`, `knowledge_base_write` is `POST /v1/knowledge/wiki/write`, `documents` is `POST /v1/knowledge/documents`, `read_file` is `POST /v1/artifacts/read`, `research` is `POST /v1/knowledge/research`, `integrations` is the integrations call route, `show_proposal` and `accept_proposal` are the proposals routes and `list_projects` is `GET /v1/projects`.",
+            "enum": [
+              "knowledge_base",
+              "knowledge_base_write",
+              "documents",
+              "read_file",
+              "integrations",
+              "research",
+              "accept_proposal",
+              "show_proposal",
+              "list_projects"
+            ],
+            "title": "Tool",
+            "type": "string"
+          },
+          "why": {
+            "description": "What the call is for, in one short sentence.",
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tool",
+          "command",
+          "arguments",
+          "why"
+        ],
+        "title": "NextCall",
+        "type": "object"
+      },
       "ObjectPage": {
         "properties": {
           "data": {
@@ -10334,9 +10833,15 @@
         "properties": {
           "attempt_count": {
             "default": 0,
-            "description": "Number of attempt.",
+            "description": "Number of execution attempts recorded for this operation.",
             "title": "Attempt Count",
             "type": "integer"
+          },
+          "capacity_wait": {
+            "default": false,
+            "description": "Whether execution is waiting for available compute capacity.",
+            "title": "Capacity Wait",
+            "type": "boolean"
           },
           "deadline_at": {
             "anyOf": [
@@ -10348,13 +10853,49 @@
                 "type": "null"
               }
             ],
-            "description": "Time of the deadline (ISO 8601, UTC).",
+            "description": "The expected deadline used to determine whether the operation is overdue.",
             "title": "Deadline At"
           },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A short explanation of the work currently being performed.",
+            "title": "Description"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A user-visible explanation of an operation failure, when available.",
+            "title": "Error"
+          },
           "kind": {
-            "description": "What kind of pending operation this is.",
+            "description": "The type of background work, such as sandbox execution or a remote job.",
             "title": "Kind",
             "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The interpreter used to execute the submitted code, when applicable.",
+            "title": "Language"
           },
           "last_heartbeat_at": {
             "anyOf": [
@@ -10366,13 +10907,44 @@
                 "type": "null"
               }
             ],
-            "description": "Time of the last heartbeat (ISO 8601, UTC).",
+            "description": "When the operation most recently reported that it was still alive.",
             "title": "Last Heartbeat At"
           },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the service most recently checked the external operation.",
+            "title": "Last Polled At"
+          },
           "operation_id": {
-            "description": "Id of the operation.",
+            "description": "Stable identifier used to track this background operation across polls.",
             "title": "Operation Id",
             "type": "string"
+          },
+          "overdue": {
+            "default": false,
+            "description": "Whether execution has passed its expected completion deadline.",
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The managed execution session that owns this operation, when available.",
+            "title": "Session Id"
           },
           "started_at": {
             "anyOf": [
@@ -10384,11 +10956,11 @@
                 "type": "null"
               }
             ],
-            "description": "When it started, or null if it has not.",
+            "description": "When the background operation began execution.",
             "title": "Started At"
           },
           "status": {
-            "description": "Current status of the pending operation.",
+            "description": "The current lifecycle state of the background operation.",
             "title": "Status",
             "type": "string"
           },
@@ -10401,7 +10973,7 @@
                 "type": "null"
               }
             ],
-            "description": "Last lines of the operation's error output.",
+            "description": "A bounded excerpt of the most recent standard error output.",
             "title": "Stderr Tail"
           },
           "stdout_tail": {
@@ -10413,7 +10985,7 @@
                 "type": "null"
               }
             ],
-            "description": "Last lines of the operation's output.",
+            "description": "A bounded excerpt of the most recent standard output.",
             "title": "Stdout Tail"
           }
         },
@@ -11940,7 +12512,7 @@
                 "name": "validation-run-2026-03.pdf",
                 "provider": "upload",
                 "source_kind": "file",
-                "source_ref": "beakr-source:v1:key:YXJ0aWZhY3Q6M2Y2YTFjMmUtN2I0ZC00ZTlhLTljMWYtMmQ4ZTViN2E2YzQw",
+                "source_ref": "beakr-source:v1:file:3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
                 "stance": "support"
               }
             ],
@@ -12113,6 +12685,22 @@
             "description": "Present when the response budget shortened or left out excerpts: how to read a cited passage in full.",
             "title": "Next"
           },
+          "next_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NextCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.",
+            "title": "Next Calls"
+          },
           "not_checked": {
             "anyOf": [
               {
@@ -12237,7 +12825,7 @@
               }
             ],
             "default": null,
-            "description": "Reusable reference a later Knowledge write can cite: a stored citation, a Knowledge page or section, or a source known by its citation key.",
+            "description": "Reusable reference a later Knowledge write can cite: a file (one reference per document, the same on every read), a stored citation, a Knowledge page or section, or a source known by its citation key.",
             "title": "Source Ref"
           },
           "title": {
@@ -14416,7 +15004,7 @@
               }
             ],
             "default": null,
-            "description": "Where the source lives, for a reader to go to: a Beakr file's path (the uploader's recorded path or `relative_path`, else its folder path in its project plus its name, e.g. `deals/acme/Closing/schedule.xlsx`), a connected file's path in its service, or a connected item's place there (`#channel`, `subject \u00b7 from sender \u00b7 date`, an issue's key and summary). Present only for sources the caller can read; for a file, `read_file` accepts it, alone or with ` \u203a ` and the `unit_locator` (connected items are not stored as files: use the excerpt and `url`).",
+            "description": "Where the source lives, for a reader to go to: a Beakr file's path (the uploader's recorded path or `relative_path`, else its folder path in its project plus its name, e.g. `deals/acme/Closing/schedule.xlsx`), a connected file's path in its service, or a connected item's place there (`#channel`, `subject \u00b7 from sender \u00b7 date`, an issue's key and summary). Present only for sources the caller can read; for a file, `read_file` accepts it, alone or with ` \u203a ` and the `unit_locator` (connected items are not files: re-read one with the `integrations` call in its `retrieval`).",
             "title": "Display Path"
           },
           "file_id": {
@@ -14562,7 +15150,7 @@
                 "type": "null"
               }
             ],
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "Opaque reference to a source, the same on every read of it; pass it back in a citation.",
             "title": "Source Ref"
           },
           "version": {
@@ -14787,7 +15375,7 @@
               }
             ],
             "default": null,
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "The source's reference: a file has one, the same on every read (`beakr-source:v1:file:<file id>`), and the place cited in it is `location.unit_locator`. Pass it to a Knowledge write to cite the document, or followed by ` \u203a <unit_locator>` to cite or open that place; `citation_key` names the cited passage itself.",
             "title": "Source Ref"
           },
           "stance": {
@@ -14925,6 +15513,32 @@
             ],
             "description": "Context from the client, such as the page the person is on.",
             "title": "Client Context"
+          },
+          "decision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the decision.",
+            "title": "Decision Id"
+          },
+          "decision_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Version of the pending decision being answered; rejects stale answers.",
+            "title": "Decision Version"
           },
           "engine": {
             "anyOf": [
@@ -15099,6 +15713,19 @@
             "description": "Marks a run that sets up a knowledge profile.",
             "title": "Profile Builder Meta"
           },
+          "resume_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the resume run.",
+            "title": "Resume Run Id"
+          },
           "scope": {
             "anyOf": [
               {
@@ -15201,6 +15828,19 @@
           }
         ],
         "properties": {
+          "decision_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Authoritative pending question and its ordered revision, used to recover the current decision after reconnecting.",
+            "title": "Decision State"
+          },
           "injected_into_run": {
             "default": false,
             "description": "True when no new run was started because the thread's run was still working: the message was delivered to that run as a follow-up. run_id and stream_url are that run's, and user_message_id is the delivered message.",
@@ -16730,9 +17370,31 @@
             "title": "Next",
             "type": "array"
           },
+          "next_calls": {
+            "description": "The calls the `next` steps name, as data, in the same order: a client turns each into its own syntax without reading the sentences. Empty when no step names a call. A partial result's first entry is the call that continues it.",
+            "items": {
+              "$ref": "#/components/schemas/NextCall"
+            },
+            "title": "Next Calls",
+            "type": "array"
+          },
           "outcome": {
             "$ref": "#/components/schemas/WikiToolOutcome",
             "description": "How it turned out."
+          },
+          "outline": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "`cat` with `outline` only: the page's outline as data (`title`, `page_type`, `revision`, `summary`, `sections` with each `section_id`, `title`, `lines`, `chars` and `citations`, and `edges`). The text prints the same outline as lines.",
+            "title": "Outline"
           },
           "query": {
             "anyOf": [
@@ -16894,7 +17556,7 @@
               }
             ],
             "default": null,
-            "description": "Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.",
+            "description": "Who or what wrote the current revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`).",
             "title": "Last Compiled By"
           },
           "links": {
@@ -17229,7 +17891,7 @@
               }
             ],
             "default": null,
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "Opaque reference to a source, the same on every read of it; pass it back in a citation.",
             "title": "Source Ref"
           },
           "source_title": {
@@ -18196,6 +18858,18 @@
       "WikiRevision": {
         "additionalProperties": true,
         "properties": {
+          "attribution": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnowledgeAttribution"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Who and what wrote this revision."
+          },
           "compiled_by": {
             "anyOf": [
               {
@@ -18206,7 +18880,7 @@
               }
             ],
             "default": null,
-            "description": "Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`) or `system`.",
+            "description": "Who or what wrote this revision: a model, an agent (`ask`, `health_agent`), a person (`human:...`), an accepted proposal (`proposal:<id>`) or `system`. A proposal you cannot open is named by the first eight characters of its id (`proposal:66b0af0f`), as `writer` names it.",
             "title": "Compiled By"
           },
           "created_at": {
@@ -18614,7 +19288,7 @@
                 "type": "null"
               }
             ],
-            "description": "Opaque reference to a source; pass it back in a citation.",
+            "description": "Opaque reference to a source, the same on every read of it; pass it back in a citation.",
             "title": "Source Ref"
           },
           "source_title": {
@@ -18836,6 +19510,22 @@
             "title": "Content",
             "type": "array"
           },
+          "next_calls": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/NextCall"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whenever a proposal was staged: the calls that follow it, as data. `show_proposal` confirms what happened to it; `accept_proposal` is listed only while it waits (`pending`), and is made only when the person asks.",
+            "title": "Next Calls"
+          },
           "outcome": {
             "$ref": "#/components/schemas/WikiToolOutcome",
             "description": "How it turned out."
@@ -18992,6 +19682,53 @@
           "kind"
         ],
         "title": "WorkflowChatEvent",
+        "type": "object"
+      },
+      "Workspace": {
+        "description": "Where a call landed: this deployment and the organization it acted in.",
+        "properties": {
+          "environment": {
+            "description": "The deployment that answered: production, sandbox, eval, test or local.",
+            "title": "Environment",
+            "type": "string"
+          },
+          "organization": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WorkspaceOrganization"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The organization this call acted in; null if it could not be read."
+          }
+        },
+        "required": [
+          "environment"
+        ],
+        "title": "Workspace",
+        "type": "object"
+      },
+      "WorkspaceOrganization": {
+        "properties": {
+          "name": {
+            "description": "The organization's display name.",
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "description": "Its URL slug.",
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "WorkspaceOrganization",
         "type": "object"
       },
       "beakr__api__routes__agent_proposal_review__ProjectOverrideUpdate": {
@@ -20727,7 +21464,7 @@
     },
     "/v1/context": {
       "post": {
-        "description": "What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size, earlier blocks winning. `client` names the agent (`claude-code`, `codex`).",
+        "description": "What an agent should start a session with, in one call: the organization's, project's and caller's profiles, the caller's memories, relevant past conversations (with `question`), what changed since the agent's last session (or `since`), and the skills and entities that matter. `format` is `markdown` (default), `json`, `claude_md` or `agents_md`; `budget_chars` caps the size. When it cannot hold everything, the organization and project come first, then what `question` selects, then the profile, with activity and past conversations last, and `truncated` is true. `client` names the agent (`claude-code`, `codex`).",
         "operationId": "agent_context_v1_context_post",
         "requestBody": {
           "content": {
@@ -23510,6 +24247,10 @@
                   }
                 ],
                 "properties": {
+                  "accepted_by": {
+                    "description": "log, proposals: who accepted it: a person, or auto-approve.",
+                    "type": "string"
+                  },
                   "after_card": {
                     "description": "rows: continue a capped card scan after this card.",
                     "type": "string"
@@ -23532,6 +24273,22 @@
                   },
                   "attribute": {
                     "description": "rows: the field by name, alias or meaning; replies say which field.",
+                    "type": "string"
+                  },
+                  "by": {
+                    "description": "log, proposals: the person behind it (who filed a proposal): a name, email, user id or me.",
+                    "type": "string"
+                  },
+                  "changed_by": {
+                    "description": "ls: pages with a revision by this person.",
+                    "type": "string"
+                  },
+                  "changed_since": {
+                    "description": "ls: pages with a revision on or after this date.",
+                    "type": "string"
+                  },
+                  "changed_via": {
+                    "description": "ls: pages with a revision through this client or agent.",
                     "type": "string"
                   },
                   "command": {
@@ -23573,6 +24330,18 @@
                   "context_lines": {
                     "description": "grep only. Lines of context either side of each hit (default 1, max 10). Raise it for table rows, where the header naming the columns sits above the matching line.",
                     "type": "integer"
+                  },
+                  "created_by": {
+                    "description": "ls: pages this person created (their first revision).",
+                    "type": "string"
+                  },
+                  "created_since": {
+                    "description": "ls: pages created on or after this date.",
+                    "type": "string"
+                  },
+                  "created_via": {
+                    "description": "ls: pages created through this client or agent.",
+                    "type": "string"
                   },
                   "current_only": {
                     "description": "rows: facts, each card's current value per Attribute; connections, the relations not ended. Not findings (filter by start_date, end_date).",
@@ -23637,6 +24406,10 @@
                     "description": "If true, ontology includes proposed page types as well as active types.",
                     "type": "boolean"
                   },
+                  "kind": {
+                    "description": "log, proposals: person, agent, beakr or system.",
+                    "type": "string"
+                  },
                   "limit": {
                     "description": "Max results. rows: rows per window (default 100, max 500). ls: pages per window (default 100, max 500). grep: pages per window (default 20, max 200). sources: source records per window (default 60, max 400). provenance: sections per window (default 12, max 200). Every window is ordered; use after_title (ls/grep/sources) or after_section (provenance) to continue past one.",
                     "type": "integer"
@@ -23669,7 +24442,7 @@
                     "type": "string"
                   },
                   "offset": {
-                    "description": "rows, proposals: rows to skip (continue a NOT ALL ROWS reply).",
+                    "description": "rows, proposals, log: rows to skip (continue a NOT ALL ROWS reply).",
                     "type": "integer"
                   },
                   "order_by": {
@@ -23721,7 +24494,11 @@
                     "type": "string"
                   },
                   "section_id": {
-                    "description": "cat only. Read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take.",
+                    "description": "cat and provenance. cat: read ONE section instead of the whole page -- far cheaper, and the id is what edit_section and merge composition take. provenance: that one section's citations, in the same shape.",
+                    "type": "string"
+                  },
+                  "since": {
+                    "description": "log, proposals: from this date (YYYY-MM-DD, a UTC day) or ISO time.",
                     "type": "string"
                   },
                   "sort_by": {
@@ -23782,6 +24559,14 @@
                   },
                   "topic": {
                     "description": "With `help`: one command or action to describe instead of all of them.",
+                    "type": "string"
+                  },
+                  "until": {
+                    "description": "log, proposals: up to this date or ISO time, inclusive.",
+                    "type": "string"
+                  },
+                  "via": {
+                    "description": "log, proposals: client or agent prefix, any case (claude-code, codex, beakr-cli).",
                     "type": "string"
                   },
                   "view": {
@@ -29462,7 +30247,7 @@
     },
     "/v1/projects/{project_id}": {
       "delete": {
-        "description": "Delete a project, and everything homed in it, permanently. There is no trash and no undo. Needs a project admin. While the organization requires step-up MFA (the default), a person at a browser verifies a fresh second factor first, and keys and tokens are refused with `403 session_required`.",
+        "description": "Delete a project, and everything homed in it, permanently. There is no trash and no undo. Needs a project admin. Project deletion does not require step-up MFA. Keys and tokens must have the required scopes and project permissions, and are refused with `403 session_required` when the organization requires enterprise SSO.",
         "operationId": "delete_project_route_v1_projects__project_id__delete",
         "parameters": [
           {

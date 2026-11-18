@@ -64,7 +64,13 @@ WRITE_TOOLS = frozenset(
 #: Reads that reach a connected service, or PyPI.
 OPEN_WORLD_READS = frozenset({"research", "integrations", "beakr_version"})
 
+#: The hints as the wire names them (mcp 2's models spell the attributes in snake_case).
 _HINTS = ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
+
+
+def _wire(annotations) -> dict:
+    """``annotations`` as a client receives them."""
+    return annotations.model_dump(by_alias=True, mode="json", exclude_none=True)
 
 
 @pytest.fixture
@@ -84,28 +90,29 @@ def test_every_listed_tool_has_a_title_and_all_four_hints(listed):
         assert tool.title == tool_surface.title(name), name
         assert tool.annotations is not None, name
         assert tool.annotations.title == tool.title, name
+        sent = _wire(tool.annotations)
         for hint in _HINTS:
-            assert isinstance(getattr(tool.annotations, hint), bool), f"{name}.{hint}"
+            assert isinstance(sent.get(hint), bool), f"{name}.{hint}"
 
 
 def test_reads_are_read_only_and_writes_are_not(listed):
     for name in READ_TOOLS:
         hints = listed[name].annotations
-        assert hints.readOnlyHint is True, name
-        assert hints.destructiveHint is False, name
-        assert hints.idempotentHint is True, name
-        assert hints.openWorldHint is (name in OPEN_WORLD_READS), name
+        assert hints.read_only_hint is True, name
+        assert hints.destructive_hint is False, name
+        assert hints.idempotent_hint is True, name
+        assert hints.open_world_hint is (name in OPEN_WORLD_READS), name
     for name in WRITE_TOOLS:
-        assert listed[name].annotations.readOnlyHint is False, name
+        assert listed[name].annotations.read_only_hint is False, name
 
 
 def test_the_knowledge_write_door_and_the_upgrade_are_marked_destructive(listed):
     # knowledge_base_write also answers `help`, but one name that writes gets the write
     # hints; edit/edit_section replace text and auto-approve applies them at once.
     write = listed["knowledge_base_write"].annotations
-    assert (write.destructiveHint, write.idempotentHint) == (True, False)
+    assert (write.destructive_hint, write.idempotent_hint) == (True, False)
     update = listed["update_beakr"].annotations
-    assert (update.destructiveHint, update.idempotentHint, update.openWorldHint) == (
+    assert (update.destructive_hint, update.idempotent_hint, update.open_world_hint) == (
         True,
         True,
         True,
@@ -115,8 +122,8 @@ def test_the_knowledge_write_door_and_the_upgrade_are_marked_destructive(listed)
 def test_start_session_is_a_write_that_neither_deletes_nor_reaches_out(listed):
     # Declaring a session's projects changes it, the same way each time, inside Beakr.
     hints = listed["start_session"].annotations
-    assert (hints.readOnlyHint, hints.destructiveHint) == (False, False)
-    assert (hints.idempotentHint, hints.openWorldHint) == (True, False)
+    assert (hints.read_only_hint, hints.destructive_hint) == (False, False)
+    assert (hints.idempotent_hint, hints.open_world_hint) == (True, False)
     assert listed["start_session"].title == "Start this session"
     assert listed["session_status"].title == "Session status"
 
@@ -124,7 +131,8 @@ def test_start_session_is_a_write_that_neither_deletes_nor_reaches_out(listed):
 def test_the_hints_are_the_engines_with_this_servers_overrides():
     for tool in tool_surface.document()["tools"]:
         expected = (tool.get("surface_annotations") or {}).get("stdio") or tool["annotations"]
-        given = tool_surface.annotations(tool["name"]).model_dump(include=set(_HINTS))
+        sent = _wire(tool_surface.annotations(tool["name"]))
+        given = {hint: sent[hint] for hint in _HINTS if hint in sent}
         assert given == expected, tool["name"]
 
 

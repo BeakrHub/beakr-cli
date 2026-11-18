@@ -777,8 +777,8 @@ def test_a_self_hosted_build_ignores_a_pypi_latest_a_public_cli_cached(monkeypat
     # beakr update". PyPI's beakr-cli is a different client it is never upgraded to.
     _pypi_must_not_be_asked(monkeypatch)
     # (A newer one than this build's own, so it reads as an upgrade; this package is
-    # 0.6.0 since main's 13 Nov release, which `beakr version` prints.)
-    _write_cache("0.7.0", timedelta(minutes=5))
+    # 0.7.0 since main's 17 Nov release, which `beakr version` prints.)
+    _write_cache("0.8.0", timedelta(minutes=5))
     monkeypatch.setattr(updates, "__version__", _SELF_HOSTED_VERSION)
 
     for status in (
@@ -795,11 +795,11 @@ def test_a_self_hosted_build_ignores_a_pypi_latest_a_public_cli_cached(monkeypat
     assert mcp_server._update_notice() == ""
     assert check_version()["status"] == "ok"
     version = CliRunner().invoke(app, ["version"])
-    assert "0.7.0" not in version.output and "beakr update" not in version.output
+    assert "0.8.0" not in version.output and "beakr update" not in version.output
 
     # The same cache still tells a public build it is behind.
     monkeypatch.setattr(updates, "__version__", "0.5.0")
-    assert "0.7.0 is available" in _stale_notice(monkeypatch)
+    assert "0.8.0 is available" in _stale_notice(monkeypatch)
 
 
 def test_a_public_build_still_checks_pypi(monkeypatch) -> None:

@@ -24,7 +24,7 @@ from mcp import types
 
 from beakr_cli import mcp_server
 from beakr_cli.mcp_render import SOURCE_MODE_KEY, render, sources_block
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 
 API = "https://api.example.com"
 CASES = json.loads((Path(__file__).parent / "fixtures" / "knowledge_door_results.json").read_text())
@@ -72,12 +72,7 @@ def api(monkeypatch):
 
 
 async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 def _body(mode: str | None) -> dict[str, Any]:
@@ -138,7 +133,7 @@ async def test_knowledge_base_defaults_to_brief(command: str) -> None:
                 return_value=Response(200, json=case["rest_response"])
             )
             result = await _call("knowledge_base", {**call, **extra})
-        assert not result.isError, result.content
+        assert not result.is_error, result.content
         return result.content[0].text
 
     brief, full, none = await text(), await text(sources="full"), await text(sources="none")
@@ -164,7 +159,7 @@ async def test_knowledge_base_defaults_to_brief(command: str) -> None:
 @pytest.mark.asyncio
 async def test_an_unknown_mode_is_refused() -> None:
     result = await _call("knowledge_base", {"command": "ls", "sources": "all"})
-    assert result.isError
+    assert result.is_error
     assert "sources" in result.content[0].text
 
 

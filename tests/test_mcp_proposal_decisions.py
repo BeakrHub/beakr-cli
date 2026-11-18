@@ -28,7 +28,7 @@ from httpx import Response
 from mcp import types
 
 from beakr_cli import mcp_server
-from beakr_cli.mcp_server import mcp
+from tests import mcp_client
 
 API = "https://api.example.com"
 PROPOSAL = "9d122ac5-777c-4791-96a6-2b69a079fb6d"
@@ -46,12 +46,7 @@ def api(monkeypatch):
 
 
 async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
-    handler = mcp._mcp_server.request_handlers[types.CallToolRequest]
-    request = types.CallToolRequest(
-        method="tools/call",
-        params=types.CallToolRequestParams(name=name, arguments=arguments),
-    )
-    return (await handler(request)).root
+    return await mcp_client.call_tool(name, arguments)
 
 
 def _proposal(**decided: Any) -> dict[str, Any]:
@@ -95,7 +90,7 @@ async def _show(proposal: dict[str, Any], **arguments: Any) -> str:
     with respx.mock:
         respx.get(f"{PROPOSALS}/{PROPOSAL}").mock(return_value=Response(200, json=proposal))
         result = await _call("show_proposal", {"proposal_id": PROPOSAL, **arguments})
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     return result.content[0].text
 
 
@@ -177,7 +172,7 @@ async def _accept(reply: dict[str, Any]) -> str:
         respx.get(f"{PROPOSALS}/{PROPOSAL}").mock(return_value=Response(200, json=_proposal()))
         respx.post(f"{PROPOSALS}/{PROPOSAL}/accept").mock(return_value=Response(200, json=reply))
         result = await _call("accept_proposal", {"proposal_id": PROPOSAL, "reviewed_hash": HASH})
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     return result.content[0].text
 
 
@@ -232,7 +227,7 @@ async def _write(reply: dict[str, Any]) -> str:
             "knowledge_base_write",
             {"action": "archive", "arguments": {"page": "Old", "rationale": "gone"}},
         )
-    assert not result.isError, result.content
+    assert not result.is_error, result.content
     return result.content[0].text
 
 

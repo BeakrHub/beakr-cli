@@ -2813,7 +2813,8 @@
        "proposals",
        "suggest_parent",
        "help",
-       "query"
+       "query",
+       "orient"
       ],
       "name": "command",
       "required": true,

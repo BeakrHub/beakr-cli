@@ -43,7 +43,7 @@ async def test_list_projects_answers_without_the_organization_line_on_a_box():
     result = await mcp_server.mcp.call_tool("list_projects", {})
 
     text = _text(result)
-    assert not result.isError, text
+    assert not result.is_error, text
     assert "Client check (standard, id: p1)" in text
     assert "not_provided" not in text and "organization administration" not in text
     assert not text.startswith("Organization:")
@@ -60,7 +60,7 @@ async def test_get_profile_answers_without_the_organization_line_on_a_box():
     result = await mcp_server.mcp.call_tool("get_profile", {"profile_type": "org"})
 
     text = _text(result)
-    assert not result.isError, text
+    assert not result.is_error, text
     assert "organization administration" not in text
 
 

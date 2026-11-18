@@ -106,6 +106,10 @@ _INSTRUCTIONS_TEMPLATE = (
     "Knowledge has "
     "inline with the readable reference a read printed, in parentheses after the claim "
     "(memo.pdf \u203a p. 7, Page Title \u203a Section): Beakr stores it as that citation. "
+    "Cite a web page by its url, title and the passage you quote, and a record in a "
+    "system outside Beakr (an ELN entry, a registry compound, a connected item Knowledge "
+    "does not hold yet) as {source_type: external_record, url, title, meta: {system, "
+    "record_id, excerpt}}; Beakr never opens either link. "
     "In answers to people cite inline the same way. Never invent Beakr's internal ids."
     "{setup}\n\n"
     "Evidence: an excerpt marked (paraphrase) is the compiler's wording, (human asserted) "
@@ -214,8 +218,12 @@ def _update_notice() -> str:
 # W8.2: every tool is listed by default; BEAKR_MCP_TOOLS=eager lists the eager
 # set and adds what discover_tools finds.
 _NOTES = tool_surface.discovery_note() + _update_notice()
-mcp = tool_surface.TieredFastMCP(
+mcp = tool_surface.TieredMCPServer(
     "beakr",
+    # serverInfo.version: mcp 1 filled in its own package version when a server
+    # gave none; mcp 2 sends an empty string. This installation's version is
+    # what a client should see.
+    version=__version__,
     instructions=_INSTRUCTIONS + _NOTES,
     # Rebuilt once the installation's tools are known, before `initialize` is answered.
     instructions_for=lambda hidden: instructions(hidden) + _NOTES,
@@ -767,6 +775,9 @@ async def knowledge_base(
     Pass the command name as ``command`` and its options as a flat ``arguments``
     object. There is no ``search`` command: use ``sections`` or ``grep``.
 
+    Start with orient: a project's map (card types, what a card holds, hubs, read
+    limits); without scope, the projects you can read.
+
     Find pages:
       sections   {query, page_type?, limit?}  Semantic section search. START HERE.
       grep       {query, mode?, context_lines?, matches_per_page?, limit?}
@@ -803,6 +814,8 @@ async def knowledge_base(
     History:
       log {page?}   diff {page, rev, rev2?}   show {page, rev}
     Utility:
+      orient {}  With scope: that project's orientation map. Without: the projects
+                 you can read, the largest first.
       diagnostics {}   completions {prefix}   proposals {status?}
                  status: pending (default), accepted or dismissed.
 
@@ -840,7 +853,10 @@ async def knowledge_base(
 async def wiki_stats(
     project: str | None = None,
 ) -> str:
-    """Show knowledge base statistics: live pages, and page-to-source citations.
+    """Show knowledge base statistics, two counts: live pages and page-to-source citations.
+
+    For what the pages are (card types, what a card holds, hubs, how reads
+    behave at the project's size) use knowledge_base command='orient'.
 
     Args:
         project: Project name or ID to scope the stats. Omit for everything you can see.

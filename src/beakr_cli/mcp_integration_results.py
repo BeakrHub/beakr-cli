@@ -243,6 +243,10 @@ def _source_line(source: dict[str, Any]) -> str:
             parts.append(str(value))
     if source.get("source_ref"):
         parts.append(f"source_ref {source['source_ref']}")
+    held = source.get("knowledge_reference")
+    if isinstance(held, str) and held.strip():
+        # Knowledge already cites it: the source_ref above is one a write accepts.
+        parts.append(f"in Knowledge ({_one_line(held, 160)}): cite by its source_ref")
     # No ``{{key}}`` token at the head: an outside caller cannot cite by it, and
     # the line already names the item (``_strip_citation_tokens``).
     return "- " + " · ".join(parts)
@@ -297,11 +301,15 @@ def sources_block(sources: list[Any]) -> str:
     if not records:
         return ""
     lines = [
-        # Not "by its source_ref": a write accepts that only for an item Knowledge
-        # already holds, and refused it for every item read here that it did not.
-        f"Sources ({len(records)}). To cite one in a Knowledge write, pass it as a web "
-        "source (its url, title and the passage you quote), or its source_ref once "
-        "Knowledge holds the item:",
+        # A write accepts an item's source_ref only when Knowledge already cites the
+        # item, which the line marks (``in Knowledge``); any other item is cited as
+        # an outside record, which keeps the service and the item's id, where a web
+        # source drops both, and a later write cites it again as ``Service › id``.
+        f"Sources ({len(records)}). To cite one in a Knowledge write: an item marked "
+        "'in Knowledge' by its source_ref; any other as an outside record "
+        "{source_type: external_record, url, title, meta: {system: the service, "
+        "record_id: the item's own id in the result (a Slack ts, a Jira key), excerpt: the "
+        "passage you quote}} with (Service › record_id) as the evidence:",
     ]
     used = len(lines[0])
     shown = 0

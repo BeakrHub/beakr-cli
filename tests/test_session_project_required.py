@@ -79,7 +79,7 @@ def test_beakr_mcp_says_to_pass_scope():
 
     result = asyncio.run(mcp.call_tool("research", {"question": "What changed?"}))
 
-    assert result.isError
+    assert result.is_error
     body = json.loads(result.content[0].text)
     assert body["error_code"] == "session_project_required"
     assert "Pass `scope`" in body["fix"] and "session_status lists them" in body["fix"]

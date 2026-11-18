@@ -56,7 +56,7 @@ from beakr_cli.upload_path_policy import (
 )
 
 if TYPE_CHECKING:
-    from mcp.server.fastmcp import FastMCP
+    from beakr_cli.tool_surface import TieredMCPServer
 
 #: Seconds ``upload_files`` waits for its upload before answering with it still running.
 UPLOAD_WAIT_SECONDS = 40.0
@@ -899,7 +899,7 @@ def invitation_refusal(person: str, message: str) -> dict[str, Any] | None:
 
 
 #: The server ``upload_files`` reports progress through; set by :func:`register`.
-_SERVER: FastMCP | None = None
+_SERVER: TieredMCPServer | None = None
 
 PROJECT_TOOLS = (
     create_project,
@@ -910,7 +910,7 @@ PROJECT_TOOLS = (
 )
 
 
-def register(server: FastMCP) -> None:
+def register(server: TieredMCPServer) -> None:
     """Register this module's tools on ``server``.
 
     Description, tier, title and MCP annotations all come from the shared tool

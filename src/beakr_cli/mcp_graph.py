@@ -92,15 +92,26 @@ def graph_result(data: dict, *, total_pages: int | None = None) -> dict[str, Any
 
 
 def stats(data: dict) -> str:
-    """``wiki_stats``: what each count counts.
+    """``wiki_stats``: what each count counts, then where to learn what the pages are.
 
     ``sources`` is the route's count of page-to-source citations, so one
     document cited by three pages counts three times; ``links`` is org-wide
-    whatever the project, so it is not shown beside project counts.
+    whatever the project, so it is not shown beside project counts. The last
+    line points at ``knowledge_base`` command ``orient``.
     """
     data = data if isinstance(data, dict) else {}
     return (
         f"Pages: {data.get('pages', 0)} (live pages in scope)\n"
         f"Sources: {data.get('sources', 0)} (page-to-source citations: a document cited "
-        "by three pages counts three times)"
+        "by three pages counts three times)\n"
+        f"{STATS_ORIENT_POINTER}"
     )
+
+
+#: Closes ``wiki_stats``, as the engine's ``formatting.STATS_ORIENT_POINTER``
+#: does: the two counts say how much, not what the pages are, and agents that
+#: opened with ``wiki_stats`` went on to list pages alphabetically to find out.
+STATS_ORIENT_POINTER = (
+    "What the pages are (card types, what a card holds, hubs, how reads behave at this "
+    "size): knowledge_base command='orient' with the project as scope."
+)

@@ -70,7 +70,7 @@ def _page(rows: list[dict], cursor: str | None = None) -> dict:
 
 async def _call(arguments: dict):
     result = await mcp_server.mcp.call_tool("integrations", arguments)
-    assert result.structuredContent is None
+    assert result.structured_content is None
     return result, "\n".join(block.text for block in result.content)
 
 
@@ -78,7 +78,7 @@ async def _call(arguments: dict):
 async def test_list_reads_one_page_and_names_each_tools_options() -> None:
     route = respx.get(f"{API}/v1/integrations/tools").respond(json=_page([SLACK], "next"))
     result, text = await _call({"command": "list", "provider": "slack", "limit": 500})
-    assert not result.isError
+    assert not result.is_error
     request = route.calls.last.request
     assert request.headers["X-Beakr-Client"] == f"beakr-mcp/{__version__}"
     assert dict(request.url.params) == {"provider": "slack", "limit": "50"}
@@ -114,7 +114,7 @@ async def test_call_sends_the_tools_arguments_and_lists_its_sources() -> None:
             "connector_id": CONNECTOR,
         }
     )
-    assert not result.isError
+    assert not result.is_error
     assert json.loads(route.calls.last.request.content) == {
         "arguments": {"channel_id": "C1", "limit": 5},
         "connector_id": CONNECTOR,
@@ -132,7 +132,7 @@ async def test_call_sends_the_tools_arguments_and_lists_its_sources() -> None:
 async def test_a_tools_options_beside_tool_are_folded_into_arguments() -> None:
     route = respx.post(f"{API}/v1/integrations/tools/slack_list_messages/call").respond(json=CALLED)
     result, _ = await _call({"command": "call", "tool": "slack_list_messages", "channel_id": "C1"})
-    assert not result.isError
+    assert not result.is_error
     assert json.loads(route.calls.last.request.content) == {"arguments": {"channel_id": "C1"}}
 
 
@@ -141,7 +141,7 @@ async def test_a_list_option_beside_a_call_is_refused_and_nothing_is_sent() -> N
     # The tool's own limit belongs in `arguments`; a top-level one would be dropped.
     route = respx.post(f"{API}/v1/integrations/tools/slack_list_messages/call").respond(json=CALLED)
     result, text = await _call({"command": "call", "tool": "slack_list_messages", "limit": 5})
-    assert result.isError and not route.called
+    assert result.is_error and not route.called
     error = json.loads(text)
     assert error["error_code"] == "invalid_arguments"
     assert "`limit` is for command='list' only" in error["message"]
@@ -160,7 +160,7 @@ async def test_a_refusal_keeps_the_routes_message_with_a_fix_in_this_tools_terms
         },
     )
     result, text = await _call({"command": "call", "tool": "slack_post_message"})
-    assert result.isError
+    assert result.is_error
     error = json.loads(text)
     assert error["error_code"] == "tool_not_read_only"
     assert error["message"] == "slack_post_message changes data in the connected account."
@@ -173,7 +173,7 @@ async def test_a_failure_the_tool_reports_is_an_error_result() -> None:
         json={**CALLED, "is_error": True, "content": "C2 is not within the allowed scope."}
     )
     result, text = await _call({"command": "call", "tool": "slack_list_messages"})
-    assert result.isError
+    assert result.is_error
     error = json.loads(text)
     assert error["error_code"] == "tool_reported_error"
     assert error["message"] == "C2 is not within the allowed scope."
@@ -183,13 +183,14 @@ async def test_a_failure_the_tool_reports_is_an_error_result() -> None:
 async def test_on_a_box_without_integrations_the_tool_says_so_and_leaves_the_listing() -> None:
     respx.get(f"{API}/v1/integrations/tools").respond(404, json={"detail": "Not Found"})
     result, text = await _call({"command": "list"})
-    assert result.isError and "not_provided" in text
+    assert result.is_error and "not_provided" in text
     assert "integrations" not in {tool.name for tool in await mcp_server.mcp.list_tools()}
 
 
 @pytest.mark.real_capabilities
 async def test_the_instructions_name_integrations_only_where_it_is_listed(monkeypatch) -> None:
-    monkeypatch.setattr(mcp_server.mcp._mcp_server, "instructions", mcp_server.mcp.instructions)
+    lowlevel = mcp_server.mcp._lowlevel_server
+    monkeypatch.setattr(lowlevel, "instructions", mcp_server.mcp.instructions)
     box = {"paths": {"/v1/projects": {"get": {}}, "/v1/context": {"post": {}}}}
     with respx.mock:
         respx.get(f"{API}/v1/public/openapi.json").respond(json=box)

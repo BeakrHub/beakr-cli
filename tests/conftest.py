@@ -214,7 +214,7 @@ def capabilities_unread(request, monkeypatch):
     async def nothing_unserved(self, names):
         return set()
 
-    monkeypatch.setattr(tool_surface.TieredFastMCP, "_unserved", nothing_unserved)
+    monkeypatch.setattr(tool_surface.TieredMCPServer, "_unserved", nothing_unserved)
 
 
 @pytest.fixture

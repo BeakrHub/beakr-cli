@@ -609,6 +609,96 @@ def test_a_row_write_without_a_usable_source_is_a_usage_error(extra: list[str]) 
     assert not route.called
 
 
+@pytest.mark.parametrize("command", sorted(_ROW_WRITES))
+@respx.mock
+def test_a_row_write_can_cite_a_record_outside_beakr(command: str) -> None:
+    # Root cause: a row write could cite a record in a system outside Beakr (an
+    # ELN entry, a Slack message Knowledge does not hold) only by hand-built
+    # JSON through the MCP tools. --cite-record sends the external_record shape
+    # the engine admits: the record's own key in the evidence and the declared
+    # citation with its link, system, id and the words cited.
+    route = respx.post(f"{API}/v1/knowledge/wiki/write").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "kb", command, "Plover Gadget", *_ROW_WRITES[command],
+            "--cite-record", "https://eln.example/entry/ELN-4471",
+            "--record-system", "Benchling",
+            "--record-id", "ELN-4471",
+            "--source-title", "Batch 5 binding assay",
+            "--excerpt", "EC50 18 nM (n=4)",
+            "--rationale", "r",
+        ],
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    body = _body(route)
+    assert body["evidence"] == "{{record:ELN-4471}}"
+    assert body["citations"] == [
+        {
+            "key": "record:ELN-4471",
+            "source_type": "external_record",
+            "url": "https://eln.example/entry/ELN-4471",
+            "meta": {"system": "Benchling", "record_id": "ELN-4471", "excerpt": "EC50 18 nM (n=4)"},
+            "title": "Batch 5 binding assay",
+        }
+    ]
+
+
+@respx.mock
+def test_a_record_named_only_by_its_title_gets_a_key_the_engine_accepts() -> None:
+    # The engine accepts a record's own key only of letters, digits and _ . : / -,
+    # so a title with spaces becomes one hyphenated label, and other evidence stays.
+    route = respx.post(f"{API}/v1/knowledge/wiki/write").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "kb", "add-fact", "Plover Gadget", *_ROW_WRITES["add-fact"],
+            "--evidence", "plover-memo.md › para 2",
+            "--cite-record", "https://beakr.slack.com/archives/C123/p1731600000123456",
+            "--record-system", "Slack",
+            "--source-title", "Rowan's ownership note",
+            "--rationale", "r",
+        ],
+    )  # fmt: skip
+
+    assert result.exit_code == 0, result.output
+    body = _body(route)
+    assert body["evidence"] == "plover-memo.md › para 2 {{record:Rowan-s-ownership-note}}"
+    citation = body["citations"][0]
+    assert citation["key"] == "record:Rowan-s-ownership-note"
+    assert citation["meta"] == {"system": "Slack"}
+    assert citation["title"] == "Rowan's ownership note"
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        ["--cite-record", "eln.example/ELN-1", "--record-system", "B", "--record-id", "1"],
+        ["--cite-record", "https://eln.example/ELN-1", "--record-id", "1"],  # no system
+        ["--cite-record", "https://eln.example/ELN-1", "--record-system", "B"],  # no id or name
+        ["--evidence", "{{rag:1}}", "--record-system", "B"],  # system without a record
+        [
+            "--cite-record", "https://eln.example/ELN-1", "--record-system", "B",
+            "--record-id", "1", "--cite-conversation", "standup", "--excerpt", "x",
+        ],  # both kinds at once
+    ],
+)  # fmt: skip
+@respx.mock
+def test_a_record_citation_missing_what_it_needs_is_a_usage_error(extra: list[str]) -> None:
+    route = respx.post(f"{API}/v1/knowledge/wiki/write").mock(return_value=_ok())
+
+    result = CliRunner().invoke(
+        app,
+        ["kb", "add-fact", "Plover Gadget", *_ROW_WRITES["add-fact"], *extra, "--rationale", "r"],
+    )
+
+    assert result.exit_code == 2, result.output
+    assert not route.called
+
+
 def test_rows_to_help_says_it_lists_incoming_connections() -> None:
     # Root cause: to= returns the rows pointing at the page, but the help said
     # "every row involving this page".

@@ -40,14 +40,12 @@ def api(monkeypatch):
     monkeypatch.setattr(scope_session, "remembered_selection", lambda folder: None)
 
 
-def _meta(**turn) -> SimpleNamespace:
-    """A request's ``_meta`` as the MCP library hands it over: extra keys kept."""
-    return SimpleNamespace(
-        model_extra={
-            "x-codex-turn-metadata": {"thread_id": THREAD, "session_id": THREAD, **turn},
-            "threadId": THREAD,
-        }
-    )
+def _meta(**turn) -> dict:
+    """A request's ``_meta`` as the MCP library (mcp 2) hands it over: a dict, extra keys kept."""
+    return {
+        "x-codex-turn-metadata": {"thread_id": THREAD, "session_id": THREAD, **turn},
+        "threadId": THREAD,
+    }
 
 
 def _own_session(monkeypatch) -> McpSession:
@@ -60,14 +58,16 @@ def _own_session(monkeypatch) -> McpSession:
 
 def test_the_thread_id_is_read_from_codexs_turn_metadata():
     assert scope_session.codex_thread_id(_meta()) == THREAD
+    assert scope_session.codex_thread_id({"threadId": THREAD}) == THREAD
+    assert scope_session.codex_thread_id({}) is None
+    assert scope_session.codex_thread_id(None) is None
+    # Not something the API would take as a conversation id: ignored.
+    bad = {"x-codex-turn-metadata": {"thread_id": "a b/c"}}
+    assert scope_session.codex_thread_id(bad) is None
+    # mcp 1 handed ``_meta`` over as a model, its unknown keys in model_extra.
     assert scope_session.codex_thread_id(SimpleNamespace(model_extra={"threadId": THREAD})) == (
         THREAD
     )
-    assert scope_session.codex_thread_id(SimpleNamespace(model_extra={})) is None
-    assert scope_session.codex_thread_id(None) is None
-    # Not something the API would take as a conversation id: ignored.
-    bad = SimpleNamespace(model_extra={"x-codex-turn-metadata": {"thread_id": "a b/c"}})
-    assert scope_session.codex_thread_id(bad) is None
 
 
 @respx.mock
@@ -144,4 +144,37 @@ def test_a_tool_call_with_codex_metadata_adopts_the_thread(monkeypatch):
     monkeypatch.setattr(mcp, "_call_tool", call)
 
     assert asyncio.run(mcp._gated_call("knowledge_base", {}, None)) == "ok"
+    assert seen == [THREAD]
+
+
+@pytest.mark.parametrize("mode", ["legacy", "2026-07-28"])
+def test_codexs_request_meta_reaches_the_server_through_a_real_session(monkeypatch, mode):
+    # The _meta Codex sends on tools/call arrives where _request_meta reads it, in
+    # both protocol eras (mcp 2 passes the request's context into call_tool).
+    from mcp.types import CallToolResult, TextContent
+
+    from beakr_cli import mcp_session
+    from beakr_cli.mcp_server import mcp
+    from tests import mcp_client
+
+    seen = []
+
+    async def adopt(thread):
+        seen.append(thread)
+
+    async def no_gate(server, name, agent):
+        return None
+
+    async def call(name, arguments):
+        return CallToolResult(content=[TextContent(type="text", text="ok")])
+
+    monkeypatch.setattr(scope_session, "adopt_conversation", adopt)
+    monkeypatch.setattr(mcp_session, "gate", no_gate)
+    monkeypatch.setattr(mcp, "_call_tool", call)
+
+    async def run():
+        async with mcp_client.client(mode=mode) as session:
+            await session.call_tool("beakr_version", {}, meta=_meta())
+
+    asyncio.run(run())
     assert seen == [THREAD]
