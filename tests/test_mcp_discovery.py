@@ -362,3 +362,31 @@ async def test_read_file_pages_through_a_file() -> None:
         await mcp_server.mcp.call_tool("read_file", {"artifact_id": ARTIFACT, "offset": 4})
     )
     assert "efghij" in rest and "More text follows" not in rest
+
+
+@pytest.mark.parametrize("search", ["upload files", "upload_files", "Upload-Files", "files upload"])
+def test_discover_tools_matches_every_word_not_one_substring(search):
+    # 0.1.12 Box: the whole search was one substring, so "upload files" never found
+    # upload_files, and words from a description in another order found nothing.
+    from beakr_cli.mcp_tools_platform import _matches, _search_words
+
+    words = _search_words(search)
+    assert _matches(words, "upload_files", "Upload local files to a project.")
+    assert not _matches(words, "read_file", "Open a file by its path.")
+
+
+def test_discover_tools_with_no_words_matches_every_tool():
+    from beakr_cli.mcp_tools_platform import _matches, _search_words
+
+    assert _search_words("  ") == []
+    assert _matches([], "wiki_stats", None)
+
+
+def test_discover_tools_finds_a_tool_from_two_words_of_its_description():
+    import asyncio
+
+    from beakr_cli.mcp_tools_platform import discover_tools
+
+    found = asyncio.run(discover_tools("proposal show"))
+    assert "show_proposal" in {tool["name"] for tool in found["tools"]}
+    assert asyncio.run(discover_tools("proposal zzzz-no-such-word"))["tools"] == []
