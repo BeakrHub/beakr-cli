@@ -402,6 +402,14 @@ EXEMPT: dict[str, str] = {
     "end-user-tokens revoke": "no recorded response yet; tests/test_cli_core_surface.py",
     "integrations tools": "no recorded response yet; tests/test_cli_core_surface.py",
     "integrations call": "no recorded response yet; tests/test_cli_core_surface.py",
+    # A project's sources, over routes the engine serves to API keys but does not
+    # document yet; no positive-path recording exists for them.
+    "sources ls": "no recorded response yet; tests/test_cli_sources.py",
+    "sources attach": "no recorded response yet; tests/test_cli_sources.py",
+    "sources edit": "no recorded response yet; tests/test_cli_sources.py",
+    "sources rm": "no recorded response yet; tests/test_cli_sources.py",
+    "sources sync": "no recorded response yet; tests/test_cli_sources.py",
+    "sources status": "no recorded response yet; tests/test_cli_sources.py",
     "interviews link create": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link ls": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link show": "no recorded response yet; tests/test_cli_core_surface.py",

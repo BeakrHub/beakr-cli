@@ -278,8 +278,61 @@ beakr files ls --search budget | show ID | download ID --out ./ | rm ID
 beakr integrations ls | connect PROVIDER | status ID | rm ID
 beakr integrations tools --provider slack           # what your connected integrations can answer
 beakr integrations call slack_search --arg query="assay handover"
+beakr sources ls -P ID | attach LINK -P ID | edit SRC | rm SRC | sync SRC | status SRC
 beakr doctor                                        # auth, scopes, API, MCP, hooks, version
 ```
+
+### Attach connected items to a project
+
+A project's sources are the connected items it reads: a Google Drive folder or
+file, a Slack channel, a Notion page or database, or everything one connection
+can see. Connect the account first (`beakr integrations connect notion`), then
+attach items by their link; `--knowledge` builds Knowledge from it and `--sync`
+starts pulling it at once.
+
+```bash
+beakr sources attach https://www.notion.so/acme/Assay-Handbook-0123...cdef -P Basel --knowledge --sync
+beakr sources attach https://drive.google.com/drive/folders/1AbC... -P Basel --knowledge
+beakr sources attach https://acme.slack.com/archives/C01ABCDEF -P Basel --name "#assays"
+beakr sources attach C01ABCDEF --provider slack --type channel --name "#assays" -P Basel
+beakr sources attach --provider drive --scope-mode all -P Basel   # everything the connection reads
+beakr sources ls -P Basel                                         # ids, Knowledge on/off, last sync
+beakr sources edit SRC -P Basel --no-knowledge | --auto-sync | --mode all | --clear-query
+beakr sources sync SRC -P Basel && beakr sources status SRC -P Basel
+beakr sources rm SRC -P Basel --yes          # Knowledge already built from it stays
+```
+
+A link gives the provider, the item's id and, where it says, its type: Notion's
+32-character id ending the path (a `v=` view means a database; a `p=` page open
+in peek view is the item), Drive's `/folders/<id>` and `/file/d/<id>` (an
+`?id=` link needs `--type file|folder`), Slack's `/archives/<channel>`. Without a
+link, pass the id with `--provider`, `--type` and `--name`. When you have one
+connection for the provider it is used; with several, `attach` lists them and
+asks for `--connector ID`.
+
+A source's integration rules narrow what a sync takes, on `attach` and `edit`:
+`--query` is provider-native JSON, `'{"notion_filter": {...}}'` (a Notion API
+filter) for a Notion database or `'{"drive_q": "..."}'` (a Drive query, ANDed
+with the folder) for a Drive folder, drive or connection; `--mode agent` lets
+Beakr's source picker choose within scope (the default) and `--mode all` takes
+every item in scope; `--pull-guidance` and `--compile-guidance` are plain-language
+instructions for the source picker and for the Knowledge compiler (at most 2,000
+characters each). `edit` clears them with `--clear-query`,
+`--clear-pull-guidance` and `--clear-compile-guidance`. They are sent only when
+given; the engine refuses a rule that does not fit the source (422).
+
+```bash
+beakr sources attach https://www.notion.so/acme/Runs-0123...cdef?v=4567... -P Basel --knowledge \
+  --query '{"notion_filter": {"property": "Status", "select": {"equals": "Final"}}}' \
+  --mode all --compile-guidance "Record each run's instrument and outcome."
+beakr sources edit SRC -P Basel --query '{"drive_q": "mimeType = '\''application/pdf'\''"}'
+```
+
+Where a project requires a person to approve what agents bring into Knowledge,
+attaching, changing and syncing a source with an agent's credential are refused
+(exit 6, `person_review_required`): run the command yourself, outside the agent
+session, or attach it in the web app. These routes are served to API keys but
+not yet in the documented API contract.
 
 ### Tell Knowledge what a project is about
 

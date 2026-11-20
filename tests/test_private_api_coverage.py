@@ -53,6 +53,24 @@ MAPPING: list[tuple[str, Callable[[PrivateBeakr], Any]]] = [
     ),
     ("GET /v1/integrations/{}/coverage", lambda c: c.integrations.coverage("k1")),
     ("POST /v1/integrations/{}/sync", lambda c: c.integrations.sync("k1")),
+    ("GET /v1/projects/{}/sources", lambda c: c.project_sources.list("p1")),
+    (
+        "POST /v1/projects/{}/sources",
+        lambda c: c.project_sources.attach(
+            "p1",
+            provider="notion:nango",
+            external_item_id="i1",
+            external_item_type="page",
+            external_item_name="Handbook",
+        ),
+    ),
+    (
+        "PATCH /v1/projects/{}/sources/{}",
+        lambda c: c.project_sources.update("p1", "s1", ingest_wiki=True),
+    ),
+    ("DELETE /v1/projects/{}/sources/{}", lambda c: c.project_sources.remove("p1", "s1")),
+    ("POST /v1/projects/{}/sources/{}/sync", lambda c: c.project_sources.sync("p1", "s1")),
+    ("GET /v1/projects/{}/sources/{}/sync-status", lambda c: c.project_sources.status("p1", "s1")),
     ("GET /v1/interview/requests", lambda c: c.interviews.requests()),
     (
         "POST /v1/interview/requests",

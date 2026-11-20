@@ -8,6 +8,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Attach connected items to a project from the command line.** `beakr sources
+  attach <link> -P <project>` attaches a Notion page or database, a Google Drive
+  folder or file, or a Slack channel by its link (the id, type and provider come
+  from it), or any connected item by `<id> --provider --type --name`;
+  `--scope-mode all` attaches everything one connection reads. `--knowledge`
+  builds Knowledge from it, `--auto-sync/--no-auto-sync` sets the nightly sync,
+  and `--sync` starts a sync once attached. The connection is the only one you
+  have for the provider, or `--connector ID` when you have several. Its integration
+  rules, on `attach` and `edit`: `--query` (provider-native JSON,
+  `{"notion_filter": ...}` for a Notion database or `{"drive_q": ...}` for a Drive
+  folder), `--mode agent|all`, `--pull-guidance` and `--compile-guidance`, sent
+  only when given; `edit --clear-query`, `--clear-pull-guidance` and
+  `--clear-compile-guidance` drop them. `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change,
+  detach, sync and follow a project's sources. Where a project requires a person
+  to approve what agents bring into Knowledge, an agent's attach, edit or sync
+  exits 6 and says to run it outside the agent session.
 - **Card types from the command line.** `beakr kb types ls -P <project>` lists the
   card types a project uses, which scope defines each (project, organization or
   built-in) and whether a type is the project's own copy of a broader one.

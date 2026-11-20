@@ -29,6 +29,14 @@ POST /v1/integrations/{connector_id}/sync
 GET /v1/integrations/hosted/connectors/{connector_id}/scope
 PUT /v1/integrations/hosted/connectors/{connector_id}/scope
 
+# Project sources: what a project pulls from its connections (beakr sources).
+GET /v1/projects/{project_id}/sources
+POST /v1/projects/{project_id}/sources
+PATCH /v1/projects/{project_id}/sources/{attachment_id}
+DELETE /v1/projects/{project_id}/sources/{attachment_id}
+POST /v1/projects/{project_id}/sources/{attachment_id}/sync
+GET /v1/projects/{project_id}/sources/{attachment_id}/sync-status
+
 # Interviews: requests, sessions and the interview maker.
 GET /v1/interview/requests
 POST /v1/interview/requests

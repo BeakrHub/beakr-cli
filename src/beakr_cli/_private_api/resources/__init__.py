@@ -22,6 +22,7 @@ from beakr_cli._private_api.resources.memories import Memories
 from beakr_cli._private_api.resources.org_admin import OrgAdmin
 from beakr_cli._private_api.resources.outputs import Outputs
 from beakr_cli._private_api.resources.profile import Profile
+from beakr_cli._private_api.resources.project_sources import ProjectSources
 from beakr_cli._private_api.resources.usage import Trace, Usage
 from beakr_cli._private_api.resources.workflows import Workflows
 
@@ -47,6 +48,7 @@ def attach_private_resources(client: Any) -> None:
     client.memories = Memories(client)
     client.outputs = Outputs(client)
     client.profile = Profile(client)
+    client.project_sources = ProjectSources(client)
     client.usage = Usage(client)
     client.trace = Trace(client)
     client.workflows = Workflows(client)

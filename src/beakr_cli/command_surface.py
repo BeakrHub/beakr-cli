@@ -199,6 +199,13 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "integrations rm",
         "integrations tools",
         "integrations call",
+        # A project's sources: attach connected items, Knowledge on or off, sync.
+        "sources ls",
+        "sources attach",
+        "sources edit",
+        "sources rm",
+        "sources sync",
+        "sources status",
     }
 )
 

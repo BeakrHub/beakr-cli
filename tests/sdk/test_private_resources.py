@@ -94,6 +94,74 @@ CASES: list[tuple[str, Any, str, str, dict[str, str], Any]] = [
         {"profile_type": "org", "name": "Lab"},
     ),
     ("workflow run", lambda c: c.workflows.get_run("r1"), "GET", "/v1/workflows/runs/r1", {}, None),
+    # A project's sources (beakr sources).
+    (
+        "sources list",
+        lambda c: c.project_sources.list("p1"),
+        "GET",
+        "/v1/projects/p1/sources",
+        PAGE,
+        None,
+    ),
+    (
+        "sources attach",
+        lambda c: c.project_sources.attach(
+            "p1",
+            provider="slack:nango",
+            external_item_id="C1",
+            external_item_type="channel",
+            external_item_name="#assays",
+            connector_id="c1",
+            ingest_wiki=True,
+            pull_mode="agent",
+        ),
+        "POST",
+        "/v1/projects/p1/sources",
+        {},
+        {
+            "provider": "slack:nango",
+            "connector_id": "c1",
+            "external_item_id": "C1",
+            "external_item_type": "channel",
+            "external_item_name": "#assays",
+            "ingest_wiki": True,
+            "pull_mode": "agent",
+        },
+    ),
+    (
+        "sources update",
+        lambda c: c.project_sources.update(
+            "p1", "s1", auto_sync_wiki=False, pull_guidance="Only hand-offs", clear=["source_query"]
+        ),
+        "PATCH",
+        "/v1/projects/p1/sources/s1",
+        {},
+        {"auto_sync_wiki": False, "pull_guidance": "Only hand-offs", "source_query": None},
+    ),
+    (
+        "sources remove",
+        lambda c: c.project_sources.remove("p1", "s1"),
+        "DELETE",
+        "/v1/projects/p1/sources/s1",
+        {},
+        None,
+    ),
+    (
+        "sources sync",
+        lambda c: c.project_sources.sync("p1", "s1"),
+        "POST",
+        "/v1/projects/p1/sources/s1/sync",
+        {},
+        None,
+    ),
+    (
+        "sources status",
+        lambda c: c.project_sources.status("p1", "s1"),
+        "GET",
+        "/v1/projects/p1/sources/s1/sync-status",
+        {},
+        None,
+    ),
 ]
 
 

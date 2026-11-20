@@ -1,6 +1,49 @@
 {
  "components": {
   "schemas": {
+   "AccessStatus": {
+    "description": "Access status for an external source attachment.\n\nIndicates whether the current user can access the attached resource.\n\nAccess checking is on-demand - we only verify actual access when the user\nexplicitly clicks \"Check Access\". On initial load, we only check if the user\nhas a connection to the provider.\n\nAttributes:\n    accessible: Access status:\n        - None: Connected but not yet verified (user should click \"Check Access\")\n        - True: Access verified (user clicked Check Access and it succeeded)\n        - False: No access (not connected, or Check Access failed)\n    reason: Status reason:\n        - 'not_connected': User hasn't connected this provider\n        - 'connected': User has provider connected but access not verified\n        - 'verified': Access verified via Check Access\n        - 'no_access': User's token can't access this resource\n        - 'not_found': Resource no longer exists\n    message: Human-readable message explaining the access status.",
+    "properties": {
+     "accessible": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Access status: - None: Connected but not yet verified (user should click \"Check Access\") - True: Access verified (user clicked Check Access and it succeeded) - False: No access (not connected, or Check Access failed)",
+      "title": "Accessible"
+     },
+     "message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Human-readable message explaining the access status.",
+      "title": "Message"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Status reason: - 'not_connected': User hasn't connected this provider - 'connected': User has provider connected but access not verified - 'verified': Access verified via Check Access - 'no_access': User's token can't access this resource - 'not_found': Resource no longer exists.",
+      "title": "Reason"
+     }
+    },
+    "title": "AccessStatus",
+    "type": "object"
+   },
    "ApiError": {
     "additionalProperties": true,
     "description": "Why the request failed and how to correct it.",
@@ -1367,6 +1410,353 @@
      "error"
     ],
     "title": "ErrorEnvelope",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentCreate": {
+    "description": "Request payload for attaching an external resource to a project or space.\n\nAttributes:\n    provider: Provider identifier (e.g., 'gdrive:nango', 'notion:nango').\n    external_item_id: Provider's native identifier for the resource.\n    external_item_type: Type of item ('file', 'folder', 'page', 'database', 'label', 'drive').\n    external_item_name: Display name of the resource.\n    external_item_path: Breadcrumb path for display (optional).\n    external_item_url: Direct link to the resource (optional).\n    ingest_wiki: Whether to ingest this source into the wiki.",
+    "properties": {
+     "auto_sync_wiki": {
+      "default": false,
+      "description": "Whether new content is compiled into Knowledge automatically.",
+      "title": "Auto Sync Wiki",
+      "type": "boolean"
+     },
+     "connector_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the connector.",
+      "title": "Connector Id"
+     },
+     "external_item_id": {
+      "description": "Provider's native identifier for the resource.",
+      "title": "External Item Id",
+      "type": "string"
+     },
+     "external_item_name": {
+      "description": "Display name of the resource.",
+      "title": "External Item Name",
+      "type": "string"
+     },
+     "external_item_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Breadcrumb path for display (optional).",
+      "title": "External Item Path"
+     },
+     "external_item_type": {
+      "description": "Type of item ('file', 'folder', 'page', 'database', 'label', 'drive').",
+      "title": "External Item Type",
+      "type": "string"
+     },
+     "external_item_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Direct link to the resource (optional).",
+      "title": "External Item Url"
+     },
+     "ingest_wiki": {
+      "default": false,
+      "description": "Whether to ingest this source into the wiki.",
+      "title": "Ingest Wiki",
+      "type": "boolean"
+     },
+     "provider": {
+      "description": "Provider identifier (e.g., 'gdrive:nango', 'notion:nango').",
+      "title": "Provider",
+      "type": "string"
+     },
+     "scope_mode": {
+      "default": "item",
+      "description": "Scope mode: one of `item`, `all`.",
+      "enum": [
+       "item",
+       "all"
+      ],
+      "title": "Scope Mode",
+      "type": "string"
+     }
+    },
+    "required": [
+     "provider",
+     "external_item_id",
+     "external_item_type",
+     "external_item_name"
+    ],
+    "title": "ExternalSourceAttachmentCreate",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentOut": {
+    "description": "Serialized representation of an external source attachment.\n\nAttributes:\n    id: Unique attachment identifier.\n    target_type: Type of target ('project' or 'space').\n    target_id: ID of the target project or space.\n    connector_id: Standalone account connector used by this attachment, if still available.\n    provider: Provider identifier.\n    external_item_id: Provider's native identifier.\n    external_item_type: Type of item.\n    external_item_name: Display name.\n    external_item_path: Breadcrumb path.\n    external_item_url: Direct link.\n    attached_by: User ID who created the attachment.\n    attached_by_name: Display name of the user who attached.\n    attached_at: Timestamp when attached.\n    access_status: Current user's access status for this source.",
+    "properties": {
+     "access_status": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AccessStatus"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Current user's access status for this source."
+     },
+     "attached_at": {
+      "description": "Timestamp when attached.",
+      "format": "date-time",
+      "title": "Attached At",
+      "type": "string"
+     },
+     "attached_by": {
+      "description": "User ID who created the attachment.",
+      "format": "uuid",
+      "title": "Attached By",
+      "type": "string"
+     },
+     "attached_by_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Display name of the user who attached.",
+      "title": "Attached By Name"
+     },
+     "auto_sync_wiki": {
+      "default": false,
+      "description": "Whether new content is compiled into Knowledge automatically.",
+      "title": "Auto Sync Wiki",
+      "type": "boolean"
+     },
+     "connector_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Standalone account connector used by this attachment, if still available.",
+      "title": "Connector Id"
+     },
+     "connector_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Display label of the connection the source comes from.",
+      "title": "Connector Label"
+     },
+     "external_item_id": {
+      "description": "Provider's native identifier.",
+      "title": "External Item Id",
+      "type": "string"
+     },
+     "external_item_name": {
+      "description": "Display name.",
+      "title": "External Item Name",
+      "type": "string"
+     },
+     "external_item_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Breadcrumb path.",
+      "title": "External Item Path"
+     },
+     "external_item_type": {
+      "description": "Type of item.",
+      "title": "External Item Type",
+      "type": "string"
+     },
+     "external_item_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Direct link.",
+      "title": "External Item Url"
+     },
+     "id": {
+      "description": "Unique attachment identifier.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "ingest_wiki": {
+      "default": false,
+      "description": "Whether its content is compiled into Knowledge.",
+      "title": "Ingest Wiki",
+      "type": "boolean"
+     },
+     "last_sync_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Time of the last sync (ISO 8601, UTC).",
+      "title": "Last Sync At"
+     },
+     "provider": {
+      "description": "Provider identifier.",
+      "title": "Provider",
+      "type": "string"
+     },
+     "scope_mode": {
+      "default": "item",
+      "description": "How much of the external item is attached: `item` for the item alone, or a broader mode covering its contents.",
+      "title": "Scope Mode",
+      "type": "string"
+     },
+     "supports_wiki_ingest": {
+      "default": false,
+      "description": "Whether this provider's content can be compiled into Knowledge.",
+      "title": "Supports Wiki Ingest",
+      "type": "boolean"
+     },
+     "sync_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Status of the latest sync job: null if none has run, else `syncing`, `completed` or `failed`.",
+      "title": "Sync Status"
+     },
+     "target_id": {
+      "description": "ID of the target project or space.",
+      "format": "uuid",
+      "title": "Target Id",
+      "type": "string"
+     },
+     "target_type": {
+      "description": "Type of target ('project' or 'space').",
+      "title": "Target Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "target_type",
+     "target_id",
+     "provider",
+     "external_item_id",
+     "external_item_type",
+     "external_item_name",
+     "attached_by",
+     "attached_at"
+    ],
+    "title": "ExternalSourceAttachmentOut",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentPage": {
+    "description": "One page of a project's external source attachments, in the public list shape.",
+    "properties": {
+     "data": {
+      "description": "The items on this page.",
+      "items": {
+       "$ref": "#/components/schemas/ExternalSourceAttachmentOut"
+      },
+      "title": "Data",
+      "type": "array"
+     },
+     "has_more": {
+      "default": false,
+      "description": "Whether another page follows.",
+      "title": "Has More",
+      "type": "boolean"
+     },
+     "next_cursor": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Pass as `cursor` to read the next page; null on the last page.",
+      "title": "Next Cursor"
+     }
+    },
+    "required": [
+     "data"
+    ],
+    "title": "ExternalSourceAttachmentPage",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentUpdate": {
+    "description": "Request payload for updating an external source attachment.\n\nAll fields are optional \u2014 only provided fields are updated.\n\nAttributes:\n    ingest_wiki: Whether to ingest this source into the wiki.\n    auto_sync_wiki: Whether to automatically re-ingest this source nightly.",
+    "properties": {
+     "auto_sync_wiki": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Whether to automatically re-ingest this source nightly.",
+      "title": "Auto Sync Wiki"
+     },
+     "ingest_wiki": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Whether to ingest this source into the wiki.",
+      "title": "Ingest Wiki"
+     }
+    },
+    "title": "ExternalSourceAttachmentUpdate",
     "type": "object"
    },
    "IntegrationSyncResult": {
@@ -4540,6 +4930,73 @@
     "title": "SourceOut",
     "type": "object"
    },
+   "SourceSyncFile": {
+    "additionalProperties": true,
+    "properties": {
+     "name": {
+      "description": "Name of the source sync file.",
+      "title": "Name",
+      "type": "string"
+     },
+     "outcome": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "What happened to the item: ingested, skipped or failed.",
+      "title": "Outcome"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Why the item was skipped or failed, for a person to read.",
+      "title": "Reason"
+     },
+     "reason_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Stable code for the reason, e.g. file_too_large, blocked_file_type, no_export, export_failed, nothing_to_add, permission_denied, connection_expired, rate_limited.",
+      "title": "Reason Code"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "syncing, completed or failed. A skipped item is completed.",
+      "title": "Status"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "SourceSyncFile",
+    "type": "object"
+   },
    "SourceSyncQueued": {
     "properties": {
      "job_id": {
@@ -4578,6 +5035,54 @@
      "status_url"
     ],
     "title": "SourceSyncQueued",
+    "type": "object"
+   },
+   "SourceSyncStatus": {
+    "properties": {
+     "files": {
+      "default": [],
+      "description": "The files.",
+      "items": {
+       "$ref": "#/components/schemas/SourceSyncFile"
+      },
+      "title": "Files",
+      "type": "array"
+     },
+     "files_completed": {
+      "description": "Files completed.",
+      "title": "Files Completed",
+      "type": "integer"
+     },
+     "files_failed": {
+      "description": "Files failed.",
+      "title": "Files Failed",
+      "type": "integer"
+     },
+     "files_total": {
+      "description": "Files total.",
+      "title": "Files Total",
+      "type": "integer"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Current status of the source sync status.",
+      "title": "Status"
+     }
+    },
+    "required": [
+     "files_total",
+     "files_completed",
+     "files_failed"
+    ],
+    "title": "SourceSyncStatus",
     "type": "object"
    },
    "UndoRunRequest": {
@@ -11856,6 +12361,518 @@
     ],
     "x-beakr-replaces": "/v1/canvas/{canvas_id}/revisions/{revision_no}/content",
     "x-beakr-scope": "outputs:read"
+   }
+  },
+  "/v1/projects/{project_id}/sources": {
+   "get": {
+    "description": "List external sources attached to a project.\n\nReturns all external source attachments for the project, with access status\nindicating whether the current user can access each source.\n\nAccess status values:\n- accessible=True: User has a connection and can use this source\n- accessible=False, reason='not_connected': User needs to connect this integration",
+    "operationId": "list_project_sources_v1_projects__project_id__sources_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "Opaque cursor from a previous page's `next_cursor`.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opaque cursor from a previous page's `next_cursor`.",
+       "title": "Cursor"
+      }
+     },
+     {
+      "description": "Page size, 1 to 200.",
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Page size, 1 to 200.",
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExternalSourceAttachmentPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "List external sources attached to a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "projects:read"
+   },
+   "post": {
+    "description": "Attach an external source to a project.\n\nRequires member access to the project. The attachment is a pointer to an\nexternal resource (e.g., a Notion database, Google Drive folder) that will\nbe used as context when querying or running workflows in this project.\n\nNote: The attachment doesn't grant access. Each user must have their own\nconnection to the provider and access to the specific resource.",
+    "operationId": "attach_source_to_project_v1_projects__project_id__sources_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ExternalSourceAttachmentCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExternalSourceAttachmentOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Attach an external source to a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:admin"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}": {
+   "delete": {
+    "description": "Remove an external source attachment from a project.\n\nRequires admin access to the project, or be the user who created the attachment.",
+    "operationId": "delete_project_source_v1_projects__project_id__sources__attachment_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Remove an external source attachment from a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-destructive": true,
+    "x-beakr-scope": "integrations:admin"
+   },
+   "patch": {
+    "description": "Update an external source attachment on a project.",
+    "operationId": "update_project_source_v1_projects__project_id__sources__attachment_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ExternalSourceAttachmentUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExternalSourceAttachmentOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Update an external source attachment on a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:admin"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}/sync": {
+   "post": {
+    "description": "Trigger wiki ingestion for an attached external source.\n\nOnly the user who attached the source can trigger sync. Requires an\nactive connector for the provider.",
+    "operationId": "sync_project_source_v1_projects__project_id__sources__attachment_id__sync_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceSyncQueued"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Trigger wiki ingestion for an attached external source",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-job": {
+     "at": "",
+     "kind": "integration_sync"
+    },
+    "x-beakr-scope": "integrations:admin"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}/sync-status": {
+   "get": {
+    "description": "Get sync progress for an external source attachment.\n\nReturns the parent sync job status and file-level progress from child jobs.",
+    "operationId": "get_sync_status_v1_projects__project_id__sources__attachment_id__sync_status_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceSyncStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Get sync progress for an external source attachment",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "projects:read"
    }
   },
   "/v1/trace/{kind}/{item_id}": {
