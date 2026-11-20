@@ -40,7 +40,7 @@ from beakr_sdk.resources._upload import (
     upload_relative_path,
 )
 
-from beakr_cli import card_types, card_updates
+from beakr_cli import card_settings, card_types, card_updates
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
 from beakr_cli.upload_path_policy import (
@@ -71,7 +71,9 @@ def _error(code: str, message: str, fix: str | None = None, **extra: Any) -> dic
 # --- create_project -------------------------------------------------------------------
 
 
-async def create_project(name: str, description: str = "") -> str | dict[str, Any]:
+async def create_project(
+    name: str, description: str = "", card_types: dict[str, Any] | None = None
+) -> str | dict[str, Any]:
     """Create a project (described in the shared agent tool surface)."""
     name = (name or "").strip()
     if not name:
@@ -88,15 +90,49 @@ async def create_project(name: str, description: str = "") -> str | dict[str, An
             f"A project named {name!r} already exists (id: {taken[0].get('id')}).",
             "Use that project (pass its id), or choose another name.",
         )
+    chosen = await _card_types_argument(card_types)
+    if chosen.get("status") == "error":
+        return chosen
     project = await call_api(
-        lambda sdk: sdk.projects.create(name, description=(description or "").strip() or None)
+        lambda sdk: sdk.projects.create(
+            name,
+            description=(description or "").strip() or None,
+            card_types=chosen or None,
+        )
     )
-    return created_text(project or {}, name)
+    return created_text(project or {}, name, chosen)
 
 
-def created_text(project: dict[str, Any], name: str) -> str:
+async def _card_types_argument(value: Any) -> dict[str, Any]:
+    """``card_types`` as the create route takes it; empty when nothing was chosen.
+
+    A refusal comes back as the error dict itself.
+    """
+    if not isinstance(value, dict):
+        return {}
+    card_types: dict[str, Any] = {}
+    inherit = str(value.get("inherit") or "").strip()
+    if inherit:
+        if inherit not in card_settings.INHERIT_VALUES:
+            return _error("invalid_arguments", *card_settings.CREATE_REFUSALS["bad_inherit"])
+        card_types["inherit"] = inherit
+    if isinstance(value.get("agent_may_change"), bool):
+        card_types["agent_may_change"] = value["agent_may_change"]
+    source = str(value.get("copy_types_from") or "").strip()
+    if source:
+        card_types["copy_from_project_id"] = await _project_id(source)
+    if inherit == "own" and not source:
+        # The route would refuse it too; said here in the tool's own argument names.
+        return _error("invalid_arguments", *card_settings.CREATE_REFUSALS["own_without_types"])
+    return card_types
+
+
+def created_text(
+    project: dict[str, Any], name: str, card_types: dict[str, Any] | None = None
+) -> str:
     """What ``create_project`` answers; the hosted server answers the same text."""
     lines = [f"Created project {project.get('name') or name!r} (id: {project.get('id')})."]
+    lines += card_settings.created_card_type_lines(card_types)
     if project.get("requires_knowledge_profile"):
         lines.append(
             "The organization requires a Knowledge profile on every new project. Agree the "
@@ -280,6 +316,49 @@ async def edit_card_type(
         )
     )
     return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
+
+
+# --- card_type_settings -----------------------------------------------------------------
+
+
+async def card_type_settings(
+    project: str,
+    inherit: str | None = None,
+    agent_may_change: Any = None,
+    keep_types_in_use: Any = None,
+    apply: Any = None,
+) -> str | dict[str, Any]:
+    """Change a project's card type settings (described in the shared agent tool surface).
+
+    The call is the signed-in person's own ``PUT
+    /v1/knowledge/wiki/page-types/settings``: that route decides who may.
+    Without ``apply=true`` it sends a dry run and nothing is written.
+    """
+    changes: dict[str, Any] = {}
+    if inherit is not None and str(inherit).strip():
+        inherit = str(inherit).strip()
+        if inherit not in card_settings.INHERIT_VALUES:
+            return _error("invalid_arguments", *card_settings.REFUSALS["bad_inherit"])
+        changes["inherit"] = inherit
+    if agent_may_change is not None:
+        if not isinstance(agent_may_change, bool):
+            return _error("invalid_arguments", *card_settings.REFUSALS["bad_agent_may_change"])
+        changes["agent_may_change"] = agent_may_change
+    if not changes:
+        return _error("invalid_arguments", *card_settings.REFUSALS["no_change"])
+    if not str(project or "").strip():
+        return _error("invalid_arguments", *card_types.NO_PROJECT)
+    project_id = await _project_id(project)
+    answer = await call_api(
+        lambda sdk: sdk.knowledge.set_card_type_settings(
+            project_id,
+            keep_types_in_use=keep_types_in_use is True,
+            # Only apply=true writes: anything else, a missing value included, previews.
+            dry_run=apply is not True,
+            **changes,
+        )
+    )
+    return card_settings.settings_text(_dict(answer))
 
 
 # --- update_existing_cards --------------------------------------------------------------
@@ -802,6 +881,7 @@ PROJECT_TOOLS = (
     set_project_profile,
     edit_card_type,
     update_existing_cards,
+    card_type_settings,
     upload_files,
     upload_status,
     add_project_member,
