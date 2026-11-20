@@ -8,10 +8,10 @@ provider, id, type and name; ``--knowledge`` turns Knowledge on for it, and
 is ``beakr integrations connect``.
 
 A source's integration rules narrow what a sync takes: ``--query`` (a Notion
-database filter or a Drive query, provider-native JSON), ``--mode agent|all``
-(Beakr's source picker chooses, or every item in scope), and plain-language
-``--pull-guidance`` for the picker and ``--compile-guidance`` for the Knowledge
-compiler. They are sent only when given, so the commands work with engines that
+database filter or saved view, or a Drive query, provider-native JSON),
+``--mode agent|all`` (Beakr's source picker chooses, or every item in scope), and
+plain-language ``--guidance`` that the picker and the Knowledge compiler read.
+They are sent only when given, so the commands work with engines that
 predate them.
 
 With an agent's credential, attaching, changing and syncing a source are refused
@@ -58,6 +58,11 @@ _source_arg = typer.Argument(..., help="Source id from `beakr sources ls`.")
 
 #: ``--mode``: how a source's items are chosen for Knowledge.
 PULL_MODES = ("agent", "all")
+#: ``--query``'s shapes, as the engine takes ``source_query``: exactly one key.
+_QUERY_SHAPES = (
+    """'{"notion_filter": {...}}' or '{"notion_view": "<view id>"}' for a Notion """
+    """database, '{"drive_q": "..."}' for a Drive folder"""
+)
 #: ``--scope-mode``: one item, or everything the connection can read.
 SCOPE_MODES = ("item", "all")
 
@@ -93,8 +98,7 @@ def _query(raw: str | None) -> dict[str, Any] | None:
         raise typer.BadParameter(f"not JSON: {exc}", param_hint="--query") from exc
     if not isinstance(parsed, dict) or not parsed:
         raise typer.BadParameter(
-            "give a JSON object: '{\"notion_filter\": {...}}' (a Notion database) or "
-            '\'{"drive_q": "..."}\' (a Drive folder)',
+            _QUERY_SHAPES,
             param_hint="--query",
         )
     return parsed
@@ -216,17 +220,13 @@ def attach(
     query: str | None = typer.Option(
         None,
         "--query",
-        help="Only matching items, provider-native JSON: '{\"notion_filter\": {...}}' for a "
-        'Notion database, \'{"drive_q": "..."}\' for a Drive folder.',
+        help=f"Only matching items, provider-native JSON: {_QUERY_SHAPES}.",
     ),
     mode: str | None = typer.Option(
         None, "--mode", help="agent (Beakr's source picker chooses; default) or all (every item)."
     ),
-    pull_guidance: str | None = typer.Option(
-        None, "--pull-guidance", help="For the source picker: what to prefer or leave out."
-    ),
-    compile_guidance: str | None = typer.Option(
-        None, "--compile-guidance", help="For the Knowledge compiler: what to record or skip."
+    guidance: str | None = typer.Option(
+        None, "--guidance", help="What to pull from it and what to record or skip, in words."
     ),
     sync_now: bool = typer.Option(False, "--sync", help="Start a sync once it is attached."),
     project: str | None = _project_opt,
@@ -247,6 +247,7 @@ def attach(
         raise click.UsageError("Give the item as the argument or as --url, not both.")
     if item and item.strip().lower().startswith(("http://", "https://")):
         item, url = None, item
+    view_hint: str | None = None
 
     if scope_mode == "all":
         if item or url:
@@ -272,6 +273,12 @@ def attach(
                 "The link does not say whether it is a file or a folder: pass --type file|folder."
             )
         title = name or link.name or item_id
+        if link.view_id and source_query is None:
+            view_hint = (
+                f"The link opened one saved view of the database ({link.view_id}). To pull "
+                f"only its rows: beakr sources edit <id> --query "
+                f'\'{{"notion_view": "{link.view_id}"}}\''
+            )
     else:
         missing = [
             flag
@@ -308,8 +315,7 @@ def attach(
             scope_mode=scope_mode,
             source_query=source_query,
             pull_mode=mode,
-            pull_guidance=pull_guidance,
-            compile_guidance=compile_guidance,
+            guidance=guidance,
         )
         result: dict[str, Any] = dict(source or {})
         sync_error: BeakrError | None = None
@@ -335,6 +341,11 @@ def attach(
             _render_sync(data["sync"])
         elif data.get("ingest_wiki"):
             err_console.print(f"Start it: beakr sources sync {source_id}", markup=False)
+        if view_hint:
+            # Unwrapped, so the command stays one copyable line.
+            err_console.print(
+                view_hint.replace("<id>", str(source_id)), markup=False, soft_wrap=True
+            )
 
     emit(
         result,
@@ -371,18 +382,10 @@ def edit(
     ),
     clear_query: bool = typer.Option(False, "--clear-query", help="Drop the query."),
     mode: str | None = typer.Option(None, "--mode", help="agent or all."),
-    pull_guidance: str | None = typer.Option(
-        None, "--pull-guidance", help="For the source picker: what to prefer or leave out."
+    guidance: str | None = typer.Option(
+        None, "--guidance", help="What to pull and what to record or skip, in words."
     ),
-    clear_pull_guidance: bool = typer.Option(
-        False, "--clear-pull-guidance", help="Drop the source picker's guidance."
-    ),
-    compile_guidance: str | None = typer.Option(
-        None, "--compile-guidance", help="For the Knowledge compiler: what to record or skip."
-    ),
-    clear_compile_guidance: bool = typer.Option(
-        False, "--clear-compile-guidance", help="Drop the compiler's guidance."
-    ),
+    clear_guidance: bool = typer.Option(False, "--clear-guidance", help="Drop the guidance."),
     project: str | None = _project_opt,
     json_out: bool = _json_opt,
 ) -> None:
@@ -391,18 +394,17 @@ def edit(
     source_query = _query(query)
     clears = (
         ("source_query", "--query", source_query, clear_query),
-        ("pull_guidance", "--pull-guidance", pull_guidance, clear_pull_guidance),
-        ("compile_guidance", "--compile-guidance", compile_guidance, clear_compile_guidance),
+        ("guidance", "--guidance", guidance, clear_guidance),
     )
     for _field, flag, value, cleared in clears:
         if value is not None and cleared:
             raise click.UsageError(f"Use {flag} or --clear-{flag[2:]}, not both.")
     clear = [field for field, _flag, _value, cleared in clears if cleared]
-    changes = (knowledge, auto_sync, source_query, mode, pull_guidance, compile_guidance)
+    changes = (knowledge, auto_sync, source_query, mode, guidance)
     if all(value is None for value in changes) and not clear:
         raise click.UsageError(
             "Nothing to change: pass --knowledge/--no-knowledge, --auto-sync/--no-auto-sync, "
-            "--query, --mode, --pull-guidance or --compile-guidance (or a --clear-* flag)."
+            "--query, --mode or --guidance (or --clear-query, --clear-guidance)."
         )
     project_id = _require_project(project)
     with get_sdk() as sdk:
@@ -413,8 +415,7 @@ def edit(
             auto_sync_wiki=auto_sync,
             source_query=source_query,
             pull_mode=mode,
-            pull_guidance=pull_guidance,
-            compile_guidance=compile_guidance,
+            guidance=guidance,
             clear=clear,
         )
 

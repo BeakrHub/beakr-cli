@@ -311,20 +311,24 @@ connection for the provider it is used; with several, `attach` lists them and
 asks for `--connector ID`.
 
 A source's integration rules narrow what a sync takes, on `attach` and `edit`:
-`--query` is provider-native JSON, `'{"notion_filter": {...}}'` (a Notion API
-filter) for a Notion database or `'{"drive_q": "..."}'` (a Drive query, ANDed
-with the folder) for a Drive folder, drive or connection; `--mode agent` lets
+`--query` is provider-native JSON with exactly one key:
+`'{"notion_filter": {...}}'` (a Notion API filter) or
+`'{"notion_view": "<saved view id>"}'` for a Notion database, or
+`'{"drive_q": "..."}'` (a Drive query, ANDed with the folder) for a Drive folder,
+drive or connection. Attaching a Notion link that opened a saved view (`?v=`)
+prints the `--query` that pulls only that view's rows. `--mode agent` lets
 Beakr's source picker choose within scope (the default) and `--mode all` takes
-every item in scope; `--pull-guidance` and `--compile-guidance` are plain-language
-instructions for the source picker and for the Knowledge compiler (at most 2,000
-characters each). `edit` clears them with `--clear-query`,
-`--clear-pull-guidance` and `--clear-compile-guidance`. They are sent only when
-given; the engine refuses a rule that does not fit the source (422).
+every item in scope. `--guidance` is plain-language instructions that the source
+picker and the Knowledge compiler both read (at most 2,000 characters). `edit`
+clears the query and the guidance with `--clear-query` and `--clear-guidance`;
+the mode can be changed but not cleared. They are sent only when given; the
+engine refuses a rule that does not fit the source (422, with its reason).
 
 ```bash
 beakr sources attach https://www.notion.so/acme/Runs-0123...cdef?v=4567... -P Basel --knowledge \
   --query '{"notion_filter": {"property": "Status", "select": {"equals": "Final"}}}' \
-  --mode all --compile-guidance "Record each run's instrument and outcome."
+  --mode all --guidance "Record each run's instrument and outcome."
+beakr sources edit SRC -P Basel --query '{"notion_view": "4567..."}'
 beakr sources edit SRC -P Basel --query '{"drive_q": "mimeType = '\''application/pdf'\''"}'
 ```
 

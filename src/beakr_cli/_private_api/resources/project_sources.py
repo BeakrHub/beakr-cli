@@ -36,7 +36,7 @@ from beakr_cli._private_api._generated import operations as ops
 
 #: Fields an edit can set back to nothing: ``update(..., clear=[...])`` sends them as
 #: JSON null (an omitted field keeps its value).
-CLEARABLE = frozenset({"source_query", "pull_guidance", "compile_guidance"})
+CLEARABLE = frozenset({"source_query", "guidance"})
 
 
 class ProjectSources(Resource[M]):
@@ -61,8 +61,7 @@ class ProjectSources(Resource[M]):
         scope_mode: str | None = None,
         source_query: dict[str, Any] | None = None,
         pull_mode: str | None = None,
-        pull_guidance: str | None = None,
-        compile_guidance: str | None = None,
+        guidance: str | None = None,
     ) -> Any:
         """Attach one connected item to the project; it does not sync until :meth:`sync`.
 
@@ -71,11 +70,12 @@ class ProjectSources(Resource[M]):
         engine takes your first usable one for the provider when it is left out).
         ``scope_mode="all"`` attaches everything the connection can read.
         The integration rules are sent only when given, so the call works with engines
-        that predate them: ``source_query`` (``{"notion_filter": {...}}`` for a Notion
-        database, ``{"drive_q": "..."}`` for a Drive folder, drive or connection),
-        ``pull_mode`` (``"agent"``: Beakr's source picker chooses, the default;
-        ``"all"``: every item in scope), and ``pull_guidance`` / ``compile_guidance``
-        (instructions for the source picker and the Knowledge compiler).
+        that predate them: ``source_query`` (exactly one of ``{"notion_filter": {...}}``
+        or ``{"notion_view": "<view id>"}`` for a Notion database, or
+        ``{"drive_q": "..."}`` for a Drive folder, drive or connection), ``pull_mode``
+        (``"agent"``: Beakr's source picker chooses, the default; ``"all"``: every
+        item in scope), and ``guidance`` (plain-language instructions the source
+        picker and the Knowledge compiler both read).
         """
         body = clean_body(
             {
@@ -91,8 +91,7 @@ class ProjectSources(Resource[M]):
                 "scope_mode": scope_mode,
                 "source_query": source_query,
                 "pull_mode": pull_mode,
-                "pull_guidance": pull_guidance,
-                "compile_guidance": compile_guidance,
+                "guidance": guidance,
             }
         )
         return self._run(ops.build_external_sources_attach_source_to_project(project_id, body=body))
@@ -106,14 +105,13 @@ class ProjectSources(Resource[M]):
         auto_sync_wiki: bool | None = None,
         source_query: dict[str, Any] | None = None,
         pull_mode: str | None = None,
-        pull_guidance: str | None = None,
-        compile_guidance: str | None = None,
+        guidance: str | None = None,
         clear: tuple[str, ...] | list[str] = (),
     ) -> Any:
         """Change what was given; the rest keeps its value. It never starts a sync.
 
-        ``clear`` names fields to set back to nothing (``source_query``,
-        ``pull_guidance``, ``compile_guidance``): they are sent as null.
+        ``clear`` names fields to set back to nothing (``source_query``, ``guidance``):
+        they are sent as null. ``pull_mode`` cannot be cleared, only changed.
         """
         unknown = sorted(set(clear) - CLEARABLE)
         if unknown:
@@ -124,8 +122,7 @@ class ProjectSources(Resource[M]):
                 "auto_sync_wiki": auto_sync_wiki,
                 "source_query": source_query,
                 "pull_mode": pull_mode,
-                "pull_guidance": pull_guidance,
-                "compile_guidance": compile_guidance,
+                "guidance": guidance,
             }
         )
         body.update({field: None for field in clear})

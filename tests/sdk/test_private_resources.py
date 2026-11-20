@@ -131,12 +131,12 @@ CASES: list[tuple[str, Any, str, str, dict[str, str], Any]] = [
     (
         "sources update",
         lambda c: c.project_sources.update(
-            "p1", "s1", auto_sync_wiki=False, pull_guidance="Only hand-offs", clear=["source_query"]
+            "p1", "s1", auto_sync_wiki=False, guidance="Only hand-offs", clear=["source_query"]
         ),
         "PATCH",
         "/v1/projects/p1/sources/s1",
         {},
-        {"auto_sync_wiki": False, "pull_guidance": "Only hand-offs", "source_query": None},
+        {"auto_sync_wiki": False, "guidance": "Only hand-offs", "source_query": None},
     ),
     (
         "sources remove",

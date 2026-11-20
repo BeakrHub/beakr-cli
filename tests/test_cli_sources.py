@@ -104,6 +104,48 @@ def test_a_notion_link_names_its_page_or_database(url, item_id, item_type, name)
     )
 
 
+def test_a_notion_database_link_keeps_its_saved_view():
+    link = parse_source_link(f"https://www.notion.so/acme/{NOTION_ID}?v={VIEW_ID}")
+    assert link.view_id == "fedcba98-7654-3210-fedc-ba9876543210"
+    assert parse_source_link(f"https://www.notion.so/{NOTION_ID}").view_id is None
+
+
+@respx.mock
+def test_attach_by_a_view_link_says_how_to_pull_only_that_view(monkeypatch):
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    _connections({"id": "c1", "provider": "notion:nango"})
+    respx.post(SOURCES).respond(201, json=_attachment(external_item_type="database"))
+    result = runner.invoke(
+        app, ["sources", "attach", f"https://www.notion.so/{NOTION_ID}?v={VIEW_ID}", "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    assert (
+        'beakr sources edit s1 --query \'{"notion_view": "fedcba98-7654-3210-fedc-ba9876543210"}\''
+    ) in result.stderr
+
+
+@respx.mock
+def test_attach_sends_a_notion_view_query():
+    _connections({"id": "c1", "provider": "notion:nango"})
+    route = respx.post(SOURCES).respond(201, json=_attachment(external_item_type="database"))
+    query = {"notion_view": VIEW_ID}
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            f"https://www.notion.so/{NOTION_ID}?v={VIEW_ID}",
+            "--query",
+            json.dumps(query),
+            "-P",
+            PROJECT,
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["source_query"] == query
+
+
 @pytest.mark.parametrize(
     ("url", "item_type"),
     [
@@ -266,10 +308,8 @@ def test_attach_by_id_needs_provider_and_type_and_sends_new_fields_only_when_giv
             "#assays",
             "--mode",
             "agent",
-            "--pull-guidance",
-            "Only assay hand-offs.",
-            "--compile-guidance",
-            "Record who handed off to whom.",
+            "--guidance",
+            "Only assay hand-offs; record who handed off to whom.",
             "-P",
             PROJECT,
             "--json",
@@ -280,8 +320,7 @@ def test_attach_by_id_needs_provider_and_type_and_sends_new_fields_only_when_giv
     assert body["provider"] == "slack:nango"
     assert body["connector_id"] == "c3"
     assert body["pull_mode"] == "agent"
-    assert body["pull_guidance"] == "Only assay hand-offs."
-    assert body["compile_guidance"] == "Record who handed off to whom."
+    assert body["guidance"] == "Only assay hand-offs; record who handed off to whom."
     assert "source_query" not in body
     assert "scope_mode" not in body
 
@@ -480,9 +519,7 @@ def test_edit_sends_only_what_changes_and_clears_on_request():
             "all",
             "--query",
             '{"drive_q": "mimeType = \'application/pdf\'"}',
-            "--clear-pull-guidance",
-            "--compile-guidance",
-            "Skip drafts.",
+            "--clear-guidance",
             "-P",
             PROJECT,
             "--json",
@@ -493,8 +530,7 @@ def test_edit_sends_only_what_changes_and_clears_on_request():
         "auto_sync_wiki": False,
         "pull_mode": "all",
         "source_query": {"drive_q": "mimeType = 'application/pdf'"},
-        "compile_guidance": "Skip drafts.",
-        "pull_guidance": None,
+        "guidance": None,
     }
 
 
@@ -502,14 +538,34 @@ def test_edit_sends_only_what_changes_and_clears_on_request():
     "argv",
     [
         ["--query", '{"drive_q": "x"}', "--clear-query"],
-        ["--pull-guidance", "x", "--clear-pull-guidance"],
-        ["--compile-guidance", "x", "--clear-compile-guidance"],
+        ["--guidance", "x", "--clear-guidance"],
     ],
 )
 def test_edit_refuses_setting_and_clearing_one_field(argv):
     result = runner.invoke(app, ["sources", "edit", "s1", *argv, "-P", PROJECT])
     assert result.exit_code == 2
     assert "not both" in result.output
+
+
+@respx.mock
+def test_a_rule_the_engine_refuses_reads_as_its_message():
+    respx.patch(f"{SOURCES}/s1").respond(
+        422,
+        json={
+            "detail": [
+                {
+                    "loc": ["body", "source_query"],
+                    "msg": "Value error, source_query has unknown key(s) gmail_q",
+                    "type": "value_error",
+                }
+            ]
+        },
+    )
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--query", '{"gmail_q": "x"}', "-P", PROJECT]
+    )
+    assert result.exit_code == 1
+    assert "source_query has unknown key(s) gmail_q" in result.output
 
 
 def test_edit_needs_a_change():

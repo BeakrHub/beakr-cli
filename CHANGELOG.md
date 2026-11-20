@@ -15,14 +15,14 @@ Each release lists the public API changes it supports, taken from the API change
   `--scope-mode all` attaches everything one connection reads. `--knowledge`
   builds Knowledge from it, `--auto-sync/--no-auto-sync` sets the nightly sync,
   and `--sync` starts a sync once attached. The connection is the only one you
-  have for the provider, or `--connector ID` when you have several. Its integration
-  rules, on `attach` and `edit`: `--query` (provider-native JSON,
-  `{"notion_filter": ...}` for a Notion database or `{"drive_q": ...}` for a Drive
-  folder), `--mode agent|all`, `--pull-guidance` and `--compile-guidance`, sent
-  only when given; `edit --clear-query`, `--clear-pull-guidance` and
-  `--clear-compile-guidance` drop them. `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change,
-  detach, sync and follow a project's sources. Where a project requires a person
-  to approve what agents bring into Knowledge, an agent's attach, edit or sync
+  have for the provider, or `--connector ID` when you have several. A source's
+  integration rules, on `attach` and `edit`: `--query` (provider-native JSON:
+  `{"notion_filter": ...}` or `{"notion_view": ...}` for a Notion database,
+  `{"drive_q": ...}` for a Drive folder), `--mode agent|all` and `--guidance`,
+  sent only when given; `edit --clear-query` and `--clear-guidance` drop them.
+  `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change, detach,
+  sync and follow a project's sources. Where a project requires a person to
+  approve what agents bring into Knowledge, an agent's attach, edit or sync
   exits 6 and says to run it outside the agent session.
 - **Card types from the command line.** `beakr kb types ls -P <project>` lists the
   card types a project uses, which scope defines each (project, organization or

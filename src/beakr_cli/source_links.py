@@ -70,6 +70,9 @@ class SourceLink:
     item_id: str
     item_type: str | None = None
     name: str | None = None
+    #: The Notion saved view the link opened (``?v=``), dashed like the id: a
+    #: ``source_query`` of ``{"notion_view": view_id}`` pulls only that view's rows.
+    view_id: str | None = None
 
 
 class SourceLinkError(ValueError):
@@ -110,7 +113,8 @@ def _notion_id(text: str) -> str | None:
 
 def _notion(path: str, query: dict[str, list[str]]) -> SourceLink:
     segment = unquote(path.rstrip("/").rsplit("/", 1)[-1])
-    view = bool((query.get("v") or [""])[0].strip())
+    view_param = (query.get("v") or [""])[0].strip()
+    view = bool(view_param)
     peeked = _notion_id((query.get("p") or [""])[0])
     if peeked:
         # A page open in peek view (over a database view or another page): the page
@@ -130,7 +134,13 @@ def _notion(path: str, query: dict[str, list[str]]) -> SourceLink:
         item_id = dashed(found.group(1))
         # ``Page-Title-<id>``: the title Notion put before the id.
         name = segment[: found.start()].rstrip("-").replace("-", " ").strip() or None
-    return SourceLink("notion:nango", item_id, "database" if view else "page", name=name)
+    return SourceLink(
+        "notion:nango",
+        item_id,
+        "database" if view else "page",
+        name=name,
+        view_id=_notion_id(view_param) if view else None,
+    )
 
 
 def _drive(path: str, query: dict[str, list[str]]) -> SourceLink:
