@@ -146,6 +146,8 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb types reset",
         "kb types copy",
         "kb types promote",
+        "kb types rename-fields",
+        "kb types retype",
         "kb rows",
         "kb query",
         "kb add-fact",

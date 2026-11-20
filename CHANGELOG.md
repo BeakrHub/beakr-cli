@@ -26,6 +26,16 @@ Each release lists the public API changes it supports, taken from the API change
   organization (an organization admin). Both print what was copied, replaced
   and skipped, with why; a type the destination already defines is skipped
   unless `--replace`.
+- **Bring existing cards in line with a type.** `beakr kb types rename-fields
+  <key> -P <project> --rename "Old name=New name"` (repeatable) renames fields
+  on every card of a type the project already has, and `beakr kb types retype
+  <key> -P <project> --to <type>` moves every card of a type to another type.
+  Both preview and change nothing unless given `--apply`; applied, they print
+  what was written, what was refused or skipped, what remains and how to undo.
+- **`beakr mcp` has the `update_existing_cards` tool**, the same one the
+  hosted MCP server lists: `change: "rename_fields"` with `renames`, or
+  `change: "retype"` with `to_type`. It previews unless `apply` is exactly
+  `true`.
 - **`beakr mcp` has the `edit_card_type` tool**, the same one the hosted MCP
   server lists, with the same arguments and the same answers: an agent changes
   one card type after the person agrees, for a project or (`org_wide=true`)
@@ -66,6 +76,32 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A change to a card type can be applied to the cards a project already has
+  (`kb:write`; the caller must be an owner of the project).
+  `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` renames fields on
+  every card of the type in one project: `renames` is a list of `{old, new}`,
+  and the type's own field list is renamed with the cards. Rows that become the
+  same field are merged with their citations kept. It answers `cards`,
+  `cards_changed`, `cards_written`, `cards_conflicted`, `cards_refused`,
+  `cards_remaining`, `rows_renamed`, `rows_merged`, and the renames it
+  `applied` and `refused` (a rename between names that differ by one word whose
+  values disagree, or one that drops a word such as "planned" or "actual", is
+  refused). A new name holding `|`, `[[ ]]`, `{{ }}` or a line break answers
+  `422`.
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` moves every card of
+  the type in one project to `to_type`, which must be an active card type in
+  that project with `grain` `card`. It answers `from_type`, `to_type`, `cards`,
+  `cards_retyped`, `cards_skipped` and `cards_remaining`. A card's text is not
+  changed, so if the two types name a field differently, rename the fields on
+  the target type afterwards.
+  Both take `project_id` and `dry_run`, which defaults to `true`: a dry run
+  answers the counts and writes nothing. With `dry_run: false` one call changes
+  at most 500 cards; `cards_remaining` says how many are left, and the same
+  request again changes the next ones. An applied change answers `commit_id`
+  and `undo_event_id`, and shows in the project's activity; only an owner of
+  the project can undo it. Both answer `404` for a type the project does not
+  know, `422` for a mapping that cannot be applied, and `409` while Knowledge is
+  running maintenance on the project (try again in a few minutes).
 - Card types can be carried between projects and up to the organization
   (`kb:write`).
   `POST /v1/knowledge/wiki/page-types/copy` copies the types one project

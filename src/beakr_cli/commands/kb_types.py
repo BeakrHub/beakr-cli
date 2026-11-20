@@ -1,4 +1,4 @@
-"""``beakr kb types ls|edit|reset|copy|promote``: a project's card types.
+"""``beakr kb types ls|edit|reset|copy|promote|rename-fields|retype``: a project's card types.
 
 Card types are the kinds of cards Knowledge writes for a project (its
 ontology), over ``/v1/knowledge/wiki/page-types`` through the SDK's
@@ -11,6 +11,11 @@ changing a type the scope only inherits gives the scope its own copy, and
 into another project, and ``promote`` up to the organization. A project's
 owners change its types and an organization's admins the organization's. Cards
 already written are not rewritten; later compiles use the new definition.
+
+``rename-fields`` and ``retype`` are the two that do change the cards a project
+already has (``knowledge.rename_card_type_fields``, ``retype_cards``): the first
+renames fields on every card of a type, the second moves every card of a type
+to another type. Both preview and write nothing unless given ``--apply``.
 """
 
 from __future__ import annotations
@@ -19,7 +24,7 @@ from typing import Any
 
 import typer
 
-from beakr_cli import card_types
+from beakr_cli import card_types, card_updates
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.commands.project_knowledge import _require_project
 from beakr_cli.output import console, emit, err_console, print_table
@@ -412,6 +417,119 @@ def promote_command(
     with get_sdk() as sdk:
         result = dict(sdk.knowledge.promote_card_types(project_id, list(keys), replace=replace))
     emit(result, json_out=json_out, render=_render_copied("promote"), lines=_copied_lines)
+
+
+_apply_opt = typer.Option(
+    False,
+    "--apply",
+    help="Make the change. Without it the command previews: it prints the counts and "
+    "changes nothing.",
+)
+
+
+def _type_key(key: str, what: str = "key") -> str:
+    key = key.strip()
+    if not card_types.valid_type_key(key):
+        _usage(
+            f"{card_types.BAD_TYPE_KEY[0]} Pass the {what} exactly as `beakr kb types ls` "
+            "prints it."
+        )
+    return key
+
+
+def _rename_pairs(pairs: list[str]) -> list[dict[str, str]]:
+    """``Old name=New name`` from each --rename, split at the first ``=``."""
+    renames: list[dict[str, str]] = []
+    for pair in pairs:
+        old, sep, new = pair.partition("=")
+        if not sep or not old.strip() or not new.strip():
+            raise typer.BadParameter(
+                f"expected 'Old name=New name', got {pair!r}", param_hint="--rename"
+            )
+        renames.append({"old": old.strip(), "new": new.strip()})
+    return renames
+
+
+def _emit_text(result: dict[str, Any], text: str, *, json_out: bool) -> None:
+    """The answer as its sentences (a terminal and a pipe alike), or the JSON with --json."""
+    emit(
+        result,
+        json_out=json_out,
+        render=lambda _result: console.print(text, highlight=False, markup=False),
+        lines=lambda _result: text.splitlines(),
+    )
+
+
+@app.command("rename-fields")
+def rename_fields_command(
+    key: str = typer.Argument(..., help="The type's key, from `beakr kb types ls`."),
+    project: str | None = _project_opt,
+    rename: list[str] = typer.Option(  # noqa: B008
+        [],
+        "--rename",
+        "-r",
+        help="One field to rename, as 'Old name=New name'; repeatable.",
+    ),
+    apply: bool = _apply_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Rename fields on every card of a type the project already has. Previews unless --apply.
+
+    The type's own field list is renamed with the cards, and rows that become
+    the same field are merged with their citations kept. A rename the safety
+    checks do not accept is left out and named. One run changes at most 500
+    cards and says how many are left; run it again for the rest. An applied
+    change shows in the project's Activity, where a project owner can undo it.
+    Only the project's owners may; exit 5 while Knowledge runs maintenance on
+    the project.
+    """
+    key = _type_key(key)
+    renames = _rename_pairs(rename)
+    if not renames:
+        _usage("Name the fields to rename: --rename 'Old name=New name' (repeatable).")
+    project_id = _require_project(project)
+    with get_sdk() as sdk:
+        result = dict(
+            sdk.knowledge.rename_card_type_fields(key, project_id, renames, dry_run=not apply)
+        )
+    _emit_text(
+        result,
+        card_updates.fields_renamed_text(result, card_updates.COMMAND_WORDS),
+        json_out=json_out,
+    )
+
+
+@app.command("retype")
+def retype_command(
+    key: str = typer.Argument(..., help="The key of the type whose cards to move."),
+    project: str | None = _project_opt,
+    to_type: str = typer.Option(
+        ...,
+        "--to",
+        help="The key of the type the cards become: an active type in the project whose "
+        "instances are cards.",
+    ),
+    apply: bool = _apply_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Move every card of a type in the project to another type. Previews unless --apply.
+
+    A card's text is not changed, so its rows keep their field names: if the
+    two types name a field differently, run `beakr kb types rename-fields` on
+    the target type afterwards. One run moves at most 500 cards and says how
+    many are left. An applied change shows in the project's Activity, where a
+    project owner can undo it. Only the project's owners may.
+    """
+    key = _type_key(key)
+    target = _type_key(to_type, "--to key")
+    project_id = _require_project(project)
+    with get_sdk() as sdk:
+        result = dict(sdk.knowledge.retype_cards(key, project_id, target, dry_run=not apply))
+    _emit_text(
+        result,
+        card_updates.cards_retyped_text(result, card_updates.COMMAND_WORDS),
+        json_out=json_out,
+    )
 
 
 def register(root: typer.Typer) -> None:

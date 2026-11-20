@@ -2731,6 +2731,53 @@
    "summary": "Remove a card type copy"
   },
   {
+   "action": "rename-wiki-page-type-fields",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "default": true,
+      "description": "Count what would change and write nothing. Pass false to apply.",
+      "name": "dry_run",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project whose cards to change.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The fields to rename.",
+      "name": "renames",
+      "required": true,
+      "type": "object"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/{key}/rename-fields",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}/rename-fields",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Rename fields on existing cards"
+  },
+  {
    "action": "research",
    "anonymous": false,
    "area": "knowledge",
@@ -2770,6 +2817,53 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "Research a question"
+  },
+  {
+   "action": "retype-wiki-page-type-cards",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "default": true,
+      "description": "Count what would change and write nothing. Pass false to apply.",
+      "name": "dry_run",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project whose cards to move.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The key of the type the cards become: an active type of cards here.",
+      "name": "to_type",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/{key}/retype-cards",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}/retype-cards",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Move existing cards to another type"
   },
   {
    "action": "run-wiki-command",

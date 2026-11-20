@@ -1,11 +1,13 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
-change its card types, upload the person's files into it, and add the people who work in it.
+change its card types and the cards it already has, upload the person's files into it, and
+add the people who work in it.
 
-The hosted MCP server has the same six tools (beakr-engine
-``beakr/api/mcp_remote/project_tools.py`` and ``card_type_tools.py``), and both take each
-description and tier from the shared agent tool surface (:mod:`beakr_cli.tool_surface`).
-``create_project``, ``set_project_profile``, ``edit_card_type`` and ``add_project_member``
-answer the same text on both. The
+The hosted MCP server has the same seven tools (beakr-engine
+``beakr/api/mcp_remote/project_tools.py``, ``card_type_tools.py`` and
+``card_update_tools.py``), and both take each description and tier from the shared agent
+tool surface (:mod:`beakr_cli.tool_surface`). ``create_project``, ``set_project_profile``,
+``edit_card_type``, ``update_existing_cards`` and ``add_project_member`` answer the same
+text on both. The
 upload pair differs by design: this server reads the person's own disk (``paths``) and
 keeps a long upload running in this process, where the hosted server takes a file's
 content in the call (``files``) and reports one stored upload.
@@ -38,7 +40,7 @@ from beakr_sdk.resources._upload import (
     upload_relative_path,
 )
 
-from beakr_cli import card_types
+from beakr_cli import card_types, card_updates
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
 from beakr_cli.upload_path_policy import (
@@ -278,6 +280,62 @@ async def edit_card_type(
         )
     )
     return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
+
+
+# --- update_existing_cards --------------------------------------------------------------
+
+
+async def update_existing_cards(
+    type: str,
+    project: str,
+    change: str,
+    renames: list[dict[str, Any]] | dict[str, str] | None = None,
+    to_type: str | None = None,
+    apply: Any = None,
+) -> str | dict[str, Any]:
+    """Change the cards a project already has (described in the shared agent tool surface).
+
+    The call is the signed-in person's own ``POST
+    /v1/knowledge/wiki/page-types/{key}/rename-fields`` or ``.../retype-cards``:
+    those routes decide who may. Without ``apply=true`` it sends a dry run and
+    nothing is written.
+    """
+    key = str(type or "").strip()
+    if not key:
+        return _error("invalid_arguments", *card_updates.REFUSALS["no_type"])
+    if not card_types.valid_type_key(key):
+        return _error("invalid_arguments", *card_updates.REFUSALS["bad_type"])
+    change = str(change or "").strip()
+    if change not in card_updates.CHANGES:
+        return _error("invalid_arguments", *card_updates.REFUSALS["no_change"])
+    pairs: list[dict[str, str]] = []
+    target = ""
+    if change == "rename_fields":
+        pairs = card_updates.renames(renames)
+        if not pairs:
+            return _error("invalid_arguments", *card_updates.REFUSALS["no_renames"])
+    else:
+        target = str(to_type or "").strip()
+        if not target:
+            return _error("invalid_arguments", *card_updates.REFUSALS["no_to_type"])
+        if not card_types.valid_type_key(target):
+            return _error("invalid_arguments", *card_updates.REFUSALS["bad_to_type"])
+    if not str(project or "").strip():
+        return _error("invalid_arguments", *card_types.NO_PROJECT)
+    project_id = await _project_id(project)
+    # Only apply=true writes: anything else, a missing value included, previews.
+    dry_run = apply is not True
+    if change == "rename_fields":
+        answer = await call_api(
+            lambda sdk: sdk.knowledge.rename_card_type_fields(
+                key, project_id, pairs, dry_run=dry_run
+            )
+        )
+        return card_updates.fields_renamed_text(_dict(answer))
+    answer = await call_api(
+        lambda sdk: sdk.knowledge.retype_cards(key, project_id, target, dry_run=dry_run)
+    )
+    return card_updates.cards_retyped_text(_dict(answer))
 
 
 # --- upload_files -----------------------------------------------------------------------
@@ -743,6 +801,7 @@ PROJECT_TOOLS = (
     create_project,
     set_project_profile,
     edit_card_type,
+    update_existing_cards,
     upload_files,
     upload_status,
     add_project_member,

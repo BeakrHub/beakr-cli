@@ -1,4 +1,5 @@
-"""``beakr kb types ls|edit|reset|copy|promote`` over /v1/knowledge/wiki/page-types.
+"""``beakr kb types`` (ls, edit, reset, copy, promote, rename-fields, retype) over
+/v1/knowledge/wiki/page-types.
 
 ``ls`` shows a project's card types and marks a copy that stands in front of a
 broader type; ``edit`` sends only what is given, with the fields in the order
@@ -6,7 +7,9 @@ given; ``reset`` removes a scope's own copy. A key that is not one path segment
 is refused before any request, and an organization-wide change (``--org-wide``)
 names no project. The project is -P, --project, --scope or -s, as on every kb
 command, so the API's ``scope`` is not a flag here. ``copy`` and ``promote``
-print what was copied, replaced and skipped, with why.
+print what was copied, replaced and skipped, with why. ``rename-fields`` and
+``retype`` change the cards a project already has: they preview and write
+nothing unless given ``--apply``.
 """
 
 from __future__ import annotations
@@ -332,3 +335,196 @@ def test_promote_refused_for_a_non_admin_exits_as_an_auth_error() -> None:
     result = _invoke("kb", "types", "promote", "experiment", "-P", PROJECT)
     assert result.exit_code == 3
     assert "organization admin" in result.output
+
+
+RENAMED = {
+    "page_type": "experiment",
+    "dry_run": True,
+    "cards": 40,
+    "cards_changed": 31,
+    "cards_written": 0,
+    "cards_conflicted": 0,
+    "cards_refused": 0,
+    "cards_remaining": 0,
+    "rows_renamed": 33,
+    "rows_merged": 2,
+    "applied": {"Run date": "Assay date"},
+    "refused": {"Planned dose": "Dose"},
+    "commit_id": None,
+    "undo_event_id": None,
+}
+RETYPED = {
+    "from_type": "assay",
+    "to_type": "experiment",
+    "dry_run": True,
+    "cards": 12,
+    "cards_retyped": 0,
+    "cards_skipped": 0,
+    "cards_remaining": 0,
+    "commit_id": None,
+    "undo_event_id": None,
+}
+UNDO_ID = "0b1e8a64-0c41-4d5e-9b0a-1f2e3d4c5b6a"
+
+
+@respx.mock
+@pytest.mark.parametrize("mode", ["human", "compact"])
+def test_rename_fields_previews_and_says_nothing_was_changed(mode) -> None:
+    # Root cause guarded: the write changes up to 500 cards, so without --apply
+    # the command must send a dry run and say that nothing was changed.
+    route = respx.post(f"{URL}/rename-fields").respond(200, json=RENAMED)
+    result = _invoke(
+        "kb",
+        "types",
+        "rename-fields",
+        "experiment",
+        "-P",
+        PROJECT,
+        "--rename",
+        "Run date=Assay date",
+        "-r",
+        " Planned dose = Dose ",
+        mode=mode,
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls.last.request.content) == {
+        "project_id": PROJECT,
+        "renames": [
+            {"old": "Run date", "new": "Assay date"},
+            {"old": "Planned dose", "new": "Dose"},
+        ],
+        "dry_run": True,
+    }
+    assert result.stdout.splitlines() == [
+        "Preview only: nothing was changed.",
+        "Renaming Run date to Assay date would change 31 of 40 experiment cards: "
+        "33 rows renamed, 2 rows merged into a row that becomes the same field.",
+        "Not accepted by the safety checks, so these would stay: Planned dose to Dose.",
+        "Run this again with --apply to make the change.",
+    ]
+
+
+@respx.mock
+def test_rename_fields_apply_says_what_was_written_what_remains_and_how_to_undo() -> None:
+    applied = RENAMED | {
+        "dry_run": False,
+        "cards_written": 28,
+        "cards_conflicted": 2,
+        "cards_refused": 1,
+        "cards_remaining": 3,
+        "commit_id": UNDO_ID,
+        "undo_event_id": UNDO_ID,
+    }
+    route = respx.post(f"{URL}/rename-fields").respond(200, json=applied)
+    args = (
+        "kb",
+        "types",
+        "rename-fields",
+        "experiment",
+        "-P",
+        PROJECT,
+        "-r",
+        "Run date=Assay date",
+    )
+    result = _invoke(*args, "--apply", mode="compact")
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls.last.request.content)["dry_run"] is False
+    assert result.stdout.splitlines() == [
+        "Renamed Run date to Assay date on 28 experiment cards.",
+        "Not accepted by the safety checks, so these stay: Planned dose to Dose.",
+        "2 cards changed while this ran and were left as they were.",
+        "1 card could not be rewritten safely and waits for a person.",
+        "3 cards still need the change. Running this again with --apply picks up the cards "
+        "that were skipped.",
+        "It shows in the project's Activity, where a project owner can undo it.",
+    ]
+    as_json = _invoke(*args, "--apply", "--json")
+    assert json.loads(as_json.stdout) == applied
+
+
+@respx.mock
+def test_rename_fields_refuses_a_bad_mapping_before_any_request() -> None:
+    route = respx.post(f"{URL}/rename-fields").respond(200, json=RENAMED)
+    base = ("kb", "types", "rename-fields", "experiment", "-P", PROJECT)
+    assert _invoke(*base).exit_code == 2
+    for pair in ("Run date", "=Assay date", "Run date="):
+        result = _invoke(*base, "--rename", pair)
+        assert result.exit_code == 2, pair
+        assert "Old name=New name" in result.output
+    assert not route.called
+
+
+@respx.mock
+def test_retype_previews_then_applies() -> None:
+    route = respx.post(f"{LIST_URL}/assay/retype-cards").respond(200, json=RETYPED)
+    args = ("kb", "types", "retype", "assay", "-P", PROJECT, "--to", "experiment")
+    preview = _invoke(*args, mode="compact")
+    assert preview.exit_code == 0, preview.output
+    assert json.loads(route.calls.last.request.content) == {
+        "project_id": PROJECT,
+        "to_type": "experiment",
+        "dry_run": True,
+    }
+    assert preview.stdout.splitlines() == [
+        "Preview only: nothing was changed.",
+        "12 assay cards would become experiment cards.",
+        "A card's text is not changed, so its rows keep their field names. If experiment "
+        "names a field differently, rename fields on experiment afterwards.",
+        "Run this again with --apply to make the change.",
+    ]
+    route.respond(
+        200,
+        json=RETYPED
+        | {
+            "dry_run": False,
+            "cards_retyped": 11,
+            "cards_skipped": 1,
+            "cards_remaining": 1,
+            "commit_id": UNDO_ID,
+        },
+    )
+    applied = _invoke(*args, "--apply", mode="compact")
+    assert json.loads(route.calls.last.request.content)["dry_run"] is False
+    assert applied.stdout.splitlines() == [
+        "Moved 11 assay cards to experiment.",
+        "1 card was being changed by something else and was skipped.",
+        "1 assay card is left. Running this again with --apply picks up the cards that "
+        "were skipped.",
+        f"A project owner can undo it by reverting change {UNDO_ID}.",
+    ]
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ("rename-fields", "-P", PROJECT, "-r", "a=b", "--", "experiment/status"),
+        ("retype", "-P", PROJECT, "--to", "experiment", "--", "../proposals"),
+        ("retype", "-P", PROJECT, "--to", "a?b", "--", "assay"),
+    ],
+)
+def test_a_key_that_is_not_one_path_segment_is_refused_by_the_card_commands(argv) -> None:
+    route = respx.route(url__startswith=API).respond(200, json={})
+    result = _invoke("kb", "types", *argv)
+    assert result.exit_code == 2
+    assert "letters, digits, spaces, hyphens and underscores" in result.output
+    assert not route.called
+
+
+@respx.mock
+def test_a_change_during_knowledge_maintenance_is_a_conflict() -> None:
+    respx.post(f"{LIST_URL}/assay/retype-cards").respond(
+        409,
+        json={
+            "error": {
+                "code": "conflict",
+                "message": "Knowledge is running maintenance on this project; try again in a "
+                "few minutes.",
+            }
+        },
+    )
+    result = _invoke(
+        "kb", "types", "retype", "assay", "-P", PROJECT, "--to", "experiment", "--apply"
+    )
+    assert result.exit_code == 5
+    assert "maintenance" in result.output

@@ -38,6 +38,7 @@ TOOLS = (
     "create_project",
     "set_project_profile",
     "edit_card_type",
+    "update_existing_cards",
     "upload_files",
     "upload_status",
     "add_project_member",

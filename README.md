@@ -314,6 +314,9 @@ beakr kb types reset deviation -P Basel             # drop the project's copy; i
 beakr kb types edit deviation --org-wide --label "Deviation"  # the organization's type
 beakr kb types copy deviation capa --from Basel --to Lyon   # Lyon gets its own copies
 beakr kb types promote deviation -P Basel            # every project without a copy inherits it
+beakr kb types rename-fields deviation -P Basel --rename "Cause=Root cause"   # preview
+beakr kb types rename-fields deviation -P Basel --rename "Cause=Root cause" --apply
+beakr kb types retype deviation -P Basel --to incident [--apply]
 ```
 
 Changing a built-in or organization type from a project gives the project its
@@ -327,6 +330,13 @@ written are not rewritten; later compiles use the new definition. `copy` and
 `promote` print what was copied, replaced and skipped: a type the source does
 not itself define is skipped, and so is one the destination already defines
 unless `--replace`. `promote` needs an organization admin.
+
+`rename-fields` and `retype` are the two commands that change the cards a
+project already has. Without `--apply` they preview: they print the counts and
+change nothing. With it, one run changes at most 500 cards and says how many
+are left (run it again for the rest), names any rename the safety checks did
+not accept and any card that was skipped, and says how to undo: the change
+shows in the project's Activity, where a project owner can undo it.
 
 Flags change only the fields they name (a repeated flag replaces that list) and
 create the profile when the project has none; `--file` replaces the whole
@@ -535,7 +545,7 @@ twice. A call answers the tool's text and a Sources list whose `source_ref` a
 Knowledge write accepts as a citation. The hosted MCP server has the same tool.
 
 An agent can also set a project up, with the person's agreement. The hosted
-MCP server has the same six tools; only `upload_files` takes different
+MCP server has the same seven tools; only `upload_files` takes different
 arguments there (`files` with each file's content, at most 20 files and about
 3.5 MB a call, since it cannot read your disk):
 
@@ -555,6 +565,13 @@ arguments there (`files` with each file's content, at most 20 files and about
   Changing a built-in or organization type from a project gives the project
   its own copy; `reset: true` drops the copy. `org_wide: true` changes the
   organization's type and takes no `project`.
+- `update_existing_cards` (`type`, `project`, `change`, `renames`, `to_type`,
+  `apply`) changes the cards a project already has, which `edit_card_type`
+  never does: `change: "rename_fields"` with `renames` (`{old, new}` each)
+  renames fields on every card of the type, and `change: "retype"` with
+  `to_type` moves every card of the type to another type. It previews and
+  writes nothing unless `apply` is `true`; the non-interactive
+  `beakr kb types rename-fields` and `beakr kb types retype`.
 - `upload_files` (`project`, `paths`, `folder_id`, `knowledge`,
   `resume_upload_id`) uploads local files and folders, the way `beakr upload`
   does. A folder keeps its subfolders, and each file goes through the resumable
