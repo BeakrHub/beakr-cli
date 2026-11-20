@@ -410,4 +410,11 @@ EXEMPT: dict[str, str] = {
     "projects profile show": "no recorded response yet; tests/test_cli_project_profile.py",
     "projects profile set": "no recorded response yet; tests/test_cli_project_profile.py",
     "projects profile edit": "opens $EDITOR; tests/test_cli_project_profile.py",
+    "kb types ls": "no recorded response yet; tests/test_cli_kb_types.py",
+    "kb types edit": "no recorded response yet; tests/test_cli_kb_types.py",
+    "kb types reset": "no recorded response yet; tests/test_cli_kb_types.py",
+    "kb types copy": "no recorded response yet; tests/test_cli_kb_types.py",
+    "kb types promote": "no recorded response yet; tests/test_cli_kb_types.py",
+    "kb types rename-fields": "no recorded response yet; tests/test_cli_kb_types.py",
+    "kb types retype": "no recorded response yet; tests/test_cli_kb_types.py",
 }

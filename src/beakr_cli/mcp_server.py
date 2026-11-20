@@ -1308,7 +1308,8 @@ integrations = _platform.integrations
 discover_tools = _platform.discover_tools
 _platform.register_platform_tools(mcp)
 
-# Setting a project up: create it, its profile, its files and its people.
+# Setting a project up: create it, its profile, its card types and existing cards, its
+# files and its people.
 from beakr_cli import mcp_tools_projects as _projects  # noqa: E402
 
 _projects.register(mcp)

@@ -17,6 +17,8 @@
     "integrations",
     "create_project",
     "set_project_profile",
+    "edit_card_type",
+    "update_existing_cards",
     "upload_files",
     "upload_status",
     "add_project_member",
@@ -394,6 +396,38 @@
       ],
       "tier": "discovery",
       "title": "Set a project's Knowledge profile"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Change one card type in a project's ontology, after the person agrees: its label, description, when to use it, its fields in order (each {name, required}), whether an instance is its own card or a row on the card it belongs to (grain), or turn it off (status 'deprecated'). Read the types first with knowledge_base command='ontology'. Changing a built-in or organization type from a project gives that project its own copy and changes nothing elsewhere; reset=true drops the copy. org_wide=true changes the organization's type for every project and needs an organization admin. Only the project's owners may change its types. This changes the definition later compiles use and rewrites no card; update_existing_cards brings the cards already written in line.",
+      "name": "edit_card_type",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Change a card type"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Bring the cards a project already has in line with a card type, after the person agrees. edit_card_type changes a type's definition for later compiles and rewrites no card; this changes the cards that exist. change='rename_fields' renames fields on every card of `type` (`renames`: a list of {old, new}) and renames them in the type's field list too; rows that become the same field are merged with their citations kept. change='retype' moves every card of `type` to `to_type`, an active type in the project; the cards' text is not changed. Without apply=true it only previews: it answers how many cards and rows would change and changes nothing. Preview first, show the person the counts, and call again with apply=true only after they agree. One call changes at most 500 cards and says how many are left; an applied change shows in the project's Activity, where an owner can undo it. Only the project's owners may do this, and it is refused while Knowledge is running maintenance on the project.",
+      "name": "update_existing_cards",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Update existing cards"
     },
     {
       "annotations": {

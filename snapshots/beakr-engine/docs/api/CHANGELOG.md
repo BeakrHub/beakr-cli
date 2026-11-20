@@ -11,11 +11,69 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=1ddad5a45e9286b3459896ec61bfb02ca46d417ca02128d65201bd74c97529bb changelog sha256=77c7f4ee74a7b34c430b9aec6e1336888bb5836f1b0110f2b28b0daa716c5dc0 -->
+<!-- contract-stamp: public-openapi sha256=e16ddcb843387b42f4c6ecd2374bf4276f1ccfcfd4c7df59066f04f90141698d changelog sha256=d32295994ec3d716de583669f1ecb20b61b224262837f1798e63e60983443702 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A change to a card type can be applied to the cards a project already has
+  (`kb:write`; the caller must be an owner of the project).
+  `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` renames fields on
+  every card of the type in one project: `renames` is a list of `{old, new}`,
+  and the type's own field list is renamed with the cards. Rows that become the
+  same field are merged with their citations kept. It answers `cards`,
+  `cards_changed`, `cards_written`, `cards_conflicted`, `cards_refused`,
+  `cards_remaining`, `rows_renamed`, `rows_merged`, and the renames it
+  `applied` and `refused` (a rename between names that differ by one word whose
+  values disagree, or one that drops a word such as "planned" or "actual", is
+  refused). A new name holding `|`, `[[ ]]`, `{{ }}` or a line break answers
+  `422`.
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` moves every card of
+  the type in one project to `to_type`, which must be an active card type in
+  that project with `grain` `card`. It answers `from_type`, `to_type`, `cards`,
+  `cards_retyped`, `cards_skipped` and `cards_remaining`. A card's text is not
+  changed, so if the two types name a field differently, rename the fields on
+  the target type afterwards.
+  Both take `project_id` and `dry_run`, which defaults to `true`: a dry run
+  answers the counts and writes nothing. With `dry_run: false` one call changes
+  at most 500 cards; `cards_remaining` says how many are left, and the same
+  request again changes the next ones. An applied change answers `commit_id`
+  and `undo_event_id`, and shows in the project's activity; only an owner of
+  the project can undo it. Both answer `404` for a type the project does not
+  know, `422` for a mapping that cannot be applied, and `409` while Knowledge is
+  running maintenance on the project (try again in a few minutes).
+- Card types can be carried between projects and up to the organization
+  (`kb:write`).
+  `POST /v1/knowledge/wiki/page-types/copy` copies the types one project
+  defines (`from_project_id`, `keys`) into another (`to_project_id`), which gets
+  its own copies; the caller must see the source and be an owner of the
+  destination. `POST /v1/knowledge/wiki/page-types/promote` copies a project's
+  types (`source`, `keys`) to the organization, where every project without a
+  copy of its own inherits them; it takes an organization admin. Both answer
+  `{copied, replaced, skipped}`: a key the source project does not itself
+  define is skipped as `not_found`, and one the destination already defines is
+  skipped as `exists` unless `replace` is true. Cards are not copied or
+  changed.
+- Card types (a project's ontology) can be read and changed with a `kb:read` or
+  `kb:write` scope.
+  `GET /v1/knowledge/wiki/page-types` lists the card types one project uses
+  (`project_id`), each with its `scope` (`project`, `org` or `global`) and, in
+  `metadata_schema`, its fields (`key_attributes`), which of them are required
+  (`required_attributes`) and whether an instance is a card or a row (`grain`).
+  `PATCH /v1/knowledge/wiki/page-types/{key}` changes a type as one `scope`
+  holds it: `label`, `description`, `when_to_use`, `when_not_to_use`, `aliases`,
+  `fields` (the list in order, each `{name, required}`), `grain` (`card` or
+  `row`) and `status` (`deprecated` turns the type off for that scope and hides
+  a broader type of the same key from it). Changing a type the scope only
+  inherits gives the scope its own copy, so no other project changes; the
+  response's `page_type.overrides` names the scope the copy stands in front of.
+  `DELETE /v1/knowledge/wiki/page-types/{key}` removes that copy (it answers
+  `{removed, key, scope}`) and the scope goes back to the type it inherits; a type defined only in that scope answers
+  `409` and is turned off with `status` instead. A project's types are changed
+  by the project's owners and an organization's by its admins; others get
+  `403`. A change with scope `org` or `global` must not carry `project_id`
+  (`400`). Cards already written are
+  not rewritten by a change: later compiles use the new definition.
 - `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
   naming one project it returns that project's orientation map in about 3,000
   characters: its knowledge profile, how many pages of each card type, what a
