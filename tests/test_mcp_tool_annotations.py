@@ -53,6 +53,7 @@ WRITE_TOOLS = frozenset(
         "import_conversation",
         "create_project",
         "set_project_profile",
+        "edit_card_type",
         "upload_files",
         "add_project_member",
         "update_beakr",

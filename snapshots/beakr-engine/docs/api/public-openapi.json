@@ -18221,6 +18221,399 @@
         "title": "WikiPageSummary",
         "type": "object"
       },
+      "WikiPageType": {
+        "additionalProperties": true,
+        "properties": {
+          "key": {
+            "description": "The key.",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display label.",
+            "title": "Label",
+            "type": "string"
+          },
+          "scope": {
+            "description": "The scope it applies to.",
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "description": "Current status of the wiki page type.",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "status",
+          "scope"
+        ],
+        "title": "WikiPageType",
+        "type": "object"
+      },
+      "WikiPageTypeCopy": {
+        "additionalProperties": false,
+        "description": "Copy card types one project defines into another project.",
+        "properties": {
+          "from_project_id": {
+            "description": "The project whose types to copy.",
+            "format": "uuid",
+            "title": "From Project Id",
+            "type": "string"
+          },
+          "keys": {
+            "description": "The keys of the types to copy.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          },
+          "replace": {
+            "default": false,
+            "description": "Overwrite a type the destination already defines; otherwise it is skipped.",
+            "title": "Replace",
+            "type": "boolean"
+          },
+          "to_project_id": {
+            "description": "The project that gets its own copies.",
+            "format": "uuid",
+            "title": "To Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_project_id",
+          "to_project_id",
+          "keys"
+        ],
+        "title": "WikiPageTypeCopy",
+        "type": "object"
+      },
+      "WikiPageTypeFieldIn": {
+        "description": "One field of a card type.",
+        "properties": {
+          "name": {
+            "description": "The Attribute name.",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "default": false,
+            "description": "Whether every card of this type should state it.",
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "WikiPageTypeFieldIn",
+        "type": "object"
+      },
+      "WikiPageTypeList": {
+        "description": "``GET /v1/knowledge/wiki/page-types``: the card types a project uses.",
+        "properties": {
+          "map_mode": {
+            "description": "Whether this organization's Knowledge is a map of cards.",
+            "title": "Map Mode",
+            "type": "boolean"
+          },
+          "page_types": {
+            "description": "Each type as the narrowest scope that defines it holds it.",
+            "items": {
+              "$ref": "#/components/schemas/WikiPageType"
+            },
+            "title": "Page Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "page_types",
+          "map_mode"
+        ],
+        "title": "WikiPageTypeList",
+        "type": "object"
+      },
+      "WikiPageTypeOverrideRemoved": {
+        "description": "``DELETE /v1/knowledge/wiki/page-types/{key}``.",
+        "properties": {
+          "key": {
+            "description": "The key.",
+            "title": "Key",
+            "type": "string"
+          },
+          "removed": {
+            "description": "What was removed.",
+            "title": "Removed",
+            "type": "boolean"
+          },
+          "scope": {
+            "description": "The scope it applies to.",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "removed",
+          "key",
+          "scope"
+        ],
+        "title": "WikiPageTypeOverrideRemoved",
+        "type": "object"
+      },
+      "WikiPageTypePromote": {
+        "additionalProperties": false,
+        "description": "Copy card types one project defines up to the organization.\n\nThe source is ``source``, not ``from_project_id``, on purpose: the Knowledge\ncommit gate judges an agent's write by the projects a request names, and a\npromotion changes what every project inherits. Naming no project makes the\ngate read it as the organization-wide write it is.",
+        "properties": {
+          "keys": {
+            "description": "The keys of the types to promote.",
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Keys",
+            "type": "array"
+          },
+          "replace": {
+            "default": false,
+            "description": "Overwrite a type the organization already defines; otherwise it is skipped.",
+            "title": "Replace",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "The id of the project whose types to promote.",
+            "format": "uuid",
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source",
+          "keys"
+        ],
+        "title": "WikiPageTypePromote",
+        "type": "object"
+      },
+      "WikiPageTypeSkipped": {
+        "properties": {
+          "key": {
+            "description": "The key.",
+            "title": "Key",
+            "type": "string"
+          },
+          "reason": {
+            "description": "not_found in the source, or exists at the destination",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "reason"
+        ],
+        "title": "WikiPageTypeSkipped",
+        "type": "object"
+      },
+      "WikiPageTypeStatusResult": {
+        "properties": {
+          "page_type": {
+            "$ref": "#/components/schemas/WikiPageType",
+            "description": "The Knowledge page type."
+          }
+        },
+        "required": [
+          "page_type"
+        ],
+        "title": "WikiPageTypeStatusResult",
+        "type": "object"
+      },
+      "WikiPageTypeUpdate": {
+        "additionalProperties": false,
+        "description": "Changes to one card type, as one scope holds it. A field left out is kept.\n\nEditing a type the scope only inherits (a built-in from a project or an\norganization, an organization's type from a project) makes that scope its own\ncopy and changes the copy.",
+        "properties": {
+          "aliases": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Other names people use for this type; replaces the list.",
+            "title": "Aliases"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a card of this type is about.",
+            "title": "Description"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/WikiPageTypeFieldIn"
+                },
+                "maxItems": 60,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The type's fields in order; replaces the list.",
+            "title": "Fields"
+          },
+          "grain": {
+            "anyOf": [
+              {
+                "pattern": "^(card|row)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+            "title": "Grain"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The type's display name.",
+            "title": "Label"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project, with scope `project`; left out otherwise.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "title": "Project Id"
+          },
+          "scope": {
+            "default": "project",
+            "description": "Whose copy of the type to change: `project` (one project), `org` (every project in the organization that has no copy of its own) or `global` (the built-ins).",
+            "pattern": "^(global|org|project)$",
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "pattern": "^(active|deprecated)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`deprecated` turns the type off for this scope, hiding a broader type of the same key.",
+            "title": "Status"
+          },
+          "when_not_to_use": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What looks like this type but belongs to another, and which.",
+            "title": "When Not To Use"
+          },
+          "when_to_use": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When a thing in a source should become a card of this type.",
+            "title": "When To Use"
+          }
+        },
+        "title": "WikiPageTypeUpdate",
+        "type": "object"
+      },
+      "WikiPageTypesCopied": {
+        "description": "``POST /v1/knowledge/wiki/page-types/copy`` and ``.../promote``.",
+        "properties": {
+          "copied": {
+            "description": "Types the destination did not have.",
+            "items": {
+              "$ref": "#/components/schemas/WikiPageType"
+            },
+            "title": "Copied",
+            "type": "array"
+          },
+          "replaced": {
+            "description": "Types the destination had, overwritten because replace was true.",
+            "items": {
+              "$ref": "#/components/schemas/WikiPageType"
+            },
+            "title": "Replaced",
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Keys not copied, each with why.",
+            "items": {
+              "$ref": "#/components/schemas/WikiPageTypeSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "copied",
+          "replaced",
+          "skipped"
+        ],
+        "title": "WikiPageTypesCopied",
+        "type": "object"
+      },
       "WikiPatchIn": {
         "description": "Incremental wiki content patch.",
         "properties": {
@@ -24657,6 +25050,423 @@
           "knowledge"
         ],
         "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/knowledge/wiki/page-types": {
+      "get": {
+        "description": "List active page-type ontology entries for the current org/project.\n\n``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``\nwhether its pages are cards there, laid out as a card whatever starter\nsections the type stores; both are false outside a map.",
+        "operationId": "list_wiki_page_types_v1_knowledge_wiki_page_types_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_proposed",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Proposed",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "include_deprecated",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Deprecated",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypeList"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List card types",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/copy": {
+      "post": {
+        "description": "Copy card types one project defines into another project.\n\nThe destination gets its own copies, so later edits in either project stay\nthere. Only types the source project itself defines are copied; a type it\ninherits is already available to the destination. ``skipped`` lists each\nkey not copied: ``not_found`` in the source, or ``exists`` in the\ndestination when ``replace`` is false. Cards are not copied or changed.\nRequires being able to see the source and being an owner of the destination.",
+        "operationId": "copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiPageTypeCopy"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypesCopied"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Copy card types between projects",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/promote": {
+      "post": {
+        "description": "Copy card types one project defines up to the organization.\n\nEvery project without a copy of its own inherits a promoted type from then\non, and every member of the organization can read its definition, so this\ntakes an organization admin. ``skipped`` lists each key not promoted:\n``not_found`` in the source, or ``exists`` in the organization when\n``replace`` is false. The source project keeps its own copy.",
+        "operationId": "promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiPageTypePromote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypesCopied"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Promote card types to the organization",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/{key}": {
+      "delete": {
+        "description": "Drop a project's or organization's own copy of a type it also inherits.\n\nThe scope goes back to the broader type. A type defined only here cannot be\nremoved this way (its cards carry it): turn it off with ``status``.",
+        "operationId": "remove_wiki_page_type_override_v1_knowledge_wiki_page_types__key__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "project",
+              "pattern": "^(org|project)$",
+              "title": "Scope",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "title": "Project Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypeOverrideRemoved"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Remove a card type copy",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-destructive": true,
+        "x-beakr-scope": "kb:write"
+      },
+      "patch": {
+        "description": "Change a card type: its wording, its fields, card or row, or turn it off.\n\nThe change applies to the type as ``scope`` holds it. A scope that only\ninherits the type (a project using a built-in or an organization's type)\ngets its own copy first, so nobody else's ontology changes; the response's\n``overrides`` names the scope the copy now stands in front of. ``fields``\nreplaces the type's field list, each marked required or not. ``grain`` says\nwhether an instance is a card or a row on the card it belongs to.\n``status: deprecated`` turns the type off for the scope, and hides a broader\ntype of the same key from it.\n\nExisting cards are not rewritten: the next compiles use the new definition.",
+        "operationId": "update_wiki_page_type_v1_knowledge_wiki_page_types__key__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiPageTypeUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypeStatusResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a card type",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
       }
     },
     "/v1/knowledge/wiki/pages": {

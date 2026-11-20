@@ -140,6 +140,12 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb entities",
         "kb agent-review show",
         "kb agent-review set",
+        # Card types: the kinds of cards Knowledge writes for a project.
+        "kb types ls",
+        "kb types edit",
+        "kb types reset",
+        "kb types copy",
+        "kb types promote",
         "kb rows",
         "kb query",
         "kb add-fact",

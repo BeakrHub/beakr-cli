@@ -65,9 +65,23 @@ PROJECT_PARAMETER: dict[str, str] = {
     "workboard": "project",
     "get_profile": "project_id",
     "set_project_profile": "project",
+    "edit_card_type": "project",
     "upload_files": "project",
     "add_project_member": "project",
 }
+
+#: A project name that is an argument of its own on one tool, so it is never
+#: read as the project there: ``edit_card_type`` takes ``scope`` ('project' or
+#: 'org', whose copy of the type changes) beside ``project``.
+NOT_THE_PROJECT: dict[str, frozenset[str]] = {
+    "edit_card_type": frozenset({"scope"}),
+}
+
+
+def project_names(tool: str) -> tuple[str, ...]:
+    """The names ``tool`` reads as the project."""
+    own = NOT_THE_PROJECT.get(tool, frozenset())
+    return tuple(name for name in PROJECT_NAMES if name not in own)
 
 
 class ConflictingArguments(ValueError):
@@ -90,7 +104,7 @@ def _project_names_agree(tool: str, arguments: dict[str, Any]) -> None:
     """
     given = {
         name: arguments[name]
-        for name in PROJECT_NAMES
+        for name in project_names(tool)
         if name in arguments and _given(arguments[name])
     }
     values = {str(value).strip() for value in given.values()}
@@ -99,9 +113,15 @@ def _project_names_agree(tool: str, arguments: dict[str, Any]) -> None:
         named = " and ".join(f"`{name}` ({value!r})" for name, value in given.items())
         raise ConflictingArguments(
             f"{tool}: {named} name different projects; nothing was run.",
-            fix=f"Pass the project once, as `{target}`: `scope`, `project` and `project_id` "
-            "are read as the same argument.",
+            fix=f"Pass the project once, as `{target}`: "
+            f"{_listed(project_names(tool))} are read as the same argument.",
         )
+
+
+def _listed(names: tuple[str, ...]) -> str:
+    """```a`, `b` and `c```."""
+    quoted = [f"`{name}`" for name in names]
+    return f"{', '.join(quoted[:-1])} and {quoted[-1]}" if len(quoted) > 1 else quoted[0]
 
 
 def _project_aliases(tool: str, declared: set[str]) -> dict[str, str]:
@@ -109,7 +129,7 @@ def _project_aliases(tool: str, declared: set[str]) -> dict[str, str]:
     target = PROJECT_PARAMETER.get(tool)
     if target is None:
         return {}
-    return {name: target for name in PROJECT_NAMES if name not in declared and name != target}
+    return {name: target for name in project_names(tool) if name not in declared and name != target}
 
 
 def normalize_arguments(

@@ -2041,6 +2041,54 @@
    "summary": "Accept a Knowledge proposal"
   },
   {
+   "action": "copy-wiki-page-types",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The project whose types to copy.",
+      "name": "from_project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The keys of the types to copy.",
+      "multiple": true,
+      "name": "keys",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Overwrite a type the destination already defines; otherwise it is skipped.",
+      "name": "replace",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project that gets its own copies.",
+      "name": "to_project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/copy",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/copy",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Copy card types between projects"
+  },
+  {
    "action": "create-proposal",
    "anonymous": false,
    "area": "knowledge",
@@ -2483,6 +2531,40 @@
    "summary": "List Knowledge proposals"
   },
   {
+   "action": "list-wiki-page-types",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/page-types",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types",
+   "path_params": [],
+   "query": [
+    {
+     "default": false,
+     "name": "include_deprecated",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": false,
+     "name": "include_proposed",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List card types"
+  },
+  {
    "action": "list-wiki-pages",
    "anonymous": false,
    "area": "knowledge",
@@ -2571,6 +2653,82 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "List Knowledge pages"
+  },
+  {
+   "action": "promote-wiki-page-types",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The keys of the types to promote.",
+      "multiple": true,
+      "name": "keys",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Overwrite a type the organization already defines; otherwise it is skipped.",
+      "name": "replace",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The id of the project whose types to promote.",
+      "name": "source",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/promote",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/promote",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Promote card types to the organization"
+  },
+  {
+   "action": "remove-wiki-page-type-override",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/knowledge/wiki/page-types/{key}",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "project",
+     "name": "scope",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Remove a card type copy"
   },
   {
    "action": "research",
@@ -3664,6 +3822,96 @@
    "response": "json",
    "scope": "projects:admin",
    "summary": "Set a project's agent review policy"
+  },
+  {
+   "action": "update-wiki-page-type",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Other names people use for this type; replaces the list.",
+      "multiple": true,
+      "name": "aliases",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What a card of this type is about.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The type's fields in order; replaces the list.",
+      "name": "fields",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "`card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+      "name": "grain",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The type's display name.",
+      "name": "label",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The project, with scope `project`; left out otherwise.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "project",
+      "description": "Whose copy of the type to change: `project` (one project), `org` (every project in the organization that has no copy of its own) or `global` (the built-ins).",
+      "name": "scope",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "`deprecated` turns the type off for this scope, hiding a broader type of the same key.",
+      "name": "status",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What looks like this type but belongs to another, and which.",
+      "name": "when_not_to_use",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "When a thing in a source should become a card of this type.",
+      "name": "when_to_use",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/knowledge/wiki/page-types/{key}",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Change a card type"
   },
   {
    "action": "add-label-member",

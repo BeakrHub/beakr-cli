@@ -37,6 +37,7 @@ NAMES = {A: "Helios", B: "Assays", NEW: "Stability"}
 TOOLS = (
     "create_project",
     "set_project_profile",
+    "edit_card_type",
     "upload_files",
     "upload_status",
     "add_project_member",

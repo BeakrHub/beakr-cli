@@ -298,6 +298,36 @@ beakr projects profile edit -P Basel                      # as YAML in $EDITOR
 beakr projects profile show -P Basel
 ```
 
+### Change a project's card types
+
+Card types are the kinds of cards Knowledge writes for a project. Each comes
+from the project itself, from the organization, or is built in.
+
+```bash
+beakr kb types ls -P Basel                          # each type, its fields, and where it comes from
+beakr kb types edit deviation -P Basel \
+  --description "One departure from a batch record" \
+  --field "Root cause" --field "CAPA" --required-field "Root cause"
+beakr kb types edit deviation -P Basel --grain row  # a Facts row on the card it belongs to
+beakr kb types edit supplier -P Basel --status deprecated   # turn a type off for this project
+beakr kb types reset deviation -P Basel             # drop the project's copy; inherit again
+beakr kb types edit deviation --org-wide --label "Deviation"  # the organization's type
+beakr kb types copy deviation capa --from Basel --to Lyon   # Lyon gets its own copies
+beakr kb types promote deviation -P Basel            # every project without a copy inherits it
+```
+
+Changing a built-in or organization type from a project gives the project its
+own copy and changes nothing elsewhere; `ls` marks it (`copy of built-in`,
+`copy of organization type`) and `reset` removes it. `--field` and
+`--required-field` together replace the type's field list: the `--field`
+names in the order given, a `--required-field` marking the field of the same
+name required or adding it after them. A project's owners change its types and
+an organization's admins (`--org-wide`) the organization's. Cards already
+written are not rewritten; later compiles use the new definition. `copy` and
+`promote` print what was copied, replaced and skipped: a type the source does
+not itself define is skipped, and so is one the destination already defines
+unless `--replace`. `promote` needs an organization admin.
+
 Flags change only the fields they name (a repeated flag replaces that list) and
 create the profile when the project has none; `--file` replaces the whole
 profile and refuses unknown fields.
@@ -505,7 +535,7 @@ twice. A call answers the tool's text and a Sources list whose `source_ref` a
 Knowledge write accepts as a citation. The hosted MCP server has the same tool.
 
 An agent can also set a project up, with the person's agreement. The hosted
-MCP server has the same five tools; only `upload_files` takes different
+MCP server has the same six tools; only `upload_files` takes different
 arguments there (`files` with each file's content, at most 20 files and about
 3.5 MB a call, since it cannot read your disk):
 
@@ -517,6 +547,14 @@ arguments there (`files` with each file's content, at most 20 files and about
   `core_organizations`, `core_topics`) writes the project's Knowledge
   profile, the non-interactive `beakr projects profile set`. A first profile
   needs `entity_types`. After that, only the fields given change.
+- `edit_card_type` (`type`, `project`, `scope`, `label`, `description`,
+  `when_to_use`, `when_not_to_use`, `aliases`, `fields`, `grain`, `status`,
+  `reset`) changes one card type, the non-interactive `beakr kb types edit`.
+  `type` is the key `knowledge_base` command `ontology` prints. `fields` is the
+  type's fields in order, each `{name, required}`, and replaces the list.
+  Changing a built-in or organization type from a project gives the project
+  its own copy; `reset: true` drops the copy. `scope: "org"` changes the
+  organization's type and takes no `project`.
 - `upload_files` (`project`, `paths`, `folder_id`, `knowledge`,
   `resume_upload_id`) uploads local files and folders, the way `beakr upload`
   does. A folder keeps its subfolders, and each file goes through the resumable

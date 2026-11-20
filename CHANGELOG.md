@@ -8,6 +8,31 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Card types from the command line.** `beakr kb types ls -P <project>` lists the
+  card types a project uses, which scope defines each (project, organization or
+  built-in) and whether a type is the project's own copy of a broader one.
+  `beakr kb types edit <key> -P <project>` changes one: `--label`,
+  `--description`, `--when-to-use`, `--when-not-to-use`, `--alias` (repeatable),
+  `--field` and `--required-field` (repeatable; the fields in the order given
+  replace the list), `--grain card|row` and `--status active|deprecated`.
+  `beakr kb types reset <key> -P <project>` removes the project's own copy, so
+  it uses the type it inherits again. `--org-wide` on `edit` and `reset` changes
+  the organization's type instead of one project's. A project's owners change
+  its types and an organization's admins the organization's; cards already
+  written are not rewritten.
+- **Carry card types elsewhere.** `beakr kb types copy <key>... --from <project>
+  --to <project>` copies the types one project defines into another project,
+  and `beakr kb types promote <key>... -P <project>` copies them up to the
+  organization (an organization admin). Both print what was copied, replaced
+  and skipped, with why; a type the destination already defines is skipped
+  unless `--replace`.
+- **`beakr mcp` has the `edit_card_type` tool**, the same one the hosted MCP
+  server lists, with the same arguments and the same answers: an agent changes
+  one card type after the person agrees, for a project or (scope `org`) the
+  organization, and `reset=true` drops a project's own copy. A type key that
+  is not letters, digits, spaces, hyphens and underscores is refused before
+  anything is sent. On this tool `scope` is its own argument and is not read
+  as another name for the project.
 - **Cite a record outside Beakr.** `beakr kb add-fact`, `add-connection` and
   `add-finding` take `--cite-record URL` with `--record-system`, `--record-id` or
   `--source-title`, and `--excerpt`: an ELN entry, a registry compound, or an
@@ -42,6 +67,38 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Card types can be carried between projects and up to the organization
+  (`kb:write`).
+  `POST /v1/knowledge/wiki/page-types/copy` copies the types one project
+  defines (`from_project_id`, `keys`) into another (`to_project_id`), which gets
+  its own copies; the caller must see the source and be an owner of the
+  destination. `POST /v1/knowledge/wiki/page-types/promote` copies a project's
+  types (`source`, `keys`) to the organization, where every project without a
+  copy of its own inherits them; it takes an organization admin. Both answer
+  `{copied, replaced, skipped}`: a key the source project does not itself
+  define is skipped as `not_found`, and one the destination already defines is
+  skipped as `exists` unless `replace` is true. Cards are not copied or
+  changed.
+- Card types (a project's ontology) can be read and changed with a `kb:read` or
+  `kb:write` scope.
+  `GET /v1/knowledge/wiki/page-types` lists the card types one project uses
+  (`project_id`), each with its `scope` (`project`, `org` or `global`) and, in
+  `metadata_schema`, its fields (`key_attributes`), which of them are required
+  (`required_attributes`) and whether an instance is a card or a row (`grain`).
+  `PATCH /v1/knowledge/wiki/page-types/{key}` changes a type as one `scope`
+  holds it: `label`, `description`, `when_to_use`, `when_not_to_use`, `aliases`,
+  `fields` (the list in order, each `{name, required}`), `grain` (`card` or
+  `row`) and `status` (`deprecated` turns the type off for that scope and hides
+  a broader type of the same key from it). Changing a type the scope only
+  inherits gives the scope its own copy, so no other project changes; the
+  response's `page_type.overrides` names the scope the copy stands in front of.
+  `DELETE /v1/knowledge/wiki/page-types/{key}` removes that copy (it answers
+  `{removed, key, scope}`) and the scope goes back to the type it inherits; a type defined only in that scope answers
+  `409` and is turned off with `status` instead. A project's types are changed
+  by the project's owners and an organization's by its admins; others get
+  `403`. A change with scope `org` or `global` must not carry `project_id`
+  (`400`). Cards already written are
+  not rewritten by a change: later compiles use the new definition.
 - `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
   naming one project it returns that project's orientation map in about 3,000
   characters: its knowledge profile, how many pages of each card type, what a

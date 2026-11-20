@@ -1,10 +1,11 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
-upload the person's files into it, and add the people who work in it.
+change its card types, upload the person's files into it, and add the people who work in it.
 
-The hosted MCP server has the same five tools (beakr-engine
-``beakr/api/mcp_remote/project_tools.py``), and both take each description and tier
-from the shared agent tool surface (:mod:`beakr_cli.tool_surface`). ``create_project``,
-``set_project_profile`` and ``add_project_member`` answer the same text on both. The
+The hosted MCP server has the same six tools (beakr-engine
+``beakr/api/mcp_remote/project_tools.py`` and ``card_type_tools.py``), and both take each
+description and tier from the shared agent tool surface (:mod:`beakr_cli.tool_surface`).
+``create_project``, ``set_project_profile``, ``edit_card_type`` and ``add_project_member``
+answer the same text on both. The
 upload pair differs by design: this server reads the person's own disk (``paths``) and
 keeps a long upload running in this process, where the hosted server takes a file's
 content in the call (``files``) and reports one stored upload.
@@ -37,6 +38,7 @@ from beakr_sdk.resources._upload import (
     upload_relative_path,
 )
 
+from beakr_cli import card_types
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
 from beakr_cli.upload_path_policy import (
@@ -210,6 +212,72 @@ def profile_saved_text(profile: dict[str, Any], project: dict[str, Any], *, crea
     else:
         lines.append("Files can be uploaded now (upload_files).")
     return "\n".join(lines)
+
+
+# --- edit_card_type ---------------------------------------------------------------------
+
+
+async def edit_card_type(
+    type: str,
+    project: str = "",
+    scope: str = "project",
+    label: str | None = None,
+    description: str | None = None,
+    when_to_use: str | None = None,
+    when_not_to_use: str | None = None,
+    aliases: list[str] | None = None,
+    fields: list[dict[str, Any] | str] | None = None,
+    grain: Literal["card", "row"] | None = None,
+    status: Literal["active", "deprecated"] | None = None,
+    reset: bool = False,
+) -> str | dict[str, Any]:
+    """Change one card type (described in the shared agent tool surface).
+
+    The call is the signed-in person's own ``PATCH`` or ``DELETE
+    /v1/knowledge/wiki/page-types/{key}``: that route decides who may change a
+    type. The key is checked here because it becomes a path segment, and the
+    SDK percent-encodes it.
+    """
+    key = str(type or "").strip()
+    if not key:
+        return _error("invalid_arguments", *card_types.NO_TYPE)
+    if not card_types.valid_type_key(key):
+        return _error("invalid_arguments", *card_types.BAD_TYPE_KEY)
+    scope = str(scope or "project")
+    if scope not in card_types.SCOPES:
+        return _error("invalid_arguments", *card_types.BAD_SCOPE)
+    project_id: str | None = None
+    if scope == "project":
+        if not str(project or "").strip():
+            return _error("invalid_arguments", *card_types.NO_PROJECT)
+        project_id = await _project_id(project)
+    elif project:
+        return _error("invalid_arguments", *card_types.ORG_WITH_PROJECT)
+    if reset:
+        await call_api(
+            lambda sdk: sdk.knowledge.remove_card_type_copy(key, scope=scope, project_id=project_id)
+        )
+        return card_types.card_type_reset_text(key, scope)
+    changes = card_types.changes(
+        {
+            "label": label,
+            "description": description,
+            "when_to_use": when_to_use,
+            "when_not_to_use": when_not_to_use,
+            "aliases": aliases,
+            "fields": fields,
+            "grain": grain,
+            "status": status,
+        }
+    )
+    if not changes:
+        return _error("invalid_arguments", *card_types.NOTHING_TO_CHANGE)
+    saved = await call_api(
+        lambda sdk: sdk.knowledge.update_card_type(
+            key, scope=scope, project_id=project_id, **changes
+        )
+    )
+    return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
 
 
 # --- upload_files -----------------------------------------------------------------------
@@ -674,6 +742,7 @@ _SERVER: TieredMCPServer | None = None
 PROJECT_TOOLS = (
     create_project,
     set_project_profile,
+    edit_card_type,
     upload_files,
     upload_status,
     add_project_member,

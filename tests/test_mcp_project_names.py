@@ -55,6 +55,7 @@ _CALLS: dict[str, dict[str, Any]] = {
     "import_conversation": {"client": "generic", "session_id": "s-1", "summary": "Decided X."},
     "workboard": {},
     "set_project_profile": {"entity_types": ["lot"]},
+    "edit_card_type": {"type": "experiment", "label": "Experiment"},
     "upload_files": {"paths": [__file__]},
     "add_project_member": {"person": "jane@example.com"},
 }
@@ -68,6 +69,11 @@ def test_every_tool_that_takes_a_project_is_named() -> None:
             assert tool.name in mcp_call_shaping.PROJECT_PARAMETER, tool.name
             assert mcp_call_shaping.PROJECT_PARAMETER[tool.name] in names, tool.name
     assert set(_CALLS) | {"get_profile"} == set(mcp_call_shaping.PROJECT_PARAMETER)
+
+
+def _reads_as_project(tool: str, name: str) -> bool:
+    """Whether ``tool`` reads ``name`` as the project (edit_card_type's ``scope`` is its own)."""
+    return name in mcp_call_shaping.project_names(tool)
 
 
 def _sent_project(route: respx.Route) -> bool:
@@ -89,6 +95,8 @@ async def test_any_project_name_reaches_the_route(tool: str, name: str) -> None:
     respx.get(f"{API}/v1/projects/{PROJECT_ID}").mock(
         return_value=Response(200, json={"id": PROJECT_ID, "name": "Research"})
     )
+    if not _reads_as_project(tool, name):
+        pytest.skip(f"`{name}` is an argument of its own on {tool}")
     route = respx.route(url__startswith=API).mock(return_value=Response(200, json={}))
     result = await _call(tool, {**_CALLS[tool], name: PROJECT_ID})
     text = result.content[0].text if result.content else ""
@@ -101,13 +109,14 @@ async def test_any_project_name_reaches_the_route(tool: str, name: str) -> None:
 @respx.mock
 async def test_two_names_that_disagree_are_refused_before_anything_is_sent(tool: str) -> None:
     route = respx.route(url__startswith=API).mock(return_value=Response(200, json={}))
-    result = await _call(tool, {**_CALLS[tool], "scope": PROJECT_ID, "project_id": OTHER_ID})
+    first = mcp_call_shaping.project_names(tool)[0]
+    result = await _call(tool, {**_CALLS[tool], first: PROJECT_ID, "project_id": OTHER_ID})
     assert result.is_error
     error = json.loads(result.content[0].text)
     assert error["error_code"] == "invalid_arguments"
     assert "name different projects" in error["message"]
     assert PROJECT_ID in error["message"] and OTHER_ID in error["message"]
-    assert "scope" in error["fix"]
+    assert first in error["fix"]
     assert not route.called
 
 
@@ -136,3 +145,32 @@ def test_names_that_agree_or_are_empty_are_one_project() -> None:
     assert mcp_call_shaping.normalize_arguments(
         "knowledge_base", {"command": "ls", "project_id": PROJECT_ID}, {"command", "scope"}
     ) == {"command": "ls", "scope": PROJECT_ID}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_scope_on_edit_card_type_is_never_read_as_the_project() -> None:
+    # Root cause guarded: every other tool reads `scope` as a name for the
+    # project, and edit_card_type takes `scope` ('project' or 'org') as an
+    # argument of its own. Read as a project name, `scope: "project"` beside
+    # `project` was two names with different values and the call was refused.
+    respx.get(f"{API}/v1/projects/{PROJECT_ID}").mock(
+        return_value=Response(200, json={"id": PROJECT_ID, "name": "Research"})
+    )
+    patch = respx.patch(f"{API}/v1/knowledge/wiki/page-types/experiment").mock(
+        return_value=Response(200, json={"page_type": {"key": "experiment", "label": "Run"}})
+    )
+    result = await _call(
+        "edit_card_type",
+        {"type": "experiment", "label": "Run", "project": PROJECT_ID, "scope": "project"},
+    )
+    assert not result.is_error, result.content[0].text
+    assert json.loads(patch.calls.last.request.content) == {
+        "scope": "project",
+        "project_id": PROJECT_ID,
+        "label": "Run",
+    }
+    # And it is not moved into `project` when no project is given.
+    alone = await _call("edit_card_type", {"type": "experiment", "label": "Run", "scope": "org"})
+    assert not alone.is_error, alone.content[0].text
+    assert json.loads(patch.calls.last.request.content) == {"scope": "org", "label": "Run"}
