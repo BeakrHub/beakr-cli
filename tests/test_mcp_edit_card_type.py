@@ -53,7 +53,7 @@ async def test_the_tool_takes_the_hosted_tools_arguments() -> None:
     assert set(schema["properties"]) == {
         "type",
         "project",
-        "scope",
+        "org_wide",
         "label",
         "description",
         "when_to_use",
@@ -148,12 +148,15 @@ async def test_an_organization_wide_change_names_no_project() -> None:
     patch = respx.patch(URL).respond(json=SAVED)
 
     refused = await mcp_tools_projects.edit_card_type(
-        "experiment", scope="org", project=PROJECT, grain="row"
+        "experiment", org_wide=True, project=PROJECT, grain="row"
     )
-    sent = await mcp_tools_projects.edit_card_type("experiment", scope="org", grain="row")
+    sent = await mcp_tools_projects.edit_card_type("experiment", org_wide=True, grain="row")
 
     assert refused["error_code"] == "invalid_arguments"
-    assert refused["message"] == "An organization-wide change names no project."
+    assert (refused["message"], refused["fix"]) == (
+        "An organization-wide change names no project.",
+        "Leave `project` out with org_wide=true, or leave org_wide out.",
+    )
     assert "the organization" in sent
     assert patch.call_count == 1
     assert json.loads(patch.calls.last.request.content) == {"scope": "org", "grain": "row"}
@@ -167,15 +170,11 @@ async def test_calls_with_nothing_to_send_are_refused() -> None:
     nothing = await mcp_tools_projects.edit_card_type("experiment", project=PROJECT)
     no_type = await mcp_tools_projects.edit_card_type("  ", project=PROJECT, label="X")
     no_project = await mcp_tools_projects.edit_card_type("experiment", label="X")
-    bad_scope = await mcp_tools_projects.edit_card_type("experiment", scope="global", label="X")
 
     assert (nothing["message"], nothing["fix"]) == card_types.NOTHING_TO_CHANGE
     assert (no_type["message"], no_type["fix"]) == card_types.NO_TYPE
     assert (no_project["message"], no_project["fix"]) == card_types.NO_PROJECT
-    assert (bad_scope["message"], bad_scope["fix"]) == card_types.BAD_SCOPE
-    assert {r["error_code"] for r in (nothing, no_type, no_project, bad_scope)} == {
-        "invalid_arguments"
-    }
+    assert {r["error_code"] for r in (nothing, no_type, no_project)} == {"invalid_arguments"}
     assert not route.called
 
 

@@ -403,7 +403,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Change one card type in a project's ontology, after the person agrees: its label, description, when to use it, its fields in order (each {name, required}), whether an instance is its own card or a row on the card it belongs to (grain), or turn it off (status 'deprecated'). Read the types first with knowledge_base command='ontology'. Changing a built-in or organization type from a project gives that project its own copy and changes nothing elsewhere; reset=true drops the copy. scope 'org' changes the organization's type for every project and needs an organization admin. Only the project's owners may change its types. Cards already written are not rewritten.",
+      "description": "Change one card type in a project's ontology, after the person agrees: its label, description, when to use it, its fields in order (each {name, required}), whether an instance is its own card or a row on the card it belongs to (grain), or turn it off (status 'deprecated'). Read the types first with knowledge_base command='ontology'. Changing a built-in or organization type from a project gives that project its own copy and changes nothing elsewhere; reset=true drops the copy. org_wide=true changes the organization's type for every project and needs an organization admin. Only the project's owners may change its types. Cards already written are not rewritten.",
       "name": "edit_card_type",
       "surfaces": [
         "remote",

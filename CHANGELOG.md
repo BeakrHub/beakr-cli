@@ -28,11 +28,10 @@ Each release lists the public API changes it supports, taken from the API change
   unless `--replace`.
 - **`beakr mcp` has the `edit_card_type` tool**, the same one the hosted MCP
   server lists, with the same arguments and the same answers: an agent changes
-  one card type after the person agrees, for a project or (scope `org`) the
-  organization, and `reset=true` drops a project's own copy. A type key that
-  is not letters, digits, spaces, hyphens and underscores is refused before
-  anything is sent. On this tool `scope` is its own argument and is not read
-  as another name for the project.
+  one card type after the person agrees, for a project or (`org_wide=true`)
+  the organization, and `reset=true` drops a project's own copy. A type key
+  that is not letters, digits, spaces, hyphens and underscores is refused
+  before anything is sent.
 - **Cite a record outside Beakr.** `beakr kb add-fact`, `add-connection` and
   `add-finding` take `--cite-record URL` with `--record-system`, `--record-id` or
   `--source-title`, and `--excerpt`: an ELN entry, a registry compound, or an

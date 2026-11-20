@@ -547,13 +547,13 @@ arguments there (`files` with each file's content, at most 20 files and about
   `core_organizations`, `core_topics`) writes the project's Knowledge
   profile, the non-interactive `beakr projects profile set`. A first profile
   needs `entity_types`. After that, only the fields given change.
-- `edit_card_type` (`type`, `project`, `scope`, `label`, `description`,
+- `edit_card_type` (`type`, `project`, `org_wide`, `label`, `description`,
   `when_to_use`, `when_not_to_use`, `aliases`, `fields`, `grain`, `status`,
   `reset`) changes one card type, the non-interactive `beakr kb types edit`.
   `type` is the key `knowledge_base` command `ontology` prints. `fields` is the
   type's fields in order, each `{name, required}`, and replaces the list.
   Changing a built-in or organization type from a project gives the project
-  its own copy; `reset: true` drops the copy. `scope: "org"` changes the
+  its own copy; `reset: true` drops the copy. `org_wide: true` changes the
   organization's type and takes no `project`.
 - `upload_files` (`project`, `paths`, `folder_id`, `knowledge`,
   `resume_upload_id`) uploads local files and folders, the way `beakr upload`

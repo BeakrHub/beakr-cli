@@ -16,7 +16,6 @@ from typing import Any
 
 #: What a caller can change, as the route names it.
 TEXT_FIELDS = ("label", "description", "when_to_use", "when_not_to_use")
-SCOPES = ("project", "org")
 GRAINS = ("card", "row")
 STATUSES = ("active", "deprecated")
 #: The key becomes a path segment: anything else (a slash, a dot) could name a
@@ -31,10 +30,9 @@ BAD_TYPE_KEY = (
     "A card type's key is letters, digits, spaces, hyphens and underscores.",
     "Pass `type` exactly as knowledge_base command='ontology' prints it.",
 )
-BAD_SCOPE = ("scope is 'project' or 'org'.", None)
 ORG_WITH_PROJECT = (
     "An organization-wide change names no project.",
-    "Leave `project` out with scope 'org', or use scope 'project'.",
+    "Leave `project` out with org_wide=true, or leave org_wide out.",
 )
 NO_PROJECT = (
     "Name the project.",

@@ -220,7 +220,7 @@ def profile_saved_text(profile: dict[str, Any], project: dict[str, Any], *, crea
 async def edit_card_type(
     type: str,
     project: str = "",
-    scope: str = "project",
+    org_wide: bool = False,
     label: str | None = None,
     description: str | None = None,
     when_to_use: str | None = None,
@@ -243,9 +243,9 @@ async def edit_card_type(
         return _error("invalid_arguments", *card_types.NO_TYPE)
     if not card_types.valid_type_key(key):
         return _error("invalid_arguments", *card_types.BAD_TYPE_KEY)
-    scope = str(scope or "project")
-    if scope not in card_types.SCOPES:
-        return _error("invalid_arguments", *card_types.BAD_SCOPE)
+    # Not `scope`: on every tool here that word is another name for the project
+    # (mcp_call_shaping.PROJECT_NAMES), so an agent sends its project under it.
+    scope = "org" if org_wide is True else "project"
     project_id: str | None = None
     if scope == "project":
         if not str(project or "").strip():
