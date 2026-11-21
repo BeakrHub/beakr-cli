@@ -1116,6 +1116,48 @@ def test_ls_shows_how_many_rows_each_notion_database_matched(monkeypatch):
     assert "    11112222333344445555666677778888: not counted yet" in result.stdout
 
 
+@respx.mock
+def test_ls_says_n_of_m_rows_brought_in_while_a_notion_database_fills_in(monkeypatch):
+    page = _attachment(
+        id="s3",
+        external_item_name="Meeting Notes",
+        notion_rows={
+            "0123456789abcdef0123456789abcdef": {
+                "matching_rows": 1200,
+                "counted_at": "2026-11-21T21:00:00Z",
+                "brought_in": 500,
+                "filling": True,
+            },
+            "fedcba9876543210fedcba9876543210": {
+                "matching_rows": None,
+                "counted_at": None,
+                "brought_in": 500,
+                "filling": True,
+            },
+            "11112222333344445555666677778888": {
+                "matching_rows": 34,
+                "counted_at": "2026-11-21T21:00:00Z",
+                "brought_in": 34,
+                "filling": False,
+            },
+        },
+    )
+    respx.get(SOURCES).respond(200, json={"data": [page], "has_more": False})
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines()[0].split("\t")[-1] == (
+        "notion_rows=0123456789abcdef0123456789abcdef:500/1200,"
+        "fedcba9876543210fedcba9876543210:500/?,11112222333344445555666677778888:34"
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT], terminal_width=200)
+    assert ("    0123456789abcdef0123456789abcdef: 500 of 1200 rows brought in\n") in result.stdout
+    assert ("    fedcba9876543210fedcba9876543210: 500 rows brought in so far\n") in result.stdout
+    assert (
+        "    11112222333344445555666677778888: 34 rows match (as of 2026-11-21T21:00:00Z)"
+    ) in result.stdout
+
+
 NOTION_MODE_NOTE = "--mode has no effect on Notion sources"
 
 

@@ -323,19 +323,36 @@ def pick_connector(connections: list[dict[str, Any]], provider: str) -> str:
     return str(matching[0]["id"])
 
 
+def _filling(entry: Any) -> tuple[bool, Any, Any]:
+    """``(filling, brought_in, matching_rows)`` of one ``notion_rows`` entry."""
+    if not isinstance(entry, dict):
+        return False, None, None
+    return bool(entry.get("filling")), entry.get("brought_in"), entry.get("matching_rows")
+
+
 def _notion_rows(row: dict[str, Any]) -> list[tuple[str, str]]:
     """``(database id, "N rows match")`` per database of a Notion source, from its last sync.
 
     ``notion_rows`` (beakr-engine #3061) maps each database the source reads to
-    ``{matching_rows, counted_at}``; it is null or absent for other sources and
-    before a sync has counted.
+    ``{matching_rows, counted_at, brought_in, filling}``; it is null or absent for
+    other sources and before a sync has counted. While ``filling`` (follow-up
+    syncs are still bringing rows in, minutes apart) it reads "N of M rows
+    brought in".
     """
     counts = row.get("notion_rows")
     if not isinstance(counts, dict):
         return []
     out = []
     for database, entry in counts.items():
-        matching = (entry or {}).get("matching_rows") if isinstance(entry, dict) else None
+        filling, brought_in, matching = _filling(entry)
+        if filling and brought_in is not None:
+            phrase = (
+                f"{brought_in} of {matching} rows brought in"
+                if matching is not None
+                else f"{brought_in} rows brought in so far"
+            )
+            out.append((str(database), phrase))
+            continue
         if matching is None:
             out.append((str(database), "not counted yet"))
             continue
@@ -346,14 +363,21 @@ def _notion_rows(row: dict[str, Any]) -> list[tuple[str, str]]:
 
 
 def _rows_field(row: dict[str, Any]) -> list[str]:
-    """``notion_rows=<db>:<n>,...`` (``?`` when not counted) for a compact line."""
+    """``notion_rows=<db>:<n>,...`` for a compact line.
+
+    ``<n>`` is the matching count (``?`` when not counted); while the database
+    is still filling in it is ``<brought in>/<matching>`` instead.
+    """
     counts = row.get("notion_rows")
     if not isinstance(counts, dict) or not counts:
         return []
     parts = []
     for database, entry in counts.items():
-        matching = (entry or {}).get("matching_rows") if isinstance(entry, dict) else None
-        parts.append(f"{database}:{'?' if matching is None else matching}")
+        filling, brought_in, matching = _filling(entry)
+        shown = "?" if matching is None else str(matching)
+        if filling and brought_in is not None:
+            shown = f"{brought_in}/{shown}"
+        parts.append(f"{database}:{shown}")
     return [f"notion_rows={cell(','.join(parts), width=2000)}"]
 
 
