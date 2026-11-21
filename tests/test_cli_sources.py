@@ -1605,6 +1605,35 @@ def test_an_edit_refused_for_an_unknown_property_says_why_and_that_nothing_was_s
     assert error["fix"].startswith("Nothing was saved")
 
 
+#: The same refusal as beakr-engine #3077 words it: a plain detail that says itself
+#: that nothing was saved.
+UNKNOWN_PROPERTY_3077 = {
+    "detail": (
+        "The Notion rule names a property that does not exist: 'tags' in database "
+        "'Requests' (did you mean 'Tags'?). Notion matches property names exactly, "
+        "including case. Nothing was saved."
+    )
+}
+
+
+@pytest.mark.parametrize("command", ["edit", "attach"])
+@respx.mock
+def test_the_engines_unknown_property_refusal_is_shown_once_with_a_preview_hint(command):
+    _edit_routes(external_item_type="database")[0].respond(422, json=UNKNOWN_PROPERTY_3077)
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("database", "Requests"))
+    respx.post(SOURCES).respond(422, json=UNKNOWN_PROPERTY_3077)
+    query = json.dumps({"notion_filter": {"property": "tags", "select": {"equals": "x"}}})
+    argv = ["edit", "s1"] if command == "edit" else ["attach", f"https://www.notion.so/{NOTION_ID}"]
+    result = runner.invoke(
+        app, ["sources", *argv, "--query", query, "-P", PROJECT], terminal_width=400
+    )
+    assert result.exit_code == 1
+    said = " ".join(result.stderr.split())
+    assert "'tags' in database 'Requests' (did you mean 'Tags'?)" in said
+    assert said.lower().count("nothing was") == 1
+    assert ("beakr sources preview s1 --query" if command == "edit" else "--preview") in said
+
+
 @respx.mock
 def test_an_attach_refused_for_its_rules_says_nothing_was_attached():
     _keys()

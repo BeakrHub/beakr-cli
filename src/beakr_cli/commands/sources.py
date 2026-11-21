@@ -766,8 +766,9 @@ def attach(
                 if exc.status == 422 and (source_query is not None or mode is not None):
                     _add_fix(
                         exc,
-                        "Nothing was attached. `beakr sources attach ... --preview` checks the "
-                        "rules without attaching.",
+                        _unsaved(exc, "Nothing was attached.")
+                        + "`beakr sources attach ... --preview` checks the rules without "
+                        "attaching.",
                     )
                 if exc.status == 409 or (exc.status or 0) >= 500:
                     _refuse_duplicate(sdk, project_id, slug, item_id, exc)
@@ -904,8 +905,9 @@ def edit(
             if exc.status == 422 and (source_query is not None or mode is not None):
                 _add_fix(
                     exc,
-                    "Nothing was saved; the source keeps its rules. `beakr sources preview "
-                    f"{source_id} --query ...` checks a query without saving it.",
+                    _unsaved(exc, "Nothing was saved; the source keeps its rules.")
+                    + f"`beakr sources preview {source_id} --query ...` checks a query without "
+                    "saving it.",
                 )
             raise
         result = _with_sync_state(dict(source or {}), row)
@@ -969,6 +971,15 @@ def _with_sync_state(source: dict[str, Any], row: dict[str, Any] | None) -> dict
         if source.get(field) is None and row and row.get(field) is not None:
             source[field] = row[field]
     return source
+
+
+def _unsaved(exc: BeakrError, sentence: str) -> str:
+    """``sentence`` and a space, unless the engine's message already says nothing was saved.
+
+    The engine's refusal of a Notion rule naming a property no database has
+    (beakr-engine #3077) ends "Nothing was saved."; the CLI does not repeat it.
+    """
+    return "" if "nothing was saved" in str(exc.message).lower() else f"{sentence} "
 
 
 def _add_fix(exc: BeakrError, text: str) -> None:
