@@ -26,7 +26,7 @@ from typing import Any
 
 import click
 import typer
-from beakr_sdk.errors import BeakrError, NotFoundError
+from beakr_sdk.errors import BeakrError, ConflictError, NotFoundError
 
 from beakr_cli.compact import cell
 from beakr_cli.errors import EXIT_NOT_FOUND, describe_error, error_object, exit_code_for
@@ -370,6 +370,65 @@ def notion_item(sdk: Any, connector_id: str, item_id: str) -> dict[str, str | No
     return {"kind": str(data["kind"]), "name": name or None}
 
 
+def _same_item(a: Any, b: Any) -> bool:
+    """Whether two external ids name one item (Notion's dashed and plain forms alike)."""
+    return str(a or "").replace("-", "").lower() == str(b or "").replace("-", "").lower()
+
+
+def _refuse_duplicate(
+    sdk: Any, project_id: str, provider: str, item_id: str, exc: BeakrError
+) -> None:
+    """Turn an attach refused because the item is already attached into "Already attached".
+
+    The engine answers a duplicate with 409 naming the existing source; before
+    that change it answered 500 (a unique-index violation), whose "retry with
+    backoff" was the wrong advice (e2e-live H10). The existing source is read
+    from the 409's details, else from the project's listing. A 500 that is not
+    a duplicate keeps its message but not the advice to retry. Raises, or
+    returns for the caller to re-raise ``exc``.
+    """
+    details = exc.details or {}
+    existing: dict[str, Any] | None = None
+    found_id = details.get("source_id") or details.get("attachment_id")
+    if found_id:
+        existing = {
+            "id": found_id,
+            "external_item_name": details.get("external_item_name") or details.get("name"),
+        }
+    else:
+        try:
+            existing = next(
+                (
+                    row
+                    for row in sdk.project_sources.list(project_id)
+                    if row.get("provider") == provider
+                    and _same_item(row.get("external_item_id"), item_id)
+                ),
+                None,
+            )
+        except BeakrError:
+            existing = None
+    if existing is None:
+        if exc.status != 409:
+            exc.fix = (
+                "Nothing was attached as far as Beakr can tell; `beakr sources ls` shows the "
+                "project's sources. If it keeps failing, report the request id."
+            )
+        return
+    source_id = str(existing.get("id"))
+    name = existing.get("external_item_name") or source_id
+    raise ConflictError(
+        f"Already attached as {name} ({source_id}).",
+        code="already_attached",
+        fix=(
+            f"Change it with `beakr sources edit {source_id}` (rules, Knowledge, nightly sync), "
+            f"or detach it first with `beakr sources rm {source_id}`."
+        ),
+        details={"source_id": source_id, "external_item_name": name},
+        request_id=exc.request_id,
+    ) from exc
+
+
 def _filling(entry: Any) -> tuple[bool, Any, Any]:
     """``(filling, brought_in, matching_rows)`` of one ``notion_rows`` entry."""
     if not isinstance(entry, dict):
@@ -710,6 +769,8 @@ def attach(
                         "Nothing was attached. `beakr sources attach ... --preview` checks the "
                         "rules without attaching.",
                     )
+                if exc.status == 409 or (exc.status or 0) >= 500:
+                    _refuse_duplicate(sdk, project_id, slug, item_id, exc)
                 raise
             result: dict[str, Any] = dict(source or {})
             if sync_now and result.get("id"):

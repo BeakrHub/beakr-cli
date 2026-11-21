@@ -1626,3 +1626,91 @@ def test_an_attach_refused_for_its_rules_says_nothing_was_attached():
     said = " ".join(result.stderr.split())
     assert "which no database under this page has." in said
     assert "Nothing was attached." in said
+
+
+# -- attaching an item the project already has (e2e-live H10) --------------------------
+
+RETRY_ADVICE = "Nothing in your call needs to change: retry with backoff"
+#: The engine's answer to a duplicate before it said 409: a unique-index 500.
+DUPLICATE_500 = {
+    "error": {
+        "code": "internal_error",
+        "message": "Failed to attach source",
+        "fix": f"{RETRY_ADVICE}, and if it keeps failing report the `request_id`.",
+    }
+}
+
+
+@pytest.fixture
+def no_backoff(monkeypatch):
+    """The SDK retries a 500 on a replayable create with backoff; do not wait it out."""
+    monkeypatch.setattr("beakr_sdk.client.time.sleep", lambda _seconds: None)
+
+
+def _attach_link(*extra: str) -> list[str]:
+    return ["sources", "attach", f"https://www.notion.so/{NOTION_ID}", "-P", PROJECT, *extra]
+
+
+@respx.mock
+def test_a_duplicate_attach_says_already_attached_with_the_409s_source():
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("database", "Meeting Notes"))
+    listing = respx.get(SOURCES)
+    respx.post(SOURCES).respond(
+        409,
+        json={
+            "error": {
+                "code": "already_attached",
+                "message": "This item is already attached to the project.",
+                "details": {"source_id": "s9", "external_item_name": "Meeting Notes"},
+            }
+        },
+    )
+    result = runner.invoke(app, _attach_link(), terminal_width=400)
+    assert result.exit_code == 5  # a conflict: retrying cannot help
+    said = " ".join(result.stderr.split())
+    assert "Already attached as Meeting Notes (s9)." in said
+    assert "beakr sources edit s9" in said
+    assert "retry" not in said
+    assert not listing.called
+
+    result = runner.invoke(app, _attach_link("--json"))
+    error = json.loads(result.stdout)["error"]
+    assert (error["code"], error["exit_code"]) == ("already_attached", 5)
+    assert "beakr sources edit s9" in error["fix"]
+
+
+@pytest.mark.parametrize("status", [409, 500])
+@respx.mock
+def test_a_duplicate_without_details_is_found_in_the_projects_sources(status, no_backoff):
+    # A 409 that names no source, and the 500 engines answered before the 409.
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("database", "Meeting Notes"))
+    respx.get(SOURCES).respond(
+        200,
+        json={
+            "data": [
+                _attachment(id="s2", external_item_id="ffff0000-89ab-cdef-0123-456789abcdef"),
+                _attachment(id="s9", external_item_name="Meeting Notes"),
+            ],
+            "has_more": False,
+        },
+    )
+    body = DUPLICATE_500 if status == 500 else {"error": {"code": "conflict", "message": "x"}}
+    respx.post(SOURCES).respond(status, json=body)
+    result = runner.invoke(app, _attach_link(), terminal_width=400)
+    assert result.exit_code == 5
+    said = " ".join(result.stderr.split())
+    assert "Already attached as Meeting Notes (s9)." in said
+    assert "retry" not in said
+
+
+@respx.mock
+def test_a_500_that_is_not_a_duplicate_does_not_advise_retrying(no_backoff):
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("page", "Top"))
+    respx.get(SOURCES).respond(200, json={"data": [], "has_more": False})
+    respx.post(SOURCES).respond(500, json=DUPLICATE_500)
+    result = runner.invoke(app, _attach_link(), terminal_width=400)
+    assert result.exit_code == 1
+    said = " ".join(result.stderr.split())
+    assert "Failed to attach source" in said
+    assert RETRY_ADVICE not in said
+    assert "`beakr sources ls` shows the project's sources" in said

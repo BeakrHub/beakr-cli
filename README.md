@@ -339,7 +339,7 @@ engine refuses a rule that does not fit the source (422, with its reason, and
 nothing is saved). After a change to the query or mode, `edit` counts what the
 saved rules match and warns when nothing would come in: no item matches, every
 database under a Notion page is left out, or the provider rejects the query
-(`--no-check` skips the count). Piped, the count is a `matching=N` field on the source's line.
+(`--no-check` skips the count). Piped, the count is a `matching=N` field on the source's line. Attaching an item the project already has exits 5 and names the existing source to `edit`.
 
 `beakr sources preview SRC` counts what a source would pull under its saved
 query, or under a candidate (`--query`, a shorthand, or `--no-query`), by the

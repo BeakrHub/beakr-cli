@@ -35,7 +35,9 @@ Each release lists the public API changes it supports, taken from the API change
   every database under a page is left out, or the provider rejects the query;
   `--no-check` skips it); a rule the engine refuses (422) says why and that
   nothing was saved; and `edit` reports the source's latest sync, not
-  `sync=never`. `beakr sources preview`
+  `sync=never` (piped, the count is a `matching=N` field). Attaching an item
+  the project already has exits 5 with *Already attached as <name> (<id>)* and
+  the `beakr sources edit` to change it, never advice to retry. `beakr sources preview`
   counts what a source's saved or candidate query would pull, with up to 10
   examples and the provider's reason when it rejects the query (exit 1), and
   `attach --preview` (`--dry-run`) does it before attaching.
