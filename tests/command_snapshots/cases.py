@@ -410,6 +410,8 @@ EXEMPT: dict[str, str] = {
     "sources rm": "no recorded response yet; tests/test_cli_sources.py",
     "sources sync": "no recorded response yet; tests/test_cli_sources.py",
     "sources status": "no recorded response yet; tests/test_cli_sources.py",
+    "sources preview": "no recorded response yet; tests/test_cli_sources.py",
+    "sources keys": "no recorded response yet; tests/test_cli_sources.py",
     "interviews link create": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link ls": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link show": "no recorded response yet; tests/test_cli_core_surface.py",

@@ -18,8 +18,15 @@ Each release lists the public API changes it supports, taken from the API change
   have for the provider, or `--connector ID` when you have several. A source's
   integration rules, on `attach` and `edit`: `--query` (provider-native JSON:
   `{"notion_filter": ...}` or `{"notion_view": ...}` for a Notion database,
-  `{"drive_q": ...}` for a Drive folder), `--mode agent|all` and `--guidance`,
-  sent only when given; `edit --clear-query` and `--clear-guidance` drop them.
+  `{"drive_q": ...}` for a Drive folder, and every other provider's own key:
+  `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr sources keys`
+  lists them from the engine and a key the provider does not take is refused
+  before sending), the shorthands `--drive-q`, `--gmail-q`, `--jql`, `--cql`
+  and `--github-q`, `--mode agent|all` and `--guidance`, sent only when given;
+  `edit --clear-query` and `--clear-guidance` drop them. `beakr sources preview`
+  counts what a source's saved or candidate query would pull, with up to 10
+  examples and the provider's reason when it rejects the query (exit 1), and
+  `attach --preview` (`--dry-run`) does it before attaching.
   `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change, detach,
   sync and follow a project's sources. Where a project requires a person to
   approve what agents bring into Knowledge, an agent's attach, edit or sync

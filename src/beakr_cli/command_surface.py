@@ -206,6 +206,8 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "sources rm",
         "sources sync",
         "sources status",
+        "sources preview",
+        "sources keys",
     }
 )
 

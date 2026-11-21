@@ -298,6 +298,7 @@ beakr sources attach C01ABCDEF --provider slack --type channel --name "#assays" 
 beakr sources attach --provider drive --scope-mode all -P Basel   # everything the connection reads
 beakr sources ls -P Basel                                         # ids, Knowledge on/off, last sync
 beakr sources edit SRC -P Basel --no-knowledge | --auto-sync | --mode all | --clear-query
+beakr sources preview SRC -P Basel --jql 'status = Done'      # count + examples; saves nothing
 beakr sources sync SRC -P Basel && beakr sources status SRC -P Basel
 beakr sources rm SRC -P Basel --yes          # Knowledge already built from it stays
 ```
@@ -311,11 +312,16 @@ connection for the provider it is used; with several, `attach` lists them and
 asks for `--connector ID`.
 
 A source's integration rules narrow what a sync takes, on `attach` and `edit`:
-`--query` is provider-native JSON with exactly one key:
-`'{"notion_filter": {...}}'` (a Notion API filter) or
-`'{"notion_view": "<saved view id>"}'` for a Notion database, or
-`'{"drive_q": "..."}'` (a Drive query, ANDed with the folder) for a Drive folder,
-drive or connection. Attaching a Notion link that opened a saved view (`?v=`)
+`--query` is provider-native JSON with exactly one key, the provider's own:
+`notion_filter` or `notion_view` (a Notion database), `drive_q` (Google Drive),
+`gmail_q`, `outlook_filter` or `outlook_search`, `jql` (Jira), `cql`
+(Confluence), `linear_filter`, `github_q`, and the structured `slack_filter`,
+`teams_filter`, `files_filter`, `calendar_filter` and `granola_filter`.
+`beakr sources keys [--provider jira]` lists them, from the engine, with an
+example each, and a key the source's provider does not take is refused before
+anything is sent. `--drive-q`, `--gmail-q`, `--jql`, `--cql` and `--github-q`
+are shorthands (`--jql 'status = Done'` is `--query '{"jql": "status = Done"}'`).
+Attaching a Notion link that opened a saved view (`?v=`)
 prints the `--query` that pulls only that view's rows. `--mode agent` lets
 Beakr's source picker choose within scope (the default) and `--mode all` takes
 every item in scope. `--guidance` is plain-language instructions that the source
@@ -323,6 +329,15 @@ picker and the Knowledge compiler both read (at most 2,000 characters). `edit`
 clears the query and the guidance with `--clear-query` and `--clear-guidance`;
 the mode can be changed but not cleared. They are sent only when given; the
 engine refuses a rule that does not fit the source (422, with its reason).
+
+`beakr sources preview SRC` counts what a source would pull under its saved
+query, or under a candidate (`--query`, a shorthand, or `--no-query`), by the
+connector's own fetch, and saves nothing: the count ("at least N" when the
+preview stopped early), up to 10 matching items, a count for each database
+under a Notion page, and the provider's reason when it rejects the query (exit
+1: a rejected query cannot sync). `beakr sources attach ... --preview` (or
+`--dry-run`) does the same for an item before attaching it, and attaches
+nothing.
 
 ```bash
 beakr sources attach https://www.notion.so/acme/Runs-0123...cdef?v=4567... -P Basel --knowledge \

@@ -1413,7 +1413,7 @@
     "type": "object"
    },
    "ExternalSourceAttachmentCreate": {
-    "description": "Request payload for attaching an external resource to a project or space.\n\nAttributes:\n    provider: Provider identifier (e.g., 'gdrive:nango', 'notion:nango').\n    external_item_id: Provider's native identifier for the resource.\n    external_item_type: Type of item ('file', 'folder', 'page', 'database', 'label', 'drive').\n    external_item_name: Display name of the resource.\n    external_item_path: Breadcrumb path for display (optional).\n    external_item_url: Direct link to the resource (optional).\n    ingest_wiki: Whether to ingest this source into the wiki.",
+    "description": "Request payload for attaching an external resource to a project or space.\n\nAttributes:\n    provider: Provider identifier (e.g., 'gdrive:nango', 'notion:nango').\n    external_item_id: Provider's native identifier for the resource.\n    external_item_type: Type of item ('file', 'folder', 'page', 'database', 'label', 'drive').\n    external_item_name: Display name of the resource.\n    external_item_path: Breadcrumb path for display (optional).\n    external_item_url: Direct link to the resource (optional).\n    ingest_wiki: Whether to ingest this source into the wiki.\n    source_query: Provider-native query applied when the provider is asked\n        for items: {\"drive_q\": \"...\"}, {\"notion_filter\": {...}} or\n        {\"notion_view\": \"...\"}.\n    pull_mode: 'agent' (the source picker chooses) or 'all' (everything in scope).\n    guidance: What this project cares about from this source (picker and compiler).",
     "properties": {
      "auto_sync_wiki": {
       "default": false,
@@ -1473,6 +1473,18 @@
       "description": "Direct link to the resource (optional).",
       "title": "External Item Url"
      },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What this project cares about from this source, in plain language. Beakr's source picker uses it to choose what to pull and what to skip, and the Knowledge compiler uses it to choose what to record and what to skip. At most 2000 characters; an empty string clears it.",
+      "title": "Guidance"
+     },
      "ingest_wiki": {
       "default": false,
       "description": "Whether to ingest this source into the wiki.",
@@ -1484,6 +1496,16 @@
       "title": "Provider",
       "type": "string"
      },
+     "pull_mode": {
+      "default": "agent",
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "enum": [
+       "agent",
+       "all"
+      ],
+      "title": "Pull Mode",
+      "type": "string"
+     },
      "scope_mode": {
       "default": "item",
       "description": "Scope mode: one of `item`, `all`.",
@@ -1493,6 +1515,19 @@
       ],
       "title": "Scope Mode",
       "type": "string"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
      }
     },
     "required": [
@@ -1612,6 +1647,18 @@
       "description": "Direct link.",
       "title": "External Item Url"
      },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What this project cares about from this source, in plain language. Beakr's source picker uses it to choose what to pull and what to skip, and the Knowledge compiler uses it to choose what to record and what to skip. At most 2000 characters; an empty string clears it.",
+      "title": "Guidance"
+     },
      "id": {
       "description": "Unique attachment identifier.",
       "format": "uuid",
@@ -1642,11 +1689,30 @@
       "title": "Provider",
       "type": "string"
      },
+     "pull_mode": {
+      "default": "agent",
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode",
+      "type": "string"
+     },
      "scope_mode": {
       "default": "item",
       "description": "How much of the external item is attached: `item` for the item alone, or a broader mode covering its contents.",
       "title": "Scope Mode",
       "type": "string"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
      },
      "supports_wiki_ingest": {
       "default": false,
@@ -1729,7 +1795,7 @@
     "type": "object"
    },
    "ExternalSourceAttachmentUpdate": {
-    "description": "Request payload for updating an external source attachment.\n\nAll fields are optional \u2014 only provided fields are updated.\n\nAttributes:\n    ingest_wiki: Whether to ingest this source into the wiki.\n    auto_sync_wiki: Whether to automatically re-ingest this source nightly.",
+    "description": "Request payload for updating an external source attachment.\n\nAll fields are optional \u2014 only provided fields are updated. For\n``source_query`` and ``guidance`` an explicit\nnull (or an empty value) clears the setting; leaving the field out keeps it.\n\nAttributes:\n    ingest_wiki: Whether to ingest this source into the wiki.\n    auto_sync_wiki: Whether to automatically re-ingest this source nightly.\n    source_query: Provider-native query (see the create payload).\n    pull_mode: 'agent' or 'all'.\n    guidance: What this project cares about from this source (picker and compiler).",
     "properties": {
      "auto_sync_wiki": {
       "anyOf": [
@@ -1743,6 +1809,18 @@
       "description": "Whether to automatically re-ingest this source nightly.",
       "title": "Auto Sync Wiki"
      },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What this project cares about from this source, in plain language. Beakr's source picker uses it to choose what to pull and what to skip, and the Knowledge compiler uses it to choose what to record and what to skip. At most 2000 characters; an empty string clears it.",
+      "title": "Guidance"
+     },
      "ingest_wiki": {
       "anyOf": [
        {
@@ -1754,6 +1832,35 @@
       ],
       "description": "Whether to ingest this source into the wiki.",
       "title": "Ingest Wiki"
+     },
+     "pull_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "agent",
+         "all"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
      }
     },
     "title": "ExternalSourceAttachmentUpdate",
@@ -4719,6 +4826,297 @@
     "title": "RevisionOutPage",
     "type": "object"
    },
+   "RulesPreviewGroup": {
+    "description": "The count for one container inside the source (e.g. a database under a Notion page).",
+    "properties": {
+     "count": {
+      "description": "Count.",
+      "title": "Count",
+      "type": "integer"
+     },
+     "count_capped": {
+      "default": false,
+      "description": "Count capped.",
+      "title": "Count Capped",
+      "type": "boolean"
+     },
+     "id": {
+      "description": "Unique id of this rules preview group.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Name of the rules preview group.",
+      "title": "Name"
+     }
+    },
+    "required": [
+     "id",
+     "count"
+    ],
+    "title": "RulesPreviewGroup",
+    "type": "object"
+   },
+   "RulesPreviewIn": {
+    "description": "Preview an attached source's rules before saving them.\n\nLeave ``source_query`` out to preview the saved query; send an object to\npreview a candidate, or null to preview no query.",
+    "properties": {
+     "pull_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "agent",
+         "all"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
+     }
+    },
+    "title": "RulesPreviewIn",
+    "type": "object"
+   },
+   "RulesPreviewItemIn": {
+    "description": "Preview rules for an item before attaching it (the source picker).",
+    "properties": {
+     "connector_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the connector.",
+      "title": "Connector Id"
+     },
+     "external_item_id": {
+      "description": "Id of the external item.",
+      "title": "External Item Id",
+      "type": "string"
+     },
+     "external_item_type": {
+      "description": "Type of the item in the external system.",
+      "title": "External Item Type",
+      "type": "string"
+     },
+     "provider": {
+      "description": "The service it comes from.",
+      "title": "Provider",
+      "type": "string"
+     },
+     "pull_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "agent",
+         "all"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode"
+     },
+     "scope_mode": {
+      "default": "item",
+      "description": "Scope mode: one of `item`, `all`.",
+      "enum": [
+       "item",
+       "all"
+      ],
+      "title": "Scope Mode",
+      "type": "string"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
+     }
+    },
+    "required": [
+     "provider",
+     "external_item_type",
+     "external_item_id"
+    ],
+    "title": "RulesPreviewItemIn",
+    "type": "object"
+   },
+   "RulesPreviewOut": {
+    "description": "What a source's rules keep, counted by the connector's own fetch.",
+    "properties": {
+     "breakdown": {
+      "description": "Per-container counts where the source has them (each database under a Notion page); empty otherwise.",
+      "items": {
+       "$ref": "#/components/schemas/RulesPreviewGroup"
+      },
+      "title": "Breakdown",
+      "type": "array"
+     },
+     "count": {
+      "description": "How many items the fetch returned under the rules.",
+      "title": "Count",
+      "type": "integer"
+     },
+     "count_capped": {
+      "description": "True when the fetch stopped at `limit`: at least `count` items match.",
+      "title": "Count Capped",
+      "type": "boolean"
+     },
+     "limit": {
+      "description": "The most items the preview fetches.",
+      "title": "Limit",
+      "type": "integer"
+     },
+     "message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The provider's reason for a rejection.",
+      "title": "Message"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What the count covers, e.g. a calendar's date window or a recent window.",
+      "title": "Note"
+     },
+     "provider_status": {
+      "default": "ok",
+      "description": "`rejected` when the provider refused the query; `message` says why. A rejected query cannot sync.",
+      "enum": [
+       "ok",
+       "rejected"
+      ],
+      "title": "Provider Status",
+      "type": "string"
+     },
+     "pull_mode": {
+      "default": "agent",
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode",
+      "type": "string"
+     },
+     "sample": {
+      "description": "Up to ten of the matching items.",
+      "items": {
+       "$ref": "#/components/schemas/RulesPreviewSample"
+      },
+      "title": "Sample",
+      "type": "array"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The query that was previewed (saved or candidate).",
+      "title": "Source Query"
+     }
+    },
+    "required": [
+     "count",
+     "count_capped",
+     "limit"
+    ],
+    "title": "RulesPreviewOut",
+    "type": "object"
+   },
+   "RulesPreviewSample": {
+    "description": "One item the previewed rules keep.",
+    "properties": {
+     "id": {
+      "description": "Unique id of this rules preview sample.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Name of the rules preview sample.",
+      "title": "Name"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its URL.",
+      "title": "Url"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "RulesPreviewSample",
+    "type": "object"
+   },
    "SchedulePreviewRequest": {
     "description": "Request payload for previewing schedule run times.\n\nAttributes:\n    cron: 5-field cron expression (e.g. \"0 9 * * 1\" for Monday 9am).\n    timezone: IANA timezone name (e.g. \"America/New_York\").\n    count: Number of upcoming runs to preview (max 20).",
     "properties": {
@@ -4928,6 +5326,132 @@
      "type"
     ],
     "title": "SourceOut",
+    "type": "object"
+   },
+   "SourceQueryKey": {
+    "description": "One source_query key and the sources that take it.",
+    "properties": {
+     "example": {
+      "description": "Example.",
+      "title": "Example"
+     },
+     "excluded_item_types": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Attachment item types that do not take the key.",
+      "title": "Excluded Item Types"
+     },
+     "fields": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The fields a structured filter takes.",
+      "title": "Fields"
+     },
+     "item_types": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Only these attachment item types take the key; null means any.",
+      "title": "Item Types"
+     },
+     "key": {
+      "description": "The key.",
+      "title": "Key",
+      "type": "string"
+     },
+     "kind": {
+      "description": "What kind of source query key this is. One of `text`, `object`, `structured`.",
+      "enum": [
+       "text",
+       "object",
+       "structured"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "max_chars": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Max chars.",
+      "title": "Max Chars"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "An optional note.",
+      "title": "Note"
+     },
+     "providers": {
+      "description": "Providers.",
+      "items": {
+       "type": "string"
+      },
+      "title": "Providers",
+      "type": "array"
+     }
+    },
+    "required": [
+     "key",
+     "providers",
+     "kind"
+    ],
+    "title": "SourceQueryKey",
+    "type": "object"
+   },
+   "SourceQueryKeysOut": {
+    "description": "Every source_query key, for building a rules editor.",
+    "properties": {
+     "keys": {
+      "description": "Keys.",
+      "items": {
+       "$ref": "#/components/schemas/SourceQueryKey"
+      },
+      "title": "Keys",
+      "type": "array"
+     }
+    },
+    "required": [
+     "keys"
+    ],
+    "title": "SourceQueryKeysOut",
     "type": "object"
    },
    "SourceSyncFile": {
@@ -8814,6 +9338,65 @@
     "x-beakr-scope": "integrations:admin"
    }
   },
+  "/v1/integrations/source-query-keys": {
+   "get": {
+    "description": "Every source_query key: the providers and item types that take it, and its shape.\n\nFor clients that build a rules editor, instead of hard-coding which filter\neach provider takes. Static; ``db`` only authenticates the caller.",
+    "operationId": "list_source_query_keys_v1_integrations_source_query_keys_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceQueryKeysOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Every source_query key: the providers and item types that take it, and its shape",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:read"
+   }
+  },
   "/v1/integrations/{connector_id}/coverage": {
    "get": {
     "description": "Items the sources hold, how many Knowledge read and compiled, and why the rest were not.",
@@ -12545,6 +13128,87 @@
     "x-beakr-scope": "integrations:admin"
    }
   },
+  "/v1/projects/{project_id}/sources/rules/preview": {
+   "post": {
+    "description": "Count what rules would keep for an item before attaching it (the source picker).\n\nRuns the provider connector's own fetch, as the caller, on ``connector_id``\nor their connection for the provider. Same answer as the attached-source\npreview.",
+    "operationId": "preview_item_rules_v1_projects__project_id__sources_rules_preview_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RulesPreviewItemIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RulesPreviewOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Count what rules would keep for an item before attaching it (the source picker)",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:read"
+   }
+  },
   "/v1/projects/{project_id}/sources/{attachment_id}": {
    "delete": {
     "description": "Remove an external source attachment from a project.\n\nRequires admin access to the project, or be the user who created the attachment.",
@@ -12707,6 +13371,97 @@
      "public"
     ],
     "x-beakr-scope": "integrations:admin"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}/rules/preview": {
+   "post": {
+    "description": "Count what a source's rules keep, before saving them.\n\nRuns the connector's own fetch with the query inside the provider call\n(the same fetch a sync runs) and answers how many items came back, whether\ncounting stopped early, a sample, per-container counts where the provider\nhas them, and whether the provider refused the query. Leave\n``source_query`` out to preview the saved query. Only the person who\nattached the source may preview, on its connection. A ``def`` route: the\nprovider fetch runs on a worker thread, never on the event loop.",
+    "operationId": "preview_project_source_rules_v1_projects__project_id__sources__attachment_id__rules_preview_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RulesPreviewIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RulesPreviewOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Count what a source's rules keep, before saving them",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:read"
    }
   },
   "/v1/projects/{project_id}/sources/{attachment_id}/sync": {

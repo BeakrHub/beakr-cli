@@ -36,6 +36,9 @@ PATCH /v1/projects/{project_id}/sources/{attachment_id}
 DELETE /v1/projects/{project_id}/sources/{attachment_id}
 POST /v1/projects/{project_id}/sources/{attachment_id}/sync
 GET /v1/projects/{project_id}/sources/{attachment_id}/sync-status
+POST /v1/projects/{project_id}/sources/{attachment_id}/rules/preview
+POST /v1/projects/{project_id}/sources/rules/preview
+GET /v1/integrations/source-query-keys
 
 # Interviews: requests, sessions and the interview maker.
 GET /v1/interview/requests

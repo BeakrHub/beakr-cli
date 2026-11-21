@@ -58,6 +58,85 @@ def _attachment(**fields) -> dict:
     }
 
 
+#: ``GET /v1/integrations/source-query-keys`` as the engine answers it (#3062,
+#: ``integration_rules.validation.source_query_capabilities``), a few keys of it.
+QUERY_KEYS = [
+    {
+        "key": "drive_q",
+        "providers": ["gdrive:nango"],
+        "item_types": None,
+        "excluded_item_types": ["file"],
+        "kind": "text",
+        "fields": None,
+        "max_chars": 2000,
+        "note": None,
+        "example": "mimeType = 'application/pdf'",
+    },
+    {
+        "key": "notion_filter",
+        "providers": ["notion:nango"],
+        "item_types": ["database"],
+        "excluded_item_types": None,
+        "kind": "object",
+        "fields": None,
+        "max_chars": None,
+        "note": None,
+        "example": {"property": "Status", "select": {"equals": "Done"}},
+    },
+    {
+        "key": "notion_view",
+        "providers": ["notion:nango"],
+        "item_types": ["database"],
+        "excluded_item_types": None,
+        "kind": "text",
+        "fields": None,
+        "max_chars": None,
+        "note": None,
+        "example": "1f0a2b3c4d5e6f708192a3b4c5d6e7f8",
+    },
+    {
+        "key": "gmail_q",
+        "providers": ["gmail:nango"],
+        "item_types": None,
+        "excluded_item_types": None,
+        "kind": "text",
+        "fields": None,
+        "max_chars": 1000,
+        "note": None,
+        "example": "from:legal@acme.com has:attachment",
+    },
+    {
+        "key": "jql",
+        "providers": ["jira:nango"],
+        "item_types": None,
+        "excluded_item_types": None,
+        "kind": "text",
+        "fields": None,
+        "max_chars": 1000,
+        "note": "No ORDER BY.",
+        "example": "status = Done AND labels = customer",
+    },
+    {
+        "key": "slack_filter",
+        "providers": ["slack:nango"],
+        "item_types": None,
+        "excluded_item_types": None,
+        "kind": "structured",
+        "fields": ["after", "channels"],
+        "max_chars": None,
+        "note": None,
+        "example": {"channels": ["C0123ABCD"], "after": "2025-01-01"},
+    },
+]
+
+
+def _keys(status: int = 200) -> respx.Route:
+    route = respx.get(f"{API}/v1/integrations/source-query-keys")
+    if status == 200:
+        return route.respond(200, json={"keys": QUERY_KEYS})
+    return route.respond(status, json={"error": {"code": "not_found", "message": "Not Found"}})
+
+
 def _connections(*rows: dict) -> respx.Route:
     return respx.get(f"{API}/v1/integrations").respond(
         200, json={"data": list(rows), "has_more": False, "next_cursor": None}
@@ -126,6 +205,7 @@ def test_attach_by_a_view_link_says_how_to_pull_only_that_view(monkeypatch):
 
 @respx.mock
 def test_attach_sends_a_notion_view_query():
+    _keys()
     _connections({"id": "c1", "provider": "notion:nango"})
     route = respx.post(SOURCES).respond(201, json=_attachment(external_item_type="database"))
     query = {"notion_view": VIEW_ID}
@@ -327,6 +407,7 @@ def test_attach_by_id_needs_provider_and_type_and_sends_new_fields_only_when_giv
 
 @respx.mock
 def test_attach_sends_a_query_as_json():
+    _keys()
     _connections({"id": "c1", "provider": "notion:nango"})
     route = respx.post(SOURCES).respond(201, json=_attachment())
     query = {"notion_filter": {"property": "Status", "select": {"equals": "Final"}}}
@@ -500,6 +581,14 @@ def test_ls_lists_the_projects_sources(monkeypatch):
 
 @respx.mock
 def test_edit_sends_only_what_changes_and_clears_on_request():
+    _keys()
+    respx.get(SOURCES).respond(
+        200,
+        json={
+            "data": [_attachment(provider="gdrive:nango", external_item_type="folder")],
+            "has_more": False,
+        },
+    )
     route = respx.patch(f"{SOURCES}/s1").respond(200, json=_attachment(ingest_wiki=True))
     result = runner.invoke(
         app,
@@ -549,6 +638,8 @@ def test_edit_refuses_setting_and_clearing_one_field(argv):
 
 @respx.mock
 def test_a_rule_the_engine_refuses_reads_as_its_message():
+    # An engine that does not list its keys: the query is sent as given.
+    _keys(404)
     respx.patch(f"{SOURCES}/s1").respond(
         422,
         json={
@@ -624,3 +715,286 @@ def test_sources_commands_need_a_project(isolated_home):
     result = runner.invoke(app, ["sources", "ls"])
     assert result.exit_code == 2
     assert "beakr init" in result.output
+
+
+# -- every provider's query, checked against the engine's keys ------------------------
+
+
+@pytest.mark.parametrize(
+    ("flag", "key"),
+    [
+        ("--drive-q", "drive_q"),
+        ("--gmail-q", "gmail_q"),
+        ("--jql", "jql"),
+        ("--cql", "cql"),
+        ("--github-q", "github_q"),
+    ],
+)
+@respx.mock
+def test_a_shorthand_is_the_query_with_its_key(flag, key):
+    keys = [{"key": key, "providers": ["x:nango"], "kind": "text", "example": "e"}]
+    respx.get(f"{API}/v1/integrations/source-query-keys").respond(200, json={"keys": keys})
+    _connections({"id": "c1", "provider": "x:nango"})
+    route = respx.post(SOURCES).respond(201, json=_attachment())
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            "I1",
+            "--provider",
+            "x:nango",
+            "--type",
+            "project",
+            flag,
+            "a = b",
+            "-P",
+            PROJECT,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["source_query"] == {key: "a = b"}
+
+
+@respx.mock
+def test_attach_sends_a_structured_filter_the_engine_lists():
+    _keys()
+    _connections({"id": "c3", "provider": "slack:nango"})
+    route = respx.post(SOURCES).respond(201, json=_attachment(provider="slack:nango"))
+    query = {"slack_filter": {"after": "2025-01-01"}}
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            "https://acme.slack.com/archives/C01ABCDEF",
+            "--query",
+            json.dumps(query),
+            "-P",
+            PROJECT,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["source_query"] == query
+
+
+@pytest.mark.parametrize(
+    ("argv", "says"),
+    [
+        # A key the engine does not list.
+        (["--query", '{"teams_q": "x"}'], "'teams_q' is not a source query key for notion:nango"),
+        # A key another provider takes: the ones this provider takes are named.
+        (["--jql", "status = Done"], "Use one of: notion_filter, notion_view."),
+        # A Notion database key on a page.
+        (["--query", '{"notion_view": "abc"}'], "applies to only a database; this item is a page"),
+        # Two queries at once.
+        (["--jql", "a", "--query", '{"jql": "b"}'], "Give one query"),
+        # Not exactly one key.
+        (["--query", '{"jql": "a", "cql": "b"}'], "one key"),
+    ],
+)
+@respx.mock
+def test_a_query_the_provider_does_not_take_is_refused_before_sending(argv, says):
+    _keys()
+    _connections({"id": "c1", "provider": "notion:nango"})
+    route = respx.post(SOURCES)
+    result = runner.invoke(
+        app,
+        ["sources", "attach", f"https://www.notion.so/{NOTION_ID}", *argv, "-P", PROJECT],
+        terminal_width=400,
+    )
+    assert result.exit_code == 2, result.output
+    # Click's error box wraps the message: read it as one line.
+    assert says in " ".join(result.output.replace("│", " ").split())
+    assert not route.called
+
+
+@respx.mock
+def test_without_the_engines_key_listing_the_query_is_sent_as_given():
+    _keys(404)
+    _connections({"id": "c1", "provider": "notion:nango"})
+    route = respx.post(SOURCES).respond(201, json=_attachment())
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            f"https://www.notion.so/{NOTION_ID}",
+            "--query",
+            '{"future_key": 1}',
+            "-P",
+            PROJECT,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["source_query"] == {"future_key": 1}
+
+
+@respx.mock
+def test_edit_checks_the_query_against_the_attached_sources_provider():
+    _keys()
+    respx.get(SOURCES).respond(
+        200, json={"data": [_attachment(provider="gmail:nango", external_item_type="all")]}
+    )
+    route = respx.patch(f"{SOURCES}/s1")
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--drive-q", "x", "-P", PROJECT], terminal_width=400
+    )
+    assert result.exit_code == 2
+    assert "Use one of: gmail_q." in result.output
+    assert not route.called
+
+
+# -- preview ---------------------------------------------------------------------------
+
+PREVIEW = {
+    "count": 200,
+    "count_capped": True,
+    "limit": 200,
+    "provider_status": "ok",
+    "pull_mode": "agent",
+    "source_query": {"jql": "status = Done"},
+    "note": None,
+    "message": None,
+    "breakdown": [],
+    "sample": [
+        {"id": f"LAB-{n}", "name": f"Issue {n}", "url": f"https://acme.atlassian.net/LAB-{n}"}
+        for n in range(12)
+    ],
+}
+
+
+@respx.mock
+def test_attach_preview_counts_and_attaches_nothing(monkeypatch):
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    _keys()
+    _connections({"id": "c7", "provider": "jira:nango"})
+    attach = respx.post(SOURCES)
+    route = respx.post(f"{SOURCES}/rules/preview").respond(200, json=PREVIEW)
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            "LAB",
+            "--provider",
+            "jira",
+            "--type",
+            "project",
+            "--jql",
+            "status = Done",
+            "--mode",
+            "all",
+            "--dry-run",
+            "-P",
+            PROJECT,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert not attach.called
+    assert _body(route) == {
+        "provider": "jira:nango",
+        "connector_id": "c7",
+        "external_item_id": "LAB",
+        "external_item_type": "project",
+        "source_query": {"jql": "status = Done"},
+        "pull_mode": "all",
+    }
+    assert "At least 200 items match." in result.stdout
+    assert "Issue 9" in result.stdout and "Issue 10" not in result.stdout
+
+
+@respx.mock
+def test_preview_of_an_attached_source_counts_the_saved_query_by_default():
+    route = respx.post(f"{SOURCES}/s1/rules/preview").respond(
+        200, json={**PREVIEW, "count": 3, "count_capped": False, "sample": []}
+    )
+    result = runner.invoke(app, ["sources", "preview", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {}
+    assert result.stdout.splitlines()[0] == "ok\tcount=3"
+
+    result = runner.invoke(app, ["sources", "preview", "s1", "--no-query", "-P", PROJECT])
+    assert _body(route) == {"source_query": None}
+
+
+@respx.mock
+def test_preview_of_a_candidate_query_and_a_notion_breakdown(monkeypatch):
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    _keys()
+    respx.get(SOURCES).respond(200, json={"data": [_attachment(external_item_type="database")]})
+    route = respx.post(f"{SOURCES}/s1/rules/preview").respond(
+        200,
+        json={
+            **PREVIEW,
+            "count": 1,
+            "count_capped": False,
+            "sample": [{"id": "r1", "name": "Run 1"}],
+            "breakdown": [{"id": "d1", "name": "Runs", "count": 1, "count_capped": False}],
+        },
+    )
+    result = runner.invoke(
+        app,
+        ["sources", "preview", "s1", "--query", '{"notion_view": "abc"}', "-P", PROJECT],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route) == {"source_query": {"notion_view": "abc"}}
+    assert "1 item matches." in result.stdout
+    assert "  Runs: 1" in result.stdout
+    assert "  Run 1" in result.stdout
+
+
+@respx.mock
+def test_a_query_the_provider_rejects_prints_its_reason_and_exits_1(monkeypatch):
+    rejected = {
+        **PREVIEW,
+        "count": 0,
+        "count_capped": False,
+        "sample": [],
+        "provider_status": "rejected",
+        "message": "Field 'stauts' does not exist.",
+    }
+    respx.post(f"{SOURCES}/s1/rules/preview").respond(200, json=rejected)
+    result = runner.invoke(app, ["sources", "preview", "s1", "-P", PROJECT, "--json"])
+    assert result.exit_code == 1
+    assert json.loads(result.stdout)["provider_status"] == "rejected"
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "preview", "s1", "-P", PROJECT])
+    assert result.exit_code == 1
+    assert "The provider rejected the query: Field 'stauts' does not exist." in result.stdout
+
+
+def test_attach_preview_cannot_sync():
+    result = runner.invoke(
+        app,
+        ["sources", "attach", f"https://www.notion.so/{NOTION_ID}", "--preview", "--sync"],
+    )
+    assert result.exit_code == 2
+    assert "cannot --sync" in result.output
+
+
+# -- keys ------------------------------------------------------------------------------
+
+
+@respx.mock
+def test_keys_lists_what_query_takes_for_a_provider(monkeypatch):
+    _keys()
+    result = runner.invoke(app, ["sources", "keys", "--provider", "notion"])
+    assert result.exit_code == 0, result.output
+    assert [line.split("\t")[0] for line in result.stdout.splitlines()] == [
+        "notion_filter",
+        "notion_view",
+    ]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "keys", "--provider", "jira"])
+    assert "jql  [text]  jira:nango" in result.stdout
+    assert """--query '{"jql": "status = Done AND labels = customer"}'""" in result.stdout
+    assert "No ORDER BY." in result.stdout
+
+
+@respx.mock
+def test_keys_from_an_engine_without_the_listing():
+    _keys(404)
+    result = runner.invoke(app, ["sources", "keys"])
+    assert result.exit_code == 1
+    assert "does not list source query keys" in result.output

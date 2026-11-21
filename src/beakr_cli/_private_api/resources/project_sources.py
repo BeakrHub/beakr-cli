@@ -34,6 +34,9 @@ from beakr_sdk.resources._base import Resource
 
 from beakr_cli._private_api._generated import operations as ops
 
+#: ``preview(..., source_query=SAVED)`` previews the query the source already has.
+SAVED: Any = object()
+
 #: Fields an edit can set back to nothing: ``update(..., clear=[...])`` sends them as
 #: JSON null (an omitted field keeps its value).
 CLEARABLE = frozenset({"source_query", "guidance"})
@@ -129,6 +132,62 @@ class ProjectSources(Resource[M]):
         return self._run(
             ops.build_external_sources_update_project_source(project_id, attachment_id, body=body)
         )
+
+    def preview(
+        self,
+        project_id: str,
+        attachment_id: str,
+        *,
+        source_query: dict[str, Any] | None = SAVED,
+        pull_mode: str | None = None,
+    ) -> Any:
+        """Count what the source's rules keep, by the connector's own fetch; nothing is saved.
+
+        ``source_query`` left as :data:`SAVED` previews the saved query, a dict previews
+        that candidate, and ``None`` previews no query. The answer has ``count``,
+        ``count_capped`` (at least ``count`` match), up to ten ``sample`` items, a
+        ``breakdown`` per database under a Notion page, and ``provider_status``
+        ``rejected`` with the provider's ``message`` when it refused the query.
+        """
+        body: dict[str, Any] = clean_body({"pull_mode": pull_mode})
+        if source_query is not SAVED:
+            body["source_query"] = source_query
+        return self._run(
+            ops.build_external_sources_preview_project_source_rules(
+                project_id, attachment_id, body=body
+            )
+        )
+
+    def preview_item(
+        self,
+        project_id: str,
+        *,
+        provider: str,
+        external_item_id: str,
+        external_item_type: str,
+        connector_id: str | None = None,
+        scope_mode: str | None = None,
+        source_query: dict[str, Any] | None = None,
+        pull_mode: str | None = None,
+    ) -> Any:
+        """:meth:`preview` for an item before it is attached (what :meth:`attach` would keep)."""
+        body = clean_body(
+            {
+                "provider": provider,
+                "connector_id": connector_id,
+                "external_item_id": external_item_id,
+                "external_item_type": external_item_type,
+                "scope_mode": scope_mode,
+                "source_query": source_query,
+                "pull_mode": pull_mode,
+            }
+        )
+        return self._run(ops.build_external_sources_preview_item_rules(project_id, body=body))
+
+    @returns(ops.build_external_sources_list_source_query_keys)
+    def query_keys(self) -> Any:
+        """``{keys: [...]}``: every ``source_query`` key, its providers, item types and shape."""
+        return self._run(ops.build_external_sources_list_source_query_keys())
 
     @returns(ops.build_external_sources_delete_project_source)
     def remove(self, project_id: str, attachment_id: str) -> Any:

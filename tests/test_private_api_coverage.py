@@ -71,6 +71,17 @@ MAPPING: list[tuple[str, Callable[[PrivateBeakr], Any]]] = [
     ("DELETE /v1/projects/{}/sources/{}", lambda c: c.project_sources.remove("p1", "s1")),
     ("POST /v1/projects/{}/sources/{}/sync", lambda c: c.project_sources.sync("p1", "s1")),
     ("GET /v1/projects/{}/sources/{}/sync-status", lambda c: c.project_sources.status("p1", "s1")),
+    (
+        "POST /v1/projects/{}/sources/{}/rules/preview",
+        lambda c: c.project_sources.preview("p1", "s1"),
+    ),
+    (
+        "POST /v1/projects/{}/sources/rules/preview",
+        lambda c: c.project_sources.preview_item(
+            "p1", provider="jira:nango", external_item_id="LAB", external_item_type="project"
+        ),
+    ),
+    ("GET /v1/integrations/source-query-keys", lambda c: c.project_sources.query_keys()),
     ("GET /v1/interview/requests", lambda c: c.interviews.requests()),
     (
         "POST /v1/interview/requests",

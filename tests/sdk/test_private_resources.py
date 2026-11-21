@@ -162,6 +162,51 @@ CASES: list[tuple[str, Any, str, str, dict[str, str], Any]] = [
         {},
         None,
     ),
+    (
+        "sources preview saved",
+        lambda c: c.project_sources.preview("p1", "s1"),
+        "POST",
+        "/v1/projects/p1/sources/s1/rules/preview",
+        {},
+        {},
+    ),
+    (
+        "sources preview no query",
+        lambda c: c.project_sources.preview("p1", "s1", source_query=None, pull_mode="all"),
+        "POST",
+        "/v1/projects/p1/sources/s1/rules/preview",
+        {},
+        {"source_query": None, "pull_mode": "all"},
+    ),
+    (
+        "sources preview item",
+        lambda c: c.project_sources.preview_item(
+            "p1",
+            provider="gmail:nango",
+            external_item_id="__all__",
+            external_item_type="all",
+            scope_mode="all",
+            source_query={"gmail_q": "from:lab"},
+        ),
+        "POST",
+        "/v1/projects/p1/sources/rules/preview",
+        {},
+        {
+            "provider": "gmail:nango",
+            "external_item_id": "__all__",
+            "external_item_type": "all",
+            "scope_mode": "all",
+            "source_query": {"gmail_q": "from:lab"},
+        },
+    ),
+    (
+        "sources query keys",
+        lambda c: c.project_sources.query_keys(),
+        "GET",
+        "/v1/integrations/source-query-keys",
+        {},
+        None,
+    ),
 ]
 
 
