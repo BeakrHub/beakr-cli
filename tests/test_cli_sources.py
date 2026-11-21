@@ -1743,3 +1743,29 @@ def test_a_500_that_is_not_a_duplicate_does_not_advise_retrying(no_backoff):
     assert "Failed to attach source" in said
     assert RETRY_ADVICE not in said
     assert "`beakr sources ls` shows the project's sources" in said
+
+
+@respx.mock
+def test_preview_samples_carry_the_date_each_item_last_changed(monkeypatch):
+    # engine #3061: each sample's `date`; an older engine sends none and none prints.
+    dated = {
+        **PREVIEW,
+        "count": 2,
+        "count_capped": False,
+        "sample": [
+            {"id": "LAB-1", "name": "Issue 1", "url": None, "date": "2026-11-20T09:15:00Z"},
+            {"id": "LAB-2", "name": "Issue 2", "url": None},
+        ],
+    }
+    route = respx.post(f"{SOURCES}/s1/rules/preview").respond(200, json=dated)
+    result = runner.invoke(app, ["sources", "preview", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines()[1:3] == [
+        "sample\tLAB-1\tIssue 1\t2026-11-20T09:15:00Z",
+        "sample\tLAB-2\tIssue 2",
+    ]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "preview", "s1", "-P", PROJECT])
+    assert "  Issue 1  2026-11-20T09:15:00Z\n" in result.stdout
+    assert "  Issue 2\n" in result.stdout
+    assert route.call_count == 2

@@ -1684,6 +1684,21 @@
       "description": "Time of the last sync (ISO 8601, UTC).",
       "title": "Last Sync At"
      },
+     "notion_rows": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "$ref": "#/components/schemas/NotionRowCountOut"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Notion sources only: per database id under the source, the rows its rule kept when last counted (\"N rows match\").",
+      "title": "Notion Rows"
+     },
      "provider": {
       "description": "Provider identifier.",
       "title": "Provider",
@@ -3993,6 +4008,68 @@
     "title": "MembershipRole",
     "type": "string"
    },
+   "NotionRowCountOut": {
+    "description": "How many rows of one Notion database the source's rule keeps, and has brought in.\n\n``matching_rows`` is None until a sweep has listed the rule's full matching\nset (a database with no rule is not counted). ``brought_in`` is how many\nof them the source tracks after its last sync; while ``filling``, a\ncontinuation sync is bringing the rest in minutes apart (\"N of M rows\nbrought in\").",
+    "properties": {
+     "brought_in": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Brought in.",
+      "title": "Brought In"
+     },
+     "counted_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When it was counted (ISO 8601, UTC), or null.",
+      "title": "Counted At"
+     },
+     "filling": {
+      "default": false,
+      "description": "Filling.",
+      "title": "Filling",
+      "type": "boolean"
+     },
+     "matching_rows": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Matching rows.",
+      "title": "Matching Rows"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Title of the notion row count.",
+      "title": "Title"
+     }
+    },
+    "title": "NotionRowCountOut",
+    "type": "object"
+   },
    "OrgCredentialOut": {
     "additionalProperties": true,
     "properties": {
@@ -5092,6 +5169,18 @@
    "RulesPreviewSample": {
     "description": "One item the previewed rules keep.",
     "properties": {
+     "date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the item last changed or was sent (ISO 8601), when the provider says; null otherwise.",
+      "title": "Date"
+     },
      "id": {
       "description": "Unique id of this rules preview sample.",
       "format": "uuid",

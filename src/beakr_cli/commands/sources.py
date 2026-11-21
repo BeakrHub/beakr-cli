@@ -236,7 +236,15 @@ def _preview_lines(data: dict[str, Any]) -> list[str]:
         head.append(f"message={cell(data['message'], width=200)}")
     lines = ["\t".join(head)]
     lines += [
-        "\t".join(["sample", cell(item.get("id") or "-"), cell(item.get("name") or "")])
+        "\t".join(
+            [
+                "sample",
+                cell(item.get("id") or "-"),
+                cell(item.get("name") or ""),
+                # When it last changed or was sent (engine #3061); older engines send none.
+                *([cell(str(item["date"]))] if item.get("date") else []),
+            ]
+        )
         for item in (data.get("sample") or [])[:10]
     ]
     lines += [
@@ -292,8 +300,9 @@ def _render_preview(data: dict[str, Any]) -> None:
         console.print("For example:", markup=False)
     for item in sample:
         title = item.get("name") or item.get("id")
+        date = f"  {item['date']}" if item.get("date") else ""
         url = f"  {item['url']}" if item.get("url") else ""
-        console.print(f"  {title}{url}", highlight=False, markup=False, soft_wrap=True)
+        console.print(f"  {title}{date}{url}", highlight=False, markup=False, soft_wrap=True)
 
 
 def _emit_preview(data: Any, json_out: bool) -> None:

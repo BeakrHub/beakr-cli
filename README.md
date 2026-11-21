@@ -344,7 +344,7 @@ database under a Notion page is left out, or the provider rejects the query
 `beakr sources preview SRC` counts what a source would pull under its saved
 query, or under a candidate (`--query`, a shorthand, or `--no-query`), by the
 connector's own fetch, and saves nothing: the count ("at least N" when the
-preview stopped early), up to 10 matching items, a count for each database
+preview stopped early), up to 10 matching items (with when each last changed), a count for each database
 under a Notion page (or why a rule left it out), and the provider's reason when it rejects the query (exit
 1: a rejected query cannot sync). `beakr sources attach ... --preview` (or
 `--dry-run`) does the same for an item before attaching it, and attaches
