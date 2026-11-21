@@ -1526,7 +1526,7 @@
         "type": "null"
        }
       ],
-      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
       "title": "Source Query"
      }
     },
@@ -1711,7 +1711,7 @@
         "type": "null"
        }
       ],
-      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
       "title": "Source Query"
      },
      "supports_wiki_ingest": {
@@ -1859,7 +1859,7 @@
         "type": "null"
        }
       ],
-      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
       "title": "Source Query"
      }
     },
@@ -4840,6 +4840,18 @@
       "title": "Count Capped",
       "type": "boolean"
      },
+     "excluded_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Why this container was left out (a rule excludes it, or the default filter cannot apply to it); its count is then 0.",
+      "title": "Excluded Reason"
+     },
      "id": {
       "description": "Unique id of this rules preview group.",
       "format": "uuid",
@@ -4895,7 +4907,7 @@
         "type": "null"
        }
       ],
-      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
       "title": "Source Query"
      }
     },
@@ -4969,7 +4981,7 @@
         "type": "null"
        }
       ],
-      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
       "title": "Source Query"
      }
     },

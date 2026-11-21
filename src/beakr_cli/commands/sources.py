@@ -176,10 +176,29 @@ def _check_query(
         )
     if item_type is None:
         return
+    if _takes(spec, item_type):
+        return
+    allowed = spec.get("item_types")
+    takes = f"only a {' or '.join(allowed)}" if allowed is not None else "no " + item_type
+    instead = [name for name in fitting if _takes(by_key[name], item_type)]
+    raise click.UsageError(
+        f"{key!r} applies to {takes}; this item is a {item_type}."
+        + (f" For a {item_type} use one of: {', '.join(instead)}." if instead else "")
+    )
+
+
+def _takes(spec: dict[str, Any], item_type: str) -> bool:
+    """Whether a source query key applies to an attachment of ``item_type``."""
     allowed, excluded = spec.get("item_types"), spec.get("excluded_item_types") or []
-    if (allowed is not None and item_type not in allowed) or item_type in excluded:
-        takes = f"only a {' or '.join(allowed)}" if allowed is not None else "no " + item_type
-        raise click.UsageError(f"{key!r} applies to {takes}; this item is a {item_type}.")
+    return (allowed is None or item_type in allowed) and item_type not in excluded
+
+
+def _group_count(group: dict[str, Any]) -> str:
+    """A breakdown entry's count, or that a rule left it out."""
+    if group.get("excluded_reason"):
+        return f"left out ({group['excluded_reason']})"
+    capped = "at least " if group.get("count_capped") else ""
+    return f"{capped}{int(group.get('count') or 0)}"
 
 
 def _preview_lines(data: dict[str, Any]) -> list[str]:
@@ -202,6 +221,11 @@ def _preview_lines(data: dict[str, Any]) -> list[str]:
                 cell(group.get("id") or "-"),
                 cell(group.get("name") or ""),
                 f"count={'>=' if group.get('count_capped') else ''}{int(group.get('count') or 0)}",
+                *(
+                    [f"excluded={cell(group['excluded_reason'], width=200)}"]
+                    if group.get("excluded_reason")
+                    else []
+                ),
             ]
         )
         for group in data.get("breakdown") or []
@@ -228,12 +252,15 @@ def _render_preview(data: dict[str, Any]) -> None:
     console.print(f"{amount}.", highlight=False, markup=False)
     if data.get("note"):
         err_console.print(str(data["note"]), markup=False)
-    for group in data.get("breakdown") or []:
-        capped = "at least " if group.get("count_capped") else ""
+    breakdown = data.get("breakdown") or []
+    if breakdown:
+        console.print("By database:", markup=False)
+    for group in breakdown:
         console.print(
-            f"  {group.get('name') or group.get('id')}: {capped}{int(group.get('count') or 0)}",
+            f"  {group.get('name') or group.get('id')}: {_group_count(group)}",
             highlight=False,
             markup=False,
+            soft_wrap=True,
         )
     sample = (data.get("sample") or [])[:10]
     if sample:

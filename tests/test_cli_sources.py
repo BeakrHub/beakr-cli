@@ -95,6 +95,17 @@ QUERY_KEYS = [
         "example": "1f0a2b3c4d5e6f708192a3b4c5d6e7f8",
     },
     {
+        "key": "notion_page",
+        "providers": ["notion:nango"],
+        "item_types": ["page"],
+        "excluded_item_types": None,
+        "kind": "object",
+        "fields": None,
+        "max_chars": None,
+        "note": None,
+        "example": {"default": None, "databases": {"d1": {"exclude": True}}},
+    },
+    {
         "key": "gmail_q",
         "providers": ["gmail:nango"],
         "item_types": None,
@@ -784,9 +795,12 @@ def test_attach_sends_a_structured_filter_the_engine_lists():
         # A key the engine does not list.
         (["--query", '{"teams_q": "x"}'], "'teams_q' is not a source query key for notion:nango"),
         # A key another provider takes: the ones this provider takes are named.
-        (["--jql", "status = Done"], "Use one of: notion_filter, notion_view."),
-        # A Notion database key on a page.
-        (["--query", '{"notion_view": "abc"}'], "applies to only a database; this item is a page"),
+        (["--jql", "status = Done"], "Use one of: notion_filter, notion_page, notion_view."),
+        # A Notion database key on a page: the page's own key is named.
+        (
+            ["--query", '{"notion_view": "abc"}'],
+            "applies to only a database; this item is a page. For a page use one of: notion_page.",
+        ),
         # Two queries at once.
         (["--jql", "a", "--query", '{"jql": "b"}'], "Give one query"),
         # Not exactly one key.
@@ -940,7 +954,7 @@ def test_preview_of_a_candidate_query_and_a_notion_breakdown(monkeypatch):
     assert result.exit_code == 0, result.output
     assert _body(route) == {"source_query": {"notion_view": "abc"}}
     assert "1 item matches." in result.stdout
-    assert "  Runs: 1" in result.stdout
+    assert "By database:\n  Runs: 1" in result.stdout
     assert "  Run 1" in result.stdout
 
 
@@ -984,6 +998,7 @@ def test_keys_lists_what_query_takes_for_a_provider(monkeypatch):
     assert [line.split("\t")[0] for line in result.stdout.splitlines()] == [
         "notion_filter",
         "notion_view",
+        "notion_page",
     ]
     monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
     result = runner.invoke(app, ["sources", "keys", "--provider", "jira"])
@@ -998,3 +1013,55 @@ def test_keys_from_an_engine_without_the_listing():
     result = runner.invoke(app, ["sources", "keys"])
     assert result.exit_code == 1
     assert "does not list source query keys" in result.output
+
+
+@respx.mock
+def test_a_notion_page_takes_per_database_rules_and_preview_says_what_was_left_out(monkeypatch):
+    _keys()
+    _connections({"id": "c1", "provider": "notion:nango"})
+    attach = respx.post(SOURCES).respond(201, json=_attachment())
+    page_rules = {
+        "notion_page": {
+            "default": {"notion_filter": {"property": "Status", "select": {"equals": "Final"}}},
+            "databases": {"d1": {"notion_view": VIEW_ID}, "d2": {"exclude": True}},
+        }
+    }
+    link = f"https://www.notion.so/acme/Lab-Handbook-{NOTION_ID}"
+    result = runner.invoke(
+        app, ["sources", "attach", link, "--query", json.dumps(page_rules), "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(attach)["source_query"] == page_rules
+    assert _body(attach)["external_item_type"] == "page"
+
+    preview = respx.post(f"{SOURCES}/rules/preview").respond(
+        200,
+        json={
+            **PREVIEW,
+            "count": 4,
+            "count_capped": False,
+            "sample": [],
+            "breakdown": [
+                {"id": "d1", "name": "Runs", "count": 4, "count_capped": False},
+                {
+                    "id": "d2",
+                    "name": "Archive",
+                    "count": 0,
+                    "excluded_reason": "excluded by a rule",
+                },
+            ],
+        },
+    )
+    result = runner.invoke(
+        app,
+        ["sources", "attach", link, "--query", json.dumps(page_rules), "--preview", "-P", PROJECT],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(preview)["source_query"] == page_rules
+    assert "group\td2\tArchive\tcount=0\texcluded=excluded by a rule" in result.stdout
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(
+        app,
+        ["sources", "attach", link, "--query", json.dumps(page_rules), "--preview", "-P", PROJECT],
+    )
+    assert "  Runs: 4\n  Archive: left out (excluded by a rule)" in result.stdout

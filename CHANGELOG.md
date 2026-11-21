@@ -18,8 +18,9 @@ Each release lists the public API changes it supports, taken from the API change
   have for the provider, or `--connector ID` when you have several. A source's
   integration rules, on `attach` and `edit`: `--query` (provider-native JSON:
   `{"notion_filter": ...}` or `{"notion_view": ...}` for a Notion database,
-  `{"drive_q": ...}` for a Drive folder, and every other provider's own key:
-  `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr sources keys`
+  `{"notion_page": {"default": ..., "databases": {...}}}` for a Notion page's
+  databases, `{"drive_q": ...}` for a Drive folder, and every other provider's
+  own key: `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr sources keys`
   lists them from the engine and a key the provider does not take is refused
   before sending), the shorthands `--drive-q`, `--gmail-q`, `--jql`, `--cql`
   and `--github-q`, `--mode agent|all` and `--guidance`, sent only when given;

@@ -313,7 +313,10 @@ asks for `--connector ID`.
 
 A source's integration rules narrow what a sync takes, on `attach` and `edit`:
 `--query` is provider-native JSON with exactly one key, the provider's own:
-`notion_filter` or `notion_view` (a Notion database), `drive_q` (Google Drive),
+`notion_filter` or `notion_view` (a Notion database), `notion_page` (a Notion
+page: a `default` filter for its databases and, under `databases`, a
+`notion_filter`, `notion_view` or `{"exclude": true}` for each database id),
+`drive_q` (Google Drive),
 `gmail_q`, `outlook_filter` or `outlook_search`, `jql` (Jira), `cql`
 (Confluence), `linear_filter`, `github_q`, and the structured `slack_filter`,
 `teams_filter`, `files_filter`, `calendar_filter` and `granola_filter`.
@@ -334,7 +337,7 @@ engine refuses a rule that does not fit the source (422, with its reason).
 query, or under a candidate (`--query`, a shorthand, or `--no-query`), by the
 connector's own fetch, and saves nothing: the count ("at least N" when the
 preview stopped early), up to 10 matching items, a count for each database
-under a Notion page, and the provider's reason when it rejects the query (exit
+under a Notion page (or why a rule left it out), and the provider's reason when it rejects the query (exit
 1: a rejected query cannot sync). `beakr sources attach ... --preview` (or
 `--dry-run`) does the same for an item before attaching it, and attaches
 nothing.
