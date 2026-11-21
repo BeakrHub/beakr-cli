@@ -305,6 +305,40 @@ def pick_connector(connections: list[dict[str, Any]], provider: str) -> str:
     return str(matching[0]["id"])
 
 
+def _notion_rows(row: dict[str, Any]) -> list[tuple[str, str]]:
+    """``(database id, "N rows match")`` per database of a Notion source, from its last sync.
+
+    ``notion_rows`` (beakr-engine #3061) maps each database the source reads to
+    ``{matching_rows, counted_at}``; it is null or absent for other sources and
+    before a sync has counted.
+    """
+    counts = row.get("notion_rows")
+    if not isinstance(counts, dict):
+        return []
+    out = []
+    for database, entry in counts.items():
+        matching = (entry or {}).get("matching_rows") if isinstance(entry, dict) else None
+        if matching is None:
+            out.append((str(database), "not counted yet"))
+        else:
+            out.append(
+                (str(database), f"{matching} {'row matches' if matching == 1 else 'rows match'}")
+            )
+    return out
+
+
+def _rows_field(row: dict[str, Any]) -> list[str]:
+    """``notion_rows=<db>:<n>,...`` (``?`` when not counted) for a compact line."""
+    counts = row.get("notion_rows")
+    if not isinstance(counts, dict) or not counts:
+        return []
+    parts = []
+    for database, entry in counts.items():
+        matching = (entry or {}).get("matching_rows") if isinstance(entry, dict) else None
+        parts.append(f"{database}:{'?' if matching is None else matching}")
+    return [f"notion_rows={cell(','.join(parts), width=2000)}"]
+
+
 def _source_lines(rows: list[dict[str, Any]]) -> list[str]:
     return [
         "\t".join(
@@ -315,25 +349,32 @@ def _source_lines(rows: list[dict[str, Any]]) -> list[str]:
                 f"type={cell(r.get('external_item_type') or '')}",
                 f"knowledge={'on' if r.get('ingest_wiki') else 'off'}",
                 f"sync={cell(r.get('sync_status') or 'never')}",
+                *_rows_field(r),
             ]
         )
         for r in rows
     ]
 
 
+#: What ``ls`` says when a project has no sources, at a terminal and piped alike:
+#: a piped run that printed nothing read as a failed call (e2e-local, 2026-11-21).
+_NO_SOURCES = "No sources yet. Attach one with `beakr sources attach <link>`."
+
+
 @app.command("ls")
 def list_sources(project: str | None = _project_opt, json_out: bool = _json_opt) -> None:
-    """List the project's sources: provider, item, Knowledge on or off, latest sync."""
+    """List the project's sources: provider, item, Knowledge on or off, latest sync.
+
+    A Notion source also shows, for each database it reads, how many rows matched
+    its rules at the last sync.
+    """
     project_id = _require_project(project)
     with get_sdk() as sdk:
         rows = sdk.project_sources.list(project_id)
 
     def render(data: list[dict[str, Any]]) -> None:
         if not data:
-            err_console.print(
-                "No sources yet. Attach one with `beakr sources attach --url <link>`.",
-                markup=False,
-            )
+            console.print(_NO_SOURCES, markup=False, highlight=False)
             return
         print_table(
             ["ID", "Item", "Provider", "Knowledge", "Sync"],
@@ -350,8 +391,29 @@ def list_sources(project: str | None = _project_opt, json_out: bool = _json_opt)
             ],
             title=f"Sources ({len(data)})",
         )
+        counted = [(r, _notion_rows(r)) for r in data if _notion_rows(r)]
+        if counted:
+            console.print("Notion rows matching at the last sync:", markup=False)
+        for r, databases in counted:
+            console.print(
+                f"  {r.get('external_item_name') or r.get('id')} ({r.get('id')})",
+                highlight=False,
+                markup=False,
+                soft_wrap=True,
+            )
+            for database, phrase in databases:
+                console.print(f"    {database}  {phrase}", highlight=False, markup=False)
 
-    emit(rows, json_out=json_out, render=render, lines=_source_lines)
+    def lines(data: list[dict[str, Any]]) -> list[str]:
+        return _source_lines(data) if data else [f"note: {_NO_SOURCES}"]
+
+    emit(
+        rows,
+        json_out=json_out,
+        render=render,
+        lines=lines,
+        hint=None if rows else f"beakr sources attach <link> -P {project_id}",
+    )
 
 
 @app.command("attach")

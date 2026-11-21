@@ -1065,3 +1065,50 @@ def test_a_notion_page_takes_per_database_rules_and_preview_says_what_was_left_o
         ["sources", "attach", link, "--query", json.dumps(page_rules), "--preview", "-P", PROJECT],
     )
     assert "  Runs: 4\n  Archive: left out (excluded by a rule)" in result.stdout
+
+
+@respx.mock
+def test_ls_says_so_when_the_project_has_no_sources(monkeypatch):
+    respx.get(SOURCES).respond(200, json={"data": [], "has_more": False})
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines() == [
+        "note: No sources yet. Attach one with `beakr sources attach <link>`.",
+        f"next: beakr sources attach <link> -P {PROJECT}",
+    ]
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT, "--json"])
+    assert json.loads(result.stdout) == []
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT])
+    assert "No sources yet." in result.stdout
+
+
+@respx.mock
+def test_ls_shows_how_many_rows_each_notion_database_matched(monkeypatch):
+    page = _attachment(
+        id="s2",
+        external_item_name="Lab Handbook",
+        notion_rows={
+            "0123456789abcdef0123456789abcdef": {
+                "matching_rows": 12,
+                "counted_at": "2026-11-21T03:00:00Z",
+            },
+            "fedcba9876543210fedcba9876543210": {"matching_rows": 1, "counted_at": None},
+            "11112222333344445555666677778888": {"matching_rows": None, "counted_at": None},
+        },
+    )
+    respx.get(SOURCES).respond(200, json={"data": [_attachment(), page], "has_more": False})
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    first, second = result.stdout.splitlines()
+    assert "notion_rows" not in first
+    assert second.split("\t")[-1] == (
+        "notion_rows=0123456789abcdef0123456789abcdef:12,"
+        "fedcba9876543210fedcba9876543210:1,11112222333344445555666677778888:?"
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT], terminal_width=200)
+    assert "Notion rows matching at the last sync:\n  Lab Handbook (s2)" in result.stdout
+    assert "    0123456789abcdef0123456789abcdef  12 rows match" in result.stdout
+    assert "    fedcba9876543210fedcba9876543210  1 row matches" in result.stdout
+    assert "    11112222333344445555666677778888  not counted yet" in result.stdout
