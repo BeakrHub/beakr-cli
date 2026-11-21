@@ -327,7 +327,8 @@ are shorthands (`--jql 'status = Done'` is `--query '{"jql": "status = Done"}'`)
 Attaching a Notion link that opened a saved view (`?v=`)
 prints the `--query` that pulls only that view's rows. `--mode agent` lets
 Beakr's source picker choose within scope (the default) and `--mode all` takes
-every item in scope. `--guidance` is plain-language instructions that the source
+every item in scope; it does nothing on Notion, where the rule decides and
+everything under the item that passes it comes in (the CLI says so if given). `--guidance` is plain-language instructions that the source
 picker and the Knowledge compiler both read (at most 2,000 characters). `edit`
 clears the query and the guidance with `--clear-query` and `--clear-guidance`;
 the mode can be changed but not cleared. They are sent only when given; the
@@ -345,7 +346,7 @@ nothing.
 ```bash
 beakr sources attach https://www.notion.so/acme/Runs-0123...cdef?v=4567... -P Basel --knowledge \
   --query '{"notion_filter": {"property": "Status", "select": {"equals": "Final"}}}' \
-  --mode all --guidance "Record each run's instrument and outcome."
+  --guidance "Record each run's instrument and outcome."
 beakr sources edit SRC -P Basel --query '{"notion_view": "4567..."}'
 beakr sources edit SRC -P Basel --query '{"drive_q": "mimeType = '\''application/pdf'\''"}'
 ```

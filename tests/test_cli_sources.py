@@ -1109,6 +1109,62 @@ def test_ls_shows_how_many_rows_each_notion_database_matched(monkeypatch):
     monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
     result = runner.invoke(app, ["sources", "ls", "-P", PROJECT], terminal_width=200)
     assert "Notion rows matching at the last sync:\n  Lab Handbook (s2)" in result.stdout
-    assert "    0123456789abcdef0123456789abcdef  12 rows match" in result.stdout
-    assert "    fedcba9876543210fedcba9876543210  1 row matches" in result.stdout
-    assert "    11112222333344445555666677778888  not counted yet" in result.stdout
+    assert (
+        "    0123456789abcdef0123456789abcdef: 12 rows match (as of 2026-11-21T03:00:00Z)"
+    ) in result.stdout
+    assert "    fedcba9876543210fedcba9876543210: 1 row matches\n" in result.stdout
+    assert "    11112222333344445555666677778888: not counted yet" in result.stdout
+
+
+NOTION_MODE_NOTE = "--mode has no effect on Notion sources"
+
+
+@respx.mock
+def test_mode_on_a_notion_attach_says_it_has_no_effect_and_is_still_sent():
+    _connections({"id": "c1", "provider": "notion:nango"})
+    route = respx.post(SOURCES).respond(201, json=_attachment())
+    result = runner.invoke(
+        app,
+        ["sources", "attach", f"https://www.notion.so/{NOTION_ID}", "--mode", "all", "-P", PROJECT],
+    )
+    assert result.exit_code == 0, result.output
+    assert NOTION_MODE_NOTE in " ".join(result.stderr.split())
+    assert _body(route)["pull_mode"] == "all"
+
+
+@respx.mock
+def test_mode_on_other_providers_and_notion_without_mode_say_nothing():
+    _connections({"id": "c1", "provider": "notion:nango"}, {"id": "c3", "provider": "slack:nango"})
+    respx.post(SOURCES).respond(201, json=_attachment())
+    slack = ["sources", "attach", "https://acme.slack.com/archives/C01ABCDEF", "--mode", "all"]
+    result = runner.invoke(app, [*slack, "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "no effect" not in result.stderr
+    notion = ["sources", "attach", f"https://www.notion.so/{NOTION_ID}", "-P", PROJECT]
+    result = runner.invoke(app, notion)
+    assert result.exit_code == 0, result.output
+    assert "no effect" not in result.stderr
+
+
+@pytest.mark.parametrize("command", ["edit", "preview"])
+@respx.mock
+def test_mode_on_an_attached_notion_source_says_it_has_no_effect(command):
+    respx.get(SOURCES).respond(200, json={"data": [_attachment()], "has_more": False})
+    respx.patch(f"{SOURCES}/s1").respond(200, json=_attachment())
+    respx.post(f"{SOURCES}/s1/rules/preview").respond(
+        200, json={**PREVIEW, "count": 1, "count_capped": False, "sample": []}
+    )
+    result = runner.invoke(app, ["sources", command, "s1", "--mode", "all", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert NOTION_MODE_NOTE in " ".join(result.stderr.split())
+
+
+def test_mode_help_does_not_suggest_it_for_notion():
+    import typer
+
+    group = typer.main.get_command(app).commands["sources"]
+    for command in ("attach", "edit", "preview"):
+        (option,) = [p for p in group.commands[command].params if p.name == "mode"]
+        assert option.help.endswith("Not for Notion."), command
+        # No example in the command's help reaches for it.
+        assert "--mode" not in (group.commands[command].help or ""), command

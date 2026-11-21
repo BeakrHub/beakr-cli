@@ -20,20 +20,22 @@ Each release lists the public API changes it supports, taken from the API change
   `{"notion_filter": ...}` or `{"notion_view": ...}` for a Notion database,
   `{"notion_page": {"default": ..., "databases": {...}}}` for a Notion page's
   databases, `{"drive_q": ...}` for a Drive folder, and every other provider's
-  own key: `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr sources keys`
-  lists them from the engine and a key the provider does not take is refused
-  before sending), the shorthands `--drive-q`, `--gmail-q`, `--jql`, `--cql`
-  and `--github-q`, `--mode agent|all` and `--guidance`, sent only when given;
+  own key: `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr
+  sources keys` lists them from the engine and a key the provider does not
+  take is refused before sending), the shorthands `--drive-q`, `--gmail-q`, `--jql`, `--cql`
+  and `--github-q`, `--mode agent|all` (no effect on Notion, where the rule
+  decides; the CLI says so) and `--guidance`, sent only when given;
   `edit --clear-query` and `--clear-guidance` drop them. `beakr sources preview`
   counts what a source's saved or candidate query would pull, with up to 10
   examples and the provider's reason when it rejects the query (exit 1), and
   `attach --preview` (`--dry-run`) does it before attaching.
   `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change, detach,
   sync and follow a project's sources; `ls` shows, for each database a Notion
-  source reads, how many rows matched at the last sync, and says so when a
-  project has no sources (piped too, as a `note:` line). Where a project requires a person to
-  approve what agents bring into Knowledge, an agent's attach, edit or sync
-  exits 6 and says to run it outside the agent session.
+  source reads, how many rows matched at the last sync (and as of when), and
+  says so when a project has no sources (piped too, as a `note:` line). Where
+  a project requires a person to approve what agents bring into Knowledge, an
+  agent's attach, edit or sync exits 6 and says to run it outside the agent
+  session.
 - **Card types from the command line.** `beakr kb types ls -P <project>` lists the
   card types a project uses, which scope defines each (project, organization or
   built-in) and whether a type is the project's own copy of a broader one.

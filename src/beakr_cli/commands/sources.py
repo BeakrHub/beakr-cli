@@ -58,6 +58,11 @@ _source_arg = typer.Argument(..., help="Source id from `beakr sources ls`.")
 
 #: ``--mode``: how a source's items are chosen for Knowledge.
 PULL_MODES = ("agent", "all")
+#: Providers whose sync ignores ``pull_mode``: on Notion the rule decides, and
+#: attaching brings in everything under the item that passes it (Max, 2026-11-21).
+#: The engine still stores the value.
+MODE_IGNORED = {"notion:nango": "Notion"}
+_MODE_HELP = "agent (Beakr's source picker chooses; default) or all (every item). Not for Notion."
 #: ``--query``'s shape, as the engine takes ``source_query``: exactly one key, the
 #: provider's own (`beakr sources keys` lists them).
 _QUERY_SHAPES = (
@@ -81,6 +86,19 @@ class NoConnection(click.ClickException):
     """No connection for the provider: connect one first (exit 4, not found)."""
 
     exit_code = EXIT_NOT_FOUND
+
+
+def _note_mode(mode: str | None, provider: str | None) -> None:
+    """Say, on stderr, that --mode changes nothing for a provider whose rule decides."""
+    name = MODE_IGNORED.get(provider or "")
+    if mode and name:
+        err_console.print(
+            f"Note: --mode has no effect on {name} sources: the rule (--query) decides what "
+            "is pulled, and everything under the item that passes it comes in. --guidance "
+            "steers what Knowledge records.",
+            markup=False,
+            highlight=False,
+        )
 
 
 def _require_project(project: str | None) -> str:
@@ -320,10 +338,10 @@ def _notion_rows(row: dict[str, Any]) -> list[tuple[str, str]]:
         matching = (entry or {}).get("matching_rows") if isinstance(entry, dict) else None
         if matching is None:
             out.append((str(database), "not counted yet"))
-        else:
-            out.append(
-                (str(database), f"{matching} {'row matches' if matching == 1 else 'rows match'}")
-            )
+            continue
+        phrase = f"{matching} {'row matches' if matching == 1 else 'rows match'}"
+        counted_at = entry.get("counted_at") if isinstance(entry, dict) else None
+        out.append((str(database), f"{phrase} (as of {counted_at})" if counted_at else phrase))
     return out
 
 
@@ -402,7 +420,7 @@ def list_sources(project: str | None = _project_opt, json_out: bool = _json_opt)
                 soft_wrap=True,
             )
             for database, phrase in databases:
-                console.print(f"    {database}  {phrase}", highlight=False, markup=False)
+                console.print(f"    {database}: {phrase}", highlight=False, markup=False)
 
     def lines(data: list[dict[str, Any]]) -> list[str]:
         return _source_lines(data) if data else [f"note: {_NO_SOURCES}"]
@@ -460,9 +478,7 @@ def attach(
     jql: str | None = _jql_opt,
     cql: str | None = _cql_opt,
     github_q: str | None = _github_q_opt,
-    mode: str | None = typer.Option(
-        None, "--mode", help="agent (Beakr's source picker chooses; default) or all (every item)."
-    ),
+    mode: str | None = typer.Option(None, "--mode", help=_MODE_HELP),
     guidance: str | None = typer.Option(
         None, "--guidance", help="What to pull from it and what to record or skip, in words."
     ),
@@ -548,6 +564,7 @@ def attach(
     url_sent = url if url and scope_mode != "all" else None
 
     project_id = _require_project(project)
+    _note_mode(mode, slug)
     sync_error: BeakrError | None = None
     with get_sdk() as sdk:
         if source_query:
@@ -652,7 +669,7 @@ def edit(
     cql: str | None = _cql_opt,
     github_q: str | None = _github_q_opt,
     clear_query: bool = typer.Option(False, "--clear-query", help="Drop the query."),
-    mode: str | None = typer.Option(None, "--mode", help="agent or all."),
+    mode: str | None = typer.Option(None, "--mode", help=_MODE_HELP),
     guidance: str | None = typer.Option(
         None, "--guidance", help="What to pull and what to record or skip, in words."
     ),
@@ -684,8 +701,7 @@ def edit(
         )
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        if source_query:
-            _check_attached_query(sdk, project_id, source_id, source_query)
+        _check_attached(sdk, project_id, source_id, source_query, mode)
         source = sdk.project_sources.update(
             project_id,
             source_id,
@@ -715,24 +731,30 @@ def edit(
     )
 
 
-def _check_attached_query(
-    sdk: Any, project_id: str, source_id: str, source_query: dict[str, Any]
+def _check_attached(
+    sdk: Any,
+    project_id: str,
+    source_id: str,
+    source_query: dict[str, Any] | None,
+    mode: str | None,
 ) -> None:
-    """:func:`_check_query` against an attached source's provider and item type."""
-    keys = _query_keys(sdk)
-    if keys is None:
+    """Before an edit or preview: check the query against the attached source's provider
+    and item type (:func:`_check_query`), and note a --mode that does nothing there."""
+    keys = _query_keys(sdk) if source_query else None
+    if keys is None and not mode:
         return
-    for row in sdk.project_sources.list(project_id):
-        if str(row.get("id")) == source_id:
-            _check_query(
-                keys,
-                source_query,
-                provider=row.get("provider"),
-                item_type=row.get("external_item_type"),
-            )
-            return
-    # Not listed (another project's, or gone): the key alone, and the engine says the rest.
-    _check_query(keys, source_query)
+    row = next(
+        (r for r in sdk.project_sources.list(project_id) if str(r.get("id")) == source_id), None
+    )
+    if keys is not None:
+        # Not listed (another project's, or gone): the key alone; the engine says the rest.
+        _check_query(
+            keys,
+            source_query,
+            provider=row.get("provider") if row else None,
+            item_type=row.get("external_item_type") if row else None,
+        )
+    _note_mode(mode, row.get("provider") if row else None)
 
 
 @app.command("preview")
@@ -745,7 +767,7 @@ def preview(
     cql: str | None = _cql_opt,
     github_q: str | None = _github_q_opt,
     no_query: bool = typer.Option(False, "--no-query", help="Count it with no query at all."),
-    mode: str | None = typer.Option(None, "--mode", help="agent or all."),
+    mode: str | None = typer.Option(None, "--mode", help=_MODE_HELP),
     project: str | None = _project_opt,
     json_out: bool = _json_opt,
 ) -> None:
@@ -764,8 +786,7 @@ def preview(
         raise click.UsageError("Use a query or --no-query, not both.")
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        if source_query:
-            _check_attached_query(sdk, project_id, source_id, source_query)
+        _check_attached(sdk, project_id, source_id, source_query, mode)
         # Neither a query nor --no-query: the source's saved query is counted.
         given: dict[str, Any] = (
             {"source_query": None if no_query else source_query} if no_query or source_query else {}
