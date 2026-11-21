@@ -869,11 +869,19 @@ def edit(
         if counted is not None and not _edit_warnings(counted):
             console.print(_matching(counted), highlight=False, markup=False)
 
+    def lines(data: dict[str, Any]) -> list[str]:
+        out = _source_lines([data])
+        if counted is not None:
+            # Piped, the count rides on the source's line (e2e-live H11 saw none).
+            capped = ">=" if counted.get("count_capped") else ""
+            out[0] += f"\tmatching={capped}{int(counted.get('count') or 0)}"
+        return out
+
     emit(
         result,
         json_out=json_out,
         render=render,
-        lines=lambda data: _source_lines([data]),
+        lines=lines,
         hint=f"beakr sources sync {source_id}" if knowledge else None,
     )
     for warning in _edit_warnings(counted) if counted is not None else []:

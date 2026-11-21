@@ -1467,6 +1467,7 @@ def test_edit_says_the_latest_sync_the_source_had_not_never():
     assert "notion_rows=d1:32" in result.stdout
     # Guidance changes no rule: nothing is counted.
     assert not counted.called
+    assert "matching=" not in result.stdout
 
     result = runner.invoke(
         app, ["sources", "edit", "s1", "--no-auto-sync", "-P", PROJECT, "--json"]
@@ -1489,6 +1490,18 @@ def test_edit_counts_what_the_saved_rules_match_and_says_so(monkeypatch):
     assert counted.called and _body(counted) == {}  # the saved rules, as saved
     assert "Under the saved rules 3 items match" in result.stdout
     assert "Warning" not in result.stderr
+
+
+@respx.mock
+def test_a_piped_edit_puts_the_count_on_the_sources_line():
+    # e2e-live H11: piped, a valid query's edit said nothing of what it matched.
+    _edit_routes({**PREVIEW, "count": 200, "count_capped": True})
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--query", NOTION_PAGE_QUERY, "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    (line,) = result.stdout.splitlines()
+    assert line.startswith("s1\t") and line.endswith("\tmatching=>=200")
 
 
 @pytest.mark.parametrize(
