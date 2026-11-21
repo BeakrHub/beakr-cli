@@ -305,7 +305,9 @@ beakr sources rm SRC -P Basel --yes          # Knowledge already built from it s
 
 A link gives the provider, the item's id and, where it says, its type: Notion's
 32-character id ending the path (a `v=` view means a database; a `p=` page open
-in peek view is the item), Drive's `/folders/<id>` and `/file/d/<id>` (an
+in peek view is the item; whether any other Notion link is a page or a database,
+and its title, are looked up on your connection, and without an answer the link
+reads as a page, so pass `--type database`), Drive's `/folders/<id>` and `/file/d/<id>` (an
 `?id=` link needs `--type file|folder`), Slack's `/archives/<channel>`. Without a
 link, pass the id with `--provider`, `--type` and `--name`. When you have one
 connection for the provider it is used; with several, `attach` lists them and
@@ -327,12 +329,17 @@ are shorthands (`--jql 'status = Done'` is `--query '{"jql": "status = Done"}'`)
 Attaching a Notion link that opened a saved view (`?v=`)
 prints the `--query` that pulls only that view's rows. `--mode agent` lets
 Beakr's source picker choose within scope (the default) and `--mode all` takes
-every item in scope; it does nothing on Notion, where the rule decides and
-everything under the item that passes it comes in (the CLI says so if given). `--guidance` is plain-language instructions that the source
+every item in scope; on a Notion item source it is stored but not used: the
+rule decides and everything under the item that passes it comes in (the CLI says
+so if given). `--guidance` is plain-language instructions that the source
 picker and the Knowledge compiler both read (at most 2,000 characters). `edit`
 clears the query and the guidance with `--clear-query` and `--clear-guidance`;
 the mode can be changed but not cleared. They are sent only when given; the
-engine refuses a rule that does not fit the source (422, with its reason).
+engine refuses a rule that does not fit the source (422, with its reason, and
+nothing is saved). After a change to the query or mode, `edit` counts what the
+saved rules match and warns when nothing would come in: no item matches, every
+database under a Notion page is left out, or the provider rejects the query
+(`--no-check` skips the count).
 
 `beakr sources preview SRC` counts what a source would pull under its saved
 query, or under a candidate (`--query`, a shorthand, or `--no-query`), by the

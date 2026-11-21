@@ -23,9 +23,19 @@ Each release lists the public API changes it supports, taken from the API change
   own key: `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr
   sources keys` lists them from the engine and a key the provider does not
   take is refused before sending), the shorthands `--drive-q`, `--gmail-q`, `--jql`, `--cql`
-  and `--github-q`, `--mode agent|all` (no effect on Notion, where the rule
-  decides; the CLI says so) and `--guidance`, sent only when given;
-  `edit --clear-query` and `--clear-guidance` drop them. `beakr sources preview`
+  and `--github-q`, `--mode agent|all` (stored but not used for Notion item
+  sources, where the rule decides; the CLI says so) and `--guidance`, sent only
+  when given; `edit --clear-query` and `--clear-guidance` drop them. A Notion
+  link is looked up on your connection (the engine's `notion_metadata` tool), so
+  a database's own link attaches as a database and every Notion item, a saved
+  view's link included, is named by its title; when Notion cannot be asked the
+  link decides, and a database rule on a link that reads as a page says to pass
+  `--type database`. After a change to the query or mode, `edit` counts what the
+  saved rules match and warns when nothing would come in (no item matches,
+  every database under a page is left out, or the provider rejects the query;
+  `--no-check` skips it); a rule the engine refuses (422) says why and that
+  nothing was saved; and `edit` reports the source's latest sync, not
+  `sync=never`. `beakr sources preview`
   counts what a source's saved or candidate query would pull, with up to 10
   examples and the provider's reason when it rejects the query (exit 1), and
   `attach --preview` (`--dry-run`) does it before attaching.

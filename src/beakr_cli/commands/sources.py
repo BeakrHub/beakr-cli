@@ -60,7 +60,7 @@ _source_arg = typer.Argument(..., help="Source id from `beakr sources ls`.")
 PULL_MODES = ("agent", "all")
 #: Providers whose sync ignores ``pull_mode``: on Notion the rule decides, and
 #: attaching brings in everything under the item that passes it (Max, 2026-11-21).
-#: The engine still stores the value.
+#: The engine still stores the value, so the note says so (e2e-live H03).
 MODE_IGNORED = {"notion:nango": "Notion"}
 _MODE_HELP = "agent (Beakr's source picker chooses; default) or all (every item). Not for Notion."
 #: ``--query``'s shape, as the engine takes ``source_query``: exactly one key, the
@@ -93,9 +93,7 @@ def _note_mode(mode: str | None, provider: str | None) -> None:
     name = MODE_IGNORED.get(provider or "")
     if mode and name:
         err_console.print(
-            f"Note: --mode has no effect on {name} sources: the rule (--query) decides what "
-            "is pulled, and everything under the item that passes it comes in. --guidance "
-            "steers what Knowledge records.",
+            f"Note: --mode is stored but not used for {name} item sources; the rule decides.",
             markup=False,
             highlight=False,
         )
@@ -168,12 +166,15 @@ def _check_query(
     *,
     provider: str | None = None,
     item_type: str | None = None,
+    type_unsure: bool = False,
 ) -> None:
     """Refuse a query key the engine does not list, or one the source's provider does not take.
 
     The engine decides (``GET /v1/integrations/source-query-keys``); this only
     answers before a request is sent, naming the keys that would fit. Without the
     listing (an older engine) the query is sent as given and the engine judges it.
+    ``type_unsure``: ``item_type`` is a guess from a link (Notion could not be
+    asked), so a refusal says how to give the type.
     """
     if not source_query or keys is None:
         return
@@ -199,6 +200,12 @@ def _check_query(
     allowed = spec.get("item_types")
     takes = f"only a {' or '.join(allowed)}" if allowed is not None else "no " + item_type
     instead = [name for name in fitting if _takes(by_key[name], item_type)]
+    if type_unsure and allowed:
+        raise click.UsageError(
+            f"{key!r} applies to {takes}, and Beakr could not ask Notion what this item is "
+            f"(its link reads as a {item_type}). If it is a {allowed[0]}, pass --type "
+            f"{allowed[0]}."
+        )
     raise click.UsageError(
         f"{key!r} applies to {takes}; this item is a {item_type}."
         + (f" For a {item_type} use one of: {', '.join(instead)}." if instead else "")
@@ -321,6 +328,46 @@ def pick_connector(connections: list[dict[str, Any]], provider: str) -> str:
             + ". Pass --connector with one of their ids."
         )
     return str(matching[0]["id"])
+
+
+#: The engine's read-only integration tool that reads one Notion page or database:
+#: its ``kind`` and title (``POST /v1/integrations/tools/notion_metadata/call``,
+#: the call Beakr's own agent makes).
+NOTION_LOOKUP_TOOL = "notion_metadata"
+#: The kinds an attachment of a Notion item takes.
+NOTION_KINDS = ("page", "database")
+
+
+def notion_item(sdk: Any, connector_id: str, item_id: str) -> dict[str, str | None] | None:
+    """``{"kind", "name"}`` of a Notion item as Notion reports it, or None if it cannot say.
+
+    A Notion link alone does not tell a page from a database: only a link that
+    opened one of a database's saved views (``?v=``) does, and a database's own
+    link reads like a page's (e2e-live H, 2026-11-21: a bare database link was
+    attached as a page and its ``notion_filter`` refused). The engine's
+    ``notion_metadata`` tool looks the id up on the attaching connection. None when
+    the lookup is not possible: an engine without the tool, a credential that may
+    not read Notion, an item outside the connection's scope, or an id Notion does
+    not know; the caller falls back to what the link says.
+    """
+    handle = f"beakr://external/{connector_id}/notion/{item_id}"
+    try:
+        result = sdk.integrations.call_tool(
+            NOTION_LOOKUP_TOOL, {"handle": handle}, connector_id=connector_id
+        )
+    except BeakrError:
+        return None
+    if not isinstance(result, dict) or result.get("is_error"):
+        return None
+    content = result.get("content")
+    try:
+        data = json.loads(content) if isinstance(content, str) else content
+    except ValueError:
+        return None
+    if not isinstance(data, dict) or data.get("error") or data.get("kind") not in NOTION_KINDS:
+        return None
+    name = str(data.get("name") or "").strip()
+    return {"kind": str(data["kind"]), "name": name or None}
 
 
 def _filling(entry: Any) -> tuple[bool, Any, Any]:
@@ -553,6 +600,7 @@ def attach(
     if item and item.strip().lower().startswith(("http://", "https://")):
         item, url = None, item
     view_hint: str | None = None
+    link_name: str | None = None
 
     if scope_mode == "all":
         if item or url:
@@ -573,6 +621,7 @@ def attach(
             )
         slug, item_id = link.provider, link.item_id
         kind = item_type or link.item_type
+        link_name = link.name
         if not kind:
             raise click.UsageError(
                 "The link does not say whether it is a file or a folder: pass --type file|folder."
@@ -607,9 +656,24 @@ def attach(
     _note_mode(mode, slug)
     sync_error: BeakrError | None = None
     with get_sdk() as sdk:
-        if source_query:
-            _check_query(_query_keys(sdk), source_query, provider=slug, item_type=kind)
+        keys = _query_keys(sdk) if source_query else None
+        if source_query and slug != "notion:nango":
+            _check_query(keys, source_query, provider=slug, item_type=kind)
         connector_id = connector or pick_connector(sdk.integrations.list().get("data") or [], slug)
+        type_unsure = False
+        if slug == "notion:nango" and scope_mode != "all" and not (item_type and name):
+            # Ask Notion what the item is and what it is called: a database's
+            # own link reads like a page's, and a view link names no title.
+            found = notion_item(sdk, connector_id, item_id)
+            if found is not None:
+                kind = item_type or str(found["kind"])
+                title = name or found["name"] or link_name or item_id
+            else:
+                # A link without ?v= reads as a page by default; only a view
+                # link (or --type) says what the item is.
+                type_unsure = not item_type and kind == "page"
+        if source_query and slug == "notion:nango":
+            _check_query(keys, source_query, provider=slug, item_type=kind, type_unsure=type_unsure)
         if preview:
             counted = sdk.project_sources.preview_item(
                 project_id,
@@ -622,22 +686,31 @@ def attach(
                 pull_mode=mode,
             )
         else:
-            source = sdk.project_sources.attach(
-                project_id,
-                provider=slug,
-                connector_id=connector_id,
-                external_item_id=item_id,
-                external_item_type=kind,
-                external_item_name=title,
-                external_item_path=path,
-                external_item_url=url_sent,
-                ingest_wiki=knowledge,
-                auto_sync_wiki=auto_sync,
-                scope_mode=scope_mode,
-                source_query=source_query,
-                pull_mode=mode,
-                guidance=guidance,
-            )
+            try:
+                source = sdk.project_sources.attach(
+                    project_id,
+                    provider=slug,
+                    connector_id=connector_id,
+                    external_item_id=item_id,
+                    external_item_type=kind,
+                    external_item_name=title,
+                    external_item_path=path,
+                    external_item_url=url_sent,
+                    ingest_wiki=knowledge,
+                    auto_sync_wiki=auto_sync,
+                    scope_mode=scope_mode,
+                    source_query=source_query,
+                    pull_mode=mode,
+                    guidance=guidance,
+                )
+            except BeakrError as exc:
+                if exc.status == 422 and (source_query is not None or mode is not None):
+                    _add_fix(
+                        exc,
+                        "Nothing was attached. `beakr sources attach ... --preview` checks the "
+                        "rules without attaching.",
+                    )
+                raise
             result: dict[str, Any] = dict(source or {})
             if sync_now and result.get("id"):
                 try:
@@ -714,12 +787,21 @@ def edit(
         None, "--guidance", help="What to pull and what to record or skip, in words."
     ),
     clear_guidance: bool = typer.Option(False, "--clear-guidance", help="Drop the guidance."),
+    check: bool = typer.Option(
+        True,
+        "--check/--no-check",
+        help="After changing the query or mode, count what the saved rules match (default: on).",
+    ),
     project: str | None = _project_opt,
     json_out: bool = _json_opt,
 ) -> None:
     """Change a source: Knowledge, nightly sync, query, mode, guidance. It does not sync.
 
-    `beakr sources preview SRC --query ...` counts what a new query would keep first.
+    After a change to the query or mode it counts what the saved rules match (as
+    `beakr sources preview` does) and warns when nothing would come in: no item
+    matches, every database under a Notion page is left out, or the provider
+    rejects the query. `beakr sources preview SRC --query ...` counts a query
+    before saving it.
     """
     mode = _choice(mode, PULL_MODES, "--mode")
     source_query = _query(
@@ -740,18 +822,41 @@ def edit(
             "--query, --mode or --guidance (or --clear-query, --clear-guidance)."
         )
     project_id = _require_project(project)
+    rules_changed = source_query is not None or clear_query or mode is not None
+    counted: dict[str, Any] | None = None
+    count_error: BeakrError | None = None
     with get_sdk() as sdk:
-        _check_attached(sdk, project_id, source_id, source_query, mode)
-        source = sdk.project_sources.update(
-            project_id,
-            source_id,
-            ingest_wiki=knowledge,
-            auto_sync_wiki=auto_sync,
-            source_query=source_query,
-            pull_mode=mode,
-            guidance=guidance,
-            clear=clear,
-        )
+        row = _attached_row(sdk, project_id, source_id)
+        _check_attached(sdk, project_id, source_id, source_query, mode, row=row)
+        try:
+            source = sdk.project_sources.update(
+                project_id,
+                source_id,
+                ingest_wiki=knowledge,
+                auto_sync_wiki=auto_sync,
+                source_query=source_query,
+                pull_mode=mode,
+                guidance=guidance,
+                clear=clear,
+            )
+        except BeakrError as exc:
+            if exc.status == 422 and (source_query is not None or mode is not None):
+                _add_fix(
+                    exc,
+                    "Nothing was saved; the source keeps its rules. `beakr sources preview "
+                    f"{source_id} --query ...` checks a query without saving it.",
+                )
+            raise
+        result = _with_sync_state(dict(source or {}), row)
+        if rules_changed and check:
+            try:
+                counted = dict(sdk.project_sources.preview(project_id, source_id) or {})
+            except NotFoundError:
+                counted = None  # an engine without previews
+            except BeakrError as exc:
+                count_error = exc
+    if counted is not None:
+        result["preview"] = counted
 
     def render(data: dict[str, Any]) -> None:
         console.print(
@@ -761,14 +866,81 @@ def edit(
             highlight=False,
             markup=False,
         )
+        if counted is not None and not _edit_warnings(counted):
+            console.print(_matching(counted), highlight=False, markup=False)
 
     emit(
-        source,
+        result,
         json_out=json_out,
         render=render,
         lines=lambda data: _source_lines([data]),
         hint=f"beakr sources sync {source_id}" if knowledge else None,
     )
+    for warning in _edit_warnings(counted) if counted is not None else []:
+        err_console.print(f"Warning: {warning}", highlight=False, markup=False, soft_wrap=True)
+    if count_error is not None:
+        err_console.print(
+            "Saved, but the new rules could not be counted: "
+            f"{describe_error(count_error, ('sources',))} Check with: beakr sources preview "
+            f"{source_id}",
+            highlight=False,
+            markup=False,
+        )
+
+
+#: Fields of a listed source that the engine's PATCH answer leaves empty: the
+#: latest sync is read from the sync jobs only when sources are listed, so an
+#: edit's own answer said sync=never for a source that had synced (e2e-live H08).
+_SYNC_STATE = ("sync_status", "last_sync_at", "notion_rows")
+
+
+def _with_sync_state(source: dict[str, Any], row: dict[str, Any] | None) -> dict[str, Any]:
+    """``source`` with the latest sync the listing reports, where its own answer has none."""
+    for field in _SYNC_STATE:
+        if source.get(field) is None and row and row.get(field) is not None:
+            source[field] = row[field]
+    return source
+
+
+def _add_fix(exc: BeakrError, text: str) -> None:
+    """Add ``text`` to the fix an error prints (after the engine's own, if any)."""
+    exc.fix = f"{exc.fix} {text}" if exc.fix else text
+
+
+def _matching(counted: dict[str, Any]) -> str:
+    count = int(counted.get("count") or 0)
+    capped = "at least " if counted.get("count_capped") else ""
+    noun = "item matches" if count == 1 and not capped else "items match"
+    return f"Under the saved rules {capped}{count} {noun} (`beakr sources preview` shows them)."
+
+
+def _edit_warnings(counted: dict[str, Any]) -> list[str]:
+    """What an edit's preview says is wrong with the saved rules: nothing would come in."""
+    if counted.get("provider_status") == "rejected":
+        return [
+            f"the provider rejects the saved query: {counted.get('message') or 'no reason given'}."
+            " The source cannot sync until the query is fixed."
+        ]
+    breakdown = [group for group in counted.get("breakdown") or [] if isinstance(group, dict)]
+    if breakdown and all(group.get("excluded_reason") for group in breakdown):
+        left_out = "; ".join(
+            f"{group.get('name') or group.get('id')} ({group['excluded_reason']})"
+            for group in breakdown
+        )
+        return [f"the saved rules leave out every database: {left_out}."]
+    if int(counted.get("count") or 0) == 0 and not counted.get("count_capped"):
+        return ["no item matches the saved rules, so a sync brings nothing in."]
+    return []
+
+
+def _attached_row(sdk: Any, project_id: str, source_id: str) -> dict[str, Any] | None:
+    """The source as ``ls`` lists it (with its latest sync), or None when not listed."""
+    return next(
+        (r for r in sdk.project_sources.list(project_id) if str(r.get("id")) == source_id), None
+    )
+
+
+_UNREAD: Any = object()
 
 
 def _check_attached(
@@ -777,15 +949,17 @@ def _check_attached(
     source_id: str,
     source_query: dict[str, Any] | None,
     mode: str | None,
+    row: dict[str, Any] | None = _UNREAD,
 ) -> None:
     """Before an edit or preview: check the query against the attached source's provider
-    and item type (:func:`_check_query`), and note a --mode that does nothing there."""
+    and item type (:func:`_check_query`), and note a --mode that does nothing there.
+
+    ``row`` is the listed source when the caller already read it."""
     keys = _query_keys(sdk) if source_query else None
     if keys is None and not mode:
         return
-    row = next(
-        (r for r in sdk.project_sources.list(project_id) if str(r.get("id")) == source_id), None
-    )
+    if row is _UNREAD:
+        row = _attached_row(sdk, project_id, source_id)
     if keys is not None:
         # Not listed (another project's, or gone): the key alone; the engine says the rest.
         _check_query(

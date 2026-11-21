@@ -148,7 +148,37 @@ def _keys(status: int = 200) -> respx.Route:
     return route.respond(status, json={"error": {"code": "not_found", "message": "Not Found"}})
 
 
-def _connections(*rows: dict) -> respx.Route:
+NOTION_LOOKUP = f"{API}/v1/integrations/tools/notion_metadata/call"
+
+
+def _notion_lookup(kind: str | None = None, name: str | None = None) -> respx.Route:
+    """``notion_metadata`` as the engine answers it: the item's kind and title, or (no
+    ``kind``) an engine without the tool, so the CLI goes by the link alone."""
+    route = respx.post(NOTION_LOOKUP)
+    if kind is None:
+        return route.respond(
+            404,
+            json={"error": {"code": "tool_not_found", "message": "No integration tool named it."}},
+        )
+    content = {"id": NOTION_DASHED, "name": name, "kind": kind, "error": None}
+    return route.respond(
+        200,
+        json={
+            "tool": "notion_metadata",
+            "provider": "notion:nango",
+            "connector_ids": ["c1"],
+            "content": json.dumps(content, indent=2),
+            "is_error": False,
+            "sources": [],
+        },
+    )
+
+
+def _connections(*rows: dict, notion: tuple[str, str | None] | None = None) -> respx.Route:
+    """The caller's connections. With a Notion one, the Notion lookup answers
+    ``notion`` (kind, title), or cannot answer when it is None."""
+    if any(row.get("provider") == "notion:nango" for row in rows):
+        _notion_lookup(*(notion or ()))
     return respx.get(f"{API}/v1/integrations").respond(
         200, json={"data": list(rows), "has_more": False, "next_cursor": None}
     )
@@ -601,6 +631,7 @@ def test_edit_sends_only_what_changes_and_clears_on_request():
         },
     )
     route = respx.patch(f"{SOURCES}/s1").respond(200, json=_attachment(ingest_wiki=True))
+    respx.post(f"{SOURCES}/s1/rules/preview").respond(200, json={**PREVIEW, "count": 4})
     result = runner.invoke(
         app,
         ["sources", "edit", "s1", "--knowledge", "--clear-query", "-P", PROJECT, "--json"],
@@ -651,6 +682,7 @@ def test_edit_refuses_setting_and_clearing_one_field(argv):
 def test_a_rule_the_engine_refuses_reads_as_its_message():
     # An engine that does not list its keys: the query is sent as given.
     _keys(404)
+    respx.get(SOURCES).respond(200, json={"data": [_attachment()], "has_more": False})
     respx.patch(f"{SOURCES}/s1").respond(
         422,
         json={
@@ -810,7 +842,7 @@ def test_attach_sends_a_structured_filter_the_engine_lists():
 @respx.mock
 def test_a_query_the_provider_does_not_take_is_refused_before_sending(argv, says):
     _keys()
-    _connections({"id": "c1", "provider": "notion:nango"})
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("page", "Runbook"))
     route = respx.post(SOURCES)
     result = runner.invoke(
         app,
@@ -1158,7 +1190,7 @@ def test_ls_says_n_of_m_rows_brought_in_while_a_notion_database_fills_in(monkeyp
     ) in result.stdout
 
 
-NOTION_MODE_NOTE = "--mode has no effect on Notion sources"
+NOTION_MODE_NOTE = "--mode is stored but not used for Notion item sources; the rule decides."
 
 
 @respx.mock
@@ -1243,3 +1275,341 @@ def test_ls_names_each_notion_database_by_its_title(monkeypatch):
     assert "    Sites: Asia, Europe: 3 rows match" in result.stdout
     assert "    11112222333344445555666677778888: 2 rows match" in result.stdout
     assert "0123456789abcdef0123456789abcdef" not in result.stdout
+
+
+# -- what Notion says an item is (e2e-live H, 2026-11-21) ------------------------------
+
+
+@respx.mock
+def test_a_bare_notion_database_link_is_attached_as_the_database_notion_says_it_is():
+    # A database's own link reads like a page's: Notion is asked, on the connection.
+    _keys()
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("database", "Meeting Notes"))
+    route = respx.post(SOURCES).respond(201, json=_attachment(external_item_type="database"))
+    query = {"notion_filter": {"property": "Program", "select": {"equals": "HPV"}}}
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            f"https://www.notion.so/acme/{NOTION_ID}",
+            "--query",
+            json.dumps(query),
+            "-P",
+            PROJECT,
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    (call,) = [c for c in respx.calls if str(c.request.url) == NOTION_LOOKUP]
+    lookup = json.loads(call.request.content)
+    assert lookup == {
+        "arguments": {"handle": f"beakr://external/c1/notion/{NOTION_DASHED}"},
+        "connector_id": "c1",
+    }
+    body = _body(route)
+    assert body["external_item_type"] == "database"
+    assert body["external_item_name"] == "Meeting Notes"
+    assert body["source_query"] == query
+
+
+@respx.mock
+def test_a_view_link_is_named_by_its_databases_title_not_its_id():
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("database", "Meeting Notes"))
+    route = respx.post(SOURCES).respond(201, json=_attachment(external_item_type="database"))
+    result = runner.invoke(
+        app,
+        ["sources", "attach", f"https://www.notion.so/{NOTION_ID}?v={VIEW_ID}", "-P", PROJECT],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["external_item_name"] == "Meeting Notes"
+    assert _body(route)["external_item_type"] == "database"
+
+
+@respx.mock
+def test_notions_title_wins_over_the_one_in_the_link_and_a_given_name_over_both():
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("page", "Assay handbook (v2)"))
+    route = respx.post(SOURCES).respond(201, json=_attachment())
+    link = f"https://www.notion.so/acme/Assay-Handbook-v2-{NOTION_ID}"
+    result = runner.invoke(app, ["sources", "attach", link, "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert _body(route)["external_item_name"] == "Assay handbook (v2)"
+    result = runner.invoke(app, ["sources", "attach", link, "--name", "Handbook", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert _body(route)["external_item_name"] == "Handbook"
+
+
+@respx.mock
+def test_without_an_answer_from_notion_the_link_decides_and_a_database_rule_says_pass_type():
+    _keys()
+    _connections({"id": "c1", "provider": "notion:nango"})  # the lookup cannot answer
+    route = respx.post(SOURCES).respond(201, json=_attachment(external_item_type="database"))
+    link = f"https://www.notion.so/{NOTION_ID}"
+    query = ["--query", '{"notion_filter": {"property": "Status", "select": {"equals": "Done"}}}']
+    result = runner.invoke(
+        app, ["sources", "attach", link, *query, "-P", PROJECT], terminal_width=400
+    )
+    assert result.exit_code == 2
+    said = " ".join(result.output.replace("│", " ").split())
+    assert "could not ask Notion what this item is" in said
+    assert "If it is a database, pass --type database." in said
+    assert not route.called
+
+    result = runner.invoke(
+        app, ["sources", "attach", link, *query, "--type", "database", "-P", PROJECT, "--json"]
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["external_item_type"] == "database"
+    # No title from Notion or the link: the id names it.
+    assert _body(route)["external_item_name"] == NOTION_DASHED
+
+
+@respx.mock
+def test_a_notion_item_given_its_type_and_name_is_not_looked_up():
+    _connections({"id": "c1", "provider": "notion:nango"})
+    route = respx.post(SOURCES).respond(201, json=_attachment(external_item_type="database"))
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            NOTION_DASHED,
+            "--provider",
+            "notion",
+            "--type",
+            "database",
+            "--name",
+            "Runs",
+            "-P",
+            PROJECT,
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert not respx.routes[0].called  # the lookup
+    assert _body(route)["external_item_type"] == "database"
+
+
+@respx.mock
+def test_attach_preview_counts_the_item_as_the_kind_notion_says():
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("database", "Meeting Notes"))
+    route = respx.post(f"{SOURCES}/rules/preview").respond(
+        200, json={**PREVIEW, "count": 32, "count_capped": False, "sample": []}
+    )
+    result = runner.invoke(
+        app, ["sources", "attach", f"https://www.notion.so/{NOTION_ID}", "--preview", "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["external_item_type"] == "database"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        {"error": "Item is not within the allowed scope for this connector."},
+        {"id": NOTION_DASHED, "name": "x", "kind": "data_source", "error": None},
+        "Error: Failed to get metadata",
+    ],
+)
+@respx.mock
+def test_a_lookup_that_cannot_say_leaves_the_link_to_decide(content):
+    _connections({"id": "c2", "provider": "slack:nango"})
+    respx.get(f"{API}/v1/integrations").respond(
+        200, json={"data": [{"id": "c1", "provider": "notion:nango"}], "has_more": False}
+    )
+    respx.post(NOTION_LOOKUP).respond(
+        200,
+        json={
+            "tool": "notion_metadata",
+            "provider": "notion:nango",
+            "connector_ids": ["c1"],
+            "content": content if isinstance(content, str) else json.dumps(content),
+            "is_error": isinstance(content, str),
+            "sources": [],
+        },
+    )
+    route = respx.post(SOURCES).respond(201, json=_attachment())
+    link = f"https://www.notion.so/acme/Assay-Handbook-{NOTION_ID}"
+    result = runner.invoke(app, ["sources", "attach", link, "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert (_body(route)["external_item_type"], _body(route)["external_item_name"]) == (
+        "page",
+        "Assay Handbook",
+    )
+
+
+# -- edit: what it saved, and what the saved rules now match ---------------------------
+
+
+def _edit_routes(preview: dict | None = None, **row) -> tuple[respx.Route, respx.Route]:
+    """A listed Notion page source that has synced, the edit, and its preview."""
+    listed = _attachment(
+        sync_status="completed",
+        last_sync_at="2026-11-21T21:00:00Z",
+        notion_rows={"d1": {"matching_rows": 32, "counted_at": "2026-11-21T21:00:00Z"}},
+        **row,
+    )
+    _keys()
+    respx.get(SOURCES).respond(200, json={"data": [listed], "has_more": False})
+    # The engine's PATCH answer leaves the latest sync out.
+    patch = respx.patch(f"{SOURCES}/s1").respond(200, json=_attachment(**row))
+    counted = respx.post(f"{SOURCES}/s1/rules/preview").respond(
+        200, json=preview or {**PREVIEW, "count": 3, "count_capped": False}
+    )
+    return patch, counted
+
+
+@respx.mock
+def test_edit_says_the_latest_sync_the_source_had_not_never():
+    patch, counted = _edit_routes()
+    result = runner.invoke(app, ["sources", "edit", "s1", "--guidance", "only HPV", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "\tsync=completed\t" in result.stdout
+    assert "notion_rows=d1:32" in result.stdout
+    # Guidance changes no rule: nothing is counted.
+    assert not counted.called
+
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--no-auto-sync", "-P", PROJECT, "--json"]
+    )
+    assert json.loads(result.stdout)["sync_status"] == "completed"
+    assert json.loads(result.stdout)["last_sync_at"] == "2026-11-21T21:00:00Z"
+
+
+NOTION_PAGE_QUERY = json.dumps({"notion_page": {"default": {"property": "Tagz"}}})
+
+
+@respx.mock
+def test_edit_counts_what_the_saved_rules_match_and_says_so(monkeypatch):
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    patch, counted = _edit_routes()
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--query", NOTION_PAGE_QUERY, "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    assert counted.called and _body(counted) == {}  # the saved rules, as saved
+    assert "Under the saved rules 3 items match" in result.stdout
+    assert "Warning" not in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("preview", "warning"),
+    [
+        (
+            {**PREVIEW, "count": 0, "count_capped": False, "sample": []},
+            "Warning: no item matches the saved rules, so a sync brings nothing in.",
+        ),
+        (
+            {
+                **PREVIEW,
+                "count": 0,
+                "count_capped": False,
+                "sample": [],
+                "breakdown": [
+                    {
+                        "id": "d1",
+                        "name": "Programs",
+                        "count": 0,
+                        "excluded_reason": "has no property 'Tagz', which the default filter uses",
+                    },
+                    {
+                        "id": "d2",
+                        "name": "Reagents",
+                        "count": 0,
+                        "excluded_reason": "excluded by this source's rule",
+                    },
+                ],
+            },
+            "Warning: the saved rules leave out every database: Programs (has no property "
+            "'Tagz', which the default filter uses); Reagents (excluded by this source's rule).",
+        ),
+        (
+            {**PREVIEW, "provider_status": "rejected", "message": "Bad filter", "count": 0},
+            "Warning: the provider rejects the saved query: Bad filter.",
+        ),
+    ],
+)
+@respx.mock
+def test_edit_warns_when_the_saved_rules_bring_nothing_in(preview, warning):
+    _edit_routes(preview)
+    for extra in ([], ["--json"]):
+        result = runner.invoke(
+            app, ["sources", "edit", "s1", "--query", NOTION_PAGE_QUERY, "-P", PROJECT, *extra]
+        )
+        # Saved all the same: the warning is for the person, the exit is not an error.
+        assert result.exit_code == 0, result.output
+        assert warning in " ".join(result.stderr.split())
+    assert json.loads(result.stdout)["preview"]["count"] == 0
+
+
+@respx.mock
+def test_edit_with_no_check_counts_nothing_and_a_failed_count_still_saves():
+    patch, counted = _edit_routes()
+    result = runner.invoke(
+        app,
+        ["sources", "edit", "s1", "--query", NOTION_PAGE_QUERY, "--no-check", "-P", PROJECT],
+    )
+    assert result.exit_code == 0, result.output
+    assert patch.called and not counted.called
+
+    counted.respond(
+        403,
+        json={"error": {"code": "forbidden", "message": "Only the person who attached it."}},
+    )
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--query", NOTION_PAGE_QUERY, "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    said = " ".join(result.stderr.split())
+    assert "Saved, but the new rules could not be counted: Only the person who attached it." in said
+    assert "beakr sources preview s1" in said
+
+
+#: The engine's refusal of a Notion filter naming a property no database has
+#: (the pull-preview change): a 422 with its reason.
+UNKNOWN_PROPERTY = {
+    "detail": "notion_filter names property 'Tagz', which no database under this page has."
+}
+
+
+@respx.mock
+def test_an_edit_refused_for_an_unknown_property_says_why_and_that_nothing_was_saved():
+    patch, counted = _edit_routes()
+    patch.respond(422, json=UNKNOWN_PROPERTY)
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--query", NOTION_PAGE_QUERY, "-P", PROJECT]
+    )
+    assert result.exit_code == 1
+    said = " ".join(result.stderr.split())
+    assert "notion_filter names property 'Tagz', which no database under this page has." in said
+    assert "Nothing was saved; the source keeps its rules." in said
+    assert not counted.called
+
+    result = runner.invoke(
+        app, ["sources", "edit", "s1", "--query", NOTION_PAGE_QUERY, "-P", PROJECT, "--json"]
+    )
+    error = json.loads(result.stdout)["error"]
+    assert error["status"] == 422
+    assert error["fix"].startswith("Nothing was saved")
+
+
+@respx.mock
+def test_an_attach_refused_for_its_rules_says_nothing_was_attached():
+    _keys()
+    _connections({"id": "c1", "provider": "notion:nango"}, notion=("page", "Top"))
+    respx.post(SOURCES).respond(422, json=UNKNOWN_PROPERTY)
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            f"https://www.notion.so/{NOTION_ID}",
+            "--query",
+            NOTION_PAGE_QUERY,
+            "-P",
+            PROJECT,
+        ],
+    )
+    assert result.exit_code == 1
+    said = " ".join(result.stderr.split())
+    assert "which no database under this page has." in said
+    assert "Nothing was attached." in said
