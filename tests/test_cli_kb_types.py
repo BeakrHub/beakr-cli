@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 import respx
 from typer.testing import CliRunner
@@ -404,6 +405,24 @@ def test_rename_fields_previews_and_says_nothing_was_changed(mode) -> None:
     ]
 
 
+def _then_nothing_more(applied: dict, written: str):
+    """Answer an apply, then say the next call wrote nothing, and so on in turn.
+
+    An apply keeps calling while cards remain and the last call wrote some, so a
+    canned answer that always "wrote" would never end the run.
+    """
+    calls = {"n": 0}
+
+    def answer(_request: httpx.Request) -> httpx.Response:
+        calls["n"] += 1
+        if calls["n"] % 2:
+            return httpx.Response(200, json=applied)
+        nothing = {name: 0 for name in (written, "rows_renamed", "rows_merged") if name in applied}
+        return httpx.Response(200, json=applied | nothing | {"commit_id": None})
+
+    return answer
+
+
 @respx.mock
 def test_rename_fields_apply_says_what_was_written_what_remains_and_how_to_undo() -> None:
     applied = RENAMED | {
@@ -415,7 +434,10 @@ def test_rename_fields_apply_says_what_was_written_what_remains_and_how_to_undo(
         "commit_id": UNDO_ID,
         "undo_event_id": UNDO_ID,
     }
-    route = respx.post(f"{URL}/rename-fields").respond(200, json=applied)
+    # The three cards left are held or refused: the next call writes none, which ends the run.
+    route = respx.post(f"{URL}/rename-fields").mock(
+        side_effect=_then_nothing_more(applied, "cards_written")
+    )
     args = (
         "kb",
         "types",
@@ -428,7 +450,10 @@ def test_rename_fields_apply_says_what_was_written_what_remains_and_how_to_undo(
     )
     result = _invoke(*args, "--apply", mode="compact")
     assert result.exit_code == 0, result.output
-    assert json.loads(route.calls.last.request.content)["dry_run"] is False
+    sent = [json.loads(call.request.content) for call in route.calls][:2]
+    assert [body["dry_run"] for body in sent] == [False, False]
+    # The second call adds to the first one's Activity entry: one change, one undo.
+    assert [body.get("continue_event_id") for body in sent] == [None, UNDO_ID]
     assert result.stdout.splitlines() == [
         "Renamed Run date to Assay date on 28 experiment cards.",
         "Not accepted by the safety checks, so these stay: Planned dose to Dose.",
@@ -472,16 +497,18 @@ def test_retype_previews_then_applies() -> None:
         "names a field differently, rename fields on experiment afterwards.",
         "Run this again with --apply to make the change.",
     ]
-    route.respond(
-        200,
-        json=RETYPED
-        | {
-            "dry_run": False,
-            "cards_retyped": 11,
-            "cards_skipped": 1,
-            "cards_remaining": 1,
-            "commit_id": UNDO_ID,
-        },
+    route.mock(
+        side_effect=_then_nothing_more(
+            RETYPED
+            | {
+                "dry_run": False,
+                "cards_retyped": 11,
+                "cards_skipped": 1,
+                "cards_remaining": 1,
+                "commit_id": UNDO_ID,
+            },
+            "cards_retyped",
+        )
     )
     applied = _invoke(*args, "--apply", mode="compact")
     assert json.loads(route.calls.last.request.content)["dry_run"] is False

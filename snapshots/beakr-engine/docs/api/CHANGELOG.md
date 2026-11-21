@@ -11,11 +11,20 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=30fefc767e699cc6b90b976b4c5865c3a713c3b08dc264ce7d885a062036effa changelog sha256=13cac8a67cba0345b21fce9f776560dd2f4f62e48c528bc66eb609f4e6f5b40f -->
+<!-- contract-stamp: public-openapi sha256=f1ec756792efd1fd60f99bbfbcf2ca976d754745afac8a416c89b01a1ac46e44 changelog sha256=6c6e919a61ebe7069aed797a2aab9138960098392a3346bc86d8fab218cc4327 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A change to every card of a type that takes several calls is one Activity
+  entry. `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` and
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` write at most 500
+  cards per call and answer `cards_remaining`. Send the same request again with
+  `continue_event_id` set to the `undo_event_id` the first call answered: the
+  next cards are added to that entry, and undoing that entry undoes every call. A
+  `continue_event_id` that is not the caller's own entry of the same change in
+  that project answers `422` and writes nothing. Both operations now allow 30
+  calls a minute.
 - A project chooses where its card types come from and who may change them, and
   every change to a card type is kept in a history.
   `PUT /v1/knowledge/wiki/page-types/settings` (`kb:write`, an owner of the

@@ -404,17 +404,31 @@ async def update_existing_cards(
     project_id = await _project_id(project)
     # Only apply=true writes: anything else, a missing value included, previews.
     dry_run = apply is not True
-    if change == "rename_fields":
-        answer = await call_api(
-            lambda sdk: sdk.knowledge.rename_card_type_fields(
-                key, project_id, pairs, dry_run=dry_run
+
+    async def send(continue_event_id: str | None = None) -> dict[str, Any]:
+        if change == "rename_fields":
+            answer = await call_api(
+                lambda sdk: sdk.knowledge.rename_card_type_fields(
+                    key, project_id, pairs, dry_run=dry_run, continue_event_id=continue_event_id
+                )
             )
+        else:
+            answer = await call_api(
+                lambda sdk: sdk.knowledge.retype_cards(
+                    key, project_id, target, dry_run=dry_run, continue_event_id=continue_event_id
+                )
+            )
+        return _dict(answer)
+
+    result = await send()
+    if not dry_run:
+        # One call writes a bounded number of cards; keep going as one change.
+        result = await card_updates.until_done_async(
+            result, send, written=card_updates.WRITTEN[change]
         )
-        return card_updates.fields_renamed_text(_dict(answer))
-    answer = await call_api(
-        lambda sdk: sdk.knowledge.retype_cards(key, project_id, target, dry_run=dry_run)
-    )
-    return card_updates.cards_retyped_text(_dict(answer))
+    if change == "rename_fields":
+        return card_updates.fields_renamed_text(result)
+    return card_updates.cards_retyped_text(result)
 
 
 # --- upload_files -----------------------------------------------------------------------

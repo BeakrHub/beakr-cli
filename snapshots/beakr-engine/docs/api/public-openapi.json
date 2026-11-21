@@ -19147,6 +19147,19 @@
         "additionalProperties": false,
         "description": "Rename a card type's fields on the cards one project already has.",
         "properties": {
+          "continue_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+            "title": "Continue Event Id"
+          },
           "dry_run": {
             "default": true,
             "description": "Count what would change and write nothing. Pass false to apply.",
@@ -19428,6 +19441,19 @@
         "additionalProperties": false,
         "description": "Move the cards one project already has from one card type to another.",
         "properties": {
+          "continue_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+            "title": "Continue Event Id"
+          },
           "dry_run": {
             "default": true,
             "description": "Count what would change and write nothing. Pass false to apply.",
@@ -26980,7 +27006,7 @@
     },
     "/v1/knowledge/wiki/page-types/{key}/rename-fields": {
       "post": {
-        "description": "Rename a card type's fields on the cards a project already has.\n\nChanging a type's field list changes what later compiles write and rewrites\nno card. This applies a mapping of old name to new name to the Facts rows\nof every card of the type in one project: rows are renamed, two rows that\nbecome the same field are merged with their citations kept, and the old\nname is remembered so a later compile does not bring it back.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites every card in one commit, whose id is ``commit_id``, and records one\nrow in the project's Activity, whose id is ``undo_event_id``: reverting that\nrow (``POST /wiki/ingestion-events/{id}/revert``) puts the cards' rows back.\n``refused`` lists renames the safety checks did\nnot accept (two names that differ by one word whose values disagree, or a\nrename that drops a word such as \"planned\" or \"actual\"). Cards another\nchange touched meanwhile are counted in ``cards_conflicted`` and left as\nthey were. One call writes at most 500 cards; ``cards_remaining`` counts\nthe cards the mapping still changes afterwards. Send the same request\nagain to pick them up, as another commit with its own undo.\n\nAnswers 409 while Knowledge is running maintenance on the project.",
+        "description": "Rename a card type's fields on the cards a project already has.\n\nChanging a type's field list changes what later compiles write and rewrites\nno card. This applies a mapping of old name to new name to the Facts rows\nof every card of the type in one project: rows are renamed, two rows that\nbecome the same field are merged with their citations kept, and the old\nname is remembered so a later compile does not bring it back.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites every card in one commit, whose id is ``commit_id``, and records one\nrow in the project's Activity, whose id is ``undo_event_id``: reverting that\nrow (``POST /wiki/ingestion-events/{id}/revert``) puts the cards' rows back.\n``refused`` lists renames the safety checks did\nnot accept (two names that differ by one word whose values disagree, or a\nrename that drops a word such as \"planned\" or \"actual\"). Cards another\nchange touched meanwhile are counted in ``cards_conflicted`` and left as\nthey were. One call writes at most 500 cards; ``cards_remaining`` counts\nthe cards the mapping still changes afterwards. Send the same request\nagain with ``continue_event_id`` set to the ``undo_event_id`` this call\nanswered: the next cards are another commit on the same Activity row, so\nthe whole rename stays one entry and one undo.\n\nAnswers 409 while Knowledge is running maintenance on the project.",
         "operationId": "rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post",
         "parameters": [
           {
@@ -27060,7 +27086,7 @@
     },
     "/v1/knowledge/wiki/page-types/{key}/retype-cards": {
       "post": {
-        "description": "Move the cards a project already has from this type to another.\n\nEditing or turning off a type rewrites no card. This changes every live\ncard of the type in one project to ``to_type``, which must be an active\ntype of cards in that project. A card's text is not changed: its Facts\nrows keep their field names and are read from then on through the target\ntype's recorded names, so rename fields on the target type afterwards if\nthe two types named a field differently.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites up to 500 cards in one commit, whose id is ``commit_id``, and\nrecords one row in the project's Activity, whose id is ``undo_event_id``:\nreverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each\ncard back to this type. ``cards_remaining`` counts the cards still of this\ntype afterwards (past the per-call limit, or held by another writer and\ncounted in ``cards_skipped``); send the same request again to move them.\n\nThe source may be a type no row defines (a legacy or hand-written type, or\none the project's card type settings hide) as long as the project has a\nlive card carrying it.\n\n``suggestion_id`` names the pending suggestion this move answers (``GET\n/wiki/page-types/suggestions``). It must be a pending suggestion to move\nthis type's cards in this project, or the request is refused before\nanything runs. An apply that moves at least one card and leaves none of\nthe type (``cards_remaining`` 0) marks it applied; while cards remain it\nstays pending for the next call.\n\nAnswers 409 while Knowledge is running maintenance on the project, 422 for\na mapping that cannot be applied or a suggestion that is not this one, and\n404 for a type the project neither knows nor has cards of.",
+        "description": "Move the cards a project already has from this type to another.\n\nEditing or turning off a type rewrites no card. This changes every live\ncard of the type in one project to ``to_type``, which must be an active\ntype of cards in that project. A card's text is not changed: its Facts\nrows keep their field names and are read from then on through the target\ntype's recorded names, so rename fields on the target type afterwards if\nthe two types named a field differently.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites up to 500 cards in one commit, whose id is ``commit_id``, and\nrecords one row in the project's Activity, whose id is ``undo_event_id``:\nreverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each\ncard back to this type. ``cards_remaining`` counts the cards still of this\ntype afterwards (past the per-call limit, or held by another writer and\ncounted in ``cards_skipped``); send the same request again to move them,\nwith ``continue_event_id`` set to the ``undo_event_id`` this call answered\nso the whole move stays one Activity entry and one undo.\n\nThe source may be a type no row defines (a legacy or hand-written type, or\none the project's card type settings hide) as long as the project has a\nlive card carrying it.\n\n``suggestion_id`` names the pending suggestion this move answers (``GET\n/wiki/page-types/suggestions``). It must be a pending suggestion to move\nthis type's cards in this project, or the request is refused before\nanything runs. An apply that moves at least one card and leaves none of\nthe type (``cards_remaining`` 0) marks it applied; while cards remain it\nstays pending for the next call.\n\nAnswers 409 while Knowledge is running maintenance on the project, 422 for\na mapping that cannot be applied or a suggestion that is not this one, and\n404 for a type the project neither knows nor has cards of.",
         "operationId": "retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post",
         "parameters": [
           {

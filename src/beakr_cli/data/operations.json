@@ -2923,6 +2923,12 @@
    "body": {
     "fields": [
      {
+      "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+      "name": "continue_event_id",
+      "required": false,
+      "type": "string"
+     },
+     {
       "default": true,
       "description": "Count what would change and write nothing. Pass false to apply.",
       "name": "dry_run",
@@ -3010,6 +3016,12 @@
    "area": "knowledge",
    "body": {
     "fields": [
+     {
+      "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+      "name": "continue_event_id",
+      "required": false,
+      "type": "string"
+     },
      {
       "default": true,
       "description": "Count what would change and write nothing. Pass false to apply.",

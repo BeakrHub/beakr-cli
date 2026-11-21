@@ -420,7 +420,5 @@ EXEMPT: dict[str, str] = {
     "kb types settings": "no recorded response yet; tests/test_cli_kb_type_settings.py",
     "kb types history": "no recorded response yet; tests/test_cli_kb_type_settings.py",
     "kb types suggestions": "no recorded response yet; tests/test_cli_kb_type_settings.py",
-    "kb types dismiss-suggestion": (
-        "no recorded response yet; tests/test_cli_kb_type_settings.py"
-    ),
+    "kb types dismiss-suggestion": ("no recorded response yet; tests/test_cli_kb_type_settings.py"),
 }
