@@ -330,11 +330,17 @@ def _filling(entry: Any) -> tuple[bool, Any, Any]:
     return bool(entry.get("filling")), entry.get("brought_in"), entry.get("matching_rows")
 
 
+def _database_label(database: Any, entry: Any) -> str:
+    """A database by its title (``notion_rows[...].title``), its id when untitled."""
+    title = entry.get("title") if isinstance(entry, dict) else None
+    return str(title).strip() if title and str(title).strip() else str(database)
+
+
 def _notion_rows(row: dict[str, Any]) -> list[tuple[str, str]]:
-    """``(database id, "N rows match")`` per database of a Notion source, from its last sync.
+    """``(database title, "N rows match")`` per database of a Notion source, from its last sync.
 
     ``notion_rows`` (beakr-engine #3061) maps each database the source reads to
-    ``{matching_rows, counted_at, brought_in, filling}``; it is null or absent for
+    ``{matching_rows, counted_at, brought_in, filling, title}``; it is null or absent for
     other sources and before a sync has counted. While ``filling`` (follow-up
     syncs are still bringing rows in, minutes apart) it reads "N of M rows
     brought in".
@@ -351,22 +357,29 @@ def _notion_rows(row: dict[str, Any]) -> list[tuple[str, str]]:
                 if matching is not None
                 else f"{brought_in} rows brought in so far"
             )
-            out.append((str(database), phrase))
+            out.append((_database_label(database, entry), phrase))
             continue
         if matching is None:
-            out.append((str(database), "not counted yet"))
+            out.append((_database_label(database, entry), "not counted yet"))
             continue
         phrase = f"{matching} {'row matches' if matching == 1 else 'rows match'}"
         counted_at = entry.get("counted_at") if isinstance(entry, dict) else None
-        out.append((str(database), f"{phrase} (as of {counted_at})" if counted_at else phrase))
+        out.append(
+            (
+                _database_label(database, entry),
+                f"{phrase} (as of {counted_at})" if counted_at else phrase,
+            )
+        )
     return out
 
 
 def _rows_field(row: dict[str, Any]) -> list[str]:
-    """``notion_rows=<db>:<n>,...`` for a compact line.
+    """``notion_rows=<database>:<n>,...`` for a compact line.
 
-    ``<n>`` is the matching count (``?`` when not counted); while the database
-    is still filling in it is ``<brought in>/<matching>`` instead.
+    ``<database>`` is the database's title (its id when untitled; ``,`` and
+    ``:`` in a title become spaces so the field still splits; ``--json`` keeps
+    the ids). ``<n>`` is the matching count (``?`` when not counted); while the
+    database is still filling in it is ``<brought in>/<matching>`` instead.
     """
     counts = row.get("notion_rows")
     if not isinstance(counts, dict) or not counts:
@@ -377,7 +390,10 @@ def _rows_field(row: dict[str, Any]) -> list[str]:
         shown = "?" if matching is None else str(matching)
         if filling and brought_in is not None:
             shown = f"{brought_in}/{shown}"
-        parts.append(f"{database}:{shown}")
+        label = " ".join(
+            _database_label(database, entry).replace(",", " ").replace(":", " ").split()
+        )
+        parts.append(f"{label}:{shown}")
     return [f"notion_rows={cell(','.join(parts), width=2000)}"]
 
 

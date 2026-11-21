@@ -31,7 +31,7 @@ Each release lists the public API changes it supports, taken from the API change
   `attach --preview` (`--dry-run`) does it before attaching.
   `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change, detach,
   sync and follow a project's sources; `ls` shows, for each database a Notion
-  source reads, how many rows matched at the last sync (and as of when), or
+  source reads (by its title), how many rows matched at the last sync (and as of when), or
   *N of M rows brought in* while follow-up syncs are still filling it in, and
   says so when a project has no sources (piped too, as a `note:` line). Where
   a project requires a person to approve what agents bring into Knowledge, an

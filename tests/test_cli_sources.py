@@ -1210,3 +1210,36 @@ def test_mode_help_does_not_suggest_it_for_notion():
         assert option.help.endswith("Not for Notion."), command
         # No example in the command's help reaches for it.
         assert "--mode" not in (group.commands[command].help or ""), command
+
+
+@respx.mock
+def test_ls_names_each_notion_database_by_its_title(monkeypatch):
+    page = _attachment(
+        id="s4",
+        external_item_name="Programs hub",
+        notion_rows={
+            "0123456789abcdef0123456789abcdef": {
+                "matching_rows": 34,
+                "counted_at": "2026-11-21T21:00:00Z",
+                "title": "Meeting Notes",
+            },
+            "fedcba9876543210fedcba9876543210": {
+                "matching_rows": 3,
+                "counted_at": None,
+                "title": "Sites: Asia, Europe",
+            },
+            "11112222333344445555666677778888": {"matching_rows": 2, "counted_at": None},
+        },
+    )
+    respx.get(SOURCES).respond(200, json={"data": [page], "has_more": False})
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines()[0].split("\t")[-1] == (
+        "notion_rows=Meeting Notes:34,Sites Asia Europe:3,11112222333344445555666677778888:2"
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT], terminal_width=200)
+    assert "    Meeting Notes: 34 rows match (as of 2026-11-21T21:00:00Z)" in result.stdout
+    assert "    Sites: Asia, Europe: 3 rows match" in result.stdout
+    assert "    11112222333344445555666677778888: 2 rows match" in result.stdout
+    assert "0123456789abcdef0123456789abcdef" not in result.stdout
