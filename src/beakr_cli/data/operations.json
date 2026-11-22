@@ -2198,6 +2198,65 @@
    "summary": "Change a project's card type settings"
   },
   {
+   "action": "convert-row-type-to-field",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "What to record under the field, for example 'one row per run'.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The field to add to that type.",
+      "name": "name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The key of the card type whose cards these rows belong on.",
+      "name": "on_type",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The project, with scope `project`; left out otherwise.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "project",
+      "description": "Whose types to change: `project` (one project) or `org`.",
+      "name": "scope",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/{key}/to-field",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}/to-field",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Make a row type a field"
+  },
+  {
    "action": "copy-wiki-page-types",
    "anonymous": false,
    "area": "knowledge",
@@ -4466,7 +4525,7 @@
       "type": "object"
      },
      {
-      "description": "`card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+      "description": "`card` gives each instance of a type that was recorded as rows its own card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.",
       "name": "grain",
       "required": false,
       "type": "string"

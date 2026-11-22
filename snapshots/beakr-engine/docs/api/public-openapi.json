@@ -12061,6 +12061,32 @@
         "title": "PrincipalType",
         "type": "string"
       },
+      "ProfileTypeAsDetail": {
+        "properties": {
+          "field": {
+            "description": "The field it is listed under on those cards.",
+            "title": "Field",
+            "type": "string"
+          },
+          "name": {
+            "description": "The kind of thing as the profile names it.",
+            "title": "Name",
+            "type": "string"
+          },
+          "page_type": {
+            "description": "The key of the type whose cards it is listed on.",
+            "title": "Page Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "page_type",
+          "field"
+        ],
+        "title": "ProfileTypeAsDetail",
+        "type": "object"
+      },
       "ProfileTypeMatch": {
         "properties": {
           "name": {
@@ -12116,6 +12142,14 @@
       "ProfileTypesOutcome": {
         "description": "What Beakr did with the kinds of thing a project's profile names.",
         "properties": {
+          "as_details": {
+            "description": "Names that are entries on another type's cards: no type was made, and the type gained a field for them.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileTypeAsDetail"
+            },
+            "title": "As Details",
+            "type": "array"
+          },
           "made": {
             "description": "Keys of the types it created.",
             "items": {
@@ -12158,6 +12192,7 @@
           "working",
           "made",
           "matched",
+          "as_details",
           "suggested",
           "skipped"
         ],
@@ -12245,7 +12280,7 @@
                 "type": "null"
               }
             ],
-            "description": "`card` (the default): each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+            "description": "`card` (the default): each instance gets a card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.",
             "title": "Grain"
           },
           "key": {
@@ -20628,6 +20663,25 @@
         "title": "WikiPageTypeList",
         "type": "object"
       },
+      "WikiPageTypeMadeField": {
+        "description": "``POST /v1/knowledge/wiki/page-types/{key}/to-field``.",
+        "properties": {
+          "former_row_type": {
+            "$ref": "#/components/schemas/WikiPageType",
+            "description": "The type that was recorded as rows, now turned off and a card type."
+          },
+          "page_type": {
+            "$ref": "#/components/schemas/WikiPageType",
+            "description": "The type that gained the field."
+          }
+        },
+        "required": [
+          "page_type",
+          "former_row_type"
+        ],
+        "title": "WikiPageTypeMadeField",
+        "type": "object"
+      },
       "WikiPageTypeOverrideRemoved": {
         "description": "``DELETE /v1/knowledge/wiki/page-types/{key}``.",
         "properties": {
@@ -20782,6 +20836,68 @@
         "title": "WikiPageTypeStatusResult",
         "type": "object"
       },
+      "WikiPageTypeToField": {
+        "additionalProperties": false,
+        "description": "Make a card type recorded as rows a field of the type its rows belong on.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What to record under the field, for example 'one row per run'.",
+            "title": "Description"
+          },
+          "name": {
+            "description": "The field to add to that type.",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "on_type": {
+            "description": "The key of the card type whose cards these rows belong on.",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "On Type",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project, with scope `project`; left out otherwise.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "title": "Project Id"
+          },
+          "scope": {
+            "default": "project",
+            "description": "Whose types to change: `project` (one project) or `org`.",
+            "pattern": "^(org|project)$",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "on_type",
+          "name"
+        ],
+        "title": "WikiPageTypeToField",
+        "type": "object"
+      },
       "WikiPageTypeUpdate": {
         "additionalProperties": false,
         "description": "Changes to one card type, as one scope holds it. A field left out is kept.\n\nEditing a type the scope only inherits (a built-in from a project or an\norganization, an organization's type from a project) makes that scope its own\ncopy and changes the copy.",
@@ -20841,7 +20957,7 @@
                 "type": "null"
               }
             ],
-            "description": "`card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+            "description": "`card` gives each instance of a type that was recorded as rows its own card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.",
             "title": "Grain"
           },
           "label": {
@@ -28515,6 +28631,86 @@
           }
         ],
         "summary": "Move existing cards to another type",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/{key}/to-field": {
+      "post": {
+        "description": "Make the row type `key` a field of another card type. Make the row type ``key`` a field of another card type.\n\n``on_type`` gains the field ``name`` with ``description`` saying what to\nrecord under it. The row type is turned off for the scope and becomes an\nordinary card type, so it stays out of use and cannot come back as rows.\nCards and rows already written are not changed.\n\n422 when ``key`` is not a row type here, or ``on_type`` is not a card type\nin use here. A project's types are changed by its owners, an organization's\nby its admins.",
+        "operationId": "convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiPageTypeToField"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypeMadeField"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a row type a field",
         "tags": [
           "public",
           "knowledge"
