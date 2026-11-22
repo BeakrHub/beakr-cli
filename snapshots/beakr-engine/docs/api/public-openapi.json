@@ -2687,6 +2687,520 @@
         "title": "CanvasSummary",
         "type": "object"
       },
+      "CardTypeHistoryEntry": {
+        "additionalProperties": true,
+        "description": "One change to a card type, or one suggestion (pending, applied or dismissed).",
+        "properties": {
+          "actor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Which part of Beakr, when Beakr made it.",
+            "title": "Actor Name"
+          },
+          "actor_type": {
+            "description": "`user` for a person, `agent` for Beakr itself.",
+            "title": "Actor Type",
+            "type": "string"
+          },
+          "actor_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The person, when a person made it.",
+            "title": "Actor User Id"
+          },
+          "after": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The definition after.",
+            "title": "After"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The definition before.",
+            "title": "Before"
+          },
+          "changed": {
+            "description": "The definition fields that differ.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When it was created (ISO 8601, UTC).",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "title": "Created At"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "What the kind adds: a suggestion's types and count, and the project a copy came from when the reader can see that project.",
+            "title": "Details",
+            "type": "object"
+          },
+          "id": {
+            "description": "Unique id of this card type history entry.",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "key": {
+            "description": "The type's key; empty for a settings change.",
+            "title": "Key",
+            "type": "string"
+          },
+          "kind": {
+            "description": "edited, turned_off, turned_on, created, copy_removed, copied_in, promoted, settings_changed, undone, held_back or retype_suggested.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "description": "Display label.",
+            "title": "Label",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Id of the project it belongs to, or the project to act in.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "title": "Project Id"
+          },
+          "scope": {
+            "description": "`project` or `org`.",
+            "title": "Scope",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "For a suggestion: pending, applied or dismissed.",
+            "title": "State"
+          },
+          "title": {
+            "description": "One readable line.",
+            "title": "Title",
+            "type": "string"
+          },
+          "undoable": {
+            "description": "Whether an owner can still undo it.",
+            "title": "Undoable",
+            "type": "boolean"
+          },
+          "undone_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The entry that undid it, once undone.",
+            "title": "Undone By"
+          }
+        },
+        "required": [
+          "id",
+          "actor_type",
+          "scope",
+          "key",
+          "label",
+          "kind",
+          "title",
+          "changed",
+          "undoable",
+          "details"
+        ],
+        "title": "CardTypeHistoryEntry",
+        "type": "object"
+      },
+      "CardTypeHistoryPage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/CardTypeHistoryEntry"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data",
+          "has_more"
+        ],
+        "title": "CardTypeHistoryPage",
+        "type": "object"
+      },
+      "CardTypeSettings": {
+        "description": "A project's two choices about its card types.",
+        "properties": {
+          "agent_may_change": {
+            "description": "Whether Beakr itself may add or change the project's card types.",
+            "title": "Agent May Change",
+            "type": "boolean"
+          },
+          "inherit": {
+            "description": "Which broader types the project is offered: `organization` (the organization's and the built-in ones), `builtin` (the built-in ones only) or `own` (only its own).",
+            "title": "Inherit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "inherit",
+          "agent_may_change"
+        ],
+        "title": "CardTypeSettings",
+        "type": "object"
+      },
+      "CardTypeSettingsChangeOut": {
+        "description": "What a change to a project's card type settings would do, or did.",
+        "properties": {
+          "current": {
+            "$ref": "#/components/schemas/CardTypeSettingsOut",
+            "description": "The settings before this request."
+          },
+          "dry_run": {
+            "description": "True when nothing was written.",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "history_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The type history entry recording an applied change; null on a dry run.",
+            "title": "History Id"
+          },
+          "kept_types": {
+            "description": "Built-in types the project is offered whatever it chooses, listed when the requested choice is `own`: the page types that are not cards, and `person` and `organization`.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Kept Types",
+            "type": "array"
+          },
+          "project_id": {
+            "description": "The project.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          },
+          "requested": {
+            "$ref": "#/components/schemas/CardTypeSettingsOut",
+            "description": "The settings this request asks for; the project's settings once applied."
+          },
+          "suggestions": {
+            "default": 0,
+            "description": "How many suggestions to move cards were recorded: one per dropped type that still has cards.",
+            "title": "Suggestions",
+            "type": "integer"
+          },
+          "types_dropped": {
+            "description": "Types the project is offered now and would not be after the change. Their cards are not changed and stay readable.",
+            "items": {
+              "$ref": "#/components/schemas/CardTypeSettingsDroppedType"
+            },
+            "title": "Types Dropped",
+            "type": "array"
+          },
+          "types_kept": {
+            "description": "With `keep_types_in_use`: types that would have dropped out and are made the project's own instead, because cards carry them.",
+            "items": {
+              "$ref": "#/components/schemas/CardTypeSettingsDroppedType"
+            },
+            "title": "Types Kept",
+            "type": "array"
+          },
+          "undo_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Activity entry of an applied change; null on a dry run.",
+            "title": "Undo Event Id"
+          },
+          "usable_own_types": {
+            "description": "Keys of the project's own active types whose instances are cards, after the change. `own` needs at least one.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Usable Own Types",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project_id",
+          "dry_run",
+          "current",
+          "requested",
+          "kept_types",
+          "types_dropped",
+          "types_kept",
+          "usable_own_types"
+        ],
+        "title": "CardTypeSettingsChangeOut",
+        "type": "object"
+      },
+      "CardTypeSettingsDroppedType": {
+        "description": "One card type a settings change takes out of, or keeps in, the project's ontology.",
+        "properties": {
+          "key": {
+            "description": "The type's key.",
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "description": "The type's display name.",
+            "title": "Label",
+            "type": "string"
+          },
+          "live_cards": {
+            "description": "How many of the project's cards that are not archived carry this type.",
+            "title": "Live Cards",
+            "type": "integer"
+          },
+          "scope": {
+            "description": "Where the type is defined: `org` (the organization) or `global` (built-in).",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label",
+          "scope",
+          "live_cards"
+        ],
+        "title": "CardTypeSettingsDroppedType",
+        "type": "object"
+      },
+      "CardTypeSettingsOut": {
+        "description": "A project's two choices about its card types.",
+        "properties": {
+          "agent_may_change": {
+            "description": "Whether Beakr itself may add or change the project's card types.",
+            "title": "Agent May Change",
+            "type": "boolean"
+          },
+          "inherit": {
+            "description": "Which broader card types the project is offered: `organization` (the organization's and the built-in types, the default), `builtin` (the built-in types only) or `own` (only the types the project itself defines).",
+            "title": "Inherit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "inherit",
+          "agent_may_change"
+        ],
+        "title": "CardTypeSettingsOut",
+        "type": "object"
+      },
+      "CardTypeSettingsUpdate": {
+        "additionalProperties": false,
+        "description": "A change to one project's card type settings. A choice left out is kept.",
+        "properties": {
+          "agent_may_change": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether Beakr itself may add or change the project's card types.",
+            "title": "Agent May Change"
+          },
+          "dry_run": {
+            "default": true,
+            "description": "Answer what would change and write nothing. Pass false to apply.",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "inherit": {
+            "anyOf": [
+              {
+                "pattern": "^(organization|builtin|own)$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`organization`: the organization's and the built-in types. `builtin`: the built-in types only. `own`: only the types the project itself defines, which takes a project with at least one card type of its own.",
+            "title": "Inherit"
+          },
+          "keep_types_in_use": {
+            "default": false,
+            "description": "Before switching, make every type that would drop out and still has cards one of the project's own types, so those cards keep a type the project offers.",
+            "title": "Keep Types In Use",
+            "type": "boolean"
+          },
+          "project_id": {
+            "description": "The project whose settings to change.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "CardTypeSettingsUpdate",
+        "type": "object"
+      },
+      "CardTypeSuggestionDismiss": {
+        "additionalProperties": false,
+        "description": "Dismiss one pending card type suggestion of a project.",
+        "properties": {
+          "project_id": {
+            "description": "The project the suggestion belongs to.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "format": "uuid",
+            "title": "Project Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "title": "CardTypeSuggestionDismiss",
+        "type": "object"
+      },
+      "CardTypeSuggestionDismissed": {
+        "properties": {
+          "activity_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The activity row recorded for the dismissal.",
+            "title": "Activity Event Id"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/CardTypeHistoryEntry",
+            "description": "The entry as it stands now, with `state` `dismissed`."
+          }
+        },
+        "required": [
+          "suggestion"
+        ],
+        "title": "CardTypeSuggestionDismissed",
+        "type": "object"
+      },
       "CompoundIn": {
         "properties": {
           "conversation_id": {
@@ -11187,8 +11701,183 @@
         "title": "PrincipalType",
         "type": "string"
       },
+      "ProjectCardTypeFieldIn": {
+        "description": "One field of a card type defined with a new project.",
+        "properties": {
+          "name": {
+            "description": "The Attribute name.",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "default": false,
+            "description": "Whether every card of this type should state it.",
+            "title": "Required",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ProjectCardTypeFieldIn",
+        "type": "object"
+      },
+      "ProjectCardTypeIn": {
+        "description": "One card type a new project defines for itself.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a card of this type is about.",
+            "title": "Description"
+          },
+          "fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProjectCardTypeFieldIn"
+                },
+                "maxItems": 60,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The type's fields, in order.",
+            "title": "Fields"
+          },
+          "grain": {
+            "anyOf": [
+              {
+                "enum": [
+                  "card",
+                  "row"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`card` (the default): each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+            "title": "Grain"
+          },
+          "key": {
+            "description": "The type's key: lowercase letters, digits and underscores.",
+            "maxLength": 64,
+            "minLength": 2,
+            "title": "Key",
+            "type": "string"
+          },
+          "label": {
+            "description": "The type's display name.",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "label"
+        ],
+        "title": "ProjectCardTypeIn",
+        "type": "object"
+      },
+      "ProjectCardTypesCreate": {
+        "description": "A new project's card type settings, and the card types it starts with.\n\nLeft out entirely, the project is offered the organization's and the\nbuilt-in card types. `inherit: own` is accepted only when this request\nbrings at least one type whose instances are cards (`copy_from_project_id`\nor `types`).",
+        "properties": {
+          "agent_may_change": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether Beakr itself may add or change the project's card types. On by default.",
+            "title": "Agent May Change"
+          },
+          "copy_from_project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A project you can see whose own card types to copy into the new project. Cards are not copied.",
+            "title": "Copy From Project Id"
+          },
+          "copy_keys": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 100,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With `copy_from_project_id`: the keys to copy. Left out, every type that project itself defines is copied.",
+            "title": "Copy Keys"
+          },
+          "inherit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "organization",
+                  "builtin",
+                  "own"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Which broader card types the project is offered: `organization` (the organization's and the built-in types, the default), `builtin` (the built-in types only) or `own` (only the types the project itself defines).",
+            "title": "Inherit"
+          },
+          "types": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ProjectCardTypeIn"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Card types to define for the new project.",
+            "title": "Types"
+          }
+        },
+        "title": "ProjectCardTypesCreate",
+        "type": "object"
+      },
       "ProjectCreate": {
-        "description": "Request payload for creating a project.\n\nAttributes:\n    name: Human-readable project name.\n    description: Optional long-form project description.\n    tags: List of tags stored in `projects.tags`.\n    group_id: Legacy space (group) this project belongs to. New projects\n              should omit this and remain standalone.",
+        "description": "Request payload for creating a project.\n\nAttributes:\n    name: Human-readable project name.\n    description: Optional long-form project description.\n    tags: List of tags stored in `projects.tags`.\n    group_id: Legacy space (group) this project belongs to. New projects\n              should omit this and remain standalone.\n    card_types: Optional card type settings and starting card types.",
         "examples": [
           {
             "description": "Assay protocols, validation runs and their results.",
@@ -11200,6 +11889,17 @@
           }
         ],
         "properties": {
+          "card_types": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectCardTypesCreate"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project's card type settings and the card types it starts with. Left out, the project is offered the organization's and the built-in types."
+          },
           "description": {
             "anyOf": [
               {
@@ -16604,6 +17304,26 @@
         "title": "ToolUsedIn",
         "type": "object"
       },
+      "UnlistedCardType": {
+        "properties": {
+          "card_count": {
+            "description": "Live cards of that type in the project.",
+            "title": "Card Count",
+            "type": "integer"
+          },
+          "key": {
+            "description": "The type the cards carry.",
+            "title": "Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "card_count"
+        ],
+        "title": "UnlistedCardType",
+        "type": "object"
+      },
       "UploadCompletePart": {
         "properties": {
           "etag": {
@@ -18427,6 +19147,19 @@
         "additionalProperties": false,
         "description": "Rename a card type's fields on the cards one project already has.",
         "properties": {
+          "continue_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+            "title": "Continue Event Id"
+          },
           "dry_run": {
             "default": true,
             "description": "Count what would change and write nothing. Pass false to apply.",
@@ -18578,18 +19311,62 @@
       "WikiPageTypeList": {
         "description": "``GET /v1/knowledge/wiki/page-types``: the card types a project uses.",
         "properties": {
+          "kept_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Built-in types the project is offered whatever it chooses (the page types that are not cards, and `person` and `organization`); listed when `inherit` is `own`, empty otherwise.",
+            "title": "Kept Types"
+          },
           "map_mode": {
             "description": "Whether this organization's Knowledge is a map of cards.",
             "title": "Map Mode",
             "type": "boolean"
           },
           "page_types": {
-            "description": "Each type as the narrowest scope that defines it holds it.",
+            "description": "Each type as the narrowest scope that defines it holds it. With `include_counts` each carries `card_count`, its live cards in the project.",
             "items": {
               "$ref": "#/components/schemas/WikiPageType"
             },
             "title": "Page Types",
             "type": "array"
+          },
+          "settings": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CardTypeSettings"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The project's card type settings; present when a project is named."
+          },
+          "unlisted_types": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/UnlistedCardType"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "With `include_counts`: types the project's live cards carry that are not in `page_types` (turned off, no longer offered, or never defined).",
+            "title": "Unlisted Types"
           }
         },
         "required": [
@@ -18664,6 +19441,19 @@
         "additionalProperties": false,
         "description": "Move the cards one project already has from one card type to another.",
         "properties": {
+          "continue_event_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+            "title": "Continue Event Id"
+          },
           "dry_run": {
             "default": true,
             "description": "Count what would change and write nothing. Pass false to apply.",
@@ -18678,6 +19468,19 @@
             "format": "uuid",
             "title": "Project Id",
             "type": "string"
+          },
+          "suggestion_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The pending suggestion this move answers, from the card type suggestions list. It must be a suggestion to move this type's cards in this project. An apply that leaves no card of the type marks it applied.",
+            "title": "Suggestion Id"
           },
           "to_type": {
             "description": "The key of the type the cards become: an active type of cards here.",
@@ -25345,7 +26148,7 @@
     },
     "/v1/knowledge/wiki/page-types": {
       "get": {
-        "description": "List active page-type ontology entries for the current org/project.\n\n``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``\nwhether its pages are cards there, laid out as a card whatever starter\nsections the type stores; both are false outside a map.",
+        "description": "List active page-type ontology entries for the current org/project.\n\n``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``\nwhether its pages are cards there, laid out as a card whatever starter\nsections the type stores; both are false outside a map.\n\nWith ``project_id`` the answer also carries the project's card type\n``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the\nbuilt-in types it is offered whatever it chooses (listed under ``own``).\n``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:\n``{key, card_count}`` for each type the project's live cards carry that is\nnot in the list (a type the settings hide, one turned off, or one with no\ndefinition), so a client can offer to move those cards.",
         "operationId": "list_wiki_page_types_v1_knowledge_wiki_page_types_get",
         "parameters": [
           {
@@ -25384,6 +26187,18 @@
             "schema": {
               "default": false,
               "title": "Include Deprecated",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "With `project_id`: add each type's `card_count` (the project's cards that are not archived) and `unlisted_types`, the types cards carry that are not listed.",
+            "in": "query",
+            "name": "include_counts",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "With `project_id`: add each type's `card_count` (the project's cards that are not archived) and `unlisted_types`, the types cards carry that are not listed.",
+              "title": "Include Counts",
               "type": "boolean"
             }
           }
@@ -25512,6 +26327,170 @@
         "x-beakr-scope": "kb:write"
       }
     },
+    "/v1/knowledge/wiki/page-types/history": {
+      "get": {
+        "description": "List the recorded changes to a project's or the organization's card types.\n\nEach entry names the type (``key``, ``label``), what happened (``kind``,\n``title``, ``changed``), the definition ``before`` and ``after``, who did\nit and when, and whether it can still be undone (``undoable``;\n``undone_by`` names the entry that undid it). Newest first. ``state`` is\nnull for a change; suggestions appear only with ``include_suggestions``.",
+        "operationId": "list_card_type_history_v1_knowledge_wiki_page_types_history_get",
+        "parameters": [
+          {
+            "description": "The project whose card type history.",
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The project whose card type history.",
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "description": "`org` for the organization's card types; `project` goes with project_id.",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "pattern": "^(org|project)$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "`org` for the organization's card types; `project` goes with project_id.",
+              "title": "Scope"
+            }
+          },
+          {
+            "description": "Only the entries of this card type.",
+            "in": "query",
+            "name": "key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only the entries of this card type.",
+              "title": "Key"
+            }
+          },
+          {
+            "description": "Also list Beakr's suggestions (`held_back`, `retype_suggested`), each with its `state`: `pending`, `applied` or `dismissed`. They are not changes.",
+            "in": "query",
+            "name": "include_suggestions",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Also list Beakr's suggestions (`held_back`, `retype_suggested`), each with its `state`: `pending`, `applied` or `dismissed`. They are not changes.",
+              "title": "Include Suggestions",
+              "type": "boolean"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardTypeHistoryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List card type changes",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:read"
+      }
+    },
     "/v1/knowledge/wiki/page-types/promote": {
       "post": {
         "description": "Copy card types one project defines up to the organization.\n\nEvery project without a copy of its own inherits a promoted type from then\non, and every member of the organization can read its definition, so this\ntakes an organization admin. ``skipped`` lists each key not promoted:\n``not_found`` in the source, or ``exists`` in the organization when\n``replace`` is false. The source project keeps its own copy.",
@@ -25574,6 +26553,271 @@
           }
         ],
         "summary": "Promote card types to the organization",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/settings": {
+      "put": {
+        "description": "Preview or apply a change to one project's card type settings.\n\n``inherit`` says which broader card types the project is offered:\n``organization`` (the organization's and the built-in types, the default),\n``builtin`` (the built-in types only) or ``own`` (only the types the project\nitself defines, plus the built-in types that are always kept, listed in\n``kept_types``). ``agent_may_change`` says whether Beakr itself may\nadd or change the project's types.\n\nWith ``dry_run`` (the default) nothing is written: the answer lists in\n``types_dropped`` every type that would leave the project's ontology, with\nhow many live cards carry it. Applying never changes a card and is never\nrefused because cards exist: a card of a dropped type keeps its type and\nstays readable, and one suggestion to move those cards is recorded per\ndropped type that still has cards (``suggestions``). ``keep_types_in_use``\nmakes each dropped type that has cards the project's own type instead\n(``types_kept``). Switching back offers every type again.\n\n``own`` is refused with 422 while the project would have no card type of its\nown to use. Only the project's owners may change the settings.",
+        "operationId": "change_card_type_settings_v1_knowledge_wiki_page_types_settings_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardTypeSettingsUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardTypeSettingsChangeOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Change a project's card type settings",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/suggestions": {
+      "get": {
+        "description": "List a project's pending card type suggestions, newest first.\n\nEach item is a type history entry with ``state`` ``pending``. ``kind`` is\n``held_back`` (a type Beakr wanted to add; ``after`` is the definition it\nproposed and ``details.reason`` why) or ``retype_suggested`` (cards that\nmay want moving: ``details.from_type``, ``details.to_type`` when a\nsuccessor is known, ``details.reason`` and ``details.cards``, the number of\nlive cards of the type now).",
+        "operationId": "list_card_type_suggestions_v1_knowledge_wiki_page_types_suggestions_get",
+        "parameters": [
+          {
+            "description": "The project whose pending suggestions.",
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "The project whose pending suggestions.",
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "title": "Project Id"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardTypeHistoryPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List card type suggestions",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:read"
+      }
+    },
+    "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss": {
+      "post": {
+        "description": "Dismiss one pending suggestion; nothing else changes.\n\nThe suggestion is kept with ``state`` ``dismissed`` and the person who\ndismissed it, and the project's Activity gets one row. Beakr does not make\nthe same suggestion for that type again: a held-back type is suggested\nagain only with a different definition, a move only for a different reason\nor once a type that had no cards has some. Answers 404 for an id that is\nnot a suggestion of this project and 409 for one already applied or\ndismissed.",
+        "operationId": "dismiss_card_type_suggestion_v1_knowledge_wiki_page_types_suggestions__suggestion_id__dismiss_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CardTypeSuggestionDismiss"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CardTypeSuggestionDismissed"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Dismiss a card type suggestion",
         "tags": [
           "public",
           "knowledge"
@@ -25762,7 +27006,7 @@
     },
     "/v1/knowledge/wiki/page-types/{key}/rename-fields": {
       "post": {
-        "description": "Rename a card type's fields on the cards a project already has.\n\nChanging a type's field list changes what later compiles write and rewrites\nno card. This applies a mapping of old name to new name to the Facts rows\nof every card of the type in one project: rows are renamed, two rows that\nbecome the same field are merged with their citations kept, and the old\nname is remembered so a later compile does not bring it back.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites every card in one commit, whose id is ``commit_id``, and records one\nrow in the project's Activity, whose id is ``undo_event_id``: reverting that\nrow (``POST /wiki/ingestion-events/{id}/revert``) puts the cards' rows back.\n``refused`` lists renames the safety checks did\nnot accept (two names that differ by one word whose values disagree, or a\nrename that drops a word such as \"planned\" or \"actual\"). Cards another\nchange touched meanwhile are counted in ``cards_conflicted`` and left as\nthey were. One call writes at most 500 cards; ``cards_remaining`` counts\nthe cards the mapping still changes afterwards. Send the same request\nagain to pick them up, as another commit with its own undo.\n\nAnswers 409 while Knowledge is running maintenance on the project.",
+        "description": "Rename a card type's fields on the cards a project already has.\n\nChanging a type's field list changes what later compiles write and rewrites\nno card. This applies a mapping of old name to new name to the Facts rows\nof every card of the type in one project: rows are renamed, two rows that\nbecome the same field are merged with their citations kept, and the old\nname is remembered so a later compile does not bring it back.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites every card in one commit, whose id is ``commit_id``, and records one\nrow in the project's Activity, whose id is ``undo_event_id``: reverting that\nrow (``POST /wiki/ingestion-events/{id}/revert``) puts the cards' rows back.\n``refused`` lists renames the safety checks did\nnot accept (two names that differ by one word whose values disagree, or a\nrename that drops a word such as \"planned\" or \"actual\"). Cards another\nchange touched meanwhile are counted in ``cards_conflicted`` and left as\nthey were. One call writes at most 500 cards; ``cards_remaining`` counts\nthe cards the mapping still changes afterwards. Send the same request\nagain with ``continue_event_id`` set to the ``undo_event_id`` this call\nanswered: the next cards are another commit on the same Activity row, so\nthe whole rename stays one entry and one undo.\n\nAnswers 409 while Knowledge is running maintenance on the project.",
         "operationId": "rename_wiki_page_type_fields_v1_knowledge_wiki_page_types__key__rename_fields_post",
         "parameters": [
           {
@@ -25842,7 +27086,7 @@
     },
     "/v1/knowledge/wiki/page-types/{key}/retype-cards": {
       "post": {
-        "description": "Move the cards a project already has from this type to another.\n\nEditing or turning off a type rewrites no card. This changes every live\ncard of the type in one project to ``to_type``, which must be an active\ntype of cards in that project. A card's text is not changed: its Facts\nrows keep their field names and are read from then on through the target\ntype's recorded names, so rename fields on the target type afterwards if\nthe two types named a field differently.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites up to 500 cards in one commit, whose id is ``commit_id``, and\nrecords one row in the project's Activity, whose id is ``undo_event_id``:\nreverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each\ncard back to this type. ``cards_remaining`` counts the cards still of this\ntype afterwards (past the per-call limit, or held by another writer and\ncounted in ``cards_skipped``); send the same request again to move them.\n\nAnswers 409 while Knowledge is running maintenance on the project, 422 for\na mapping that cannot be applied, and 404 for a type the project does not\nknow.",
+        "description": "Move the cards a project already has from this type to another.\n\nEditing or turning off a type rewrites no card. This changes every live\ncard of the type in one project to ``to_type``, which must be an active\ntype of cards in that project. A card's text is not changed: its Facts\nrows keep their field names and are read from then on through the target\ntype's recorded names, so rename fields on the target type afterwards if\nthe two types named a field differently.\n\n``dry_run`` (the default) answers the counts and writes nothing. An apply\nwrites up to 500 cards in one commit, whose id is ``commit_id``, and\nrecords one row in the project's Activity, whose id is ``undo_event_id``:\nreverting that row (``POST /wiki/ingestion-events/{id}/revert``) puts each\ncard back to this type. ``cards_remaining`` counts the cards still of this\ntype afterwards (past the per-call limit, or held by another writer and\ncounted in ``cards_skipped``); send the same request again to move them,\nwith ``continue_event_id`` set to the ``undo_event_id`` this call answered\nso the whole move stays one Activity entry and one undo.\n\nThe source may be a type no row defines (a legacy or hand-written type, or\none the project's card type settings hide) as long as the project has a\nlive card carrying it.\n\n``suggestion_id`` names the pending suggestion this move answers (``GET\n/wiki/page-types/suggestions``). It must be a pending suggestion to move\nthis type's cards in this project, or the request is refused before\nanything runs. An apply that moves at least one card and leaves none of\nthe type (``cards_remaining`` 0) marks it applied; while cards remain it\nstays pending for the next call.\n\nAnswers 409 while Knowledge is running maintenance on the project, 422 for\na mapping that cannot be applied or a suggestion that is not this one, and\n404 for a type the project neither knows nor has cards of.",
         "operationId": "retype_wiki_page_type_cards_v1_knowledge_wiki_page_types__key__retype_cards_post",
         "parameters": [
           {

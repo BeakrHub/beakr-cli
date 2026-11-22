@@ -58,11 +58,63 @@ def create_project(
     name: str = typer.Argument(..., help="Project name."),
     description: str | None = typer.Option(None, "--description", "-d"),
     tag: list[str] = typer.Option(None, "--tag", help="Tag (repeatable)."),
+    card_types: str | None = typer.Option(
+        None,
+        "--card-types",
+        help="Which card types the project is offered: 'organization' (the organization's "
+        "and the built-in ones; the default), 'builtin' (the built-in ones only) or 'own' "
+        "(only its own; give --copy-types-from with it).",
+    ),
+    beakr_may_add: bool | None = typer.Option(
+        None,
+        "--beakr-may-add/--no-beakr-may-add",
+        help="Whether Beakr itself may add and change the project's card types (default: it may).",
+    ),
+    copy_types_from: str | None = typer.Option(
+        None,
+        "--copy-types-from",
+        help="A project (id, slug or name) whose own card types to copy into the new one.",
+        callback=project_ref_callback,
+    ),
+    copy_type: list[str] = typer.Option(  # noqa: B008
+        None,
+        "--copy-type",
+        help="With --copy-types-from: one type key to copy (repeatable; default: all).",
+    ),
     json_out: bool = _json_opt,
 ) -> None:
-    """Create a project."""
+    """Create a project, optionally choosing where its card types come from."""
+    if card_types is not None and card_types not in ("organization", "builtin", "own"):
+        err_console.print("--card-types is 'organization', 'builtin' or 'own'.", markup=False)
+        raise typer.Exit(2)
+    if card_types == "own" and not copy_types_from:
+        err_console.print(
+            "A project that uses only its own card types needs at least one to start with: "
+            "give --copy-types-from PROJECT, or create it without --card-types own, define "
+            "its types, then run `beakr kb types settings --inherit own`.",
+            markup=False,
+        )
+        raise typer.Exit(2)
+    if copy_type and not copy_types_from:
+        err_console.print("--copy-type needs --copy-types-from PROJECT.", markup=False)
+        raise typer.Exit(2)
+    chosen: dict[str, Any] = {
+        key: value
+        for key, value in {
+            "inherit": card_types,
+            "agent_may_change": beakr_may_add,
+            "copy_from_project_id": copy_types_from,
+            "copy_keys": list(copy_type or []) or None,
+        }.items()
+        if value is not None
+    }
     with get_sdk() as sdk:
-        project = sdk.projects.create(name, description=description, tags=list(tag or []) or None)
+        project = sdk.projects.create(
+            name,
+            description=description,
+            tags=list(tag or []) or None,
+            **({"card_types": chosen} if chosen else {}),
+        )
     emit(
         project,
         json_out=json_out,

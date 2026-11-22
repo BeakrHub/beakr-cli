@@ -35,9 +35,7 @@ async def test_stdio_project_pages_expose_and_consume_the_rest_cursor(monkeypatc
         # The continuation is in the one text block the client reads.
         assert "First" in first and 'cursor="second-page"' in first
         assert route.call_count == 1, "A bounded MCP page should not eagerly fetch every page"
-        result = await mcp_client.call_tool(
-            "list_projects", {"limit": 1, "cursor": "second-page"}
-        )
+        result = await mcp_client.call_tool("list_projects", {"limit": 1, "cursor": "second-page"})
         assert not result.is_error
         second = result.content[0].text
         assert "Second" in second and "cursor=" not in second

@@ -24,7 +24,7 @@ from typing import Any
 
 import typer
 
-from beakr_cli import card_types, card_updates
+from beakr_cli import card_settings, card_types, card_updates
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.commands.project_knowledge import _require_project
 from beakr_cli.output import console, emit, err_console, print_table
@@ -90,6 +90,8 @@ def _line(page_type: dict[str, Any]) -> str:
         f"scope={_scope_text(page_type)}",
         f"status={page_type.get('status')}",
     ]
+    if page_type.get("card_count") is not None:
+        parts.append(f"cards={page_type['card_count']}")
     if _schema(page_type).get("grain"):
         parts.append(f"grain={_schema(page_type)['grain']}")
     if _fields_text(page_type):
@@ -97,9 +99,39 @@ def _line(page_type: dict[str, Any]) -> str:
     return "\t".join(parts)
 
 
+def _settings_text(settings: dict[str, Any]) -> str:
+    """The setting in force, as `beakr kb types settings` words it."""
+    inherit = str(settings.get("inherit"))
+    who = (
+        "Beakr may add and change its card types."
+        if settings.get("agent_may_change")
+        else "Only people add and change its card types."
+    )
+    return f"This project is offered {card_settings.SOURCES.get(inherit, inherit)}. {who}"
+
+
+def _list_lines(listing: dict[str, Any]) -> list[str]:
+    """One line a type, then the cards of unlisted types and the setting in force."""
+    lines = [_line(page_type) for page_type in listing.get("page_types") or []]
+    lines = lines or ["(no card types)"]
+    lines += [
+        f"unlisted\t{unlisted.get('key')}\tcards={unlisted.get('card_count')}"
+        for unlisted in listing.get("unlisted_types") or []
+    ]
+    settings = listing.get("settings")
+    if isinstance(settings, dict):
+        lines.append(
+            f"settings\tinherit={settings.get('inherit')}"
+            f"\tagent_may_change={str(bool(settings.get('agent_may_change'))).lower()}"
+        )
+    return lines
+
+
 def _render_list(listing: dict[str, Any]) -> None:
+    types = listing.get("page_types") or []
+    counted = any(page_type.get("card_count") is not None for page_type in types)
     print_table(
-        ["Key", "Label", "Scope", "Status", "Grain", "Fields"],
+        ["Key", "Label", "Scope", "Status", "Grain", *(["Cards"] if counted else []), "Fields"],
         [
             [
                 str(page_type.get("key")),
@@ -107,13 +139,24 @@ def _render_list(listing: dict[str, Any]) -> None:
                 _scope_text(page_type),
                 str(page_type.get("status") or ""),
                 str(_schema(page_type).get("grain") or ""),
+                *([str(page_type.get("card_count") or 0)] if counted else []),
                 _fields_text(page_type),
             ]
-            for page_type in listing.get("page_types") or []
+            for page_type in types
         ],
         title="Card types",
         whole=("Key",),
     )
+    unlisted = listing.get("unlisted_types") or []
+    if unlisted:
+        console.print(
+            "Cards carry these types, which are not offered here: "
+            + "; ".join(f"{u.get('key')} ({u.get('card_count')})" for u in unlisted),
+            highlight=False,
+            markup=False,
+        )
+    if isinstance(listing.get("settings"), dict):
+        console.print(_settings_text(listing["settings"]), highlight=False, markup=False)
 
 
 def _render_type(saved: dict[str, Any]) -> None:
@@ -170,19 +213,23 @@ def _field_list(names: list[str], required: list[str]) -> list[dict[str, Any]]:
 
 
 @app.command("ls")
-def ls_command(project: str | None = _project_opt, json_out: bool = _json_opt) -> None:
-    """The card types a project uses, and which scope defines each."""
+def ls_command(
+    project: str | None = _project_opt,
+    counts: bool = typer.Option(
+        False,
+        "--counts",
+        "-c",
+        help="Add each type's live cards, and the types cards carry that are not offered.",
+    ),
+    json_out: bool = _json_opt,
+) -> None:
+    """The card types a project uses, which scope defines each, and the setting in force."""
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        listing = dict(sdk.knowledge.list_card_types(project_id=project_id))
-    emit(
-        listing,
-        json_out=json_out,
-        render=_render_list,
-        lines=lambda data: (
-            [_line(page_type) for page_type in data.get("page_types") or []] or ["(no card types)"]
-        ),
-    )
+        listing = dict(
+            sdk.knowledge.list_card_types(project_id=project_id, include_counts=counts or None)
+        )
+    emit(listing, json_out=json_out, render=_render_list, lines=_list_lines)
 
 
 @app.command("edit")
@@ -477,8 +524,8 @@ def rename_fields_command(
 
     The type's own field list is renamed with the cards, and rows that become
     the same field are merged with their citations kept. A rename the safety
-    checks do not accept is left out and named. One run changes at most 500
-    cards and says how many are left; run it again for the rest. An applied
+    checks do not accept is left out and named. A type with more than 500
+    cards is worked through 500 at a time until none is left. An applied
     change shows in the project's Activity, where a project owner can undo it.
     Only the project's owners may; exit 5 while Knowledge runs maintenance on
     the project.
@@ -489,9 +536,21 @@ def rename_fields_command(
         _usage("Name the fields to rename: --rename 'Old name=New name' (repeatable).")
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        result = dict(
-            sdk.knowledge.rename_card_type_fields(key, project_id, renames, dry_run=not apply)
-        )
+
+        def send(continue_event_id: str | None = None) -> dict[str, Any]:
+            return dict(
+                sdk.knowledge.rename_card_type_fields(
+                    key,
+                    project_id,
+                    renames,
+                    dry_run=not apply,
+                    continue_event_id=continue_event_id,
+                )
+            )
+
+        result = send()
+        if apply:
+            result = card_updates.until_done(result, send, written="cards_written")
     _emit_text(
         result,
         card_updates.fields_renamed_text(result, card_updates.COMMAND_WORDS),
@@ -509,6 +568,12 @@ def retype_command(
         help="The key of the type the cards become: an active type in the project whose "
         "instances are cards.",
     ),
+    suggestion: str | None = typer.Option(
+        None,
+        "--suggestion",
+        help="The suggestion this move answers, from `beakr kb types suggestions`; an "
+        "--apply that leaves no card of the type marks it applied.",
+    ),
     apply: bool = _apply_opt,
     json_out: bool = _json_opt,
 ) -> None:
@@ -516,15 +581,30 @@ def retype_command(
 
     A card's text is not changed, so its rows keep their field names: if the
     two types name a field differently, run `beakr kb types rename-fields` on
-    the target type afterwards. One run moves at most 500 cards and says how
-    many are left. An applied change shows in the project's Activity, where a
+    the target type afterwards. A type with more than 500 cards is moved 500
+    at a time until none is left. An applied change shows in the project's Activity, where a
     project owner can undo it. Only the project's owners may.
     """
     key = _type_key(key)
     target = _type_key(to_type, "--to key")
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        result = dict(sdk.knowledge.retype_cards(key, project_id, target, dry_run=not apply))
+
+        def send(continue_event_id: str | None = None) -> dict[str, Any]:
+            return dict(
+                sdk.knowledge.retype_cards(
+                    key,
+                    project_id,
+                    target,
+                    dry_run=not apply,
+                    suggestion_id=suggestion,
+                    continue_event_id=continue_event_id,
+                )
+            )
+
+        result = send()
+        if apply:
+            result = card_updates.until_done(result, send, written="cards_retyped")
     _emit_text(
         result,
         card_updates.cards_retyped_text(result, card_updates.COMMAND_WORDS),

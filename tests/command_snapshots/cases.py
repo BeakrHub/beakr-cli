@@ -417,4 +417,8 @@ EXEMPT: dict[str, str] = {
     "kb types promote": "no recorded response yet; tests/test_cli_kb_types.py",
     "kb types rename-fields": "no recorded response yet; tests/test_cli_kb_types.py",
     "kb types retype": "no recorded response yet; tests/test_cli_kb_types.py",
+    "kb types settings": "no recorded response yet; tests/test_cli_kb_type_settings.py",
+    "kb types history": "no recorded response yet; tests/test_cli_kb_type_settings.py",
+    "kb types suggestions": "no recorded response yet; tests/test_cli_kb_type_settings.py",
+    "kb types dismiss-suggestion": ("no recorded response yet; tests/test_cli_kb_type_settings.py"),
 }

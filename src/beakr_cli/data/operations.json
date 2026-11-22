@@ -2041,6 +2041,60 @@
    "summary": "Accept a Knowledge proposal"
   },
   {
+   "action": "change-card-type-settings",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Whether Beakr itself may add or change the project's card types.",
+      "name": "agent_may_change",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": true,
+      "description": "Answer what would change and write nothing. Pass false to apply.",
+      "name": "dry_run",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "`organization`: the organization's and the built-in types. `builtin`: the built-in types only. `own`: only the types the project itself defines, which takes a project with at least one card type of its own.",
+      "name": "inherit",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Before switching, make every type that would drop out and still has cards one of the project's own types, so those cards keep a type the project offers.",
+      "name": "keep_types_in_use",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project whose settings to change.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/knowledge/wiki/page-types/settings",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/settings",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Change a project's card type settings"
+  },
+  {
    "action": "copy-wiki-page-types",
    "anonymous": false,
    "area": "knowledge",
@@ -2223,6 +2277,40 @@
    "response": "json",
    "scope": "kb:write",
    "summary": "Create a Knowledge proposal"
+  },
+  {
+   "action": "dismiss-card-type-suggestion",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The project the suggestion belongs to.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss",
+   "path_params": [
+    {
+     "name": "suggestion_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Dismiss a card type suggestion"
   },
   {
    "action": "dismiss-proposal",
@@ -2469,6 +2557,97 @@
    "summary": "List a page's sources"
   },
   {
+   "action": "list-card-type-history",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/page-types/history",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/page-types/history",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "Also list Beakr's suggestions (`held_back`, `retype_suggested`), each with its `state`: `pending`, `applied` or `dismissed`. They are not changes.",
+     "name": "include_suggestions",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Only the entries of this card type.",
+     "name": "key",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "The project whose card type history.",
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "`org` for the organization's card types; `project` goes with project_id.",
+     "name": "scope",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List card type changes"
+  },
+  {
+   "action": "list-card-type-suggestions",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/page-types/suggestions",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/page-types/suggestions",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "The project whose pending suggestions.",
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List card type suggestions"
+  },
+  {
    "action": "list-proposals",
    "anonymous": false,
    "area": "knowledge",
@@ -2542,6 +2721,13 @@
    "path": "/v1/knowledge/wiki/page-types",
    "path_params": [],
    "query": [
+    {
+     "default": false,
+     "description": "With `project_id`: add each type's `card_count` (the project's cards that are not archived) and `unlisted_types`, the types cards carry that are not listed.",
+     "name": "include_counts",
+     "required": false,
+     "type": "boolean"
+    },
     {
      "default": false,
      "name": "include_deprecated",
@@ -2737,6 +2923,12 @@
    "body": {
     "fields": [
      {
+      "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+      "name": "continue_event_id",
+      "required": false,
+      "type": "string"
+     },
+     {
       "default": true,
       "description": "Count what would change and write nothing. Pass false to apply.",
       "name": "dry_run",
@@ -2825,6 +3017,12 @@
    "body": {
     "fields": [
      {
+      "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+      "name": "continue_event_id",
+      "required": false,
+      "type": "string"
+     },
+     {
       "default": true,
       "description": "Count what would change and write nothing. Pass false to apply.",
       "name": "dry_run",
@@ -2835,6 +3033,12 @@
       "description": "The project whose cards to move.",
       "name": "project_id",
       "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The pending suggestion this move answers, from the card type suggestions list. It must be a suggestion to move this type's cards in this project. An apply that leaves no card of the type marks it applied.",
+      "name": "suggestion_id",
+      "required": false,
       "type": "string"
      },
      {
@@ -4721,6 +4925,12 @@
    "area": "projects",
    "body": {
     "fields": [
+     {
+      "description": "A new project's card type settings, and the card types it starts with. Left out entirely, the project is offered the organization's and the built-in card types. `inherit: own` is accepted only when this request brings at least one type whose instances are cards (`copy_from_project_id` or `types`).",
+      "name": "card_types",
+      "required": false,
+      "type": "object"
+     },
      {
       "description": "Optional long-form project description.",
       "name": "description",
