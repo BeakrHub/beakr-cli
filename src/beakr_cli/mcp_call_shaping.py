@@ -66,9 +66,13 @@ PROJECT_PARAMETER: dict[str, str] = {
     "get_profile": "project_id",
     "set_project_profile": "project",
     "edit_card_type": "project",
+    "card_type_settings": "project",
     "update_existing_cards": "project",
     "upload_files": "project",
     "add_project_member": "project",
+    "knowledge_queue": "project",
+    "cancel_compiles": "project",
+    "cancel_sync": "project",
 }
 
 

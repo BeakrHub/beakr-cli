@@ -13,6 +13,7 @@ same sentences with their own flag (``--apply``) where the tool's say
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
 
@@ -62,6 +63,79 @@ def renames(value: Any) -> list[dict[str, str]]:
         if old and new:
             out.append({"old": old, "new": new})
     return out
+
+
+# --- Applying until no card is left: the engine's ``_until_done``. ---------------------
+
+#: The count of cards one call wrote, per change.
+WRITTEN = {"rename_fields": "cards_written", "retype": "cards_retyped"}
+#: Counts added up across the calls of one change; every other key is the last call's.
+_SUMMED = ("cards_written", "cards_retyped", "rows_renamed", "rows_merged")
+#: Calls one run makes: 20,000 cards. A type larger than that says what is left.
+MAX_CALLS = 40
+
+
+def _more(last: dict[str, Any], written: str) -> bool:
+    return bool(_n(last.get("cards_remaining")) and _n(last.get(written)))
+
+
+def _merged(total: dict[str, Any], answer: dict[str, Any]) -> dict[str, Any]:
+    summed = {
+        name: _n(total.get(name)) + _n(answer.get(name))
+        for name in _SUMMED
+        if name in total or name in answer
+    }
+    return {
+        **total,
+        **answer,
+        **summed,
+        "undo_event_id": answer.get("undo_event_id") or total.get("undo_event_id"),
+        "commit_id": total.get("commit_id") or answer.get("commit_id"),
+        "applied": {**(total.get("applied") or {}), **(answer.get("applied") or {})},
+    }
+
+
+def until_done(
+    first: dict[str, Any], again: Callable[[str | None], Any], *, written: str
+) -> dict[str, Any]:
+    """Keep applying until no card is left, as one Activity entry; the totals.
+
+    One call writes at most ``PER_CALL`` cards. ``again(event_id)`` makes the
+    same call naming the entry the first one recorded, so the person sees one
+    change and undoes it once. It stops when nothing is left, when a call
+    writes nothing (the cards left are held or refused), at ``MAX_CALLS``, or
+    when a call fails: the answer is then what was written so far.
+    """
+    total, last = dict(first), first
+    for _ in range(MAX_CALLS - 1):
+        if not _more(last, written):
+            break
+        try:
+            answer = again(total.get("undo_event_id"))
+        except Exception:  # noqa: BLE001 - the earlier calls are written and reported
+            break
+        if not isinstance(answer, dict):
+            answer = dict(answer) if answer is not None else {}
+        last, total = answer, _merged(total, answer)
+    return total
+
+
+async def until_done_async(
+    first: dict[str, Any], again: Callable[[str | None], Awaitable[Any]], *, written: str
+) -> dict[str, Any]:
+    """:func:`until_done` for the stdio server's awaited calls."""
+    total, last = dict(first), first
+    for _ in range(MAX_CALLS - 1):
+        if not _more(last, written):
+            break
+        try:
+            answer = await again(total.get("undo_event_id"))
+        except Exception:  # noqa: BLE001 - the earlier calls are written and reported
+            break
+        if not isinstance(answer, dict):
+            answer = dict(answer) if answer is not None else {}
+        last, total = answer, _merged(total, answer)
+    return total
 
 
 # --- The answers. Pure: the engine's, character for character. -------------------------
@@ -137,8 +211,8 @@ def fields_renamed_text(result: dict[str, Any], words: Words = TOOL_WORDS) -> st
             lines.append(f"Not accepted by the safety checks, so these would stay: {refused}.")
         if remaining:
             lines.append(
-                f"One call changes at most {PER_CALL} cards: {_count(remaining, 'card')} would be "
-                "left for the next call."
+                f"More than {PER_CALL} cards change, so applying works through them "
+                f"{PER_CALL} at a time until none is left. It is still one change to undo."
             )
         if applied and changed:
             lines.append(words.preview_next)
@@ -185,8 +259,8 @@ def cards_retyped_text(result: dict[str, Any], words: Words = TOOL_WORDS) -> str
         lines.append(f"{_count(cards, f'{source} card')} would become {target} cards.")
         if remaining:
             lines.append(
-                f"One call moves at most {PER_CALL} cards: {_count(remaining, 'card')} would be "
-                "left for the next call."
+                f"More than {PER_CALL} cards move, so applying works through them "
+                f"{PER_CALL} at a time until none is left. It is still one move to undo."
             )
         lines.append(
             f"A card's text is not changed, so its rows keep their field names. If {target} "

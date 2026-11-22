@@ -19,9 +19,13 @@
     "set_project_profile",
     "edit_card_type",
     "update_existing_cards",
+    "card_type_settings",
     "upload_files",
     "upload_status",
     "add_project_member",
+    "knowledge_queue",
+    "cancel_compiles",
+    "cancel_sync",
     "beakr_version",
     "update_beakr"
   ],
@@ -372,7 +376,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Create a Beakr project, for files and Knowledge on one subject. Ask the person first, and use an existing project (list_projects) when one fits. Then agree its Knowledge profile with the person and save it with set_project_profile, entity types first, before any upload; the result says when the organization requires one. Needs permission to create projects.",
+      "description": "Create a Beakr project, for files and Knowledge on one subject. Ask the person first, and use an existing project (list_projects) when one fits. Then agree its Knowledge profile with the person and save it with set_project_profile, entity types first, before any upload; the result says when the organization requires one. Optional `card_types` chooses which card types the project is offered (`inherit`: 'organization', 'builtin' or 'own'; `own` needs `copy_types_from`, a project whose own card types to copy) and whether Beakr may change them (`agent_may_change`); card_type_settings changes it later. Needs permission to create projects.",
       "name": "create_project",
       "surfaces": [
         "remote",
@@ -432,6 +436,22 @@
     {
       "annotations": {
         "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Change a project's card type settings, after the person agrees. `inherit` says which broader card types the project is offered: 'organization' (the organization's and the built-in types, the default), 'builtin' (the built-in types only) or 'own' (only the types the project itself defines, plus a few built-in types that are always kept; the project needs at least one card type of its own). `agent_may_change`=false means only people add or change the project's card types. Without apply=true it only previews: it answers which card types would drop out of the project and how many cards carry each, and changes nothing. Preview first, show the person what would drop out and the card counts, and call again with apply=true only after they agree. No card is changed or removed: cards of a dropped type stay readable, Beakr suggests moving them, and switching back offers the types again. keep_types_in_use=true makes each dropped type that has cards one of the project's own types instead. Only the project's owners may do this.",
+      "name": "card_type_settings",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Card type settings"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
@@ -476,6 +496,54 @@
       ],
       "tier": "discovery",
       "title": "Add a project member"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read a project's Knowledge compile queue: how many compiles are queued and running, for the whole project or one source (attachment_id for a connected source, artifact_id for an uploaded file), and how far the last cancel got.",
+      "name": "knowledge_queue",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Knowledge compile queue"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Cancel queued Knowledge compiles, to stop paying for them: the whole project's, or one source's (attachment_id or artifact_id). Ask the person first. Running compiles finish and finished work is kept. Cancelling a connected source, or the whole project, also cancels its running sync. An automatically synced source queues the skipped items again at its next sync; the answer says what that sync will do. A project admin may cancel anything; the person who added a source, its compiles.",
+      "name": "cancel_compiles",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Cancel queued compiles"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Cancel a connected source's running sync (attachment_id), after the person agrees: listing stops and items not yet started are skipped. Items already synced are kept, and compiles they queued still run (cancel_compiles cancels those).",
+      "name": "cancel_sync",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Cancel a running sync"
     },
     {
       "annotations": {
