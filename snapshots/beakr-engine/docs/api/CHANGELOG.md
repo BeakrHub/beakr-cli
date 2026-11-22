@@ -11,11 +11,52 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=188f90728bb9ac246fd4fa447017872dd4cd58ae9fc87e34515d0bc4b33e2865 changelog sha256=2f7444298205adbc454ea4374e7e0c261b3f5bdc4790d32f04a91af165feb95f -->
+<!-- contract-stamp: public-openapi sha256=aeef43fdd413f6678b0cd36e9c39b5c2425dc74a36d27e850a4e22b4682b7a53 changelog sha256=50c500dc9e5cb5a3650164dc7aac7cd5be4a36139676010715b10bb73f194197 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A review flag (a proposal of type `review`: a section Knowledge flagged as
+  contradicted, unverifiable or unclear) can be resolved through the API, not
+  only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`
+  (`kb:read`) reads the flag: the section and its current text, why it was
+  flagged, the sources on each side and the page's `current_revision`.
+  `POST .../resolutions` (`kb:write`) drafts up to a few resolutions, each with
+  what it changes; they are kept for the page revision they were drafted
+  against, so asking again returns them at once (`cached: true`). Apply one with
+  `POST .../resolve` (a section rewrite: `section_id`, `new_section_body`,
+  `expected_revision`), `POST .../resolve-rows` (a drafted row operation on a
+  card's Facts or Connections table: `option_id`, `expected_revision`) or
+  `POST .../resolve-cards` (one `outcome` on every card a contradiction review
+  lists); all three need `kb:write`. A page that changed since
+  `expected_revision` answers `409` and nothing is applied. Where a person must
+  accept proposals, a person, or a key with the `proposals:accept` (reviewer)
+  permission, must apply a resolution, as for accepting: any other key or token
+  is refused with `403 person_review_required`. Drafting is open to any
+  `kb:write` key. A key restricted to projects reaches only flags in its
+  projects (another project's flag answers `404`), and a flag that is no longer
+  pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
+  `proposal_type`: `proposal_type=review` lists only review flags (with
+  `status=pending`, the default, the open ones).
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
+- A card type's field can say what to record under it. Each item of `fields`
+  takes an optional `description` (up to 300 characters) on
+  `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
+  `POST /v1/projects`: what counts under that name, or that there is one row for
+  each of several things (for example "one row per run, with its run number and
+  result"). Beakr follows it when it files Facts rows under that field. It is
+  returned in the type's `metadata_schema.attribute_notes`, a map of field name
+  to text holding only the fields given one. A field sent without `description`
+  has none.
 - Queued Knowledge work can be cancelled, to stop paying for it.
   `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
   cancels every queued compile in the project, or one source's: give
