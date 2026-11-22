@@ -733,6 +733,10 @@ def test_sync_starts_and_names_the_status_command():
 
 @respx.mock
 def test_status_reports_the_latest_sync(monkeypatch):
+    # An engine that does not count compiles yet: the sync alone is reported.
+    respx.get(f"{API}/v1/projects/{PROJECT}/knowledge/compiles").respond(
+        404, json={"detail": "Not Found"}
+    )
     respx.get(f"{SOURCES}/s1/sync-status").respond(
         200,
         json={
