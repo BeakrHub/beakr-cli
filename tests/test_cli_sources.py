@@ -1688,9 +1688,10 @@ def test_a_duplicate_attach_says_already_attached_with_the_409s_source():
         409,
         json={
             "error": {
+                # beakr-engine #3055 (9ce2cc081): the existing source in details.
                 "code": "already_attached",
-                "message": "This item is already attached to the project.",
-                "details": {"source_id": "s9", "external_item_name": "Meeting Notes"},
+                "message": "'Meeting Notes' is already attached to this project as source s9.",
+                "details": {"attachment_id": "s9", "external_item_name": "Meeting Notes"},
             }
         },
     )
@@ -1723,7 +1724,16 @@ def test_a_duplicate_without_details_is_found_in_the_projects_sources(status, no
             "has_more": False,
         },
     )
-    body = DUPLICATE_500 if status == 500 else {"error": {"code": "conflict", "message": "x"}}
+    # A 409 whose attachment_id is null (the winning row not yet visible), and the
+    # 500 engines answered before the 409.
+    conflict = {
+        "error": {
+            "code": "already_attached",
+            "message": "'Meeting Notes' is already attached to this project.",
+            "details": {"attachment_id": None, "external_item_name": "Meeting Notes"},
+        }
+    }
+    body = DUPLICATE_500 if status == 500 else conflict
     respx.post(SOURCES).respond(status, json=body)
     result = runner.invoke(app, _attach_link(), terminal_width=400)
     assert result.exit_code == 5
