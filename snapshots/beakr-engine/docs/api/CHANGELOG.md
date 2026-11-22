@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=de470c17b41da7bda6472fc5a94e3e9c1c783e3f7352bcf710a2e742a5a83e51 changelog sha256=debbc2ca53b551c918e5e7d10497f7fa51c9b9fbb78f853764f3529067bf7dee -->
+<!-- contract-stamp: public-openapi sha256=d2fcc3967824224ba4bb81c79616a22d1b0a4a9fe4bb7bcd1280512be3cda407 changelog sha256=a581fea539f444efe1a0a021c5a05b20c9d2685c7d1bc4389e757e2d4f203b45 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -46,6 +46,22 @@ The first public version.
   when the flagged text changed since the question was asked, `stale`). Nothing
   is applied: a person, or a key allowed to accept, resolves the flag with the
   resolve routes.
+- Row types are removed: every card type is a card. `grain: "row"` is refused
+  with `422` on `PATCH /v1/knowledge/wiki/page-types/{key}` and in the
+  `card_types` of `POST /v1/projects`; `grain: "card"` is still accepted, and
+  gives each instance of a type that was recorded as rows its own card. For
+  something that comes many to a card, add a field with a `description` to the
+  type it belongs to ("Assay runs": "one row per run, with its number and
+  result"). An imported ontology never produces a row type.
+  `POST /v1/knowledge/wiki/page-types/{key}/to-field` (`kb:write`)
+  turns an existing row type into a field: give `on_type` (the type whose cards the rows
+  belong on), `name` (the field to add there) and an optional `description`,
+  with `scope` and `project_id` as on the edit route. It answers `page_type`
+  (the type that gained the field) and `former_row_type` (now turned off, and a
+  card type). Cards and rows already written are not changed.
+  `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
+  the kinds of thing a project's profile names that Beakr recorded as a field
+  of another type, each with `name`, `page_type` and `field`.
 - A review flag (a proposal of type `review`: a section Knowledge flagged as
   contradicted, unverifiable or unclear) can be resolved through the API, not
   only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`

@@ -208,6 +208,22 @@ Each release lists the public API changes it supports, taken from the API change
   when the flagged text changed since the question was asked, `stale`). Nothing
   is applied: a person, or a key allowed to accept, resolves the flag with the
   resolve routes.
+- Row types are removed: every card type is a card. `grain: "row"` is refused
+  with `422` on `PATCH /v1/knowledge/wiki/page-types/{key}` and in the
+  `card_types` of `POST /v1/projects`; `grain: "card"` is still accepted, and
+  gives each instance of a type that was recorded as rows its own card. For
+  something that comes many to a card, add a field with a `description` to the
+  type it belongs to ("Assay runs": "one row per run, with its number and
+  result"). An imported ontology never produces a row type.
+  `POST /v1/knowledge/wiki/page-types/{key}/to-field` (`kb:write`)
+  turns an existing row type into a field: give `on_type` (the type whose cards the rows
+  belong on), `name` (the field to add there) and an optional `description`,
+  with `scope` and `project_id` as on the edit route. It answers `page_type`
+  (the type that gained the field) and `former_row_type` (now turned off, and a
+  card type). Cards and rows already written are not changed.
+  `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
+  the kinds of thing a project's profile names that Beakr recorded as a field
+  of another type, each with `name`, `page_type` and `field`.
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still
