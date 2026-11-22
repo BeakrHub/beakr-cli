@@ -1,4 +1,4 @@
-"""``beakr sources ls|attach|edit|rm|sync|status``: what a project pulls from its connections.
+"""``beakr sources ls|attach|edit|rm|sync|status|cancel-sync``: what a project pulls in.
 
 A project's sources are the connected items it reads: a Google Drive folder, a
 Slack channel, a Notion page or database, or everything one connection can see.
@@ -28,6 +28,7 @@ import click
 import typer
 from beakr_sdk.errors import BeakrError, ConflictError, NotFoundError
 
+from beakr_cli import cancels
 from beakr_cli.compact import cell
 from beakr_cli.errors import EXIT_NOT_FOUND, describe_error, error_object, exit_code_for
 from beakr_cli.output import console, emit, err_console, print_table, short
@@ -1180,7 +1181,11 @@ def remove(
     project: str | None = _project_opt,
     json_out: bool = _json_opt,
 ) -> None:
-    """Detach a source from the project; what Knowledge already took from it stays."""
+    """Detach a source from the project; what Knowledge already took from it stays.
+
+    Detaching also stops the source's running sync and cancels its compiles
+    still queued.
+    """
     project_id = _require_project(project)
     confirm_or_require_yes(f"Detach source {source_id} from the project?", yes=yes)
     with get_sdk() as sdk:
@@ -1219,50 +1224,199 @@ def sync(
     )
 
 
+#: Sync states in which a sync is still going: ``cancel-sync`` can stop it.
+#: The engine lists a queued or running sync as "syncing" (``_map_sync_job_status``).
+RUNNING_SYNC_STATES = frozenset({"syncing", "running", "queued"})
+
+
+def _sync_running(state: Any) -> bool:
+    return str(state or "").lower() in RUNNING_SYNC_STATES
+
+
+def _queued_compiles(sdk: Any, project_id: str, source_id: str) -> dict[str, Any] | None:
+    """The source's Knowledge compile queue, or None from an engine that does not count it."""
+    try:
+        answer = cancels.compile_queue(sdk, project_id, attachment_id=source_id)
+    except NotFoundError:
+        return None
+    return dict(answer) if isinstance(answer, dict) else None
+
+
 @app.command("status")
 def status(
-    source_id: str = _source_arg,
+    source_id: str | None = typer.Argument(
+        None, help="Source id from `beakr sources ls`; without one, every running sync."
+    ),
     project: str | None = _project_opt,
     json_out: bool = _json_opt,
 ) -> None:
-    """The latest sync of a source: its state, files done and failed, and why."""
+    """The latest sync of a source, or which of the project's sources are syncing now.
+
+    \b
+    With a source: its sync state (syncing, cancelling, cancelled, completed,
+    failed), files done, failed (and why) and skipped by a cancel, how a cancel
+    went, and how many of its Knowledge
+    compiles are queued and running. A running sync can be stopped with
+    `beakr sources cancel-sync`.
+    Without one: the sources whose sync is running (exit 0, also when none is).
+    """
     project_id = _require_project(project)
+    if source_id is None:
+        _running_syncs(project_id, json_out)
+        return
     with get_sdk() as sdk:
-        result = sdk.project_sources.status(project_id, source_id)
+        result = dict(sdk.project_sources.status(project_id, source_id) or {})
+        queue = _queued_compiles(sdk, project_id, source_id)
+    if queue is not None:
+        result["compiles"] = queue
 
     def render(data: dict[str, Any]) -> None:
         state = data.get("status")
         if not state:
             console.print(f"{source_id} has not synced yet.", markup=False)
-            return
-        console.print(
-            f"Sync {state}: {data.get('files_completed', 0)}/{data.get('files_total', 0)} "
-            f"files done, {data.get('files_failed', 0)} failed.",
-            highlight=False,
-            markup=False,
-        )
-        failed = [f for f in data.get("files") or [] if f.get("outcome") == "failed"]
-        for entry in failed:
+        else:
+            skipped = int(data.get("files_cancelled") or 0)
             console.print(
-                f"  {entry.get('name')}  {entry.get('reason') or ''}",
+                f"Sync {state}: {data.get('files_completed', 0)}/{data.get('files_total', 0)} "
+                f"files done, {data.get('files_failed', 0)} failed"
+                + (f", {skipped} skipped by the cancel." if skipped else "."),
                 highlight=False,
                 markup=False,
             )
+            stop = data.get("cancel")
+            if isinstance(stop, dict) and stop:
+                by = f" by {stop['by_name']}" if stop.get("by_name") else ""
+                at = f" at {stop['at']}" if stop.get("at") else ""
+                console.print(
+                    f"{stop.get('summary') or 'Cancelled'}{by}{at}.",
+                    highlight=False,
+                    markup=False,
+                )
+            failed = [f for f in data.get("files") or [] if f.get("outcome") == "failed"]
+            for entry in failed:
+                console.print(
+                    f"  {entry.get('name')}  {entry.get('reason') or ''}",
+                    highlight=False,
+                    markup=False,
+                )
+        if queue is not None:
+            for line in cancels.queue_lines(queue, "for this source"):
+                console.print(line, highlight=False, markup=False)
+        if _sync_running(state):
+            err_console.print(f"Stop it: beakr sources cancel-sync {source_id}", markup=False)
 
     def lines(data: dict[str, Any]) -> list[str]:
-        return [
+        fields = [
+            cell(source_id),
+            str(data.get("status") or "never"),
+            f"files_total={int(data.get('files_total') or 0)}",
+            f"files_completed={int(data.get('files_completed') or 0)}",
+            f"files_failed={int(data.get('files_failed') or 0)}",
+        ]
+        if data.get("files_cancelled") is not None:
+            fields.append(f"files_cancelled={int(data.get('files_cancelled') or 0)}")
+        if queue is not None:
+            fields += [
+                f"compiles_queued={int(queue.get('queued') or 0)}",
+                f"compiles_running={int(queue.get('running') or 0)}",
+            ]
+        return ["\t".join(fields)]
+
+    emit(
+        result,
+        json_out=json_out,
+        render=render,
+        lines=lines,
+        hint=f"beakr sources cancel-sync {source_id}"
+        if _sync_running(result.get("status"))
+        else None,
+    )
+
+
+def _running_syncs(project_id: str, json_out: bool) -> None:
+    """``sources status`` without a source: the sources whose sync is running now."""
+    with get_sdk() as sdk:
+        rows = [
+            r for r in sdk.project_sources.list(project_id) if _sync_running(r.get("sync_status"))
+        ]
+
+    def render(data: list[dict[str, Any]]) -> None:
+        if not data:
+            console.print("No source is syncing.", markup=False)
+            return
+        print_table(
+            ["ID", "Item", "Provider", "Sync"],
+            [
+                [
+                    str(r.get("id") or ""),
+                    short(r.get("external_item_name"), 32),
+                    f"{r.get('provider') or ''} {r.get('external_item_type') or ''}".strip(),
+                    str(r.get("sync_status") or ""),
+                ]
+                for r in data
+            ],
+            title=f"Syncing now ({len(data)})",
+        )
+        err_console.print("Stop one: beakr sources cancel-sync <id>", markup=False)
+
+    emit(
+        rows,
+        json_out=json_out,
+        render=render,
+        lines=lambda data: _source_lines(data) if data else ["note: No source is syncing."],
+        hint="beakr sources cancel-sync <id>" if rows else None,
+    )
+
+
+@app.command("cancel-sync")
+def cancel_sync(
+    source_id: str = _source_arg,
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Stop a source's running sync, Notion follow-up syncs included.
+
+    \b
+    Items already being read finish; the rest are skipped, and the next sync
+    (nightly, or `beakr sources sync`) picks them up. Knowledge already built
+    from the source stays. Compiles the sync already queued are not cancelled:
+    `beakr kb compiles cancel --source <id>` skips them (and stops the sync too).
+    The person who attached the source, a project admin or an organization
+    admin may stop it.
+    Exit codes: 0 stopping, 5 no sync is running, 4 no such source, 3 not allowed.
+    """
+    project_id = _require_project(project)
+    confirm_or_require_yes(f"Stop the running sync of source {source_id}?", yes=yes)
+    with get_sdk() as sdk:
+        try:
+            result = dict(cancels.cancel_sync(sdk, project_id, source_id) or {})
+        except BeakrError as exc:
+            if cancels.is_no_running_sync(exc):
+                _add_fix(
+                    exc, f"Nothing to stop. `beakr sources status {source_id}` shows its last sync."
+                )
+            raise
+
+    def render(data: dict[str, Any]) -> None:
+        for line in cancels.sync_cancel_lines(data, source_id):
+            console.print(line, highlight=False, markup=False, soft_wrap=True)
+
+    emit(
+        result,
+        json_out=json_out,
+        render=render,
+        lines=lambda data: [
             "\t".join(
                 [
                     cell(source_id),
-                    str(data.get("status") or "never"),
-                    f"files_total={int(data.get('files_total') or 0)}",
-                    f"files_completed={int(data.get('files_completed') or 0)}",
-                    f"files_failed={int(data.get('files_failed') or 0)}",
+                    str(data.get("status") or "cancelling"),
+                    f"job={cell(data.get('sync_job_id') or '-')}",
                 ]
             )
-        ]
-
-    emit(result, json_out=json_out, render=render, lines=lines)
+        ],
+        hint=f"beakr sources status {source_id}",
+    )
 
 
 def register(root: typer.Typer) -> None:

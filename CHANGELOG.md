@@ -179,6 +179,15 @@ Each release lists the public API changes it supports, taken from the API change
   `GET /v1/jobs/{job_id}`: a cancelled sync reads `running` (native status
   `cancelling`) while items already started finish, then `cancelled`, with
   `result.cancelled_by` and `result.cancel_summary` ("Cancelled at N of M").
+- A change to every card of a type that takes several calls is one Activity
+  entry. `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` and
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` write at most 500
+  cards per call and answer `cards_remaining`. Send the same request again with
+  `continue_event_id` set to the `undo_event_id` the first call answered: the
+  next cards are added to that entry, and undoing that entry undoes every call. A
+  `continue_event_id` that is not the caller's own entry of the same change in
+  that project answers `422` and writes nothing. Both operations now allow 30
+  calls a minute.
 - A project chooses where its card types come from and who may change them, and
   every change to a card type is kept in a history.
   `PUT /v1/knowledge/wiki/page-types/settings` (`kb:write`, an owner of the
