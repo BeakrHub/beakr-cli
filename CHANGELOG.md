@@ -12,7 +12,8 @@ Each release lists the public API changes it supports, taken from the API change
   attach <link> -P <project>` attaches a Notion page or database, a Google Drive
   folder or file, or a Slack channel by its link (the id, type and provider come
   from it), or any connected item by `<id> --provider --type --name`;
-  `--scope-mode all` attaches everything one connection reads. `--knowledge`
+  `--scope-mode all` attaches everything one connection reads (Beakr names it
+  *All <provider>*, so `--name` is refused there). `--knowledge`
   builds Knowledge from it, `--auto-sync/--no-auto-sync` sets the nightly sync,
   and `--sync` starts a sync once attached. The connection is the only one you
   have for the provider, or `--connector ID` when you have several. A source's

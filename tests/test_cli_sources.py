@@ -1769,3 +1769,22 @@ def test_preview_samples_carry_the_date_each_item_last_changed(monkeypatch):
     assert "  Issue 1  2026-11-20T09:15:00Z\n" in result.stdout
     assert "  Issue 2\n" in result.stdout
     assert route.call_count == 2
+
+
+@respx.mock
+def test_a_name_for_an_all_content_source_is_refused_not_dropped():
+    # The engine names it "All Gmail" whatever is sent: a --name that did nothing led
+    # a tester to detach the wrong "All ..." source (2026-11-21).
+    _connections({"id": "c1", "provider": "gmail:nango"})
+    route = respx.post(SOURCES)
+    result = runner.invoke(
+        app,
+        ["sources", "attach", "--provider", "gmail", "--scope-mode", "all", "--name", "Legal"]
+        + ["-P", PROJECT],
+        terminal_width=400,
+    )
+    assert result.exit_code == 2
+    said = " ".join(result.output.replace("│", " ").split())
+    assert "--name does not apply with --scope-mode all" in said
+    assert '"All Gmail"' in said
+    assert not route.called

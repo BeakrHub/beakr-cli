@@ -606,7 +606,12 @@ def attach(
         None, "--type", help="file, folder, page, database, channel... (read from --url)."
     ),
     name: str | None = typer.Option(
-        None, "--name", help="Display name (default: the title in the link, else the id)."
+        None,
+        "--name",
+        help=(
+            "Display name (default: the item's title, else the id). Not with --scope-mode all, "
+            'which Beakr names "All <provider>".'
+        ),
     ),
     connector: str | None = typer.Option(
         None,
@@ -675,9 +680,18 @@ def attach(
             raise click.UsageError("--scope-mode all attaches everything: give no item or link.")
         if not provider:
             raise click.UsageError("--scope-mode all needs --provider.")
+        if name:
+            # The engine names an all-content source itself ("All Gmail") and drops
+            # any other name; a --name that silently did nothing led a tester to
+            # detach the wrong "All ..." source (2026-11-21).
+            raise click.UsageError(
+                "--name does not apply with --scope-mode all: Beakr names the source "
+                '"All <provider>" (for example "All Gmail"). Drop --name; `beakr sources ls` '
+                "shows each source's id to tell them apart."
+            )
         slug = provider_slug(provider)
         item_id, kind = "__all__", item_type or "all"
-        title = name or f"All {provider}"
+        title = f"All {provider}"
     elif url:
         try:
             link = parse_source_link(url)

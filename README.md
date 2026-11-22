@@ -295,7 +295,7 @@ beakr sources attach https://www.notion.so/acme/Assay-Handbook-0123...cdef -P Ba
 beakr sources attach https://drive.google.com/drive/folders/1AbC... -P Basel --knowledge
 beakr sources attach https://acme.slack.com/archives/C01ABCDEF -P Basel --name "#assays"
 beakr sources attach C01ABCDEF --provider slack --type channel --name "#assays" -P Basel
-beakr sources attach --provider drive --scope-mode all -P Basel   # everything the connection reads
+beakr sources attach --provider drive --scope-mode all -P Basel   # everything it reads, named "All Google Drive"
 beakr sources ls -P Basel                    # ids, Knowledge on/off, last sync, Notion rows matched
 beakr sources edit SRC -P Basel --no-knowledge | --auto-sync | --mode all | --clear-query
 beakr sources preview SRC -P Basel --jql 'status = Done'      # count + examples; saves nothing
