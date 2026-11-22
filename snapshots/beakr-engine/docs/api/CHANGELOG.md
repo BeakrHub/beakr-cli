@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=3a561aca4e10666210f4f04243aead4d411a1e60a003d5e016113bd94de2511a changelog sha256=bb250cb03e31cd18173b7ef582be9ee335869f41a678a3ae4143b8667e3dd6f0 -->
+<!-- contract-stamp: public-openapi sha256=aeef43fdd413f6678b0cd36e9c39b5c2425dc74a36d27e850a4e22b4682b7a53 changelog sha256=50c500dc9e5cb5a3650164dc7aac7cd5be4a36139676010715b10bb73f194197 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -29,12 +29,15 @@ The first public version.
   card's Facts or Connections table: `option_id`, `expected_revision`) or
   `POST .../resolve-cards` (one `outcome` on every card a contradiction review
   lists); all three need `kb:write`. A page that changed since
-  `expected_revision` answers `409` and nothing is applied. Applying is refused
-  with `403 person_review_required` where a person must accept proposals,
-  unless the key holds `proposals:accept`, as for accepting; drafting is not. A
-  key restricted to projects reaches only flags in its projects (another
-  project's flag answers `404`), and a flag that is no longer pending answers
-  `400`.
+  `expected_revision` answers `409` and nothing is applied. Where a person must
+  accept proposals, a person, or a key with the `proposals:accept` (reviewer)
+  permission, must apply a resolution, as for accepting: any other key or token
+  is refused with `403 person_review_required`. Drafting is open to any
+  `kb:write` key. A key restricted to projects reaches only flags in its
+  projects (another project's flag answers `404`), and a flag that is no longer
+  pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
+  `proposal_type`: `proposal_type=review` lists only review flags (with
+  `status=pending`, the default, the open ones).
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still

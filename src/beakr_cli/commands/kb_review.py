@@ -19,8 +19,10 @@ change the page and clear the flag:
 changed meanwhile is refused (exit 5) with nothing applied: run ``options``
 again. ``--option`` applies only an option ``options`` already showed for the
 page as it is: drafts that had to be made afresh are refused the same way.
-Where a person must accept proposals, a key or token is refused (exit 6), as it
-is for ``kb proposals accept``.
+Where a person must accept proposals, only a person, or a key with the
+``proposals:accept`` (reviewer) permission, may apply a resolution: any other key
+or token is refused (exit 6), as it is for ``kb proposals accept``. A scheduled
+job closes flags with a reviewer key.
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ from typing import Any
 
 import click
 import typer
-from beakr_sdk.errors import ConflictError, ValidationError
+from beakr_sdk.errors import ConflictError, PersonReviewRequiredError, ValidationError
 
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.compact import cell
@@ -50,6 +52,8 @@ from beakr_cli.proposal_ids import resolve_proposal_id
 from beakr_cli.review_flags import options_text, resolved_text
 from beakr_cli.review_resolve import (
     OUTCOMES,
+    PERSON_ONLY_CLI_FIX,
+    PERSON_ONLY_MESSAGE,
     ResolveRefused,
     option_request,
     section_request,
@@ -113,7 +117,12 @@ def review_ls(
     cursor: str | None = None
     with get_sdk() as sdk:
         while len(flags) < limit:
-            params = {"status": "pending", "limit": _LIST_PAGE, "cursor": cursor}
+            params = {
+                "status": "pending",
+                "proposal_type": "review",
+                "limit": _LIST_PAGE,
+                "cursor": cursor,
+            }
             if project_id:
                 params["project_id"] = project_id
             page = sdk.request(
@@ -122,6 +131,8 @@ def review_ls(
                 params={key: value for key, value in params.items() if value is not None},
             )
             rows = page_rows(page)
+            # The engine filters by proposal_type; one that predates the filter
+            # ignores it, so the listing is narrowed here too.
             flags += [row for row in rows if row.get("proposal_type") == "review"]
             cursor = page.get("next_cursor") if isinstance(page, dict) else None
             if not rows or not cursor or not page.get("has_more", True):
@@ -233,6 +244,8 @@ def review_resolve(
 
     The page changes at once and the flag clears. A page that changed since the
     revision this reads (or --revision) is refused with nothing applied (exit 5).
+    Where a person must accept proposals, a person, or a key with the
+    proposals:accept (reviewer) permission, must apply it (exit 6 otherwise).
     """
     ways = [
         name
@@ -281,6 +294,14 @@ def review_resolve(
             result = sdk.request("POST", base + path, json=request) or {}
         except ConflictError as exc:
             raise _changed(proposal_id, "The page changed since you chose.") from exc
+        except PersonReviewRequiredError as exc:
+            raise PersonReviewRequiredError(
+                PERSON_ONLY_MESSAGE,
+                status=403,
+                code="person_review_required",
+                request_id=exc.request_id,
+                fix=PERSON_ONLY_CLI_FIX,
+            ) from exc
     if not machine_output(result, json_out=json_out):
         console.print(resolved_text(result), markup=False, highlight=False, soft_wrap=True)
 

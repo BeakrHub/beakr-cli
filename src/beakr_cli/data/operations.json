@@ -2839,6 +2839,12 @@
      "type": "string"
     },
     {
+     "description": "Restrict to one kind of proposal. `review` lists only review flags: sections Knowledge flagged as contradicted, unverifiable or unclear, which are resolved with `POST .../resolve` (and its row and card variants) rather than accepted. Other kinds include `create`, `edit`, `archive`, `mv` and `find_replace`.",
+     "name": "proposal_type",
+     "required": false,
+     "type": "string"
+    },
+    {
      "description": "Restrict to one proposal source. Omitted, a pending listing hides the sources reviewed elsewhere (an interview's proposals are reviewed on that interview's wrap-up, not in this queue).",
      "name": "source",
      "required": false,

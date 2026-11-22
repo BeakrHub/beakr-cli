@@ -151,7 +151,16 @@ def option_request(
 
 #: What an agent is told when a person must resolve it (the accept's refusal).
 PERSON_ONLY_MESSAGE = (
-    "This project requires a person to accept proposals, so an agent's resolve is "
-    "refused. Nothing was applied."
+    "This project requires that a person, or a key with the proposals:accept (reviewer) "
+    "permission, apply this resolution. This key or token is neither, so nothing was applied."
 )
-PERSON_ONLY_FIX = "Tell the user it is waiting for them to resolve it in Beakr; do not retry."
+PERSON_ONLY_FIX = (
+    "Ask the user to resolve it in Beakr, or to run it with a key that holds "
+    "proposals:accept; do not retry with this key."
+)
+#: The same, for a person at the command line.
+PERSON_ONLY_CLI_FIX = (
+    "Resolve it signed in as yourself (`beakr auth login`, outside an agent session) or in "
+    "the Beakr web app, or run it with an API key that holds the proposals:accept "
+    "(reviewer) scope (BEAKR_API_KEY), as a scheduled job does."
+)

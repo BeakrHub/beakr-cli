@@ -224,6 +224,10 @@ def test_an_agent_refused_by_person_review_exits_six() -> None:
     )
     result = _invoke("kb", "review", "resolve", FLAG, "--option", "1", "--yes")
     assert result.exit_code == 6, result.output
+    assert "a person, or a key with the proposals:accept (reviewer)" in " ".join(
+        result.output.split()
+    )
+    assert "BEAKR_API_KEY" in result.output
 
 
 @pytest.mark.parametrize(
@@ -242,7 +246,7 @@ def test_one_way_of_resolving_must_be_chosen(args) -> None:
 
 @respx.mock
 def test_ls_lists_only_review_flags() -> None:
-    respx.get(f"{API}/v1/knowledge/wiki/proposals").respond(
+    listed = respx.get(f"{API}/v1/knowledge/wiki/proposals").respond(
         200,
         json={
             "data": [
@@ -267,6 +271,7 @@ def test_ls_lists_only_review_flags() -> None:
     )
     result = _invoke("kb", "review", "ls", mode="compact")
     assert result.exit_code == 0, result.output
+    assert listed.calls.last.request.url.params["proposal_type"] == "review"
     assert FLAG in result.stdout and "0f4b6d82" not in result.stdout
 
 
@@ -316,4 +321,5 @@ def test_the_stdio_tool_says_a_person_must_resolve_it() -> None:
     )
     text = _tool("resolve_review", proposal_id=FLAG, option_id="A", expected_revision=3)
     assert "person_review_required" in text
-    assert "Nothing was applied" in text and "do not retry" in text
+    assert "nothing was applied" in text and "do not retry" in text
+    assert "proposals:accept (reviewer)" in text

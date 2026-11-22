@@ -9,8 +9,8 @@ Each release lists the public API changes it supports, taken from the API change
 ### Client changes
 
 - **Resolve a review flag from the command line and over MCP.** `beakr kb
-  review ls` lists pending review flags; `beakr kb review options <id>` shows a
-  flag and Beakr's drafted resolutions, numbered, with what each changes (the
+  review ls` lists pending review flags (`proposal_type=review`); `beakr kb
+  review options <id>` shows a flag and Beakr's drafted resolutions, numbered, with what each changes (the
   first call for a page revision drafts them, up to two minutes; later ones
   return the same options at once); `beakr kb review resolve <id>` applies one:
   `--option N` (a drafted option: a section rewrite, or a row change on a
@@ -20,8 +20,9 @@ Each release lists the public API changes it supports, taken from the API change
   revision is read and pinned automatically (or `--revision`): a page that
   changed since, or options drafted by the resolve itself and so never shown,
   exit 5 with nothing applied and say to run `options` again. Where a person
-  must accept proposals a key or token is refused (exit 6), as for `kb
-  proposals accept`. The stdio MCP server has the same two tools as the hosted
+  must accept proposals, a person, or a key with the `proposals:accept`
+  (reviewer) permission, must apply it; any other key or token exits 6 and says
+  so, as for `kb proposals accept`. The stdio MCP server has the same two tools as the hosted
   one, `review_options` and `resolve_review`.
 - **Attach connected items to a project from the command line.** `beakr sources
   attach <link> -P <project>` attaches a Notion page or database, a Google Drive
@@ -187,12 +188,15 @@ Each release lists the public API changes it supports, taken from the API change
   card's Facts or Connections table: `option_id`, `expected_revision`) or
   `POST .../resolve-cards` (one `outcome` on every card a contradiction review
   lists); all three need `kb:write`. A page that changed since
-  `expected_revision` answers `409` and nothing is applied. Applying is refused
-  with `403 person_review_required` where a person must accept proposals,
-  unless the key holds `proposals:accept`, as for accepting; drafting is not. A
-  key restricted to projects reaches only flags in its projects (another
-  project's flag answers `404`), and a flag that is no longer pending answers
-  `400`.
+  `expected_revision` answers `409` and nothing is applied. Where a person must
+  accept proposals, a person, or a key with the `proposals:accept` (reviewer)
+  permission, must apply a resolution, as for accepting: any other key or token
+  is refused with `403 person_review_required`. Drafting is open to any
+  `kb:write` key. A key restricted to projects reaches only flags in its
+  projects (another project's flag answers `404`), and a flag that is no longer
+  pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
+  `proposal_type`: `proposal_type=review` lists only review flags (with
+  `status=pending`, the default, the open ones).
 - A card type's field can say what to record under it. Each item of `fields`
   takes an optional `description` (up to 300 characters) on
   `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
