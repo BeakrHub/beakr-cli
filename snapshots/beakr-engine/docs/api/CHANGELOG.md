@@ -11,11 +11,57 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=aeef43fdd413f6678b0cd36e9c39b5c2425dc74a36d27e850a4e22b4682b7a53 changelog sha256=50c500dc9e5cb5a3650164dc7aac7cd5be4a36139676010715b10bb73f194197 -->
+<!-- contract-stamp: public-openapi sha256=d2fcc3967824224ba4bb81c79616a22d1b0a4a9fe4bb7bcd1280512be3cda407 changelog sha256=a581fea539f444efe1a0a021c5a05b20c9d2685c7d1bc4389e757e2d4f203b45 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A project's open review flags can now become one interview.
+  `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
+  and `kb:read`) writes one plain-language key question per open review flag,
+  naming its specifics (the values that disagree, the cards, the dates, where
+  each came from), and saves the interview with each flag's background in its
+  `supporting_info`. By default it asks about every open review flag
+  (contradictions, ambiguities and the rest), newest first, up to
+  `max_questions` (30, the interview's cap); flags past it are listed in
+  `skipped` as `over_question_limit`. `kinds` narrows the kinds and
+  `proposal_ids` names the flags. With a `participant` (a member's `user_id`, or
+  a `name` and/or `email`) it also makes that person's link, as
+  `POST /v1/interview/sendables/{sendable_id}/links` does: Beakr sends nothing,
+  and `link_url` is shown once (omitted on a replay, `secret_redacted: true`),
+  with `link` (`link_id`, `label`, `expires_at`, `result_url`). Without one the
+  interview is a draft to edit (`edit_url`) and send. It answers `201` with
+  `interview`, `link`, `link_url`, `questions` (each with its `proposal_id`,
+  `kind`, `asked_revision`, `written_by` and `linked`), `skipped`,
+  `questions_written_by` and `edit_url`; a project with nothing to ask about
+  answers `200` with `interview: null`, `empty_reason` and `message`. Errors:
+  `404 participant_not_found`, `429 interview_link_limit`,
+  `403 outside_interviews_unavailable`. When a link finishes, each answer is
+  attached to its flag as a suggestion: a review proposal's read
+  (`GET /v1/knowledge/wiki/proposals` and `GET .../proposals/{proposal_id}`)
+  carries `interview_questions` and `interview_answers` (each with
+  `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
+  `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
+  `suggested_option_id` names the drafted resolution the answer matches (null
+  when the flagged text changed since the question was asked, `stale`). Nothing
+  is applied: a person, or a key allowed to accept, resolves the flag with the
+  resolve routes.
+- Row types are removed: every card type is a card. `grain: "row"` is refused
+  with `422` on `PATCH /v1/knowledge/wiki/page-types/{key}` and in the
+  `card_types` of `POST /v1/projects`; `grain: "card"` is still accepted, and
+  gives each instance of a type that was recorded as rows its own card. For
+  something that comes many to a card, add a field with a `description` to the
+  type it belongs to ("Assay runs": "one row per run, with its number and
+  result"). An imported ontology never produces a row type.
+  `POST /v1/knowledge/wiki/page-types/{key}/to-field` (`kb:write`)
+  turns an existing row type into a field: give `on_type` (the type whose cards the rows
+  belong on), `name` (the field to add there) and an optional `description`,
+  with `scope` and `project_id` as on the edit route. It answers `page_type`
+  (the type that gained the field) and `former_row_type` (now turned off, and a
+  card type). Cards and rows already written are not changed.
+  `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
+  the kinds of thing a project's profile names that Beakr recorded as a field
+  of another type, each with `name`, `page_type` and `field`.
 - A review flag (a proposal of type `review`: a section Knowledge flagged as
   contradicted, unverifiable or unclear) can be resolved through the API, not
   only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`

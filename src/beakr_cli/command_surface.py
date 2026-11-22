@@ -170,6 +170,8 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb proposals show",
         "kb proposals accept",
         "kb proposals dismiss",
+        # Ask a person about review flags: a draft interview, never sent.
+        "kb review interview",
         "kb propose create",
         "kb propose edit",
         "kb propose replace",

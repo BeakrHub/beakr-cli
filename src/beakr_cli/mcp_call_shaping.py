@@ -73,6 +73,7 @@ PROJECT_PARAMETER: dict[str, str] = {
     "knowledge_queue": "project",
     "cancel_compiles": "project",
     "cancel_sync": "project",
+    "draft_review_interview": "project",
 }
 
 

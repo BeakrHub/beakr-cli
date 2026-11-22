@@ -1,7 +1,9 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
 change its card types and the cards it already has, upload the person's files into it, add
-the people who work in it, and stop queued Knowledge work (``knowledge_queue``,
-``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``).
+the people who work in it, stop queued Knowledge work (``knowledge_queue``,
+``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``), and
+draft an interview from its open review flags (``draft_review_interview``; hosted in
+``review_interview_tools.py``).
 
 The hosted MCP server has the same seven tools (beakr-engine
 ``beakr/api/mcp_remote/project_tools.py``, ``card_type_tools.py`` and
@@ -41,7 +43,7 @@ from beakr_sdk.resources._upload import (
     upload_relative_path,
 )
 
-from beakr_cli import cancels, card_settings, card_types, card_updates
+from beakr_cli import cancels, card_settings, card_types, card_updates, review_interview
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
 from beakr_cli.upload_path_policy import (
@@ -956,6 +958,34 @@ async def cancel_sync(project: str, attachment_id: str) -> str | dict[str, Any]:
     return cancels.cancel_sync_text(_dict(answer))
 
 
+# --- draft_review_interview -------------------------------------------------------------
+#
+# One question per open review flag, saved as a draft interview the person edits and
+# sends in Beakr. The hosted half is beakr-engine
+# ``beakr/api/mcp_remote/review_interview_tools.py``; the text is
+# :func:`beakr_cli.review_interview.review_interview_text`, the same for the same REST
+# answer. Drafting only: nothing here can send an interview.
+
+ReviewKind = Literal["contradiction", "ambiguity", "unverifiable", "likely_error", "other"]
+
+
+async def draft_review_interview(
+    project: str,
+    flags: list[str] | None = None,
+    kinds: list[ReviewKind] | None = None,
+    title: str | None = None,
+) -> str | dict[str, Any]:
+    """Draft an interview from a project's open review flags (described in the shared surface).
+
+    Drafting only, as on the hosted server: no participant, so no link is made;
+    the person sends it from Beakr.
+    """
+    project_id = await _project_id(project)
+    body = review_interview.request_body(proposal_ids=flags, kinds=kinds, title=title)
+    answer = await call_api(lambda sdk: review_interview.draft_from_reviews(sdk, project_id, body))
+    return review_interview.review_interview_text(_dict(answer))
+
+
 PROJECT_TOOLS = (
     create_project,
     set_project_profile,
@@ -968,6 +998,7 @@ PROJECT_TOOLS = (
     knowledge_queue,
     cancel_compiles,
     cancel_sync,
+    draft_review_interview,
 )
 
 

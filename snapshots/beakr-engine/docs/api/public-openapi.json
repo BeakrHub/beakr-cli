@@ -7076,6 +7076,222 @@
         "title": "IntegrationToolSource",
         "type": "object"
       },
+      "InterviewFromReviewsBody": {
+        "additionalProperties": false,
+        "description": "Which flags to ask about, and who the interview is for.",
+        "properties": {
+          "goals": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The interview's goals, in place of the drafted ones.",
+            "title": "Goals"
+          },
+          "kinds": {
+            "description": "Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.",
+            "items": {
+              "enum": [
+                "contradiction",
+                "ambiguity",
+                "unverifiable",
+                "likely_error",
+                "other"
+              ],
+              "type": "string"
+            },
+            "title": "Kinds",
+            "type": "array"
+          },
+          "link_expires_in_days": {
+            "default": 14,
+            "description": "How long the participant's link works, in days.",
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Link Expires In Days",
+            "type": "integer"
+          },
+          "max_questions": {
+            "default": 30,
+            "description": "The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.",
+            "maximum": 30.0,
+            "minimum": 1.0,
+            "title": "Max Questions",
+            "type": "integer"
+          },
+          "participant": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ParticipantIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who the interview is for. Given, the interview also gets that person's link (`link`, `link_url`), made as `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends nothing, you deliver the link. Omitted: a draft only."
+          },
+          "proposal_ids": {
+            "description": "The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).",
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Proposal Ids",
+            "type": "array"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The interview's title, in place of the drafted one.",
+            "title": "Title"
+          }
+        },
+        "title": "InterviewFromReviewsBody",
+        "type": "object"
+      },
+      "InterviewFromReviewsOut": {
+        "description": "The drafted interview, which flag each question asks about, and the participant's link.",
+        "properties": {
+          "edit_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where a person opens the draft in Beakr to edit and send it.",
+            "title": "Edit Url"
+          },
+          "empty_reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "no_open_flags",
+                  "no_matching_flags",
+                  "no_askable_flags"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why nothing was drafted: `no_open_flags` (the project has none), `no_matching_flags` (none of the kinds asked for), `no_askable_flags` (none of the named flags is open here). Null when an interview was drafted.",
+            "title": "Empty Reason"
+          },
+          "interview": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SendableInterviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The saved interview. Without a participant it has no links: edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask."
+          },
+          "link": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewLinkMadeOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The participant's link, when a participant was given."
+          },
+          "link_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The link anyone can open to take the interview, with no Beakr account. Shown once. Shown on the first response only; absent from an idempotent replay.",
+            "title": "Link Url"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A sentence saying why nothing was drafted.",
+            "title": "Message"
+          },
+          "questions": {
+            "description": "One per flag asked about, in the interview's order.",
+            "items": {
+              "$ref": "#/components/schemas/ReviewQuestionOut"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "questions_written_by": {
+            "anyOf": [
+              {
+                "enum": [
+                  "model",
+                  "template"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`model` when the model wrote every question, `template` when any was built from its flag; null when nothing was drafted.",
+            "title": "Questions Written By"
+          },
+          "secret_redacted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "True on an idempotent replay (`Idempotent-Replayed` header): the one-time secret was not stored, so this response omits it. Absent on the first response.",
+            "title": "Secret Redacted"
+          },
+          "skipped": {
+            "description": "Flags not asked about, and why (including open flags past the question cap).",
+            "items": {
+              "$ref": "#/components/schemas/SkippedFlagOut"
+            },
+            "title": "Skipped",
+            "type": "array"
+          }
+        },
+        "required": [
+          "interview",
+          "questions"
+        ],
+        "title": "InterviewFromReviewsOut",
+        "type": "object"
+      },
       "InterviewLinkCreated": {
         "description": "The interview and its link.",
         "examples": [
@@ -7152,6 +7368,53 @@
           "result_url"
         ],
         "title": "InterviewLinkCreated",
+        "type": "object"
+      },
+      "InterviewLinkMadeOut": {
+        "description": "The participant's link, made with the interview.",
+        "properties": {
+          "expires_at": {
+            "description": "When the link stops working.",
+            "examples": [
+              "2026-10-03T09:30:42Z"
+            ],
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "label": {
+            "description": "Who it is for, as shown beside the link in Beakr.",
+            "title": "Label",
+            "type": "string"
+          },
+          "link_id": {
+            "description": "Id of the link.",
+            "examples": [
+              "0f1e2d3c-4b5a-4c6d-9e8f-7a6b5c4d3e2f"
+            ],
+            "format": "uuid",
+            "title": "Link Id",
+            "type": "string"
+          },
+          "result_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where to read the interview's progress and answers (the link result route).",
+            "title": "Result Url"
+          }
+        },
+        "required": [
+          "link_id",
+          "label",
+          "expires_at"
+        ],
+        "title": "InterviewLinkMadeOut",
         "type": "object"
       },
       "InterviewLinkRecipient": {
@@ -11466,6 +11729,56 @@
         "title": "OrgOutPage",
         "type": "object"
       },
+      "ParticipantIn": {
+        "additionalProperties": false,
+        "description": "Who the interview is for: a member of the organization, or a name and/or email.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The person's email, shown beside the link in Beakr. Beakr sends nothing to it.",
+            "examples": [
+              "dana@example.com"
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The person's name, shown beside the link in Beakr.",
+            "title": "Name"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A member of your organization (user id); their name and email label the link.",
+            "title": "User Id"
+          }
+        },
+        "title": "ParticipantIn",
+        "type": "object"
+      },
       "PendingMemberInvitationOut": {
         "description": "Pending membership invitation shown alongside real members.",
         "properties": {
@@ -11923,6 +12236,32 @@
         "title": "PrincipalType",
         "type": "string"
       },
+      "ProfileTypeAsDetail": {
+        "properties": {
+          "field": {
+            "description": "The field it is listed under on those cards.",
+            "title": "Field",
+            "type": "string"
+          },
+          "name": {
+            "description": "The kind of thing as the profile names it.",
+            "title": "Name",
+            "type": "string"
+          },
+          "page_type": {
+            "description": "The key of the type whose cards it is listed on.",
+            "title": "Page Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "page_type",
+          "field"
+        ],
+        "title": "ProfileTypeAsDetail",
+        "type": "object"
+      },
       "ProfileTypeMatch": {
         "properties": {
           "name": {
@@ -11978,6 +12317,14 @@
       "ProfileTypesOutcome": {
         "description": "What Beakr did with the kinds of thing a project's profile names.",
         "properties": {
+          "as_details": {
+            "description": "Names that are entries on another type's cards: no type was made, and the type gained a field for them.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileTypeAsDetail"
+            },
+            "title": "As Details",
+            "type": "array"
+          },
           "made": {
             "description": "Keys of the types it created.",
             "items": {
@@ -12020,6 +12367,7 @@
           "working",
           "made",
           "matched",
+          "as_details",
           "suggested",
           "skipped"
         ],
@@ -12107,7 +12455,7 @@
                 "type": "null"
               }
             ],
-            "description": "`card` (the default): each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+            "description": "`card` (the default): each instance gets a card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.",
             "title": "Grain"
           },
           "key": {
@@ -13909,6 +14257,108 @@
           "key"
         ],
         "title": "ResearchSource",
+        "type": "object"
+      },
+      "ReviewQuestionOut": {
+        "description": "One drafted key question and the review flag it asks about.",
+        "properties": {
+          "asked_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The card's revision the question was asked against. An answer to a card whose flagged text changed since is marked stale.",
+            "title": "Asked Revision"
+          },
+          "kind": {
+            "description": "The flag's kind: `contradiction`, `ambiguity`, `unverifiable`, `likely_error`, or `other` for an older flag that names none.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "linked": {
+            "description": "Whether the flag records the question, so the answer can be attached to it. False when the caller may read the flag but not change it.",
+            "title": "Linked",
+            "type": "boolean"
+          },
+          "number": {
+            "description": "The question's place in the interview, from 1.",
+            "title": "Number",
+            "type": "integer"
+          },
+          "page_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the card the flag is on.",
+            "examples": [
+              "9d2e41b7-5c3a-4f6e-8b10-6a7c2d9e0f14"
+            ],
+            "title": "Page Id"
+          },
+          "page_title": {
+            "description": "Title of the card the flag is on.",
+            "title": "Page Title",
+            "type": "string"
+          },
+          "proposal_id": {
+            "description": "Id of the review flag (proposal) it asks about.",
+            "format": "uuid",
+            "title": "Proposal Id",
+            "type": "string"
+          },
+          "question": {
+            "description": "The key question, as saved on the interview.",
+            "title": "Question",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why the flag was raised.",
+            "title": "Reason",
+            "type": "string"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The flagged section, when it names one.",
+            "title": "Section Id"
+          },
+          "written_by": {
+            "description": "`model` when Beakr's model wrote the question, `template` when it was built from the flag because no model answer covered it.",
+            "enum": [
+              "model",
+              "template"
+            ],
+            "title": "Written By",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "question",
+          "proposal_id",
+          "kind",
+          "page_title",
+          "reason",
+          "written_by",
+          "linked"
+        ],
+        "title": "ReviewQuestionOut",
         "type": "object"
       },
       "RunAnswer": {
@@ -15892,6 +16342,34 @@
           "content"
         ],
         "title": "SkillScriptOut",
+        "type": "object"
+      },
+      "SkippedFlagOut": {
+        "description": "A flag that was not asked about, and why.",
+        "properties": {
+          "proposal_id": {
+            "description": "Id of the flag.",
+            "format": "uuid",
+            "title": "Proposal Id",
+            "type": "string"
+          },
+          "reason": {
+            "description": "`not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal), `over_question_limit` (an open flag left out because the interview was full).",
+            "enum": [
+              "not_found",
+              "not_open",
+              "not_a_review_flag",
+              "over_question_limit"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "proposal_id",
+          "reason"
+        ],
+        "title": "SkippedFlagOut",
         "type": "object"
       },
       "SourceExcerpt": {
@@ -20429,6 +20907,25 @@
         "title": "WikiPageTypeList",
         "type": "object"
       },
+      "WikiPageTypeMadeField": {
+        "description": "``POST /v1/knowledge/wiki/page-types/{key}/to-field``.",
+        "properties": {
+          "former_row_type": {
+            "$ref": "#/components/schemas/WikiPageType",
+            "description": "The type that was recorded as rows, now turned off and a card type."
+          },
+          "page_type": {
+            "$ref": "#/components/schemas/WikiPageType",
+            "description": "The type that gained the field."
+          }
+        },
+        "required": [
+          "page_type",
+          "former_row_type"
+        ],
+        "title": "WikiPageTypeMadeField",
+        "type": "object"
+      },
       "WikiPageTypeOverrideRemoved": {
         "description": "``DELETE /v1/knowledge/wiki/page-types/{key}``.",
         "properties": {
@@ -20583,6 +21080,68 @@
         "title": "WikiPageTypeStatusResult",
         "type": "object"
       },
+      "WikiPageTypeToField": {
+        "additionalProperties": false,
+        "description": "Make a card type recorded as rows a field of the type its rows belong on.",
+        "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What to record under the field, for example 'one row per run'.",
+            "title": "Description"
+          },
+          "name": {
+            "description": "The field to add to that type.",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "on_type": {
+            "description": "The key of the card type whose cards these rows belong on.",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "On Type",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The project, with scope `project`; left out otherwise.",
+            "examples": [
+              "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+            ],
+            "title": "Project Id"
+          },
+          "scope": {
+            "default": "project",
+            "description": "Whose types to change: `project` (one project) or `org`.",
+            "pattern": "^(org|project)$",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "on_type",
+          "name"
+        ],
+        "title": "WikiPageTypeToField",
+        "type": "object"
+      },
       "WikiPageTypeUpdate": {
         "additionalProperties": false,
         "description": "Changes to one card type, as one scope holds it. A field left out is kept.\n\nEditing a type the scope only inherits (a built-in from a project or an\norganization, an organization's type from a project) makes that scope its own\ncopy and changes the copy.",
@@ -20642,7 +21201,7 @@
                 "type": "null"
               }
             ],
-            "description": "`card`: each instance gets a card. `row`: each is a Facts row on the card it belongs to.",
+            "description": "`card` gives each instance of a type that was recorded as rows its own card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.",
             "title": "Grain"
           },
           "label": {
@@ -28217,6 +28776,86 @@
         "x-beakr-scope": "kb:write"
       }
     },
+    "/v1/knowledge/wiki/page-types/{key}/to-field": {
+      "post": {
+        "description": "Make the row type `key` a field of another card type. Make the row type ``key`` a field of another card type.\n\n``on_type`` gains the field ``name`` with ``description`` saying what to\nrecord under it. The row type is turned off for the scope and becomes an\nordinary card type, so it stays out of use and cannot come back as rows.\nCards and rows already written are not changed.\n\n422 when ``key`` is not a row type here, or ``on_type`` is not a card type\nin use here. A project's types are changed by its owners, an organization's\nby its admins.",
+        "operationId": "convert_row_type_to_field_v1_knowledge_wiki_page_types__key__to_field_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "required": true,
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WikiPageTypeToField"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WikiPageTypeMadeField"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Make a row type a field",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "kb:write"
+      }
+    },
     "/v1/knowledge/wiki/pages": {
       "get": {
         "description": "Knowledge pages in scope, ordered by title (or newest first with `sort_by`), one page of results at a time. For a tree view, `roots_only=true` lists top-level pages and `parent_page_id` lists a page's children. `archived=true` lists archived pages, by when they were archived.",
@@ -34435,6 +35074,90 @@
           "projects"
         ],
         "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/interviews/from-reviews": {
+      "post": {
+        "description": "Draft an interview from review flags.\n\nBeakr writes one plain-language key question per open review flag in the\nproject, naming its specifics (the values that disagree, the cards, the\ndates, where each came from), and saves them as an interview; the\ninterviewer gets each flag's background (`supporting_info`). By default it\nasks about every open review flag (contradictions, ambiguities and the\nrest), newest first, up to `max_questions` (30, the interview's cap); flags\npast it come back in `skipped` as `over_question_limit`. `kinds` narrows\nthe kinds, or `proposal_ids` names the flags.\n\nWith a `participant` (a member's `user_id`, or a name and/or email), the\ninterview also gets that person's link, made exactly as\n`POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends\nnothing, and `link_url` (shown once) is for you to deliver. So one call goes\nfrom open flags to a link, for example from a scheduled job with an API key.\nWithout one, it is a draft: a person edits it (`edit_url`) and sends it.\n\nEach flag records the question that asks about it. When a link of this\ninterview finishes, Beakr attaches each answer to its flag as a suggestion\n(`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),\nwith the drafted resolution it matches; a person applies it with the\nresolve routes. Nothing is ever applied automatically.\n\nA project with nothing to ask about answers 200 with `interview: null` and\n`empty_reason`. One model call; when no model answers, each question is\nbuilt from its flag (`questions_written_by: template`). Needs the\n`interviews:write` and `kb:read` scopes. PHI organizations are refused\n(403 `outside_interviews_unavailable`); a `user_id` that is not a member\nanswers 404 `participant_not_found`; past the daily link limit, 429\n`interview_link_limit`.",
+        "operationId": "draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InterviewFromReviewsBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InterviewFromReviewsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Draft an interview from review flags",
+        "tags": [
+          "public",
+          "interviews"
+        ],
+        "x-beakr-scope": "interviews:write"
       }
     },
     "/v1/projects/{project_id}/invite": {

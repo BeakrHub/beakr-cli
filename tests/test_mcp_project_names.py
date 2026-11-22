@@ -63,6 +63,7 @@ _CALLS: dict[str, dict[str, Any]] = {
     "knowledge_queue": {},
     "cancel_compiles": {},
     "cancel_sync": {"attachment_id": "s1"},
+    "draft_review_interview": {},
 }
 
 

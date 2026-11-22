@@ -8,6 +8,19 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Ask a person about review flags.** `beakr kb review interview -P <project>`
+  turns the project's open review flags into one interview, one question per
+  flag: every kind by default, up to 30 (`--max-questions`), with the flags past
+  it listed as left out; `--kinds contradiction,ambiguity,...` narrows it and
+  `--flags <id>,<id>` names flags. `--title` and `--goals` shape it. Without a
+  person it is a draft: it prints each question with its flag id, kind, card and
+  reason, any flags skipped and why, and the link where a person edits and sends
+  it. With `--for <name>`, `--email <email>` or `--user-id <id>` the interview
+  also gets that person's link, printed once with who it is for, when it expires
+  (`--expires-in-days`) and its result URL; Beakr sends nothing. It ends with how
+  a flag is resolved from its answer (`beakr kb review options` and `resolve`)
+  and takes `--json`. The MCP server has the same `draft_review_interview` tool
+  as the hosted one (drafting only), with the same answer.
 - **Resolve a review flag from the command line and over MCP.** `beakr kb
   review ls` lists pending review flags (`proposal_type=review`); `beakr kb
   review options <id>` shows a flag and Beakr's drafted resolutions, numbered, with what each changes (the
@@ -165,6 +178,52 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A project's open review flags can now become one interview.
+  `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
+  and `kb:read`) writes one plain-language key question per open review flag,
+  naming its specifics (the values that disagree, the cards, the dates, where
+  each came from), and saves the interview with each flag's background in its
+  `supporting_info`. By default it asks about every open review flag
+  (contradictions, ambiguities and the rest), newest first, up to
+  `max_questions` (30, the interview's cap); flags past it are listed in
+  `skipped` as `over_question_limit`. `kinds` narrows the kinds and
+  `proposal_ids` names the flags. With a `participant` (a member's `user_id`, or
+  a `name` and/or `email`) it also makes that person's link, as
+  `POST /v1/interview/sendables/{sendable_id}/links` does: Beakr sends nothing,
+  and `link_url` is shown once (omitted on a replay, `secret_redacted: true`),
+  with `link` (`link_id`, `label`, `expires_at`, `result_url`). Without one the
+  interview is a draft to edit (`edit_url`) and send. It answers `201` with
+  `interview`, `link`, `link_url`, `questions` (each with its `proposal_id`,
+  `kind`, `asked_revision`, `written_by` and `linked`), `skipped`,
+  `questions_written_by` and `edit_url`; a project with nothing to ask about
+  answers `200` with `interview: null`, `empty_reason` and `message`. Errors:
+  `404 participant_not_found`, `429 interview_link_limit`,
+  `403 outside_interviews_unavailable`. When a link finishes, each answer is
+  attached to its flag as a suggestion: a review proposal's read
+  (`GET /v1/knowledge/wiki/proposals` and `GET .../proposals/{proposal_id}`)
+  carries `interview_questions` and `interview_answers` (each with
+  `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
+  `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
+  `suggested_option_id` names the drafted resolution the answer matches (null
+  when the flagged text changed since the question was asked, `stale`). Nothing
+  is applied: a person, or a key allowed to accept, resolves the flag with the
+  resolve routes.
+- Row types are removed: every card type is a card. `grain: "row"` is refused
+  with `422` on `PATCH /v1/knowledge/wiki/page-types/{key}` and in the
+  `card_types` of `POST /v1/projects`; `grain: "card"` is still accepted, and
+  gives each instance of a type that was recorded as rows its own card. For
+  something that comes many to a card, add a field with a `description` to the
+  type it belongs to ("Assay runs": "one row per run, with its number and
+  result"). An imported ontology never produces a row type.
+  `POST /v1/knowledge/wiki/page-types/{key}/to-field` (`kb:write`)
+  turns an existing row type into a field: give `on_type` (the type whose cards the rows
+  belong on), `name` (the field to add there) and an optional `description`,
+  with `scope` and `project_id` as on the edit route. It answers `page_type`
+  (the type that gained the field) and `former_row_type` (now turned off, and a
+  card type). Cards and rows already written are not changed.
+  `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
+  the kinds of thing a project's profile names that Beakr recorded as a field
+  of another type, each with `name`, `page_type` and `field`.
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still
