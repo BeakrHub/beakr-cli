@@ -11,42 +11,41 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=311689f42b04f700aee5983260472b5c5251ec537f40e1887454cedeeed771be changelog sha256=80549450bcfe4c2e22b2442ed37b4793c8dacb9919a4de32776465ae45acbc23 -->
+<!-- contract-stamp: public-openapi sha256=d2fcc3967824224ba4bb81c79616a22d1b0a4a9fe4bb7bcd1280512be3cda407 changelog sha256=a581fea539f444efe1a0a021c5a05b20c9d2685c7d1bc4389e757e2d4f203b45 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- A second upload to the same path adds a version to the file already there,
-  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
-  takes `on_existing`: `version` (the default) looks in the upload's folder for
-  a file with the name the upload would get (its `title`, else the last part of
-  `path`; exact, case-sensitive) and adds the upload to it as a new version,
-  which is indexed and compiled into Knowledge as a version added in the app
-  is, so the Knowledge built from the file is updated. With no such file, the
-  file is created as before. `new` always creates a separate file. The response
-  says which happened in `result` (`created`, `versioned`, `restored` when the
-  bytes match an earlier version, which becomes current again, or `unchanged`
-  when they match the current version and nothing is added) and gives
-  `version_no`. Identical bytes are recognized only when the upload was started
-  with `content_hash`. When nothing needed processing, `job_id` is the job that
-  processed that version earlier. Two or more files of that name in the folder
-  answer `409 ambiguous_path`, and a file the caller cannot change answers
-  `403 file_not_writable`; in both cases nothing is created and the upload stays
-  open, so it can be completed again with `on_existing: "new"`. Completions to the same
-  path at the same time are serialized, so they become versions of one file. The
-  same request takes `written_by_agent` (default false) to mark the upload as an
-  agent's work: the version records it, the response returns it, and a file the
-  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
-  agents treat it as an agent's output rather than a source. `title`,
-  `artifact_type`, `description` and `relative_path` apply only when the upload
-  creates a file. Uploads through `/v1/bulk` are unchanged. To add an upload to
-  a specific file whatever its name, send `artifact_id` on the same request: the
-  file must be an uploaded file in the upload's project (else `400
-  invalid_artifact`, and the upload stays open). `GET
-  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
-  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
-  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
-  `written_by_agent`. A file the caller cannot see answers `404`.
+- A project's open review flags can now become one interview.
+  `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
+  and `kb:read`) writes one plain-language key question per open review flag,
+  naming its specifics (the values that disagree, the cards, the dates, where
+  each came from), and saves the interview with each flag's background in its
+  `supporting_info`. By default it asks about every open review flag
+  (contradictions, ambiguities and the rest), newest first, up to
+  `max_questions` (30, the interview's cap); flags past it are listed in
+  `skipped` as `over_question_limit`. `kinds` narrows the kinds and
+  `proposal_ids` names the flags. With a `participant` (a member's `user_id`, or
+  a `name` and/or `email`) it also makes that person's link, as
+  `POST /v1/interview/sendables/{sendable_id}/links` does: Beakr sends nothing,
+  and `link_url` is shown once (omitted on a replay, `secret_redacted: true`),
+  with `link` (`link_id`, `label`, `expires_at`, `result_url`). Without one the
+  interview is a draft to edit (`edit_url`) and send. It answers `201` with
+  `interview`, `link`, `link_url`, `questions` (each with its `proposal_id`,
+  `kind`, `asked_revision`, `written_by` and `linked`), `skipped`,
+  `questions_written_by` and `edit_url`; a project with nothing to ask about
+  answers `200` with `interview: null`, `empty_reason` and `message`. Errors:
+  `404 participant_not_found`, `429 interview_link_limit`,
+  `403 outside_interviews_unavailable`. When a link finishes, each answer is
+  attached to its flag as a suggestion: a review proposal's read
+  (`GET /v1/knowledge/wiki/proposals` and `GET .../proposals/{proposal_id}`)
+  carries `interview_questions` and `interview_answers` (each with
+  `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
+  `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
+  `suggested_option_id` names the drafted resolution the answer matches (null
+  when the flagged text changed since the question was asked, `stale`). Nothing
+  is applied: a person, or a key allowed to accept, resolves the flag with the
+  resolve routes.
 - Row types are removed: every card type is a card. `grain: "row"` is refused
   with `422` on `PATCH /v1/knowledge/wiki/page-types/{key}` and in the
   `card_types` of `POST /v1/projects`; `grain: "card"` is still accepted, and

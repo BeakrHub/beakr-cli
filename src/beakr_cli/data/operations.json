@@ -1939,6 +1939,87 @@
    "summary": "Create a sendable interview"
   },
   {
+   "action": "draft-interview-from-reviews",
+   "anonymous": false,
+   "area": "interviews",
+   "body": {
+    "fields": [
+     {
+      "description": "The interview's goals, in place of the drafted ones.",
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.",
+      "enum": [
+       "contradiction",
+       "ambiguity",
+       "unverifiable",
+       "likely_error",
+       "other"
+      ],
+      "multiple": true,
+      "name": "kinds",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": 14,
+      "description": "How long the participant's link works, in days.",
+      "name": "link_expires_in_days",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "default": 30,
+      "description": "The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.",
+      "name": "max_questions",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Who the interview is for: a member of the organization, or a name and/or email.",
+      "name": "participant",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).",
+      "multiple": true,
+      "name": "proposal_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The interview's title, in place of the drafted one.",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/interviews/from-reviews",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/interviews/from-reviews",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:write",
+   "summary": "Draft an interview from review flags"
+  },
+  {
    "action": "link-result",
    "anonymous": false,
    "area": "interviews",
