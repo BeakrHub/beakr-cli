@@ -1,6 +1,49 @@
 {
  "components": {
   "schemas": {
+   "AccessStatus": {
+    "description": "Access status for an external source attachment.\n\nIndicates whether the current user can access the attached resource.\n\nAccess checking is on-demand - we only verify actual access when the user\nexplicitly clicks \"Check Access\". On initial load, we only check if the user\nhas a connection to the provider.\n\nAttributes:\n    accessible: Access status:\n        - None: Connected but not yet verified (user should click \"Check Access\")\n        - True: Access verified (user clicked Check Access and it succeeded)\n        - False: No access (not connected, or Check Access failed)\n    reason: Status reason:\n        - 'not_connected': User hasn't connected this provider\n        - 'connected': User has provider connected but access not verified\n        - 'verified': Access verified via Check Access\n        - 'no_access': User's token can't access this resource\n        - 'not_found': Resource no longer exists\n    message: Human-readable message explaining the access status.",
+    "properties": {
+     "accessible": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Access status: - None: Connected but not yet verified (user should click \"Check Access\") - True: Access verified (user clicked Check Access and it succeeded) - False: No access (not connected, or Check Access failed)",
+      "title": "Accessible"
+     },
+     "message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Human-readable message explaining the access status.",
+      "title": "Message"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Status reason: - 'not_connected': User hasn't connected this provider - 'connected': User has provider connected but access not verified - 'verified': Access verified via Check Access - 'no_access': User's token can't access this resource - 'not_found': Resource no longer exists.",
+      "title": "Reason"
+     }
+    },
+    "title": "AccessStatus",
+    "type": "object"
+   },
    "ApiError": {
     "additionalProperties": true,
     "description": "Why the request failed and how to correct it.",
@@ -1367,6 +1410,475 @@
      "error"
     ],
     "title": "ErrorEnvelope",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentCreate": {
+    "description": "Request payload for attaching an external resource to a project or space.\n\nAttributes:\n    provider: Provider identifier (e.g., 'gdrive:nango', 'notion:nango').\n    external_item_id: Provider's native identifier for the resource.\n    external_item_type: Type of item ('file', 'folder', 'page', 'database', 'label', 'drive').\n    external_item_name: Display name of the resource.\n    external_item_path: Breadcrumb path for display (optional).\n    external_item_url: Direct link to the resource (optional).\n    ingest_wiki: Whether to ingest this source into the wiki.\n    source_query: Provider-native query applied when the provider is asked\n        for items: {\"drive_q\": \"...\"}, {\"notion_filter\": {...}} or\n        {\"notion_view\": \"...\"}.\n    pull_mode: 'agent' (the source picker chooses) or 'all' (everything in scope).\n    guidance: What this project cares about from this source (picker and compiler).",
+    "properties": {
+     "auto_sync_wiki": {
+      "default": false,
+      "description": "Whether new content is compiled into Knowledge automatically.",
+      "title": "Auto Sync Wiki",
+      "type": "boolean"
+     },
+     "connector_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the connector.",
+      "title": "Connector Id"
+     },
+     "external_item_id": {
+      "description": "Provider's native identifier for the resource.",
+      "title": "External Item Id",
+      "type": "string"
+     },
+     "external_item_name": {
+      "description": "Display name of the resource.",
+      "title": "External Item Name",
+      "type": "string"
+     },
+     "external_item_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Breadcrumb path for display (optional).",
+      "title": "External Item Path"
+     },
+     "external_item_type": {
+      "description": "Type of item ('file', 'folder', 'page', 'database', 'label', 'drive').",
+      "title": "External Item Type",
+      "type": "string"
+     },
+     "external_item_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Direct link to the resource (optional).",
+      "title": "External Item Url"
+     },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What this project cares about from this source, in plain language. Beakr's source picker uses it to choose what to pull and what to skip, and the Knowledge compiler uses it to choose what to record and what to skip. At most 2000 characters; an empty string clears it.",
+      "title": "Guidance"
+     },
+     "ingest_wiki": {
+      "default": false,
+      "description": "Whether to ingest this source into the wiki.",
+      "title": "Ingest Wiki",
+      "type": "boolean"
+     },
+     "provider": {
+      "description": "Provider identifier (e.g., 'gdrive:nango', 'notion:nango').",
+      "title": "Provider",
+      "type": "string"
+     },
+     "pull_mode": {
+      "default": "agent",
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "enum": [
+       "agent",
+       "all"
+      ],
+      "title": "Pull Mode",
+      "type": "string"
+     },
+     "scope_mode": {
+      "default": "item",
+      "description": "Scope mode: one of `item`, `all`.",
+      "enum": [
+       "item",
+       "all"
+      ],
+      "title": "Scope Mode",
+      "type": "string"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
+     }
+    },
+    "required": [
+     "provider",
+     "external_item_id",
+     "external_item_type",
+     "external_item_name"
+    ],
+    "title": "ExternalSourceAttachmentCreate",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentOut": {
+    "description": "Serialized representation of an external source attachment.\n\nAttributes:\n    id: Unique attachment identifier.\n    target_type: Type of target ('project' or 'space').\n    target_id: ID of the target project or space.\n    connector_id: Standalone account connector used by this attachment, if still available.\n    provider: Provider identifier.\n    external_item_id: Provider's native identifier.\n    external_item_type: Type of item.\n    external_item_name: Display name.\n    external_item_path: Breadcrumb path.\n    external_item_url: Direct link.\n    attached_by: User ID who created the attachment.\n    attached_by_name: Display name of the user who attached.\n    attached_at: Timestamp when attached.\n    access_status: Current user's access status for this source.",
+    "properties": {
+     "access_status": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/AccessStatus"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Current user's access status for this source."
+     },
+     "attached_at": {
+      "description": "Timestamp when attached.",
+      "format": "date-time",
+      "title": "Attached At",
+      "type": "string"
+     },
+     "attached_by": {
+      "description": "User ID who created the attachment.",
+      "format": "uuid",
+      "title": "Attached By",
+      "type": "string"
+     },
+     "attached_by_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Display name of the user who attached.",
+      "title": "Attached By Name"
+     },
+     "auto_sync_wiki": {
+      "default": false,
+      "description": "Whether new content is compiled into Knowledge automatically.",
+      "title": "Auto Sync Wiki",
+      "type": "boolean"
+     },
+     "connector_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Standalone account connector used by this attachment, if still available.",
+      "title": "Connector Id"
+     },
+     "connector_label": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Display label of the connection the source comes from.",
+      "title": "Connector Label"
+     },
+     "external_item_id": {
+      "description": "Provider's native identifier.",
+      "title": "External Item Id",
+      "type": "string"
+     },
+     "external_item_name": {
+      "description": "Display name.",
+      "title": "External Item Name",
+      "type": "string"
+     },
+     "external_item_path": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Breadcrumb path.",
+      "title": "External Item Path"
+     },
+     "external_item_type": {
+      "description": "Type of item.",
+      "title": "External Item Type",
+      "type": "string"
+     },
+     "external_item_url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Direct link.",
+      "title": "External Item Url"
+     },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What this project cares about from this source, in plain language. Beakr's source picker uses it to choose what to pull and what to skip, and the Knowledge compiler uses it to choose what to record and what to skip. At most 2000 characters; an empty string clears it.",
+      "title": "Guidance"
+     },
+     "id": {
+      "description": "Unique attachment identifier.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "ingest_wiki": {
+      "default": false,
+      "description": "Whether its content is compiled into Knowledge.",
+      "title": "Ingest Wiki",
+      "type": "boolean"
+     },
+     "last_sync_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Time of the last sync (ISO 8601, UTC).",
+      "title": "Last Sync At"
+     },
+     "notion_rows": {
+      "anyOf": [
+       {
+        "additionalProperties": {
+         "$ref": "#/components/schemas/NotionRowCountOut"
+        },
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Notion sources only: per database id under the source, the rows its rule kept when last counted (\"N rows match\").",
+      "title": "Notion Rows"
+     },
+     "provider": {
+      "description": "Provider identifier.",
+      "title": "Provider",
+      "type": "string"
+     },
+     "pull_mode": {
+      "default": "agent",
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode",
+      "type": "string"
+     },
+     "scope_mode": {
+      "default": "item",
+      "description": "How much of the external item is attached: `item` for the item alone, or a broader mode covering its contents.",
+      "title": "Scope Mode",
+      "type": "string"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
+     },
+     "supports_wiki_ingest": {
+      "default": false,
+      "description": "Whether this provider's content can be compiled into Knowledge.",
+      "title": "Supports Wiki Ingest",
+      "type": "boolean"
+     },
+     "sync_status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Status of the latest sync job: null if none has run, else `syncing`, `completed` or `failed`.",
+      "title": "Sync Status"
+     },
+     "target_id": {
+      "description": "ID of the target project or space.",
+      "format": "uuid",
+      "title": "Target Id",
+      "type": "string"
+     },
+     "target_type": {
+      "description": "Type of target ('project' or 'space').",
+      "title": "Target Type",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "target_type",
+     "target_id",
+     "provider",
+     "external_item_id",
+     "external_item_type",
+     "external_item_name",
+     "attached_by",
+     "attached_at"
+    ],
+    "title": "ExternalSourceAttachmentOut",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentPage": {
+    "description": "One page of a project's external source attachments, in the public list shape.",
+    "properties": {
+     "data": {
+      "description": "The items on this page.",
+      "items": {
+       "$ref": "#/components/schemas/ExternalSourceAttachmentOut"
+      },
+      "title": "Data",
+      "type": "array"
+     },
+     "has_more": {
+      "default": false,
+      "description": "Whether another page follows.",
+      "title": "Has More",
+      "type": "boolean"
+     },
+     "next_cursor": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Pass as `cursor` to read the next page; null on the last page.",
+      "title": "Next Cursor"
+     }
+    },
+    "required": [
+     "data"
+    ],
+    "title": "ExternalSourceAttachmentPage",
+    "type": "object"
+   },
+   "ExternalSourceAttachmentUpdate": {
+    "description": "Request payload for updating an external source attachment.\n\nAll fields are optional \u2014 only provided fields are updated. For\n``source_query`` and ``guidance`` an explicit\nnull (or an empty value) clears the setting; leaving the field out keeps it.\n\nAttributes:\n    ingest_wiki: Whether to ingest this source into the wiki.\n    auto_sync_wiki: Whether to automatically re-ingest this source nightly.\n    source_query: Provider-native query (see the create payload).\n    pull_mode: 'agent' or 'all'.\n    guidance: What this project cares about from this source (picker and compiler).",
+    "properties": {
+     "auto_sync_wiki": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Whether to automatically re-ingest this source nightly.",
+      "title": "Auto Sync Wiki"
+     },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What this project cares about from this source, in plain language. Beakr's source picker uses it to choose what to pull and what to skip, and the Knowledge compiler uses it to choose what to record and what to skip. At most 2000 characters; an empty string clears it.",
+      "title": "Guidance"
+     },
+     "ingest_wiki": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Whether to ingest this source into the wiki.",
+      "title": "Ingest Wiki"
+     },
+     "pull_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "agent",
+         "all"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
+     }
+    },
+    "title": "ExternalSourceAttachmentUpdate",
     "type": "object"
    },
    "IntegrationSyncResult": {
@@ -3496,6 +4008,68 @@
     "title": "MembershipRole",
     "type": "string"
    },
+   "NotionRowCountOut": {
+    "description": "How many rows of one Notion database the source's rule keeps, and has brought in.\n\n``matching_rows`` is None until a sweep has listed the rule's full matching\nset (a database with no rule is not counted). ``brought_in`` is how many\nof them the source tracks after its last sync; while ``filling``, a\ncontinuation sync is bringing the rest in minutes apart (\"N of M rows\nbrought in\").",
+    "properties": {
+     "brought_in": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Brought in.",
+      "title": "Brought In"
+     },
+     "counted_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When it was counted (ISO 8601, UTC), or null.",
+      "title": "Counted At"
+     },
+     "filling": {
+      "default": false,
+      "description": "Filling.",
+      "title": "Filling",
+      "type": "boolean"
+     },
+     "matching_rows": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Matching rows.",
+      "title": "Matching Rows"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Title of the notion row count.",
+      "title": "Title"
+     }
+    },
+    "title": "NotionRowCountOut",
+    "type": "object"
+   },
    "OrgCredentialOut": {
     "additionalProperties": true,
     "properties": {
@@ -4216,6 +4790,421 @@
     "title": "ProfileClaimChange",
     "type": "object"
    },
+   "PullDryRunCaps": {
+    "description": "The per-sync limits that bound what one sync brings in.",
+    "properties": {
+     "ingest_max_per_sync": {
+      "description": "Most items one sync dispatches for ingest (the safety ceiling).",
+      "title": "Ingest Max Per Sync",
+      "type": "integer"
+     },
+     "ingest_quota_remaining": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The organization's ingest quota left in its current period (null: no limit). It renews by period, not by sync.",
+      "title": "Ingest Quota Remaining"
+     },
+     "picker_cadence_days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Days between later picker passes (null: first pass only).",
+      "title": "Picker Cadence Days"
+     },
+     "picker_first_pass_max": {
+      "description": "Most items the picker's first pass may bring in (half of what it sees, at least `picker_floor`).",
+      "title": "Picker First Pass Max",
+      "type": "integer"
+     },
+     "picker_floor": {
+      "description": "The picker's budget never drops below this.",
+      "title": "Picker Floor",
+      "type": "integer"
+     },
+     "picker_recurring_max": {
+      "description": "Most items a later picker pass may bring in (a tenth of what it sees, at least `picker_floor`).",
+      "title": "Picker Recurring Max",
+      "type": "integer"
+     },
+     "picker_runs_when": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the source picker runs for this source (null: never).",
+      "title": "Picker Runs When"
+     },
+     "recent_window": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Newest matching items every sync takes before the picker runs (null when the source has no recency window).",
+      "title": "Recent Window"
+     },
+     "rows_max_per_sync": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "New Notion database rows one sync may start tracking (Notion only).",
+      "title": "Rows Max Per Sync"
+     },
+     "take_all_max_per_sync": {
+      "description": "Most items one sync brings in when the rules take every match.",
+      "title": "Take All Max Per Sync",
+      "type": "integer"
+     },
+     "this_sync_take": {
+      "description": "Items the next sync would bring in, within the caps and the quota left.",
+      "title": "This Sync Take",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "picker_first_pass_max",
+     "picker_recurring_max",
+     "picker_floor",
+     "take_all_max_per_sync",
+     "ingest_max_per_sync",
+     "this_sync_take"
+    ],
+    "title": "PullDryRunCaps",
+    "type": "object"
+   },
+   "PullDryRunCost": {
+    "description": "What the dry run cost, and what ingesting its pick would cost.",
+    "properties": {
+     "basis": {
+      "description": "Where the per-item estimate comes from.",
+      "title": "Basis",
+      "type": "string"
+     },
+     "per_item_usd": {
+      "description": "The per-item estimate behind it.",
+      "title": "Per Item Usd",
+      "type": "number"
+     },
+     "pick_ingest_compile_usd": {
+      "description": "Estimated ingest and compile cost of `would_pick_estimate` items.",
+      "title": "Pick Ingest Compile Usd",
+      "type": "number"
+     },
+     "preview_usd": {
+      "description": "Model cost of this dry run.",
+      "title": "Preview Usd",
+      "type": "number"
+     }
+    },
+    "required": [
+     "preview_usd",
+     "pick_ingest_compile_usd",
+     "per_item_usd",
+     "basis"
+    ],
+    "title": "PullDryRunCost",
+    "type": "object"
+   },
+   "PullDryRunItem": {
+    "description": "One item in a dry run: what it is and why a sync would take it or leave it.",
+    "properties": {
+     "date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the item last changed (ISO 8601), where known.",
+      "title": "Date"
+     },
+     "id": {
+      "description": "The provider's id for the item.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "ingest_state": {
+      "description": "Its history in this project: never ingested, changed since, or unchanged.",
+      "enum": [
+       "new",
+       "changed",
+       "unchanged"
+      ],
+      "title": "Ingest State",
+      "type": "string"
+     },
+     "reason": {
+      "description": "Why it is picked or passed over, in one line.",
+      "title": "Reason",
+      "type": "string"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The item's title or name.",
+      "title": "Title"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A link to the item, where it has one.",
+      "title": "Url"
+     },
+     "via": {
+      "description": "What brings it in: `recent` (every sync takes the newest matching items), `picker` (the source picker chose it) or `rule` (the rules take every match).",
+      "enum": [
+       "recent",
+       "picker",
+       "rule"
+      ],
+      "title": "Via",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "reason",
+     "via",
+     "ingest_state"
+    ],
+    "title": "PullDryRunItem",
+    "type": "object"
+   },
+   "PullDryRunOut": {
+    "description": "What one sync would bring in under the previewed rules. Nothing was tracked.",
+    "properties": {
+     "already_tracked": {
+      "description": "Matching items the project already tracks (kept current by every sync); for `rule` mode, the items this attachment tracks.",
+      "title": "Already Tracked",
+      "type": "integer"
+     },
+     "candidate_cap": {
+      "description": "The most matching items a dry run looks at.",
+      "title": "Candidate Cap",
+      "type": "integer"
+     },
+     "candidates_considered": {
+      "description": "Matching items the dry run looked at (at most `candidate_cap`).",
+      "title": "Candidates Considered",
+      "type": "integer"
+     },
+     "caps": {
+      "$ref": "#/components/schemas/PullDryRunCaps",
+      "description": "Caps."
+     },
+     "est_cost_usd": {
+      "$ref": "#/components/schemas/PullDryRunCost",
+      "description": "Est cost usd."
+     },
+     "estimate_is_lower_bound": {
+      "description": "True when the matching count itself was capped, so more may come in.",
+      "title": "Estimate Is Lower Bound",
+      "type": "boolean"
+     },
+     "explain": {
+      "description": "How the filter, mode, caps and guidance combine.",
+      "items": {
+       "$ref": "#/components/schemas/PullExplainStep"
+      },
+      "title": "Explain",
+      "type": "array"
+     },
+     "initial_pass": {
+      "description": "True when the next picker pass is the source's first (larger budget).",
+      "title": "Initial Pass",
+      "type": "boolean"
+     },
+     "mode": {
+      "description": "What decides membership: `picker` (the source picker), `everything` (every match), `rule` (a Notion item's rule, whatever `pull_mode` says) or `window` (a calendar's date window).",
+      "enum": [
+       "picker",
+       "everything",
+       "rule",
+       "window"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The model the picker ran on.",
+      "title": "Model"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Anything that qualifies the result.",
+      "title": "Note"
+     },
+     "passed_over": {
+      "description": "Up to `sample_size` items left out, with reasons.",
+      "items": {
+       "$ref": "#/components/schemas/PullDryRunItem"
+      },
+      "title": "Passed Over",
+      "type": "array"
+     },
+     "picked": {
+      "description": "Up to `sample_size` of the items a sync would take.",
+      "items": {
+       "$ref": "#/components/schemas/PullDryRunItem"
+      },
+      "title": "Picked",
+      "type": "array"
+     },
+     "picked_count": {
+      "description": "Items among those considered that a sync would take.",
+      "title": "Picked Count",
+      "type": "integer"
+     },
+     "pull_mode_applies": {
+      "description": "False when this source ignores `pull_mode` (`explain` says why).",
+      "title": "Pull Mode Applies",
+      "type": "boolean"
+     },
+     "syncs_needed": {
+      "description": "Syncs it would take to bring in the estimate under the per-sync caps (the ingest quota can stretch it across periods; `note` says so).",
+      "title": "Syncs Needed",
+      "type": "integer"
+     },
+     "would_pick_estimate": {
+      "description": "Items the rules would bring in across all matching items, projected from the ones considered.",
+      "title": "Would Pick Estimate",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "mode",
+     "pull_mode_applies",
+     "initial_pass",
+     "candidates_considered",
+     "candidate_cap",
+     "already_tracked",
+     "picked_count",
+     "would_pick_estimate",
+     "estimate_is_lower_bound",
+     "syncs_needed",
+     "caps",
+     "est_cost_usd"
+    ],
+    "title": "PullDryRunOut",
+    "type": "object"
+   },
+   "PullExplainStep": {
+    "description": "One step of how a source's items reach Knowledge, in the order they happen.",
+    "properties": {
+     "applies": {
+      "description": "Whether the step acts on this source.",
+      "title": "Applies",
+      "type": "boolean"
+     },
+     "count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The number this step leaves, where it has one.",
+      "title": "Count"
+     },
+     "detail": {
+      "description": "What the step does for this source, in a sentence or two.",
+      "title": "Detail",
+      "type": "string"
+     },
+     "key": {
+      "description": "Which step: the provider filter, the pull mode, the per-sync caps, the guidance, or a history import.",
+      "enum": [
+       "filter",
+       "mode",
+       "caps",
+       "guidance",
+       "history_import"
+      ],
+      "title": "Key",
+      "type": "string"
+     },
+     "label": {
+      "description": "A short name for the step.",
+      "title": "Label",
+      "type": "string"
+     },
+     "used_by": {
+      "description": "For guidance: which stages read it (the picker only in `agent` mode).",
+      "items": {
+       "enum": [
+        "picker",
+        "compiler"
+       ],
+       "type": "string"
+      },
+      "title": "Used By",
+      "type": "array"
+     }
+    },
+    "required": [
+     "key",
+     "label",
+     "detail",
+     "applies"
+    ],
+    "title": "PullExplainStep",
+    "type": "object"
+   },
    "RevisionOut": {
     "description": "Response model for canvas revisions.",
     "properties": {
@@ -4327,6 +5316,384 @@
      "data"
     ],
     "title": "RevisionOutPage",
+    "type": "object"
+   },
+   "RulesPreviewGroup": {
+    "description": "The count for one container inside the source (e.g. a database under a Notion page).",
+    "properties": {
+     "count": {
+      "description": "Count.",
+      "title": "Count",
+      "type": "integer"
+     },
+     "count_capped": {
+      "default": false,
+      "description": "Count capped.",
+      "title": "Count Capped",
+      "type": "boolean"
+     },
+     "excluded_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Why this container was left out (a rule excludes it, or the default filter cannot apply to it); its count is then 0.",
+      "title": "Excluded Reason"
+     },
+     "id": {
+      "description": "Unique id of this rules preview group.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Name of the rules preview group.",
+      "title": "Name"
+     }
+    },
+    "required": [
+     "id",
+     "count"
+    ],
+    "title": "RulesPreviewGroup",
+    "type": "object"
+   },
+   "RulesPreviewIn": {
+    "description": "Preview an attached source's rules before saving them.\n\nLeave ``source_query`` out to preview the saved query; send an object to\npreview a candidate, or null to preview no query. ``guidance`` works the\nsame way for the dry run.",
+    "properties": {
+     "dry_run_pick": {
+      "default": false,
+      "description": "Also show what a sync would bring in under these rules (`dry_run` in the answer): with `pull_mode` `agent`, Beakr's source picker judges up to 200 of the matching items, as a sync's picker would, and says why it picks or passes over each; with `all`, the items in the order a sync takes them. Nothing is tracked or ingested. A dry run that asks the picker costs a model call; at most 10 of those per person per hour (`429` after that).",
+      "title": "Dry Run Pick",
+      "type": "boolean"
+     },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Candidate guidance for the dry run's picker. Leave it out to use the saved guidance; send null or an empty string to preview none.",
+      "title": "Guidance"
+     },
+     "pull_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "agent",
+         "all"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode"
+     },
+     "sample_size": {
+      "default": 10,
+      "description": "How many picked and passed-over items `dry_run` lists (1-50).",
+      "maximum": 50.0,
+      "minimum": 1.0,
+      "title": "Sample Size",
+      "type": "integer"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
+     }
+    },
+    "title": "RulesPreviewIn",
+    "type": "object"
+   },
+   "RulesPreviewItemIn": {
+    "description": "Preview rules for an item before attaching it (the source picker).",
+    "properties": {
+     "connector_id": {
+      "anyOf": [
+       {
+        "format": "uuid",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Id of the connector.",
+      "title": "Connector Id"
+     },
+     "dry_run_pick": {
+      "default": false,
+      "description": "Also show what a sync would bring in under these rules (`dry_run` in the answer): with `pull_mode` `agent`, Beakr's source picker judges up to 200 of the matching items, as a sync's picker would, and says why it picks or passes over each; with `all`, the items in the order a sync takes them. Nothing is tracked or ingested. A dry run that asks the picker costs a model call; at most 10 of those per person per hour (`429` after that).",
+      "title": "Dry Run Pick",
+      "type": "boolean"
+     },
+     "external_item_id": {
+      "description": "Id of the external item.",
+      "title": "External Item Id",
+      "type": "string"
+     },
+     "external_item_type": {
+      "description": "Type of the item in the external system.",
+      "title": "External Item Type",
+      "type": "string"
+     },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Guidance for the dry run's picker (none when left out).",
+      "title": "Guidance"
+     },
+     "provider": {
+      "description": "The service it comes from.",
+      "title": "Provider",
+      "type": "string"
+     },
+     "pull_mode": {
+      "anyOf": [
+       {
+        "enum": [
+         "agent",
+         "all"
+        ],
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode"
+     },
+     "sample_size": {
+      "default": 10,
+      "description": "How many picked and passed-over items `dry_run` lists (1-50).",
+      "maximum": 50.0,
+      "minimum": 1.0,
+      "title": "Sample Size",
+      "type": "integer"
+     },
+     "scope_mode": {
+      "default": "item",
+      "description": "Scope mode: one of `item`, `all`.",
+      "enum": [
+       "item",
+       "all"
+      ],
+      "title": "Scope Mode",
+      "type": "string"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A provider-native query applied when the provider is asked for items, never a filter over a full listing, and ANDed with the attached scope so it can only narrow it. Exactly one key, matching the source's provider: `drive_q` (Google Drive q), `notion_filter` or `notion_view` (Notion database), `notion_page` (per-database rules under a Notion page), `gmail_q` (Gmail search), `outlook_filter` (OData $filter) or `outlook_search` (KQL $search) for Outlook mail, `jql` (Jira), `cql` (Confluence), `linear_filter` (Linear issue filter object), `github_q` (GitHub issue and pull request qualifiers), and the structured `slack_filter`, `teams_filter`, `files_filter` (OneDrive, SharePoint, Box, Dropbox), `calendar_filter` (Google and Outlook calendars) and `granola_filter`. Items that stop matching leave the source on the next sync. Null means no query. At most 4096 bytes as JSON.",
+      "title": "Source Query"
+     }
+    },
+    "required": [
+     "provider",
+     "external_item_type",
+     "external_item_id"
+    ],
+    "title": "RulesPreviewItemIn",
+    "type": "object"
+   },
+   "RulesPreviewOut": {
+    "description": "What a source's rules keep, counted by the connector's own fetch.",
+    "properties": {
+     "breakdown": {
+      "description": "Per-container counts where the source has them (each database under a Notion page); empty otherwise.",
+      "items": {
+       "$ref": "#/components/schemas/RulesPreviewGroup"
+      },
+      "title": "Breakdown",
+      "type": "array"
+     },
+     "count": {
+      "description": "How many items the fetch returned under the rules.",
+      "title": "Count",
+      "type": "integer"
+     },
+     "count_capped": {
+      "description": "True when the fetch stopped at `limit`: at least `count` items match.",
+      "title": "Count Capped",
+      "type": "boolean"
+     },
+     "dry_run": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PullDryRunOut"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What a sync would bring in under these rules; present only when the request set `dry_run_pick`."
+     },
+     "limit": {
+      "description": "The most items the preview fetches.",
+      "title": "Limit",
+      "type": "integer"
+     },
+     "message": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The provider's reason for a rejection.",
+      "title": "Message"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What the count covers, e.g. a calendar's date window or a recent window.",
+      "title": "Note"
+     },
+     "provider_status": {
+      "default": "ok",
+      "description": "`rejected` when the provider refused the query; `message` says why. A rejected query cannot sync.",
+      "enum": [
+       "ok",
+       "rejected"
+      ],
+      "title": "Provider Status",
+      "type": "string"
+     },
+     "pull_mode": {
+      "default": "agent",
+      "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
+      "title": "Pull Mode",
+      "type": "string"
+     },
+     "sample": {
+      "description": "Up to ten of the matching items.",
+      "items": {
+       "$ref": "#/components/schemas/RulesPreviewSample"
+      },
+      "title": "Sample",
+      "type": "array"
+     },
+     "source_query": {
+      "anyOf": [
+       {
+        "additionalProperties": true,
+        "type": "object"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The query that was previewed (saved or candidate).",
+      "title": "Source Query"
+     }
+    },
+    "required": [
+     "count",
+     "count_capped",
+     "limit"
+    ],
+    "title": "RulesPreviewOut",
+    "type": "object"
+   },
+   "RulesPreviewSample": {
+    "description": "One item the previewed rules keep.",
+    "properties": {
+     "date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the item last changed or was sent (ISO 8601), when the provider says; null otherwise.",
+      "title": "Date"
+     },
+     "id": {
+      "description": "Unique id of this rules preview sample.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Name of the rules preview sample.",
+      "title": "Name"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Its URL.",
+      "title": "Url"
+     }
+    },
+    "required": [
+     "id"
+    ],
+    "title": "RulesPreviewSample",
     "type": "object"
    },
    "SchedulePreviewRequest": {
@@ -4540,6 +5907,199 @@
     "title": "SourceOut",
     "type": "object"
    },
+   "SourceQueryKey": {
+    "description": "One source_query key and the sources that take it.",
+    "properties": {
+     "example": {
+      "description": "Example.",
+      "title": "Example"
+     },
+     "excluded_item_types": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Attachment item types that do not take the key.",
+      "title": "Excluded Item Types"
+     },
+     "fields": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The fields a structured filter takes.",
+      "title": "Fields"
+     },
+     "item_types": {
+      "anyOf": [
+       {
+        "items": {
+         "type": "string"
+        },
+        "type": "array"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Only these attachment item types take the key; null means any.",
+      "title": "Item Types"
+     },
+     "key": {
+      "description": "The key.",
+      "title": "Key",
+      "type": "string"
+     },
+     "kind": {
+      "description": "What kind of source query key this is. One of `text`, `object`, `structured`.",
+      "enum": [
+       "text",
+       "object",
+       "structured"
+      ],
+      "title": "Kind",
+      "type": "string"
+     },
+     "max_chars": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Max chars.",
+      "title": "Max Chars"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "An optional note.",
+      "title": "Note"
+     },
+     "providers": {
+      "description": "Providers.",
+      "items": {
+       "type": "string"
+      },
+      "title": "Providers",
+      "type": "array"
+     }
+    },
+    "required": [
+     "key",
+     "providers",
+     "kind"
+    ],
+    "title": "SourceQueryKey",
+    "type": "object"
+   },
+   "SourceQueryKeysOut": {
+    "description": "Every source_query key, for building a rules editor.",
+    "properties": {
+     "keys": {
+      "description": "Keys.",
+      "items": {
+       "$ref": "#/components/schemas/SourceQueryKey"
+      },
+      "title": "Keys",
+      "type": "array"
+     }
+    },
+    "required": [
+     "keys"
+    ],
+    "title": "SourceQueryKeysOut",
+    "type": "object"
+   },
+   "SourceSyncFile": {
+    "additionalProperties": true,
+    "properties": {
+     "name": {
+      "description": "Name of the source sync file.",
+      "title": "Name",
+      "type": "string"
+     },
+     "outcome": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "What happened to the item: ingested, skipped or failed.",
+      "title": "Outcome"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Why the item was skipped or failed, for a person to read.",
+      "title": "Reason"
+     },
+     "reason_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Stable code for the reason, e.g. file_too_large, blocked_file_type, no_export, export_failed, nothing_to_add, permission_denied, connection_expired, rate_limited.",
+      "title": "Reason Code"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "syncing, completed or failed. A skipped item is completed.",
+      "title": "Status"
+     }
+    },
+    "required": [
+     "name"
+    ],
+    "title": "SourceSyncFile",
+    "type": "object"
+   },
    "SourceSyncQueued": {
     "properties": {
      "job_id": {
@@ -4578,6 +6138,54 @@
      "status_url"
     ],
     "title": "SourceSyncQueued",
+    "type": "object"
+   },
+   "SourceSyncStatus": {
+    "properties": {
+     "files": {
+      "default": [],
+      "description": "The files.",
+      "items": {
+       "$ref": "#/components/schemas/SourceSyncFile"
+      },
+      "title": "Files",
+      "type": "array"
+     },
+     "files_completed": {
+      "description": "Files completed.",
+      "title": "Files Completed",
+      "type": "integer"
+     },
+     "files_failed": {
+      "description": "Files failed.",
+      "title": "Files Failed",
+      "type": "integer"
+     },
+     "files_total": {
+      "description": "Files total.",
+      "title": "Files Total",
+      "type": "integer"
+     },
+     "status": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Current status of the source sync status.",
+      "title": "Status"
+     }
+    },
+    "required": [
+     "files_total",
+     "files_completed",
+     "files_failed"
+    ],
+    "title": "SourceSyncStatus",
     "type": "object"
    },
    "UndoRunRequest": {
@@ -8309,6 +9917,65 @@
     "x-beakr-scope": "integrations:admin"
    }
   },
+  "/v1/integrations/source-query-keys": {
+   "get": {
+    "description": "Every source_query key: the providers and item types that take it, and its shape.\n\nFor clients that build a rules editor, instead of hard-coding which filter\neach provider takes. Static; ``db`` only authenticates the caller.",
+    "operationId": "list_source_query_keys_v1_integrations_source_query_keys_get",
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceQueryKeysOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Every source_query key: the providers and item types that take it, and its shape",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:read"
+   }
+  },
   "/v1/integrations/{connector_id}/coverage": {
    "get": {
     "description": "Items the sources hold, how many Knowledge read and compiled, and why the rest were not.",
@@ -11856,6 +13523,690 @@
     ],
     "x-beakr-replaces": "/v1/canvas/{canvas_id}/revisions/{revision_no}/content",
     "x-beakr-scope": "outputs:read"
+   }
+  },
+  "/v1/projects/{project_id}/sources": {
+   "get": {
+    "description": "List external sources attached to a project.\n\nReturns all external source attachments for the project, with access status\nindicating whether the current user can access each source.\n\nAccess status values:\n- accessible=True: User has a connection and can use this source\n- accessible=False, reason='not_connected': User needs to connect this integration",
+    "operationId": "list_project_sources_v1_projects__project_id__sources_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "description": "Opaque cursor from a previous page's `next_cursor`.",
+      "in": "query",
+      "name": "cursor",
+      "required": false,
+      "schema": {
+       "anyOf": [
+        {
+         "type": "string"
+        },
+        {
+         "type": "null"
+        }
+       ],
+       "description": "Opaque cursor from a previous page's `next_cursor`.",
+       "title": "Cursor"
+      }
+     },
+     {
+      "description": "Page size, 1 to 200.",
+      "in": "query",
+      "name": "limit",
+      "required": false,
+      "schema": {
+       "default": 50,
+       "description": "Page size, 1 to 200.",
+       "maximum": 200,
+       "minimum": 1,
+       "title": "Limit",
+       "type": "integer"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExternalSourceAttachmentPage"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "List external sources attached to a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "projects:read"
+   },
+   "post": {
+    "description": "Attach an external source to a project.\n\nRequires member access to the project. The attachment is a pointer to an\nexternal resource (e.g., a Notion database, Google Drive folder) that will\nbe used as context when querying or running workflows in this project.\n\nNote: The attachment doesn't grant access. Each user must have their own\nconnection to the provider and access to the specific resource.",
+    "operationId": "attach_source_to_project_v1_projects__project_id__sources_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ExternalSourceAttachmentCreate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "201": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExternalSourceAttachmentOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Attach an external source to a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:admin"
+   }
+  },
+  "/v1/projects/{project_id}/sources/rules/preview": {
+   "post": {
+    "description": "Count what rules would keep for an item before attaching it (the source picker).\n\nRuns the provider connector's own fetch, as the caller, on ``connector_id``\nor their connection for the provider. Same answer as the attached-source\npreview, including the ``dry_run_pick`` dry run (as the source's first sync).",
+    "operationId": "preview_item_rules_v1_projects__project_id__sources_rules_preview_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RulesPreviewItemIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RulesPreviewOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Count what rules would keep for an item before attaching it (the source picker)",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:read"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}": {
+   "delete": {
+    "description": "Remove an external source attachment from a project.\n\nRequires admin access to the project, or be the user who created the attachment.",
+    "operationId": "delete_project_source_v1_projects__project_id__sources__attachment_id__delete",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "204": {
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Remove an external source attachment from a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-destructive": true,
+    "x-beakr-scope": "integrations:admin"
+   },
+   "patch": {
+    "description": "Update an external source attachment on a project.",
+    "operationId": "update_project_source_v1_projects__project_id__sources__attachment_id__patch",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/ExternalSourceAttachmentUpdate"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ExternalSourceAttachmentOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Update an external source attachment on a project",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:admin"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}/rules/preview": {
+   "post": {
+    "description": "Count what a source's rules keep, before saving them.\n\nRuns the connector's own fetch with the query inside the provider call\n(the same fetch a sync runs) and answers how many items came back, whether\ncounting stopped early, a sample, per-container counts where the provider\nhas them, and whether the provider refused the query. Leave\n``source_query`` out to preview the saved query. Only the person who\nattached the source may preview, on its connection. A ``def`` route: the\nprovider fetch runs on a worker thread, never on the event loop.\n\nWith ``dry_run_pick`` the answer also carries ``dry_run``: what a sync\nwould bring in under these rules and why (the source picker's picks and\npasses with reasons in ``agent`` mode, every match in sync order in\n``all`` mode), the per-sync caps, how many syncs it takes, the model cost of\nthe preview and the estimated ingest cost, and an ``explain`` list of how\nfilter, mode, caps and guidance combine. Nothing is tracked or ingested. At\nmost 10 dry runs that ask the picker (a model call) per person per hour\n(429 after that).",
+    "operationId": "preview_project_source_rules_v1_projects__project_id__sources__attachment_id__rules_preview_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "requestBody": {
+     "content": {
+      "application/json": {
+       "schema": {
+        "$ref": "#/components/schemas/RulesPreviewIn"
+       }
+      }
+     },
+     "required": true
+    },
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/RulesPreviewOut"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Count what a source's rules keep, before saving them",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "integrations:read"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}/sync": {
+   "post": {
+    "description": "Trigger wiki ingestion for an attached external source.\n\nOnly the user who attached the source can trigger sync. Requires an\nactive connector for the provider.",
+    "operationId": "sync_project_source_v1_projects__project_id__sources__attachment_id__sync_post",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceSyncQueued"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Trigger wiki ingestion for an attached external source",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-job": {
+     "at": "",
+     "kind": "integration_sync"
+    },
+    "x-beakr-scope": "integrations:admin"
+   }
+  },
+  "/v1/projects/{project_id}/sources/{attachment_id}/sync-status": {
+   "get": {
+    "description": "Get sync progress for an external source attachment.\n\nReturns the parent sync job status and file-level progress from child jobs.",
+    "operationId": "get_sync_status_v1_projects__project_id__sources__attachment_id__sync_status_get",
+    "parameters": [
+     {
+      "in": "path",
+      "name": "project_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Project Id",
+       "type": "string"
+      }
+     },
+     {
+      "in": "path",
+      "name": "attachment_id",
+      "required": true,
+      "schema": {
+       "format": "uuid",
+       "title": "Attachment Id",
+       "type": "string"
+      }
+     }
+    ],
+    "responses": {
+     "200": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/SourceSyncStatus"
+        }
+       }
+      },
+      "description": "Successful Response"
+     },
+     "422": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Validation error: `error.details.errors` lists every failing field."
+     },
+     "4XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "The request was refused; `error.code` says why."
+     },
+     "5XX": {
+      "content": {
+       "application/json": {
+        "schema": {
+         "$ref": "#/components/schemas/ErrorEnvelope"
+        }
+       }
+      },
+      "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+     }
+    },
+    "security": [
+     {
+      "bearer": []
+     }
+    ],
+    "summary": "Get sync progress for an external source attachment",
+    "tags": [
+     "external-sources",
+     "public"
+    ],
+    "x-beakr-scope": "projects:read"
    }
   },
   "/v1/trace/{kind}/{item_id}": {

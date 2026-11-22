@@ -44,6 +44,7 @@ from beakr_cli.commands import (
     projects,
     runs,
     skills,
+    sources,
     usage,
     workflows,
 )
@@ -90,6 +91,7 @@ for _module in (
     hooks,
     activity,
     integrations,
+    sources,
     runs,
     workflows,
     outputs,

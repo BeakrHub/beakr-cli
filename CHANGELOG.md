@@ -8,6 +8,48 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Attach connected items to a project from the command line.** `beakr sources
+  attach <link> -P <project>` attaches a Notion page or database, a Google Drive
+  folder or file, or a Slack channel by its link (the id, type and provider come
+  from it), or any connected item by `<id> --provider --type --name`;
+  `--scope-mode all` attaches everything one connection reads (Beakr names it
+  *All <provider>*, so `--name` is refused there). `--knowledge`
+  builds Knowledge from it, `--auto-sync/--no-auto-sync` sets the nightly sync,
+  and `--sync` starts a sync once attached. The connection is the only one you
+  have for the provider, or `--connector ID` when you have several. A source's
+  integration rules, on `attach` and `edit`: `--query` (provider-native JSON:
+  `{"notion_filter": ...}` or `{"notion_view": ...}` for a Notion database,
+  `{"notion_page": {"default": ..., "databases": {...}}}` for a Notion page's
+  databases, `{"drive_q": ...}` for a Drive folder, and every other provider's
+  own key: `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr
+  sources keys` lists them from the engine and a key the provider does not
+  take is refused before sending), the shorthands `--drive-q`, `--gmail-q`, `--jql`, `--cql`
+  and `--github-q`, `--mode agent|all` (stored but not used for Notion item
+  sources, where the rule decides; the CLI says so) and `--guidance`, sent only
+  when given; `edit --clear-query` and `--clear-guidance` drop them. A Notion
+  link is looked up on your connection (the engine's `notion_metadata` tool), so
+  a database's own link attaches as a database and every Notion item, a saved
+  view's link included, is named by its title; when Notion cannot be asked the
+  link decides, and a database rule on a link that reads as a page says to pass
+  `--type database`. After a change to the query or mode, `edit` counts what the
+  saved rules match and warns when nothing would come in (no item matches,
+  every database under a page is left out, or the provider rejects the query;
+  `--no-check` skips it); a rule the engine refuses (422) says why and that
+  nothing was saved; and `edit` reports the source's latest sync, not
+  `sync=never` (piped, the count is a `matching=N` field). Attaching an item
+  the project already has exits 5 with *Already attached as <name> (<id>)* and
+  the `beakr sources edit` to change it, never advice to retry. `beakr sources preview`
+  counts what a source's saved or candidate query would pull, with up to 10
+  examples (each with when it last changed, where the engine says) and the provider's reason when it rejects the query (exit 1), and
+  `attach --preview` (`--dry-run`) does it before attaching.
+  `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change, detach,
+  sync and follow a project's sources; `ls` shows, for each database a Notion
+  source reads (by its title), how many rows matched at the last sync (and as of when), or
+  *N of M rows brought in* while follow-up syncs are still filling it in, and
+  says so when a project has no sources (piped too, as a `note:` line). Where
+  a project requires a person to approve what agents bring into Knowledge, an
+  agent's attach, edit or sync exits 6 and says to run it outside the agent
+  session.
 - **Stop queued work.** `beakr kb compiles ls -P <project>` counts the
   Knowledge compiles queued and running in a project, or for one source
   (`--source <id>` from `beakr sources ls`) or file (`--file <id>`), and shows
