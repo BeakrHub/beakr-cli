@@ -11,11 +11,42 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=d2fcc3967824224ba4bb81c79616a22d1b0a4a9fe4bb7bcd1280512be3cda407 changelog sha256=a581fea539f444efe1a0a021c5a05b20c9d2685c7d1bc4389e757e2d4f203b45 -->
+<!-- contract-stamp: public-openapi sha256=a06eaa17d014c136ff1f8375b1dd4d3fc3a27c063ee565cf1b3e7204e92fcfc3 changelog sha256=e07fa49882e2e1309b26e6f2b2767d5a764f42707a94afae816f572db455ed24 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A second upload to the same path adds a version to the file already there,
+  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
+  takes `on_existing`: `version` (the default) looks in the upload's folder for
+  a file with the name the upload would get (its `title`, else the last part of
+  `path`; exact, case-sensitive) and adds the upload to it as a new version,
+  which is indexed and compiled into Knowledge as a version added in the app
+  is, so the Knowledge built from the file is updated. With no such file, the
+  file is created as before. `new` always creates a separate file. The response
+  says which happened in `result` (`created`, `versioned`, `restored` when the
+  bytes match an earlier version, which becomes current again, or `unchanged`
+  when they match the current version and nothing is added) and gives
+  `version_no`. Identical bytes are recognized only when the upload was started
+  with `content_hash`. When nothing needed processing, `job_id` is the job that
+  processed that version earlier. Two or more files of that name in the folder
+  answer `409 ambiguous_path`, and a file the caller cannot change answers
+  `403 file_not_writable`; in both cases nothing is created and the upload stays
+  open, so it can be completed again with `on_existing: "new"`. Completions to the same
+  path at the same time are serialized, so they become versions of one file. The
+  same request takes `written_by_agent` (default false) to mark the upload as an
+  agent's work: the version records it, the response returns it, and a file the
+  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
+  agents treat it as an agent's output rather than a source. `title`,
+  `artifact_type`, `description` and `relative_path` apply only when the upload
+  creates a file. Uploads through `/v1/bulk` are unchanged. To add an upload to
+  a specific file whatever its name, send `artifact_id` on the same request: the
+  file must be an uploaded file in the upload's project (else `400
+  invalid_artifact`, and the upload stays open). `GET
+  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
+  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
+  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
+  `written_by_agent`. A file the caller cannot see answers `404`.
 - A project's open review flags can now become one interview.
   `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
   and `kb:read`) writes one plain-language key question per open review flag,
