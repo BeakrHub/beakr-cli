@@ -1,0 +1,137 @@
+$ beakr kb review options 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+[exit 0]
+--- stdout
+{
+  "proposal_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+  "section_id": "solubility",
+  "current_revision": 7,
+  "options": [
+    {
+      "id": "A",
+      "label": "Keep 12 mg/mL",
+      "summary": "Keep Run 14 and note Run 19 used a different buffer.",
+      "new_section_body": "<!-- sec:solubility -->\n## Solubility\n\nHX-07 dissolves at 12 mg/mL in PBS at pH 7.4 (Run 14); Run 19 measured 4 mg/mL in citrate buffer.\n"
+    },
+    {
+      "id": "B",
+      "label": "Adopt 4 mg/mL",
+      "summary": "Adopt Run 19, the later measurement.",
+      "new_section_body": "<!-- sec:solubility -->\n## Solubility\n\nHX-07 dissolves at 4 mg/mL (Run 19).\n",
+      "edits": [
+        {
+          "old_text": "12 mg/mL in PBS at pH 7.4 (Run 14)",
+          "new_text": "4 mg/mL (Run 19)"
+        }
+      ]
+    }
+  ],
+  "cached": true,
+  "no_draft_reason": null,
+  "flag": {
+    "proposal_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+    "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "page_title": "Helios HX-07 Solubility Card",
+    "section_id": "solubility",
+    "anchor": "section",
+    "section_kind": "text",
+    "section_title": "Solubility",
+    "section_content": "<!-- sec:solubility -->\n## Solubility\n\nHX-07 dissolves at 12 mg/mL in PBS at pH 7.4 (Run 14).\n",
+    "reason": "Run 19 measured 4 mg/mL where the card states 12 mg/mL.",
+    "agent_reasoning": "The runs used different buffers; could not tell which applies.",
+    "flagged_revision": 6,
+    "current_revision": 7,
+    "is_stale": false,
+    "conflict_kind": "contradiction",
+    "kind": "contradiction",
+    "sources": [
+      {
+        "source_type": "artifact",
+        "source_id": "6e9422f6-04ea-41a2-87c1-d41ed1f62713",
+        "source_title": "Run 14 solubility sheet",
+        "stance": "support"
+      },
+      {
+        "source_type": "artifact",
+        "source_id": "7f1a3b52-8c4d-4e6f-9a01-2b3c4d5e6f70",
+        "source_title": "Run 19 solubility sheet",
+        "stance": "contradicts"
+      }
+    ],
+    "contradicting_sources": [
+      {
+        "source_type": "artifact",
+        "source_id": "7f1a3b52-8c4d-4e6f-9a01-2b3c4d5e6f70",
+        "source_title": "Run 19 solubility sheet",
+        "stance": "contradicts"
+      }
+    ],
+    "supporting_sources": [
+      {
+        "source_type": "artifact",
+        "source_id": "6e9422f6-04ea-41a2-87c1-d41ed1f62713",
+        "source_title": "Run 14 solubility sheet",
+        "stance": "support"
+      }
+    ]
+  }
+}
+--- stderr
+
+
+$ beakr kb review options 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+[exit 0]
+--- stdout
+Review flag 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+Page: Helios HX-07 Solubility Card
+Section: Solubility
+Why flagged: Run 19 measured 4 mg/mL where the card states 12 mg/mL.
+Page revision: 7
+
+1. Option A: Keep 12 mg/mL
+   Keep Run 14 and note Run 19 used a different buffer.
+   New section text:
+     <!-- sec:solubility -->
+     ## Solubility
+     
+     HX-07 dissolves at 12 mg/mL in PBS at pH 7.4 (Run 14); Run 19 measured 4 mg/mL in citrate buffer.
+2. Option B: Adopt 4 mg/mL
+   Adopt Run 19, the later measurement.
+   - replace: 12 mg/mL in PBS at pH 7.4 (Run 14)
+     with:    4 mg/mL (Run 19)
+
+Apply one with `beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --option <number>`.
+Or write the section yourself: `beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --edit`.
+--- stderr
+Drafting options (up to two minutes the first time)...
+
+$ beakr kb review options 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+[exit 0]
+--- stdout
+Review flag 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+Page: Helios HX-07 Solubility Card
+Section: Solubility
+Why flagged: Run 19 measured 4 mg/mL where the card states 12 mg/mL.
+Page revision: 7
+
+1. Option A: Keep 12 mg/mL
+   Keep Run 14 and note Run 19 used a different buffer.
+   New section text:
+     <!-- sec:solubility -->
+     ## Solubility
+     
+     HX-07 dissolves at 12 mg/mL in PBS at pH 7.4 (Run 14); Run 19 measured 4 mg/mL in citrate buffer.
+2. Option B: Adopt 4 mg/mL
+   Adopt Run 19, the later measurement.
+   - replace: 12 mg/mL in PBS at pH 7.4 (Run 14)
+     with:    4 mg/mL (Run 19)
+
+Apply one with `beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --option <number>`.
+Or write the section yourself: `beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --edit`.
+--- stderr
+

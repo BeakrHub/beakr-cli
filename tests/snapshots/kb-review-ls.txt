@@ -1,0 +1,50 @@
+$ beakr kb review ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
+> GET /v1/knowledge/wiki/proposals?limit=200&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&status=pending
+[exit 0]
+--- stdout
+[
+  {
+    "created_at": "2026-10-02T08:15:00Z",
+    "filed_by": {
+      "user_id": null,
+      "user_name": null,
+      "credential": null,
+      "client": null,
+      "agent": null,
+      "run": null,
+      "text": "filed by Beakr (health)"
+    },
+    "id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+    "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+    "page_title": "Helios HX-07 Solubility Card",
+    "payload": {},
+    "project_id": "4dd25154-0d80-44ab-b4c2-167319bfacb4",
+    "proposal_type": "review",
+    "source": "agent",
+    "status": "pending",
+    "summary": "Run 19 measured 4 mg/mL where the card states 12 mg/mL."
+  }
+]
+--- stderr
+
+
+$ beakr kb review ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/proposals?limit=200&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&status=pending
+[exit 0]
+--- stdout
+Review flags
+┏━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ID       ┃ Page                         ┃ Why flagged                                            ┃
+┡━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│5f0c2d1e │ Helios HX-07 Solubility Card │ Run 19 measured 4 mg/mL where the card states 12 mg/mL.│
+└─────────┴──────────────────────────────┴────────────────────────────────────────────────────────┘
+--- stderr
+See a flag's options with `beakr kb review options <id>`.
+
+$ beakr kb review ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4
+> GET /v1/knowledge/wiki/proposals?limit=200&project_id=4dd25154-0d80-44ab-b4c2-167319bfacb4&status=pending
+[exit 0]
+--- stdout
+5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f	page=Helios HX-07 Solubility Card	Run 19 measured 4 mg/mL where the card states 12 mg/mL.
+--- stderr
+

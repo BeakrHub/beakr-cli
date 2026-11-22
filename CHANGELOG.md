@@ -8,6 +8,21 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Resolve a review flag from the command line and over MCP.** `beakr kb
+  review ls` lists pending review flags; `beakr kb review options <id>` shows a
+  flag and Beakr's drafted resolutions, numbered, with what each changes (the
+  first call for a page revision drafts them, up to two minutes; later ones
+  return the same options at once); `beakr kb review resolve <id>` applies one:
+  `--option N` (a drafted option: a section rewrite, or a row change on a
+  card's Facts or Connections table, whichever it is), `--edit` (the flagged
+  section in `$EDITOR`), `--body FILE` (`-` for stdin) or `--outcome` (a
+  contradiction between cards' rows, settled on every card it lists). The page
+  revision is read and pinned automatically (or `--revision`): a page that
+  changed since, or options drafted by the resolve itself and so never shown,
+  exit 5 with nothing applied and say to run `options` again. Where a person
+  must accept proposals a key or token is refused (exit 6), as for `kb
+  proposals accept`. The stdio MCP server has the same two tools as the hosted
+  one, `review_options` and `resolve_review`.
 - **Attach connected items to a project from the command line.** `beakr sources
   attach <link> -P <project>` attaches a Notion page or database, a Google Drive
   folder or file, or a Slack channel by its link (the id, type and provider come
@@ -149,6 +164,34 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A review flag (a proposal of type `review`: a section Knowledge flagged as
+  contradicted, unverifiable or unclear) can be resolved through the API, not
+  only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`
+  (`kb:read`) reads the flag: the section and its current text, why it was
+  flagged, the sources on each side and the page's `current_revision`.
+  `POST .../resolutions` (`kb:write`) drafts up to a few resolutions, each with
+  what it changes; they are kept for the page revision they were drafted
+  against, so asking again returns them at once (`cached: true`). Apply one with
+  `POST .../resolve` (a section rewrite: `section_id`, `new_section_body`,
+  `expected_revision`), `POST .../resolve-rows` (a drafted row operation on a
+  card's Facts or Connections table: `option_id`, `expected_revision`) or
+  `POST .../resolve-cards` (one `outcome` on every card a contradiction review
+  lists); all three need `kb:write`. A page that changed since
+  `expected_revision` answers `409` and nothing is applied. Applying is refused
+  with `403 person_review_required` where a person must accept proposals,
+  unless the key holds `proposals:accept`, as for accepting; drafting is not. A
+  key restricted to projects reaches only flags in its projects (another
+  project's flag answers `404`), and a flag that is no longer pending answers
+  `400`.
+- A card type's field can say what to record under it. Each item of `fields`
+  takes an optional `description` (up to 300 characters) on
+  `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
+  `POST /v1/projects`: what counts under that name, or that there is one row for
+  each of several things (for example "one row per run, with its run number and
+  result"). Beakr follows it when it files Facts rows under that field. It is
+  returned in the type's `metadata_schema.attribute_notes`, a map of field name
+  to text holding only the fields given one. A field sent without `description`
+  has none.
 - Queued Knowledge work can be cancelled, to stop paying for it.
   `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
   cancels every queued compile in the project, or one source's: give
