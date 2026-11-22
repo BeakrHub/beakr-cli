@@ -80,6 +80,13 @@ def upload_command(
         "Knowledge built from it; 'new' always creates a separate file.",
         callback=_on_existing_choice,
     ),
+    version_of: str | None = typer.Option(
+        None,
+        "--version-of",
+        metavar="FILE_ID",
+        help="Add the upload as a new version of this file (same project), whatever the "
+        "upload is called. One file only.",
+    ),
     written_by_agent: bool = typer.Option(
         False,
         "--written-by-agent",
@@ -135,7 +142,9 @@ def upload_command(
             err_console.print("--resume takes exactly one file: the one that was interrupted.")
             raise typer.Exit(2)
         with get_sdk(timeout=300.0) as sdk:
-            placement = _placement_options(sdk.files.resume_upload, on_existing, written_by_agent)
+            placement = _placement_options(
+                sdk.files.resume_upload, on_existing, written_by_agent, version_of
+            )
             err_console.print(f"Resuming upload {resume} of {paths[0]}...", markup=False)
             resumed = sdk.files.resume_upload(resume, paths[0], **placement)
         emit(
@@ -148,6 +157,9 @@ def upload_command(
             ),
         )
         return
+    if version_of is not None and (len(paths) != 1 or not paths[0].is_file()):
+        err_console.print("--version-of takes exactly one file: the new version's bytes.")
+        raise typer.Exit(2)
     project_id = resolve_project(project)
     for path in paths:
         if not path.exists():
@@ -161,7 +173,7 @@ def upload_command(
 
     results: list[dict[str, Any]] = []
     with get_sdk(timeout=300.0) as sdk:
-        placement = _placement_options(sdk.files.upload, on_existing, written_by_agent)
+        placement = _placement_options(sdk.files.upload, on_existing, written_by_agent, version_of)
         if placement and any(path.is_dir() for path in paths):
             _placement_options(sdk.files.upload_folder, on_existing, written_by_agent)
         for path in paths:
@@ -289,9 +301,12 @@ def upload_command(
 
 
 def _placement_options(
-    method: Callable[..., Any], on_existing: str | None, written_by_agent: bool
+    method: Callable[..., Any],
+    on_existing: str | None,
+    written_by_agent: bool,
+    version_of: str | None = None,
 ) -> dict[str, Any]:
-    """The keyword arguments --on-existing and --written-by-agent add to an SDK upload.
+    """The keyword arguments --on-existing, --written-by-agent and --version-of add.
 
     Only what was asked for: with neither flag nothing is added, and the server
     versions a file at the same path by default. An installed beakr-sdk that
@@ -302,6 +317,8 @@ def _placement_options(
         options["on_existing"] = on_existing
     if written_by_agent:
         options["written_by_agent"] = True
+    if version_of is not None:
+        options["version_of"] = version_of
     if options:
         accepted = inspect.signature(method).parameters
         unsupported = [name for name in options if name not in accepted]

@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ab6c8539dedacfb85ce3d1a3585ae152b30e5b561885bc2074efcf534ff836da changelog sha256=acb8b4ea6eba77a720db9f68c1ed0d4b9f89d639b94e29d22448098067a15595 -->
+<!-- contract-stamp: public-openapi sha256=ee635e6efdc6df685fd6b475f51d106837784fcda28c1b63e758db7818b954f1 changelog sha256=52d1bd24c60a4368ffe8b32edeb0c54872a698fc69048c34d374a67e7fdfe666 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -39,7 +39,14 @@ The first public version.
   upload creates is marked as written by Beakr (`is_ai_generated`), so search and
   agents treat it as an agent's output rather than a source. `title`,
   `artifact_type`, `description` and `relative_path` apply only when the upload
-  creates a file. Uploads through `/v1/bulk` are unchanged.
+  creates a file. Uploads through `/v1/bulk` are unchanged. To add an upload to
+  a specific file whatever its name, send `artifact_id` on the same request: the
+  file must be an uploaded file in the upload's project (else `400
+  invalid_artifact`, and the upload stays open). `GET
+  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
+  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
+  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
+  `written_by_agent`. A file the caller cannot see answers `404`.
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still

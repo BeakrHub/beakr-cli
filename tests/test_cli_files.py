@@ -323,13 +323,12 @@ class _PlacementSDK:
                     ingest=True,
                     on_existing=None,
                     written_by_agent=None,
+                    version_of=None,
                 ):
-                    outer.calls.append(
-                        (
-                            "upload",
-                            {"on_existing": on_existing, "written_by_agent": written_by_agent},
-                        )
-                    )
+                    recorded = {"on_existing": on_existing, "written_by_agent": written_by_agent}
+                    if version_of is not None:
+                        recorded["version_of"] = version_of
+                    outer.calls.append(("upload", recorded))
                     return dict(answer)
 
                 def upload_folder(
@@ -494,3 +493,22 @@ def test_the_default_upload_sends_neither_option_on_complete(tmp_path):
     assert result.exit_code == 0, result.output
     body = json.loads(routes["complete"].calls[0].request.content)
     assert "on_existing" not in body and "written_by_agent" not in body
+
+
+def test_version_of_names_the_file_and_takes_one_file(tmp_path, monkeypatch):
+    sdk = _PlacementSDK(supports=True)
+    _with_sdk(monkeypatch, sdk)
+    path = tmp_path / "q3-final.pdf"
+    path.write_bytes(b"%PDF")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "-P", "p1", "--version-of", "a7"])
+
+    assert result.exit_code == 0, result.output
+    assert sdk.calls == [
+        ("upload", {"on_existing": None, "written_by_agent": None, "version_of": "a7"})
+    ]
+    two = CliRunner().invoke(
+        app, ["upload", str(path), str(path), "-P", "p1", "--version-of", "a7"]
+    )
+    assert two.exit_code == 2
+    assert "exactly one file" in two.output

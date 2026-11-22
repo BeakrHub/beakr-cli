@@ -12,9 +12,11 @@ Each release lists the public API changes it supports, taken from the API change
   to a folder that already holds a file with the same name now adds a version
   to that file (the server's default), and the output says so (`new version
   N`; `result=` and `version=` in the plain lines). `--on-existing new` always
-  creates a separate file, and `--written-by-agent` marks the upload as an
-  agent's work. Both need a beakr-sdk with these options; with an older one the
-  command stops before uploading and says to upgrade.
+  creates a separate file, `--version-of FILE_ID` adds the upload to that one
+  file whatever it is called, and `--written-by-agent` marks the upload as an
+  agent's work. These need a beakr-sdk with the options; with an older one the
+  command stops before uploading and says to upgrade. `beakr files versions`
+  now reads the documented versions list.
 - **Attach connected items to a project from the command line.** `beakr sources
   attach <link> -P <project>` attaches a Notion page or database, a Google Drive
   folder or file, or a Slack channel by its link (the id, type and provider come
@@ -179,7 +181,14 @@ Each release lists the public API changes it supports, taken from the API change
   upload creates is marked as written by Beakr (`is_ai_generated`), so search and
   agents treat it as an agent's output rather than a source. `title`,
   `artifact_type`, `description` and `relative_path` apply only when the upload
-  creates a file. Uploads through `/v1/bulk` are unchanged.
+  creates a file. Uploads through `/v1/bulk` are unchanged. To add an upload to
+  a specific file whatever its name, send `artifact_id` on the same request: the
+  file must be an uploaded file in the upload's project (else `400
+  invalid_artifact`, and the upload stays open). `GET
+  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
+  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
+  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
+  `written_by_agent`. A file the caller cannot see answers `404`.
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still

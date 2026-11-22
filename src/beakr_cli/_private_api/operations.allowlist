@@ -15,9 +15,6 @@
 # Sign-in: the OAuth issuer the CLI signs in with (beakr auth login).
 GET /v1/auth/config
 
-# Files: a file's versions (beakr files versions).
-GET /v1/artifacts/{artifact_id}/versions
-
 # Conversations: full-text settings and freshness of an imported session.
 GET /v1/conversations/settings
 PUT /v1/conversations/settings
