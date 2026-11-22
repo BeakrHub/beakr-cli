@@ -8,6 +8,13 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **`beakr upload` adds a version to a file already at the path.** Uploading
+  to a folder that already holds a file with the same name now adds a version
+  to that file (the server's default), and the output says so (`new version
+  N`; `result=` and `version=` in the plain lines). `--on-existing new` always
+  creates a separate file, and `--written-by-agent` marks the upload as an
+  agent's work. Both need a beakr-sdk with these options; with an older one the
+  command stops before uploading and says to upgrade.
 - **Attach connected items to a project from the command line.** `beakr sources
   attach <link> -P <project>` attaches a Notion page or database, a Google Drive
   folder or file, or a Slack channel by its link (the id, type and provider come
@@ -149,6 +156,49 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A second upload to the same path adds a version to the file already there,
+  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
+  takes `on_existing`: `version` (the default) looks in the upload's folder for
+  a file with the name the upload would get (its `title`, else the last part of
+  `path`; exact, case-sensitive) and adds the upload to it as a new version,
+  which is indexed and compiled into Knowledge as a version added in the app
+  is, so the Knowledge built from the file is updated. With no such file, the
+  file is created as before. `new` always creates a separate file. The response
+  says which happened in `result` (`created`, `versioned`, `restored` when the
+  bytes match an earlier version, which becomes current again, or `unchanged`
+  when they match the current version and nothing is added) and gives
+  `version_no`. Identical bytes are recognized only when the upload was started
+  with `content_hash`. When nothing needed processing, `job_id` is the job that
+  processed that version earlier. Two or more files of that name in the folder
+  answer `409 ambiguous_path`, and a file the caller cannot change answers
+  `403 file_not_writable`; in both cases nothing is created and the upload stays
+  open, so it can be completed again with `on_existing: "new"`. Completions to the same
+  path at the same time are serialized, so they become versions of one file. The
+  same request takes `written_by_agent` (default false) to mark the upload as an
+  agent's work: the version records it, the response returns it, and a file the
+  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
+  agents treat it as an agent's output rather than a source. `title`,
+  `artifact_type`, `description` and `relative_path` apply only when the upload
+  creates a file. Uploads through `/v1/bulk` are unchanged.
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
+- A card type's field can say what to record under it. Each item of `fields`
+  takes an optional `description` (up to 300 characters) on
+  `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
+  `POST /v1/projects`: what counts under that name, or that there is one row for
+  each of several things (for example "one row per run, with its run number and
+  result"). Beakr follows it when it files Facts rows under that field. It is
+  returned in the type's `metadata_schema.attribute_notes`, a map of field name
+  to text holding only the fields given one. A field sent without `description`
+  has none.
 - Queued Knowledge work can be cancelled, to stop paying for it.
   `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
   cancels every queued compile in the project, or one source's: give

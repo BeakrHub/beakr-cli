@@ -11923,9 +11923,125 @@
         "title": "PrincipalType",
         "type": "string"
       },
+      "ProfileTypeMatch": {
+        "properties": {
+          "name": {
+            "description": "The kind of thing as the profile names it.",
+            "title": "Name",
+            "type": "string"
+          },
+          "page_type": {
+            "description": "The key of the existing type that covers it.",
+            "title": "Page Type",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why that type covers it; may be empty.",
+            "title": "Reason",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Where that type is defined: `global` (built-in), `org` or `project`.",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "page_type",
+          "scope",
+          "reason"
+        ],
+        "title": "ProfileTypeMatch",
+        "type": "object"
+      },
+      "ProfileTypeSkipped": {
+        "properties": {
+          "name": {
+            "description": "The kind of thing as the profile names it.",
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why no type was made for it.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "reason"
+        ],
+        "title": "ProfileTypeSkipped",
+        "type": "object"
+      },
+      "ProfileTypesOutcome": {
+        "description": "What Beakr did with the kinds of thing a project's profile names.",
+        "properties": {
+          "made": {
+            "description": "Keys of the types it created.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Made",
+            "type": "array"
+          },
+          "matched": {
+            "description": "Names an existing type already covers; no separate type was made.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileTypeMatch"
+            },
+            "title": "Matched",
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Names that got no type, and why.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileTypeSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "suggested": {
+            "description": "Keys kept as suggestions, in a project whose types only people change (`agent_may_change` false).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested",
+            "type": "array"
+          },
+          "working": {
+            "description": "Whether Beakr is still defining types from the profile; the lists may change.",
+            "title": "Working",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "working",
+          "made",
+          "matched",
+          "suggested",
+          "skipped"
+        ],
+        "title": "ProfileTypesOutcome",
+        "type": "object"
+      },
       "ProjectCardTypeFieldIn": {
         "description": "One field of a card type defined with a new project.",
         "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.",
+            "title": "Description"
+          },
           "name": {
             "description": "The Attribute name.",
             "maxLength": 120,
@@ -17621,7 +17737,9 @@
         "examples": [
           {
             "artifact_type": "protocol",
-            "title": "protocol.pdf"
+            "on_existing": "version",
+            "title": "protocol.pdf",
+            "written_by_agent": false
           }
         ],
         "properties": {
@@ -17641,6 +17759,16 @@
             ],
             "description": "Description of the upload complete, in plain text.",
             "title": "Description"
+          },
+          "on_existing": {
+            "default": "version",
+            "description": "What to do when the upload's folder already holds a file with the name this file would get (`title`, else the last part of `path`; exact, case-sensitive match). `version` (the default) adds this upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. `new` always creates a separate file.",
+            "enum": [
+              "version",
+              "new"
+            ],
+            "title": "On Existing",
+            "type": "string"
           },
           "parts": {
             "anyOf": [
@@ -17684,6 +17812,12 @@
             ],
             "description": "Defaults to the file name",
             "title": "Title"
+          },
+          "written_by_agent": {
+            "default": false,
+            "description": "Mark this upload as written by an agent rather than a person. The mark is kept on the version this upload creates; when the upload creates the file, the file is also marked as Beakr-written (`is_ai_generated`), so search and agents treat it as an agent's output rather than a source.",
+            "title": "Written By Agent",
+            "type": "boolean"
           }
         },
         "title": "UploadCompleteRequest",
@@ -17704,6 +17838,7 @@
             "batch_status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
             "folders": [],
             "job_id": "a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
+            "result": "versioned",
             "status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
             "upload": {
               "artifact_id": "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
@@ -17719,7 +17854,9 @@
               "path": "protocol.pdf",
               "project_id": "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d",
               "status": "completed"
-            }
+            },
+            "version_no": 2,
+            "written_by_agent": false
           }
         ],
         "properties": {
@@ -17741,12 +17878,24 @@
             "type": "array"
           },
           "job_id": {
-            "description": "The new file's processing job (kind artifact_index in GET /v1/jobs)",
+            "description": "The file's processing job (kind artifact_index in GET /v1/jobs). When `result` is `unchanged` and nothing needed processing, the job that processed that version earlier.",
             "examples": [
               "a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63"
             ],
             "format": "uuid",
             "title": "Job Id",
+            "type": "string"
+          },
+          "result": {
+            "default": "created",
+            "description": "`created`: a new file. `versioned`: a new version of the file already at this path (`artifact.id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again; no version is added. `unchanged`: the bytes match the file's current version; no version is added. Detecting identical bytes needs `content_hash` on the upload; without it, identical bytes are added as a new version.",
+            "enum": [
+              "created",
+              "versioned",
+              "restored",
+              "unchanged"
+            ],
+            "title": "Result",
             "type": "string"
           },
           "status_url": {
@@ -17757,6 +17906,18 @@
           "upload": {
             "$ref": "#/components/schemas/UploadSessionOut",
             "description": "The finished upload session."
+          },
+          "version_no": {
+            "default": 1,
+            "description": "The number of `artifact.version_id` within its file (1 = first)",
+            "title": "Version No",
+            "type": "integer"
+          },
+          "written_by_agent": {
+            "default": false,
+            "description": "Whether `artifact.version_id` is marked as written by an agent",
+            "title": "Written By Agent",
+            "type": "boolean"
           }
         },
         "required": [
@@ -19391,6 +19552,19 @@
       "WikiPageTypeFieldIn": {
         "description": "One field of a card type.",
         "properties": {
+          "description": {
+            "anyOf": [
+              {
+                "maxLength": 300,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What to record under this field, when the name alone does not say: what counts, or that there is one row for each of many.",
+            "title": "Description"
+          },
           "name": {
             "description": "The Attribute name.",
             "maxLength": 120,
@@ -19607,6 +19781,18 @@
             },
             "title": "Page Types",
             "type": "array"
+          },
+          "profile_types": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileTypesOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What Beakr did with the kinds of thing the project's profile names; present when a project is named."
           },
           "settings": {
             "anyOf": [
@@ -26416,7 +26602,7 @@
     },
     "/v1/knowledge/wiki/page-types": {
       "get": {
-        "description": "List active page-type ontology entries for the current org/project.\n\n``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``\nwhether its pages are cards there, laid out as a card whatever starter\nsections the type stores; both are false outside a map.\n\nWith ``project_id`` the answer also carries the project's card type\n``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the\nbuilt-in types it is offered whatever it chooses (listed under ``own``).\n``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:\n``{key, card_count}`` for each type the project's live cards carry that is\nnot in the list (a type the settings hide, one turned off, or one with no\ndefinition), so a client can offer to move those cards.",
+        "description": "List active page-type ontology entries for the current org/project.\n\n``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``\nwhether its pages are cards there, laid out as a card whatever starter\nsections the type stores; both are false outside a map.\n\nWith ``project_id`` the answer also carries the project's card type\n``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the\nbuilt-in types it is offered whatever it chooses (listed under ``own``),\nand ``profile_types``: what Beakr did with the kinds of thing the project's\nprofile names (``made``, ``matched`` to an existing type, ``suggested``,\n``skipped`` with the reason) and whether it is still ``working`` on them.\n``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:\n``{key, card_count}`` for each type the project's live cards carry that is\nnot in the list (a type the settings hide, one turned off, or one with no\ndefinition), so a client can offer to move those cards.",
         "operationId": "list_wiki_page_types_v1_knowledge_wiki_page_types_get",
         "parameters": [
           {
@@ -36646,7 +36832,7 @@
     },
     "/v1/uploads/{upload_id}/complete": {
       "post": {
-        "description": "Assemble the parts and create the file; answers with its indexing job.",
+        "description": "Assemble the parts and create the file, or add it as a version.\n\nWhen the upload's folder already holds a file with the name this file would\nget, ``on_existing`` (default ``version``) adds the upload to that file as a\nnew version and updates the Knowledge built from it, instead of creating a\nsecond file; ``new`` always creates one. ``result`` says which happened\n(``created``, ``versioned``, ``restored`` or ``unchanged``). Several files of\nthat name in the folder answer ``409 ambiguous_path``, and a file the caller\ncannot change answers ``403 file_not_writable``; either way nothing is created\nand the upload stays open to complete again. ``written_by_agent`` marks the\nupload as an agent's work. Answers with the file's indexing job.",
         "operationId": "complete_upload_v1_uploads__upload_id__complete_post",
         "parameters": [
           {
@@ -36694,6 +36880,16 @@
             },
             "description": "The `parts` list on completion does not name each part from 1 to `part_count` exactly once. The file was assembled but Beakr could not create it; `message` says why."
           },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "With `on_existing: \"version\"`, the file already at this path is one you cannot change, so no version was added and no second file was created."
+          },
           "404": {
             "content": {
               "application/json": {
@@ -36712,7 +36908,7 @@
                 }
               }
             },
-            "description": "The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted."
+            "description": "The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. With `on_existing: \"version\"`, the upload's folder holds more than one file with that name (or more than one folder of a name on its path), so Beakr cannot tell which file to add the version to. Nothing was created."
           },
           "422": {
             "content": {
@@ -36803,6 +36999,18 @@
             "recovery": "Use the file in `artifact_id`; to remove it, delete the file.",
             "status": 409,
             "when": "The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted."
+          },
+          {
+            "code": "ambiguous_path",
+            "recovery": "Complete again with `on_existing: \"new\"` to create a separate file, or remove the duplicate and complete again. The upload stays open.",
+            "status": 409,
+            "when": "With `on_existing: \"version\"`, the upload's folder holds more than one file with that name (or more than one folder of a name on its path), so Beakr cannot tell which file to add the version to. Nothing was created."
+          },
+          {
+            "code": "file_not_writable",
+            "recovery": "Ask the file's owner or a project admin for edit access, or complete again with `on_existing: \"new\"` to create your own file. The upload stays open.",
+            "status": 403,
+            "when": "With `on_existing: \"version\"`, the file already at this path is one you cannot change, so no version was added and no second file was created."
           },
           {
             "code": "upload_failed",

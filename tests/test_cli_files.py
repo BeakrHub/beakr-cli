@@ -297,3 +297,200 @@ def test_upload_file_records_the_relative_path_typed(tmp_path, monkeypatch):
 
     assert result.exit_code == 0, result.output
     assert _completed_relative_paths(routes) == ["deals/acme/memo.txt", None]
+
+
+class _PlacementSDK:
+    """A stand-in SDK whose upload methods record their keyword arguments.
+
+    ``supports`` says whether its methods take ``on_existing`` / ``written_by_agent``,
+    as a beakr-sdk that has them does; the CLI checks before uploading.
+    """
+
+    def __init__(self, *, supports: bool, result: dict | None = None) -> None:
+        self.calls: list[tuple[str, dict]] = []
+        answer = result or {"artifact": {"id": "a1"}, "job_id": "j1", "result": "created"}
+        outer = self
+
+        if supports:
+
+            class Files:
+                def upload(
+                    self,
+                    path,
+                    *,
+                    project_id=None,
+                    folder_id=None,
+                    ingest=True,
+                    on_existing=None,
+                    written_by_agent=None,
+                ):
+                    outer.calls.append(
+                        (
+                            "upload",
+                            {"on_existing": on_existing, "written_by_agent": written_by_agent},
+                        )
+                    )
+                    return dict(answer)
+
+                def upload_folder(
+                    self,
+                    path,
+                    *,
+                    project_id,
+                    folder_id=None,
+                    mirror_folders=True,
+                    ingest=True,
+                    on_existing=None,
+                    written_by_agent=None,
+                ):
+                    outer.calls.append(
+                        (
+                            "upload_folder",
+                            {"on_existing": on_existing, "written_by_agent": written_by_agent},
+                        )
+                    )
+                    return [{"path": str(path), **answer}]
+
+                def resume_upload(
+                    self, upload_id, path, *, on_existing=None, written_by_agent=None
+                ):
+                    outer.calls.append(
+                        (
+                            "resume_upload",
+                            {"on_existing": on_existing, "written_by_agent": written_by_agent},
+                        )
+                    )
+                    return dict(answer)
+
+        else:
+
+            class Files:  # type: ignore[no-redef]
+                def upload(self, path, *, project_id=None, folder_id=None, ingest=True):
+                    outer.calls.append(("upload", {}))
+                    return dict(answer)
+
+        self.files = Files()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+def _with_sdk(monkeypatch, sdk: _PlacementSDK) -> None:
+    from beakr_cli.commands import files as files_commands
+
+    monkeypatch.setattr(files_commands, "get_sdk", lambda **_kwargs: sdk)
+
+
+def test_upload_on_existing_and_written_by_agent_reach_the_sdk(tmp_path, monkeypatch):
+    sdk = _PlacementSDK(supports=True)
+    _with_sdk(monkeypatch, sdk)
+    path = tmp_path / "summary.md"
+    path.write_text("x")
+    folder = tmp_path / "docs"
+    folder.mkdir()
+    (folder / "a.md").write_text("a")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "upload",
+            str(path),
+            str(folder),
+            "-P",
+            "p1",
+            "--on-existing",
+            "NEW",
+            "--written-by-agent",
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert sdk.calls == [
+        ("upload", {"on_existing": "new", "written_by_agent": True}),
+        ("upload_folder", {"on_existing": "new", "written_by_agent": True}),
+    ]
+
+
+def test_resume_passes_them_through(tmp_path, monkeypatch):
+    sdk = _PlacementSDK(supports=True)
+    _with_sdk(monkeypatch, sdk)
+    path = tmp_path / "big.pdf"
+    path.write_bytes(b"%PDF")
+
+    result = CliRunner().invoke(
+        app, ["upload", str(path), "--resume", "u1", "--on-existing", "version"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert sdk.calls == [("resume_upload", {"on_existing": "version", "written_by_agent": None})]
+
+
+def test_without_the_flags_nothing_is_added_so_the_server_default_applies(tmp_path, monkeypatch):
+    sdk = _PlacementSDK(supports=False)
+    _with_sdk(monkeypatch, sdk)
+    path = tmp_path / "a.md"
+    path.write_text("x")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "-P", "p1"])
+
+    assert result.exit_code == 0, result.output
+    assert sdk.calls == [("upload", {})]
+
+
+def test_the_flags_with_an_sdk_that_lacks_them_stop_before_uploading(tmp_path, monkeypatch):
+    sdk = _PlacementSDK(supports=False)
+    _with_sdk(monkeypatch, sdk)
+    path = tmp_path / "a.md"
+    path.write_text("x")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "-P", "p1", "--written-by-agent"])
+
+    assert result.exit_code == 2
+    assert "--written-by-agent needs a newer beakr-sdk" in result.output
+    assert sdk.calls == []
+
+
+def test_on_existing_takes_version_or_new_only(tmp_path):
+    path = tmp_path / "a.md"
+    path.write_text("x")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "-P", "p1", "--on-existing", "replace"])
+
+    assert result.exit_code == 2
+    assert "version" in result.output and "new" in result.output
+
+
+def test_a_versioned_upload_says_so(tmp_path, monkeypatch):
+    from beakr_cli.commands.files import _placement_note as files_note
+
+    sdk = _PlacementSDK(
+        supports=True,
+        result={"artifact": {"id": "a1"}, "job_id": "j2", "result": "versioned", "version_no": 3},
+    )
+    _with_sdk(monkeypatch, sdk)
+    path = tmp_path / "q3.pdf"
+    path.write_bytes(b"%PDF")
+
+    shown = CliRunner().invoke(app, ["upload", str(path), "-P", "p1"])
+    assert shown.exit_code == 0, shown.output
+    assert "\tjob=j2\tresult=versioned\tversion=3" in shown.output
+    assert files_note({"result": "versioned", "version_no": 3}) == " (new version 3)"
+    assert files_note({"result": "unchanged"}).startswith(" (unchanged")
+    assert files_note({"result": "created"}) == ""
+
+
+@respx.mock
+def test_the_default_upload_sends_neither_option_on_complete(tmp_path):
+    routes = mock_resumable_uploads(API)
+    path = tmp_path / "notes.md"
+    path.write_text("hello")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "--project", "p1"])
+
+    assert result.exit_code == 0, result.output
+    body = json.loads(routes["complete"].calls[0].request.content)
+    assert "on_existing" not in body and "written_by_agent" not in body

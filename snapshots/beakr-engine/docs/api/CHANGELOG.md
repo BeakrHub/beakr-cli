@@ -11,11 +11,54 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=188f90728bb9ac246fd4fa447017872dd4cd58ae9fc87e34515d0bc4b33e2865 changelog sha256=2f7444298205adbc454ea4374e7e0c261b3f5bdc4790d32f04a91af165feb95f -->
+<!-- contract-stamp: public-openapi sha256=ab6c8539dedacfb85ce3d1a3585ae152b30e5b561885bc2074efcf534ff836da changelog sha256=acb8b4ea6eba77a720db9f68c1ed0d4b9f89d639b94e29d22448098067a15595 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A second upload to the same path adds a version to the file already there,
+  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
+  takes `on_existing`: `version` (the default) looks in the upload's folder for
+  a file with the name the upload would get (its `title`, else the last part of
+  `path`; exact, case-sensitive) and adds the upload to it as a new version,
+  which is indexed and compiled into Knowledge as a version added in the app
+  is, so the Knowledge built from the file is updated. With no such file, the
+  file is created as before. `new` always creates a separate file. The response
+  says which happened in `result` (`created`, `versioned`, `restored` when the
+  bytes match an earlier version, which becomes current again, or `unchanged`
+  when they match the current version and nothing is added) and gives
+  `version_no`. Identical bytes are recognized only when the upload was started
+  with `content_hash`. When nothing needed processing, `job_id` is the job that
+  processed that version earlier. Two or more files of that name in the folder
+  answer `409 ambiguous_path`, and a file the caller cannot change answers
+  `403 file_not_writable`; in both cases nothing is created and the upload stays
+  open, so it can be completed again with `on_existing: "new"`. Completions to the same
+  path at the same time are serialized, so they become versions of one file. The
+  same request takes `written_by_agent` (default false) to mark the upload as an
+  agent's work: the version records it, the response returns it, and a file the
+  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
+  agents treat it as an agent's output rather than a source. `title`,
+  `artifact_type`, `description` and `relative_path` apply only when the upload
+  creates a file. Uploads through `/v1/bulk` are unchanged.
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
+- A card type's field can say what to record under it. Each item of `fields`
+  takes an optional `description` (up to 300 characters) on
+  `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
+  `POST /v1/projects`: what counts under that name, or that there is one row for
+  each of several things (for example "one row per run, with its run number and
+  result"). Beakr follows it when it files Facts rows under that field. It is
+  returned in the type's `metadata_schema.attribute_notes`, a map of field name
+  to text holding only the fields given one. A field sent without `description`
+  has none.
 - Queued Knowledge work can be cancelled, to stop paying for it.
   `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
   cancels every queued compile in the project, or one source's: give
