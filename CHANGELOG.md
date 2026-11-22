@@ -164,6 +164,16 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
 - A review flag (a proposal of type `review`: a section Knowledge flagged as
   contradicted, unverifiable or unclear) can be resolved through the API, not
   only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`

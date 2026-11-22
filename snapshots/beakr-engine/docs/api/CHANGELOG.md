@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=40e98dafceb8fa7207e53131fd77a129ed30aed26ae29806c07f49207bc1095c changelog sha256=fe698679840c17dbb0feb1d0ce1a7439ea6f0cb0cd608b220dad0318d992ea1f -->
+<!-- contract-stamp: public-openapi sha256=3a561aca4e10666210f4f04243aead4d411a1e60a003d5e016113bd94de2511a changelog sha256=bb250cb03e31cd18173b7ef582be9ee335869f41a678a3ae4143b8667e3dd6f0 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -35,6 +35,16 @@ The first public version.
   key restricted to projects reaches only flags in its projects (another
   project's flag answers `404`), and a flag that is no longer pending answers
   `400`.
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
 - A card type's field can say what to record under it. Each item of `fields`
   takes an optional `description` (up to 300 characters) on
   `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of

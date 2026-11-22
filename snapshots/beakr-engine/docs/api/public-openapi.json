@@ -11923,6 +11923,109 @@
         "title": "PrincipalType",
         "type": "string"
       },
+      "ProfileTypeMatch": {
+        "properties": {
+          "name": {
+            "description": "The kind of thing as the profile names it.",
+            "title": "Name",
+            "type": "string"
+          },
+          "page_type": {
+            "description": "The key of the existing type that covers it.",
+            "title": "Page Type",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why that type covers it; may be empty.",
+            "title": "Reason",
+            "type": "string"
+          },
+          "scope": {
+            "description": "Where that type is defined: `global` (built-in), `org` or `project`.",
+            "title": "Scope",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "page_type",
+          "scope",
+          "reason"
+        ],
+        "title": "ProfileTypeMatch",
+        "type": "object"
+      },
+      "ProfileTypeSkipped": {
+        "properties": {
+          "name": {
+            "description": "The kind of thing as the profile names it.",
+            "title": "Name",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why no type was made for it.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "reason"
+        ],
+        "title": "ProfileTypeSkipped",
+        "type": "object"
+      },
+      "ProfileTypesOutcome": {
+        "description": "What Beakr did with the kinds of thing a project's profile names.",
+        "properties": {
+          "made": {
+            "description": "Keys of the types it created.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Made",
+            "type": "array"
+          },
+          "matched": {
+            "description": "Names an existing type already covers; no separate type was made.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileTypeMatch"
+            },
+            "title": "Matched",
+            "type": "array"
+          },
+          "skipped": {
+            "description": "Names that got no type, and why.",
+            "items": {
+              "$ref": "#/components/schemas/ProfileTypeSkipped"
+            },
+            "title": "Skipped",
+            "type": "array"
+          },
+          "suggested": {
+            "description": "Keys kept as suggestions, in a project whose types only people change (`agent_may_change` false).",
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested",
+            "type": "array"
+          },
+          "working": {
+            "description": "Whether Beakr is still defining types from the profile; the lists may change.",
+            "title": "Working",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "working",
+          "made",
+          "matched",
+          "suggested",
+          "skipped"
+        ],
+        "title": "ProfileTypesOutcome",
+        "type": "object"
+      },
       "ProjectCardTypeFieldIn": {
         "description": "One field of a card type defined with a new project.",
         "properties": {
@@ -20278,6 +20381,18 @@
             "title": "Page Types",
             "type": "array"
           },
+          "profile_types": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProfileTypesOutcome"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "What Beakr did with the kinds of thing the project's profile names; present when a project is named."
+          },
           "settings": {
             "anyOf": [
               {
@@ -27086,7 +27201,7 @@
     },
     "/v1/knowledge/wiki/page-types": {
       "get": {
-        "description": "List active page-type ontology entries for the current org/project.\n\n``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``\nwhether its pages are cards there, laid out as a card whatever starter\nsections the type stores; both are false outside a map.\n\nWith ``project_id`` the answer also carries the project's card type\n``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the\nbuilt-in types it is offered whatever it chooses (listed under ``own``).\n``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:\n``{key, card_count}`` for each type the project's live cards carry that is\nnot in the list (a type the settings hide, one turned off, or one with no\ndefinition), so a client can offer to move those cards.",
+        "description": "List active page-type ontology entries for the current org/project.\n\n``map_mode`` says the org's Knowledge is a map, and each type's ``card_type``\nwhether its pages are cards there, laid out as a card whatever starter\nsections the type stores; both are false outside a map.\n\nWith ``project_id`` the answer also carries the project's card type\n``settings`` (``inherit``, ``agent_may_change``) and ``kept_types``, the\nbuilt-in types it is offered whatever it chooses (listed under ``own``),\nand ``profile_types``: what Beakr did with the kinds of thing the project's\nprofile names (``made``, ``matched`` to an existing type, ``suggested``,\n``skipped`` with the reason) and whether it is still ``working`` on them.\n``include_counts`` adds ``card_count`` to every type and ``unlisted_types``:\n``{key, card_count}`` for each type the project's live cards carry that is\nnot in the list (a type the settings hide, one turned off, or one with no\ndefinition), so a client can offer to move those cards.",
         "operationId": "list_wiki_page_types_v1_knowledge_wiki_page_types_get",
         "parameters": [
           {
