@@ -41,6 +41,7 @@ READ_TOOLS = frozenset(
         "integrations",
         "upload_status",
         "beakr_version",
+        "knowledge_queue",
     }
 )
 #: Tools that change something. update_beakr upgrades this installation here (the
@@ -58,6 +59,8 @@ WRITE_TOOLS = frozenset(
         "update_existing_cards",
         "upload_files",
         "add_project_member",
+        "cancel_compiles",
+        "cancel_sync",
         "update_beakr",
     }
 )

@@ -152,6 +152,8 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb types history",
         "kb types suggestions",
         "kb types dismiss-suggestion",
+        "kb compiles ls",
+        "kb compiles cancel",
         "kb rows",
         "kb query",
         "kb add-fact",

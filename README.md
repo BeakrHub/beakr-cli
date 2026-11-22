@@ -383,6 +383,15 @@ beakr projects retry -P Research                    # every failed file, or --fi
 beakr projects refusals Research --window 7d        # model refusals and fallbacks, by file
 ```
 
+To stop paying for work still queued, cancel it. Compiles already running
+finish, and what Knowledge wrote stays; a source's cancel also stops its running
+sync, and a whole-project cancel every running sync in the project:
+
+```bash
+beakr kb compiles ls -P Research [--source SOURCE_ID | --file FILE_ID]   # queued, running, last cancel
+beakr kb compiles cancel -P Research [--source SOURCE_ID | --file FILE_ID] [--yes]
+```
+
 `--wait-knowledge` waits until nothing in the project is queued or running
 (`--timeout` seconds), so it also waits out other files compiling at the same
 time; it reports failures only for the files it uploaded, and each uploaded

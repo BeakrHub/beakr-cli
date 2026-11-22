@@ -3201,6 +3201,228 @@
         "title": "CardTypeSuggestionDismissed",
         "type": "object"
       },
+      "CompileCancelOut": {
+        "description": "What a cancel reached.",
+        "properties": {
+          "already_running": {
+            "description": "Compiles already running when the cancel landed. They finish.",
+            "title": "Already Running",
+            "type": "integer"
+          },
+          "cancel_id": {
+            "description": "This cancel's id, as the compile queue read reports it.",
+            "format": "uuid",
+            "title": "Cancel Id",
+            "type": "string"
+          },
+          "next_sync": {
+            "description": "What the next scheduled sync will do.",
+            "title": "Next Sync",
+            "type": "string"
+          },
+          "note": {
+            "description": "What happens to work already done.",
+            "title": "Note",
+            "type": "string"
+          },
+          "scope": {
+            "description": "project: every queued compile in the project; source: one source's.",
+            "enum": [
+              "project",
+              "source"
+            ],
+            "title": "Scope",
+            "type": "string"
+          },
+          "status": {
+            "description": "cancelling: skipped compiles are still being cleared from the queue; cancelled: done. Read GET .../knowledge/compiles for progress.",
+            "enum": [
+              "cancelling",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "sync_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a connected source: the id of its sync this stopped. Read it with GET /v1/jobs/{job_id}.",
+            "title": "Sync Job Id"
+          },
+          "sync_stopped": {
+            "description": "Whether a running sync was stopped too.",
+            "title": "Sync Stopped",
+            "type": "boolean"
+          },
+          "syncs_stopped": {
+            "description": "How many running syncs were stopped.",
+            "title": "Syncs Stopped",
+            "type": "integer"
+          },
+          "will_be_skipped": {
+            "description": "Queued compiles that will not run.",
+            "title": "Will Be Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cancel_id",
+          "scope",
+          "status",
+          "will_be_skipped",
+          "already_running",
+          "sync_stopped",
+          "syncs_stopped",
+          "next_sync",
+          "note"
+        ],
+        "title": "CompileCancelOut",
+        "type": "object"
+      },
+      "CompileCancelRequest": {
+        "description": "Which compiles to cancel: one source, or (empty) the whole project.",
+        "properties": {
+          "artifact_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An uploaded file whose home is the project.",
+            "examples": [
+              "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+            ],
+            "title": "Artifact Id"
+          },
+          "attachment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A connected source attached to the project. Also stops its running sync. Give this or artifact_id, or neither for the whole project.",
+            "title": "Attachment Id"
+          }
+        },
+        "title": "CompileCancelRequest",
+        "type": "object"
+      },
+      "CompileCancelStatusOut": {
+        "description": "The latest cancel of this project's or source's queued compiles.",
+        "properties": {
+          "cancel_id": {
+            "description": "The cancel's id.",
+            "format": "uuid",
+            "title": "Cancel Id",
+            "type": "string"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the cancel was made.",
+            "title": "Cancelled At"
+          },
+          "cancelled_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who cancelled.",
+            "title": "Cancelled By"
+          },
+          "done": {
+            "description": "Queued compiles skipped so far.",
+            "title": "Done",
+            "type": "integer"
+          },
+          "status": {
+            "description": "cancelling: still clearing skipped compiles; cancelled: done.",
+            "enum": [
+              "cancelling",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "description": "One line, e.g. \"Cancelled 40 of 40 queued compiles\".",
+            "title": "Summary",
+            "type": "string"
+          },
+          "total": {
+            "description": "Queued compiles the cancel will skip.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cancel_id",
+          "status",
+          "done",
+          "total",
+          "summary"
+        ],
+        "title": "CompileCancelStatusOut",
+        "type": "object"
+      },
+      "CompileQueueOut": {
+        "description": "A project's (or one source's) Knowledge compile queue.",
+        "properties": {
+          "last_cancel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompileCancelStatusOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The latest cancel of this scope's queued compiles, if any."
+          },
+          "queued": {
+            "description": "Compiles waiting to start.",
+            "title": "Queued",
+            "type": "integer"
+          },
+          "running": {
+            "description": "Compiles running now.",
+            "title": "Running",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "queued",
+          "running"
+        ],
+        "title": "CompileQueueOut",
+        "type": "object"
+      },
       "CompoundIn": {
         "properties": {
           "conversation_id": {
@@ -16637,6 +16859,52 @@
           "status_url"
         ],
         "title": "StartRunResponse",
+        "type": "object"
+      },
+      "SyncCancelOut": {
+        "description": "The sync a person stopped.",
+        "properties": {
+          "cancelled_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who stopped it.",
+            "title": "Cancelled By"
+          },
+          "next_sync": {
+            "description": "What the next scheduled sync will do.",
+            "title": "Next Sync",
+            "type": "string"
+          },
+          "note": {
+            "description": "What happens to items already synced.",
+            "title": "Note",
+            "type": "string"
+          },
+          "status": {
+            "description": "cancelling: items already started are finishing; nothing new starts.",
+            "title": "Status",
+            "type": "string"
+          },
+          "sync_job_id": {
+            "description": "The stopped sync's job id.",
+            "format": "uuid",
+            "title": "Sync Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sync_job_id",
+          "status",
+          "next_sync",
+          "note"
+        ],
+        "title": "SyncCancelOut",
         "type": "object"
       },
       "TextContent": {
@@ -33406,6 +33674,212 @@
         "x-beakr-scope": "projects:read"
       }
     },
+    "/v1/projects/{project_id}/knowledge/compiles": {
+      "get": {
+        "description": "Read the Knowledge compile queue.\n\nCounts the project's queued and running compiles, or one source's, and\nreports the latest cancel of that scope's queued compiles: cancelling while\nskipped compiles are cleared, then cancelled with how many. A project you\ncannot read is a 404.",
+        "operationId": "get_compile_queue_v1_projects__project_id__knowledge_compiles_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Only this connected source's compiles.",
+            "in": "query",
+            "name": "attachment_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this connected source's compiles.",
+              "title": "Attachment Id"
+            }
+          },
+          {
+            "description": "Only this uploaded file's compiles.",
+            "in": "query",
+            "name": "artifact_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only this uploaded file's compiles.",
+              "examples": [
+                "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+              ],
+              "title": "Artifact Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompileQueueOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Read the Knowledge compile queue",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "projects:read"
+      }
+    },
+    "/v1/projects/{project_id}/knowledge/compiles/cancel": {
+      "post": {
+        "description": "Cancel queued Knowledge compiles.\n\nCancels every queued compile in the project, or one source's: a connected\nsource (attachment_id) or an uploaded file (artifact_id). Compiles already\nrunning finish, and finished work is kept. Cancelling a connected source,\nor the whole project, also stops the running syncs it covers, so items they\nhave not handed off never queue. Answers 202: skipped compiles are cleared\nin the background; GET .../knowledge/compiles reports progress. A project\nadmin may cancel anything; the person who attached a source or uploaded a\nfile may cancel its compiles while they are a project member. A project you\ncannot read is a 404.",
+        "operationId": "cancel_queued_compiles_v1_projects__project_id__knowledge_compiles_cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/CompileCancelRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Payload"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompileCancelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel queued Knowledge compiles",
+        "tags": [
+          "public",
+          "knowledge"
+        ],
+        "x-beakr-scope": "uploads:write"
+      }
+    },
     "/v1/projects/{project_id}/knowledge/failed-files": {
       "get": {
         "description": "Files in the project whose latest attempt to reach Knowledge failed, newest first.\n\nEach says why in a public code and sentence, and whether you may retry it.\nCovers the files you can read; a project you cannot read is a 404.",
@@ -34443,6 +34917,90 @@
         ],
         "x-beakr-destructive": true,
         "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
+      "post": {
+        "description": "Cancel a source's running sync.\n\nListing stops at its next step and items not yet started are skipped. Items\nalready synced, and their Knowledge, are kept; compiles they already queued\nstill run (cancel those with POST .../knowledge/compiles/cancel). Works for\nmanual, nightly and change-triggered syncs. Read progress with\nGET /v1/jobs/{sync_job_id}: cancelling while started items finish, then\ncancelled. The person who attached the source (while a project member), a\nproject admin or an org admin may cancel it. 409 when nothing is syncing.",
+        "operationId": "cancel_source_sync_v1_projects__project_id__sources__attachment_id__sync_cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncCancelOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Cancel a source's running sync",
+        "tags": [
+          "public",
+          "integrations"
+        ],
+        "x-beakr-scope": "uploads:write"
       }
     },
     "/v1/projects/{project_id}/threads": {

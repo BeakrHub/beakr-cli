@@ -60,6 +60,9 @@ _CALLS: dict[str, dict[str, Any]] = {
     "update_existing_cards": {"type": "assay", "change": "retype", "to_type": "experiment"},
     "upload_files": {"paths": [__file__]},
     "add_project_member": {"person": "jane@example.com"},
+    "knowledge_queue": {},
+    "cancel_compiles": {},
+    "cancel_sync": {"attachment_id": "s1"},
 }
 
 

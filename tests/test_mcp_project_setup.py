@@ -43,6 +43,9 @@ TOOLS = (
     "upload_files",
     "upload_status",
     "add_project_member",
+    "knowledge_queue",
+    "cancel_compiles",
+    "cancel_sync",
 )
 
 
