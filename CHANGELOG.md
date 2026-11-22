@@ -50,6 +50,16 @@ Each release lists the public API changes it supports, taken from the API change
   a project requires a person to approve what agents bring into Knowledge, an
   agent's attach, edit or sync exits 6 and says to run it outside the agent
   session.
+- **Stop queued work.** `beakr kb compiles ls -P <project>` counts the
+  Knowledge compiles queued and running in a project, or for one source
+  (`--source <id>` from `beakr sources ls`) or file (`--file <id>`), and shows
+  how the last cancel is going. `beakr kb compiles cancel -P <project>` cancels
+  the queued ones (with `--source` or `--file`, only that one's); compiles
+  already running finish and what Knowledge wrote stays. A source's cancel also
+  stops its running sync, and a whole-project cancel every running sync in the
+  project. It asks first (`--yes` skips the question; without a terminal it is
+  required) and takes `--json`. The MCP server has the same three tools as the
+  hosted one: `knowledge_queue`, `cancel_compiles` and `cancel_sync`.
 - **Card types from the command line.** `beakr kb types ls -P <project>` lists the
   card types a project uses, which scope defines each (project, organization or
   built-in) and whether a type is the project's own copy of a broader one.
@@ -74,6 +84,27 @@ Each release lists the public API changes it supports, taken from the API change
   <key> -P <project> --to <type>` moves every card of a type to another type.
   Both preview and change nothing unless given `--apply`; applied, they print
   what was written, what was refused or skipped, what remains and how to undo.
+- **A project's card type settings, history and suggestions.** `beakr kb types
+  settings -P <project>` shows where the project's card types come from and
+  whether Beakr may add and change them; with `--inherit
+  organization|builtin|own` or `--beakr-may-add/--no-beakr-may-add` it previews
+  a change, listing the types that would drop out with their card counts, and
+  changes nothing unless given `--apply` (`--keep-types-in-use` keeps the
+  dropped types that have cards as the project's own). `beakr kb types history
+  -P <project> [--org-wide] [--key <key>] [--suggestions]` lists the changes
+  made to card types; `beakr kb types suggestions -P <project>` lists what waits
+  for a person and how to answer each, and `beakr kb types dismiss-suggestion
+  <id> -P <project>` dismisses one. `beakr kb types retype` takes `--suggestion
+  <id>` to answer a suggestion to move cards.
+- `beakr kb types ls` prints the setting in force, and with `--counts` each
+  type's live cards and the types cards carry that are not offered.
+- `beakr projects create` takes `--card-types organization|builtin|own`,
+  `--beakr-may-add/--no-beakr-may-add`, `--copy-types-from <project>` and
+  `--copy-type <key>` (repeatable).
+- **`beakr mcp` has the `card_type_settings` tool** and `create_project` takes
+  `card_types` (`inherit`, `agent_may_change`, `copy_types_from`), both as the
+  hosted MCP server has them. `card_type_settings` previews unless `apply` is
+  exactly `true`.
 - **`beakr mcp` has the `update_existing_cards` tool**, the same one the
   hosted MCP server lists: `change: "rename_fields"` with `renames`, or
   `change: "retype"` with `to_type`. It previews unless `apply` is exactly
@@ -118,6 +149,84 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Queued Knowledge work can be cancelled, to stop paying for it.
+  `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
+  cancels every queued compile in the project, or one source's: give
+  `attachment_id` (a connected source) or `artifact_id` (an uploaded file), or
+  an empty body for the whole project. Compiles already running finish and keep
+  what they write; finished work is kept. Cancelling a connected source, or the
+  whole project, also cancels the running syncs it covers, so items they had not
+  handed off never queue. It answers `202` with `cancel_id`, `scope`
+  (`project` or `source`), `status` (`cancelling` while skipped compiles are
+  cleared, then `cancelled`), `will_be_skipped`, `already_running`,
+  `sync_stopped`, `syncs_stopped`, `sync_job_id`, `next_sync` (what the next
+  scheduled sync will do: an automatically synced source queues the skipped
+  items again) and `note`. A project admin may cancel anything; the person who
+  attached a source or uploaded a file may cancel its compiles while a member of
+  the project. Others get `403`; a project or source you cannot read is `404`.
+  `GET /v1/projects/{project_id}/knowledge/compiles` (`projects:read`) answers
+  `queued` and `running` counts for the project, or for one source
+  (`attachment_id` or `artifact_id`), and `last_cancel`: that scope's latest
+  cancel, with `status`, `done`, `total` and a `summary` such as "Cancelled 40
+  of 40 queued compiles".
+  `POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel`
+  (`uploads:write`) cancels a source's running sync: listing stops at its next
+  step and items not yet started are skipped; items already synced are kept,
+  and compiles they queued still run. It answers `sync_job_id`, `status`
+  (`cancelling`), `cancelled_by`, `next_sync` and `note`, and `409` with code
+  `no_running_sync` when nothing is syncing. The attacher (while a project
+  member), a project admin or an organization admin may cancel. Follow it with
+  `GET /v1/jobs/{job_id}`: a cancelled sync reads `running` (native status
+  `cancelling`) while items already started finish, then `cancelled`, with
+  `result.cancelled_by` and `result.cancel_summary` ("Cancelled at N of M").
+- A project chooses where its card types come from and who may change them, and
+  every change to a card type is kept in a history.
+  `PUT /v1/knowledge/wiki/page-types/settings` (`kb:write`, an owner of the
+  project) takes `project_id` and either or both of `inherit` and
+  `agent_may_change`. `inherit` is `organization` (the organization's types and
+  the built-in ones; the default), `builtin` (the built-in ones only) or `own`
+  (only the types the project defines). `own` answers `422` unless the project
+  defines at least one active type whose `grain` is `card`. A few built-in
+  types stay offered under it (`topic`, `overview`, `index`, `person` and
+  `organization`, unless the project defines its own); they are returned as
+  `kept_types`. `agent_may_change: false` stops Beakr itself from
+  adding or changing the project's types: only people do, and a type Beakr would
+  have added is kept as a suggestion. `dry_run` defaults to `true` and answers
+  `types_dropped`, each type the project would stop being offered with its
+  `live_cards`; nothing is written. Applying never changes or removes a card or
+  a type: a type that drops out is offered again when the setting is switched
+  back, and each dropped type that still has cards gets a suggestion to move
+  them. `keep_types_in_use: true` makes the dropped types that have cards the
+  project's own instead (`types_kept`). The last usable type of a project on
+  `own` cannot be turned off or removed (`422` or `409`).
+  `POST /v1/projects` takes an optional `card_types` object with the same two
+  settings; `inherit: "own"` at creation needs `copy_from_project_id` (with
+  optional `copy_keys`) or a `types` list in the same request, and answers `422`
+  otherwise.
+  `GET /v1/knowledge/wiki/page-types` with `project_id` now also answers
+  `settings` and `kept_types`; with `include_counts=true` each type carries
+  `card_count` and `unlisted_types` lists the types the project's cards carry
+  that are not in the list.
+  `GET /v1/knowledge/wiki/page-types/history` (`kb:read`) lists the changes to a
+  project's types (`project_id`) or the organization's (`scope=org`), newest
+  first, filtered by `key`: who (`actor_type`, `actor_user_id` or `actor_name`),
+  when, the `kind` (`edited`, `turned_off`, `turned_on`, `created`,
+  `copy_removed`, `copied_in`, `promoted`, `settings_changed`, `undone`), a
+  `title`, the definition fields that `changed`, and the definition `before` and
+  `after`. A project's entries are visible to whoever can see the project, and
+  the organization's to its members. History starts with the first change made
+  after this release. Suggestions are left out unless `include_suggestions` is
+  true, which adds them with their `state` (`pending`, `applied` or
+  `dismissed`).
+  `GET /v1/knowledge/wiki/page-types/suggestions` (`kb:read`) lists what waits
+  for a person in a project (`project_id`): types Beakr was not allowed to add (`held_back`)
+  and cards to move (`retype_suggested`, with `details.from_type` and
+  `details.cards`). `POST /v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss`
+  (`kb:write`, an owner) dismisses one; `409` if it was already answered.
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` takes an optional
+  `suggestion_id`, which marks that suggestion applied once no card of the type
+  is left, and accepts a `{key}` no type defines when the project has cards
+  carrying it.
 - A change to a card type can be applied to the cards a project already has
   (`kb:write`; the caller must be an owner of the project).
   `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` renames fields on

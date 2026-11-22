@@ -400,6 +400,13 @@ beakr kb types promote deviation -P Basel            # every project without a c
 beakr kb types rename-fields deviation -P Basel --rename "Cause=Root cause"   # preview
 beakr kb types rename-fields deviation -P Basel --rename "Cause=Root cause" --apply
 beakr kb types retype deviation -P Basel --to incident [--apply]
+beakr kb types ls -P Basel --counts                  # live cards a type, and the setting in force
+beakr kb types settings -P Basel                     # where its types come from; who may change them
+beakr kb types settings -P Basel --inherit own [--keep-types-in-use] [--apply]
+beakr kb types settings -P Basel --no-beakr-may-add --apply
+beakr kb types history -P Basel [--key deviation] | --org-wide
+beakr kb types suggestions -P Basel | dismiss-suggestion ID -P Basel
+beakr projects create Lyon --card-types own --copy-types-from Basel
 ```
 
 Changing a built-in or organization type from a project gives the project its
@@ -420,6 +427,19 @@ change nothing. With it, one run changes at most 500 cards and says how many
 are left (run it again for the rest), names any rename the safety checks did
 not accept and any card that was skipped, and says how to undo: the change
 shows in the project's Activity, where a project owner can undo it.
+
+`settings` shows a project's two card type settings: which types it is offered
+(`--inherit organization`, the organization's and the built-in ones;
+`builtin`, the built-in ones only; `own`, only the types it defines) and
+whether Beakr itself may add and change them (`--beakr-may-add` /
+`--no-beakr-may-add`). A change previews, listing each type the project would
+stop being offered with its card count, and changes nothing unless given
+`--apply`. Applying never changes or removes a card or a type: a dropped type
+that still has cards gets a suggestion to move them, or with
+`--keep-types-in-use` becomes one of the project's own types. `suggestions`
+lists those, and the types Beakr was not allowed to add, with the command that
+answers each. `history` lists every change made to the project's types
+(`--org-wide`: the organization's), newest first.
 
 Flags change only the fields they name (a repeated flag replaces that list) and
 create the profile when the project has none; `--file` replaces the whole
@@ -444,6 +464,15 @@ beakr projects status -P Research                   # ready / queued / compiling
 #     docs/scan.pdf  processing_failed  The file could not be read, ...  (FILE_ID)
 beakr projects retry -P Research                    # every failed file, or --file FILE_ID
 beakr projects refusals Research --window 7d        # model refusals and fallbacks, by file
+```
+
+To stop paying for work still queued, cancel it. Compiles already running
+finish, and what Knowledge wrote stays; a source's cancel also stops its running
+sync, and a whole-project cancel every running sync in the project:
+
+```bash
+beakr kb compiles ls -P Research [--source SOURCE_ID | --file FILE_ID]   # queued, running, last cancel
+beakr kb compiles cancel -P Research [--source SOURCE_ID | --file FILE_ID] [--yes]
 ```
 
 `--wait-knowledge` waits until nothing in the project is queued or running
@@ -628,13 +657,15 @@ twice. A call answers the tool's text and a Sources list whose `source_ref` a
 Knowledge write accepts as a citation. The hosted MCP server has the same tool.
 
 An agent can also set a project up, with the person's agreement. The hosted
-MCP server has the same seven tools; only `upload_files` takes different
+MCP server has the same eight tools; only `upload_files` takes different
 arguments there (`files` with each file's content, at most 20 files and about
 3.5 MB a call, since it cannot read your disk):
 
-- `create_project` (`name`, `description`) creates a project. A name already
-  in use is not created twice. If the organization requires a Knowledge
-  profile, the answer says so.
+- `create_project` (`name`, `description`, `card_types`) creates a project. A
+  name already in use is not created twice. If the organization requires a
+  Knowledge profile, the answer says so. `card_types` (`inherit`,
+  `agent_may_change`, `copy_types_from`) chooses where its card types come
+  from; `inherit: "own"` needs `copy_types_from`.
 - `set_project_profile` (`project`, `entity_types`, `goals`, `focus_areas`,
   `description`, `industry`, `extraction_guidance`, `core_people`,
   `core_organizations`, `core_topics`) writes the project's Knowledge
@@ -655,6 +686,12 @@ arguments there (`files` with each file's content, at most 20 files and about
   `to_type` moves every card of the type to another type. It previews and
   writes nothing unless `apply` is `true`; the non-interactive
   `beakr kb types rename-fields` and `beakr kb types retype`.
+- `card_type_settings` (`project`, `inherit`, `agent_may_change`,
+  `keep_types_in_use`, `apply`) changes which card types a project is offered
+  (`organization`, `builtin` or `own`) and whether Beakr itself may add and
+  change them. It previews, naming the types that would drop out with their
+  card counts, and writes nothing unless `apply` is `true`; the
+  non-interactive `beakr kb types settings`.
 - `upload_files` (`project`, `paths`, `folder_id`, `knowledge`,
   `resume_upload_id`) uploads local files and folders, the way `beakr upload`
   does. A folder keeps its subfolders, and each file goes through the resumable

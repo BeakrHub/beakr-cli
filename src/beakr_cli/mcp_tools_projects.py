@@ -1,6 +1,7 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
-change its card types and the cards it already has, upload the person's files into it, and
-add the people who work in it.
+change its card types and the cards it already has, upload the person's files into it, add
+the people who work in it, and stop queued Knowledge work (``knowledge_queue``,
+``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``).
 
 The hosted MCP server has the same seven tools (beakr-engine
 ``beakr/api/mcp_remote/project_tools.py``, ``card_type_tools.py`` and
@@ -40,7 +41,7 @@ from beakr_sdk.resources._upload import (
     upload_relative_path,
 )
 
-from beakr_cli import card_types, card_updates
+from beakr_cli import cancels, card_settings, card_types, card_updates
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
 from beakr_cli.upload_path_policy import (
@@ -71,7 +72,9 @@ def _error(code: str, message: str, fix: str | None = None, **extra: Any) -> dic
 # --- create_project -------------------------------------------------------------------
 
 
-async def create_project(name: str, description: str = "") -> str | dict[str, Any]:
+async def create_project(
+    name: str, description: str = "", card_types: dict[str, Any] | None = None
+) -> str | dict[str, Any]:
     """Create a project (described in the shared agent tool surface)."""
     name = (name or "").strip()
     if not name:
@@ -88,15 +91,49 @@ async def create_project(name: str, description: str = "") -> str | dict[str, An
             f"A project named {name!r} already exists (id: {taken[0].get('id')}).",
             "Use that project (pass its id), or choose another name.",
         )
+    chosen = await _card_types_argument(card_types)
+    if chosen.get("status") == "error":
+        return chosen
     project = await call_api(
-        lambda sdk: sdk.projects.create(name, description=(description or "").strip() or None)
+        lambda sdk: sdk.projects.create(
+            name,
+            description=(description or "").strip() or None,
+            card_types=chosen or None,
+        )
     )
-    return created_text(project or {}, name)
+    return created_text(project or {}, name, chosen)
 
 
-def created_text(project: dict[str, Any], name: str) -> str:
+async def _card_types_argument(value: Any) -> dict[str, Any]:
+    """``card_types`` as the create route takes it; empty when nothing was chosen.
+
+    A refusal comes back as the error dict itself.
+    """
+    if not isinstance(value, dict):
+        return {}
+    card_types: dict[str, Any] = {}
+    inherit = str(value.get("inherit") or "").strip()
+    if inherit:
+        if inherit not in card_settings.INHERIT_VALUES:
+            return _error("invalid_arguments", *card_settings.CREATE_REFUSALS["bad_inherit"])
+        card_types["inherit"] = inherit
+    if isinstance(value.get("agent_may_change"), bool):
+        card_types["agent_may_change"] = value["agent_may_change"]
+    source = str(value.get("copy_types_from") or "").strip()
+    if source:
+        card_types["copy_from_project_id"] = await _project_id(source)
+    if inherit == "own" and not source:
+        # The route would refuse it too; said here in the tool's own argument names.
+        return _error("invalid_arguments", *card_settings.CREATE_REFUSALS["own_without_types"])
+    return card_types
+
+
+def created_text(
+    project: dict[str, Any], name: str, card_types: dict[str, Any] | None = None
+) -> str:
     """What ``create_project`` answers; the hosted server answers the same text."""
     lines = [f"Created project {project.get('name') or name!r} (id: {project.get('id')})."]
+    lines += card_settings.created_card_type_lines(card_types)
     if project.get("requires_knowledge_profile"):
         lines.append(
             "The organization requires a Knowledge profile on every new project. Agree the "
@@ -282,6 +319,49 @@ async def edit_card_type(
     return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
 
 
+# --- card_type_settings -----------------------------------------------------------------
+
+
+async def card_type_settings(
+    project: str,
+    inherit: str | None = None,
+    agent_may_change: Any = None,
+    keep_types_in_use: Any = None,
+    apply: Any = None,
+) -> str | dict[str, Any]:
+    """Change a project's card type settings (described in the shared agent tool surface).
+
+    The call is the signed-in person's own ``PUT
+    /v1/knowledge/wiki/page-types/settings``: that route decides who may.
+    Without ``apply=true`` it sends a dry run and nothing is written.
+    """
+    changes: dict[str, Any] = {}
+    if inherit is not None and str(inherit).strip():
+        inherit = str(inherit).strip()
+        if inherit not in card_settings.INHERIT_VALUES:
+            return _error("invalid_arguments", *card_settings.REFUSALS["bad_inherit"])
+        changes["inherit"] = inherit
+    if agent_may_change is not None:
+        if not isinstance(agent_may_change, bool):
+            return _error("invalid_arguments", *card_settings.REFUSALS["bad_agent_may_change"])
+        changes["agent_may_change"] = agent_may_change
+    if not changes:
+        return _error("invalid_arguments", *card_settings.REFUSALS["no_change"])
+    if not str(project or "").strip():
+        return _error("invalid_arguments", *card_types.NO_PROJECT)
+    project_id = await _project_id(project)
+    answer = await call_api(
+        lambda sdk: sdk.knowledge.set_card_type_settings(
+            project_id,
+            keep_types_in_use=keep_types_in_use is True,
+            # Only apply=true writes: anything else, a missing value included, previews.
+            dry_run=apply is not True,
+            **changes,
+        )
+    )
+    return card_settings.settings_text(_dict(answer))
+
+
 # --- update_existing_cards --------------------------------------------------------------
 
 
@@ -325,17 +405,31 @@ async def update_existing_cards(
     project_id = await _project_id(project)
     # Only apply=true writes: anything else, a missing value included, previews.
     dry_run = apply is not True
-    if change == "rename_fields":
-        answer = await call_api(
-            lambda sdk: sdk.knowledge.rename_card_type_fields(
-                key, project_id, pairs, dry_run=dry_run
+
+    async def send(continue_event_id: str | None = None) -> dict[str, Any]:
+        if change == "rename_fields":
+            answer = await call_api(
+                lambda sdk: sdk.knowledge.rename_card_type_fields(
+                    key, project_id, pairs, dry_run=dry_run, continue_event_id=continue_event_id
+                )
             )
+        else:
+            answer = await call_api(
+                lambda sdk: sdk.knowledge.retype_cards(
+                    key, project_id, target, dry_run=dry_run, continue_event_id=continue_event_id
+                )
+            )
+        return _dict(answer)
+
+    result = await send()
+    if not dry_run:
+        # One call writes a bounded number of cards; keep going as one change.
+        result = await card_updates.until_done_async(
+            result, send, written=card_updates.WRITTEN[change]
         )
-        return card_updates.fields_renamed_text(_dict(answer))
-    answer = await call_api(
-        lambda sdk: sdk.knowledge.retype_cards(key, project_id, target, dry_run=dry_run)
-    )
-    return card_updates.cards_retyped_text(_dict(answer))
+    if change == "rename_fields":
+        return card_updates.fields_renamed_text(result)
+    return card_updates.cards_retyped_text(result)
 
 
 # --- upload_files -----------------------------------------------------------------------
@@ -797,14 +891,83 @@ def invitation_refusal(person: str, message: str) -> dict[str, Any] | None:
 #: The server ``upload_files`` reports progress through; set by :func:`register`.
 _SERVER: TieredMCPServer | None = None
 
+# --- knowledge_queue, cancel_compiles, cancel_sync -------------------------------------
+#
+# Stopping queued Knowledge work, to stop paying for it. The hosted halves are
+# beakr-engine ``beakr/api/mcp_remote/queue_tools.py``; the text is
+# :mod:`beakr_cli.cancels`, the same for the same REST answer. Each call is the
+# signed-in person's own request to a public route, which decides who may.
+
+
+def _cancel_source(
+    attachment_id: str | None, artifact_id: str | None
+) -> dict[str, str] | dict[str, Any]:
+    """``{attachment_id}`` or ``{artifact_id}`` or ``{}``; an error dict for both."""
+    attachment = str(attachment_id or "").strip()
+    artifact = str(artifact_id or "").strip()
+    if attachment and artifact:
+        return _error(
+            "invalid_arguments",
+            "Name one source: attachment_id or artifact_id, not both.",
+            "Pass one of them, or neither for the whole project.",
+        )
+    if attachment:
+        return {"attachment_id": attachment}
+    if artifact:
+        return {"artifact_id": artifact}
+    return {}
+
+
+async def knowledge_queue(
+    project: str, attachment_id: str | None = None, artifact_id: str | None = None
+) -> str | dict[str, Any]:
+    """Count a project's queued and running compiles (described in the shared surface)."""
+    source = _cancel_source(attachment_id, artifact_id)
+    if source.get("status") == "error":
+        return source
+    project_id = await _project_id(project)
+    queue = await call_api(lambda sdk: cancels.compile_queue(sdk, project_id, **source))
+    return cancels.queue_text(_dict(queue), source=bool(source))
+
+
+async def cancel_compiles(
+    project: str, attachment_id: str | None = None, artifact_id: str | None = None
+) -> str | dict[str, Any]:
+    """Cancel a project's or one source's queued compiles (described in the shared surface)."""
+    source = _cancel_source(attachment_id, artifact_id)
+    if source.get("status") == "error":
+        return source
+    project_id = await _project_id(project)
+    answer = await call_api(lambda sdk: cancels.cancel_queued_compiles(sdk, project_id, **source))
+    return cancels.cancel_compiles_text(_dict(answer))
+
+
+async def cancel_sync(project: str, attachment_id: str) -> str | dict[str, Any]:
+    """Cancel a source's running sync (described in the shared surface)."""
+    attachment = str(attachment_id or "").strip()
+    if not attachment:
+        return _error(
+            "invalid_arguments",
+            "Name the source: its attachment_id.",
+            "Pass attachment_id, the connected source's attachment id in the project.",
+        )
+    project_id = await _project_id(project)
+    answer = await call_api(lambda sdk: cancels.cancel_sync(sdk, project_id, attachment))
+    return cancels.cancel_sync_text(_dict(answer))
+
+
 PROJECT_TOOLS = (
     create_project,
     set_project_profile,
     edit_card_type,
     update_existing_cards,
+    card_type_settings,
     upload_files,
     upload_status,
     add_project_member,
+    knowledge_queue,
+    cancel_compiles,
+    cancel_sync,
 )
 
 

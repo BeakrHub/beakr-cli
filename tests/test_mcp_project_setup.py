@@ -38,10 +38,14 @@ TOOLS = (
     "create_project",
     "set_project_profile",
     "edit_card_type",
+    "card_type_settings",
     "update_existing_cards",
     "upload_files",
     "upload_status",
     "add_project_member",
+    "knowledge_queue",
+    "cancel_compiles",
+    "cancel_sync",
 )
 
 

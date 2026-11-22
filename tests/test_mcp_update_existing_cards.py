@@ -229,7 +229,10 @@ def test_a_preview_past_one_calls_bound_says_how_many_would_be_left() -> None:
         RENAMED | {"cards_changed": 620, "cards": 700, "cards_remaining": 120}
     )
 
-    assert "One call changes at most 500 cards: 120 cards would be left for the next call." in text
+    assert (
+        "More than 500 cards change, so applying works through them 500 at a time until none "
+        "is left. It is still one change to undo."
+    ) in text
 
 
 def test_a_retype_preview_and_apply_read_as_what_happened() -> None:

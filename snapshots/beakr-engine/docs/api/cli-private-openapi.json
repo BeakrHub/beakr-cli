@@ -4790,6 +4790,421 @@
     "title": "ProfileClaimChange",
     "type": "object"
    },
+   "PullDryRunCaps": {
+    "description": "The per-sync limits that bound what one sync brings in.",
+    "properties": {
+     "ingest_max_per_sync": {
+      "description": "Most items one sync dispatches for ingest (the safety ceiling).",
+      "title": "Ingest Max Per Sync",
+      "type": "integer"
+     },
+     "ingest_quota_remaining": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The organization's ingest quota left in its current period (null: no limit). It renews by period, not by sync.",
+      "title": "Ingest Quota Remaining"
+     },
+     "picker_cadence_days": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Days between later picker passes (null: first pass only).",
+      "title": "Picker Cadence Days"
+     },
+     "picker_first_pass_max": {
+      "description": "Most items the picker's first pass may bring in (half of what it sees, at least `picker_floor`).",
+      "title": "Picker First Pass Max",
+      "type": "integer"
+     },
+     "picker_floor": {
+      "description": "The picker's budget never drops below this.",
+      "title": "Picker Floor",
+      "type": "integer"
+     },
+     "picker_recurring_max": {
+      "description": "Most items a later picker pass may bring in (a tenth of what it sees, at least `picker_floor`).",
+      "title": "Picker Recurring Max",
+      "type": "integer"
+     },
+     "picker_runs_when": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the source picker runs for this source (null: never).",
+      "title": "Picker Runs When"
+     },
+     "recent_window": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Newest matching items every sync takes before the picker runs (null when the source has no recency window).",
+      "title": "Recent Window"
+     },
+     "rows_max_per_sync": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "New Notion database rows one sync may start tracking (Notion only).",
+      "title": "Rows Max Per Sync"
+     },
+     "take_all_max_per_sync": {
+      "description": "Most items one sync brings in when the rules take every match.",
+      "title": "Take All Max Per Sync",
+      "type": "integer"
+     },
+     "this_sync_take": {
+      "description": "Items the next sync would bring in, within the caps and the quota left.",
+      "title": "This Sync Take",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "picker_first_pass_max",
+     "picker_recurring_max",
+     "picker_floor",
+     "take_all_max_per_sync",
+     "ingest_max_per_sync",
+     "this_sync_take"
+    ],
+    "title": "PullDryRunCaps",
+    "type": "object"
+   },
+   "PullDryRunCost": {
+    "description": "What the dry run cost, and what ingesting its pick would cost.",
+    "properties": {
+     "basis": {
+      "description": "Where the per-item estimate comes from.",
+      "title": "Basis",
+      "type": "string"
+     },
+     "per_item_usd": {
+      "description": "The per-item estimate behind it.",
+      "title": "Per Item Usd",
+      "type": "number"
+     },
+     "pick_ingest_compile_usd": {
+      "description": "Estimated ingest and compile cost of `would_pick_estimate` items.",
+      "title": "Pick Ingest Compile Usd",
+      "type": "number"
+     },
+     "preview_usd": {
+      "description": "Model cost of this dry run.",
+      "title": "Preview Usd",
+      "type": "number"
+     }
+    },
+    "required": [
+     "preview_usd",
+     "pick_ingest_compile_usd",
+     "per_item_usd",
+     "basis"
+    ],
+    "title": "PullDryRunCost",
+    "type": "object"
+   },
+   "PullDryRunItem": {
+    "description": "One item in a dry run: what it is and why a sync would take it or leave it.",
+    "properties": {
+     "date": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the item last changed (ISO 8601), where known.",
+      "title": "Date"
+     },
+     "id": {
+      "description": "The provider's id for the item.",
+      "format": "uuid",
+      "title": "Id",
+      "type": "string"
+     },
+     "ingest_state": {
+      "description": "Its history in this project: never ingested, changed since, or unchanged.",
+      "enum": [
+       "new",
+       "changed",
+       "unchanged"
+      ],
+      "title": "Ingest State",
+      "type": "string"
+     },
+     "reason": {
+      "description": "Why it is picked or passed over, in one line.",
+      "title": "Reason",
+      "type": "string"
+     },
+     "title": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The item's title or name.",
+      "title": "Title"
+     },
+     "url": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "A link to the item, where it has one.",
+      "title": "Url"
+     },
+     "via": {
+      "description": "What brings it in: `recent` (every sync takes the newest matching items), `picker` (the source picker chose it) or `rule` (the rules take every match).",
+      "enum": [
+       "recent",
+       "picker",
+       "rule"
+      ],
+      "title": "Via",
+      "type": "string"
+     }
+    },
+    "required": [
+     "id",
+     "reason",
+     "via",
+     "ingest_state"
+    ],
+    "title": "PullDryRunItem",
+    "type": "object"
+   },
+   "PullDryRunOut": {
+    "description": "What one sync would bring in under the previewed rules. Nothing was tracked.",
+    "properties": {
+     "already_tracked": {
+      "description": "Matching items the project already tracks (kept current by every sync); for `rule` mode, the items this attachment tracks.",
+      "title": "Already Tracked",
+      "type": "integer"
+     },
+     "candidate_cap": {
+      "description": "The most matching items a dry run looks at.",
+      "title": "Candidate Cap",
+      "type": "integer"
+     },
+     "candidates_considered": {
+      "description": "Matching items the dry run looked at (at most `candidate_cap`).",
+      "title": "Candidates Considered",
+      "type": "integer"
+     },
+     "caps": {
+      "$ref": "#/components/schemas/PullDryRunCaps",
+      "description": "Caps."
+     },
+     "est_cost_usd": {
+      "$ref": "#/components/schemas/PullDryRunCost",
+      "description": "Est cost usd."
+     },
+     "estimate_is_lower_bound": {
+      "description": "True when the matching count itself was capped, so more may come in.",
+      "title": "Estimate Is Lower Bound",
+      "type": "boolean"
+     },
+     "explain": {
+      "description": "How the filter, mode, caps and guidance combine.",
+      "items": {
+       "$ref": "#/components/schemas/PullExplainStep"
+      },
+      "title": "Explain",
+      "type": "array"
+     },
+     "initial_pass": {
+      "description": "True when the next picker pass is the source's first (larger budget).",
+      "title": "Initial Pass",
+      "type": "boolean"
+     },
+     "mode": {
+      "description": "What decides membership: `picker` (the source picker), `everything` (every match), `rule` (a Notion item's rule, whatever `pull_mode` says) or `window` (a calendar's date window).",
+      "enum": [
+       "picker",
+       "everything",
+       "rule",
+       "window"
+      ],
+      "title": "Mode",
+      "type": "string"
+     },
+     "model": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The model the picker ran on.",
+      "title": "Model"
+     },
+     "note": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Anything that qualifies the result.",
+      "title": "Note"
+     },
+     "passed_over": {
+      "description": "Up to `sample_size` items left out, with reasons.",
+      "items": {
+       "$ref": "#/components/schemas/PullDryRunItem"
+      },
+      "title": "Passed Over",
+      "type": "array"
+     },
+     "picked": {
+      "description": "Up to `sample_size` of the items a sync would take.",
+      "items": {
+       "$ref": "#/components/schemas/PullDryRunItem"
+      },
+      "title": "Picked",
+      "type": "array"
+     },
+     "picked_count": {
+      "description": "Items among those considered that a sync would take.",
+      "title": "Picked Count",
+      "type": "integer"
+     },
+     "pull_mode_applies": {
+      "description": "False when this source ignores `pull_mode` (`explain` says why).",
+      "title": "Pull Mode Applies",
+      "type": "boolean"
+     },
+     "syncs_needed": {
+      "description": "Syncs it would take to bring in the estimate under the per-sync caps (the ingest quota can stretch it across periods; `note` says so).",
+      "title": "Syncs Needed",
+      "type": "integer"
+     },
+     "would_pick_estimate": {
+      "description": "Items the rules would bring in across all matching items, projected from the ones considered.",
+      "title": "Would Pick Estimate",
+      "type": "integer"
+     }
+    },
+    "required": [
+     "mode",
+     "pull_mode_applies",
+     "initial_pass",
+     "candidates_considered",
+     "candidate_cap",
+     "already_tracked",
+     "picked_count",
+     "would_pick_estimate",
+     "estimate_is_lower_bound",
+     "syncs_needed",
+     "caps",
+     "est_cost_usd"
+    ],
+    "title": "PullDryRunOut",
+    "type": "object"
+   },
+   "PullExplainStep": {
+    "description": "One step of how a source's items reach Knowledge, in the order they happen.",
+    "properties": {
+     "applies": {
+      "description": "Whether the step acts on this source.",
+      "title": "Applies",
+      "type": "boolean"
+     },
+     "count": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "The number this step leaves, where it has one.",
+      "title": "Count"
+     },
+     "detail": {
+      "description": "What the step does for this source, in a sentence or two.",
+      "title": "Detail",
+      "type": "string"
+     },
+     "key": {
+      "description": "Which step: the provider filter, the pull mode, the per-sync caps, the guidance, or a history import.",
+      "enum": [
+       "filter",
+       "mode",
+       "caps",
+       "guidance",
+       "history_import"
+      ],
+      "title": "Key",
+      "type": "string"
+     },
+     "label": {
+      "description": "A short name for the step.",
+      "title": "Label",
+      "type": "string"
+     },
+     "used_by": {
+      "description": "For guidance: which stages read it (the picker only in `agent` mode).",
+      "items": {
+       "enum": [
+        "picker",
+        "compiler"
+       ],
+       "type": "string"
+      },
+      "title": "Used By",
+      "type": "array"
+     }
+    },
+    "required": [
+     "key",
+     "label",
+     "detail",
+     "applies"
+    ],
+    "title": "PullExplainStep",
+    "type": "object"
+   },
    "RevisionOut": {
     "description": "Response model for canvas revisions.",
     "properties": {
@@ -4956,8 +5371,26 @@
     "type": "object"
    },
    "RulesPreviewIn": {
-    "description": "Preview an attached source's rules before saving them.\n\nLeave ``source_query`` out to preview the saved query; send an object to\npreview a candidate, or null to preview no query.",
+    "description": "Preview an attached source's rules before saving them.\n\nLeave ``source_query`` out to preview the saved query; send an object to\npreview a candidate, or null to preview no query. ``guidance`` works the\nsame way for the dry run.",
     "properties": {
+     "dry_run_pick": {
+      "default": false,
+      "description": "Also show what a sync would bring in under these rules (`dry_run` in the answer): with `pull_mode` `agent`, Beakr's source picker judges up to 200 of the matching items, as a sync's picker would, and says why it picks or passes over each; with `all`, the items in the order a sync takes them. Nothing is tracked or ingested. A dry run that asks the picker costs a model call; at most 10 of those per person per hour (`429` after that).",
+      "title": "Dry Run Pick",
+      "type": "boolean"
+     },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Candidate guidance for the dry run's picker. Leave it out to use the saved guidance; send null or an empty string to preview none.",
+      "title": "Guidance"
+     },
      "pull_mode": {
       "anyOf": [
        {
@@ -4973,6 +5406,14 @@
       ],
       "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
       "title": "Pull Mode"
+     },
+     "sample_size": {
+      "default": 10,
+      "description": "How many picked and passed-over items `dry_run` lists (1-50).",
+      "maximum": 50.0,
+      "minimum": 1.0,
+      "title": "Sample Size",
+      "type": "integer"
      },
      "source_query": {
       "anyOf": [
@@ -5007,6 +5448,12 @@
       "description": "Id of the connector.",
       "title": "Connector Id"
      },
+     "dry_run_pick": {
+      "default": false,
+      "description": "Also show what a sync would bring in under these rules (`dry_run` in the answer): with `pull_mode` `agent`, Beakr's source picker judges up to 200 of the matching items, as a sync's picker would, and says why it picks or passes over each; with `all`, the items in the order a sync takes them. Nothing is tracked or ingested. A dry run that asks the picker costs a model call; at most 10 of those per person per hour (`429` after that).",
+      "title": "Dry Run Pick",
+      "type": "boolean"
+     },
      "external_item_id": {
       "description": "Id of the external item.",
       "title": "External Item Id",
@@ -5016,6 +5463,18 @@
       "description": "Type of the item in the external system.",
       "title": "External Item Type",
       "type": "string"
+     },
+     "guidance": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Guidance for the dry run's picker (none when left out).",
+      "title": "Guidance"
      },
      "provider": {
       "description": "The service it comes from.",
@@ -5037,6 +5496,14 @@
       ],
       "description": "How items are chosen within scope: `agent` (default) lets Beakr's source picker choose; `all` takes every item in scope (after `source_query`), within the per-sync limits.",
       "title": "Pull Mode"
+     },
+     "sample_size": {
+      "default": 10,
+      "description": "How many picked and passed-over items `dry_run` lists (1-50).",
+      "maximum": 50.0,
+      "minimum": 1.0,
+      "title": "Sample Size",
+      "type": "integer"
      },
      "scope_mode": {
       "default": "item",
@@ -5090,6 +5557,17 @@
       "description": "True when the fetch stopped at `limit`: at least `count` items match.",
       "title": "Count Capped",
       "type": "boolean"
+     },
+     "dry_run": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/PullDryRunOut"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "What a sync would bring in under these rules; present only when the request set `dry_run_pick`."
      },
      "limit": {
       "description": "The most items the preview fetches.",
@@ -13231,7 +13709,7 @@
   },
   "/v1/projects/{project_id}/sources/rules/preview": {
    "post": {
-    "description": "Count what rules would keep for an item before attaching it (the source picker).\n\nRuns the provider connector's own fetch, as the caller, on ``connector_id``\nor their connection for the provider. Same answer as the attached-source\npreview.",
+    "description": "Count what rules would keep for an item before attaching it (the source picker).\n\nRuns the provider connector's own fetch, as the caller, on ``connector_id``\nor their connection for the provider. Same answer as the attached-source\npreview, including the ``dry_run_pick`` dry run (as the source's first sync).",
     "operationId": "preview_item_rules_v1_projects__project_id__sources_rules_preview_post",
     "parameters": [
      {
@@ -13476,7 +13954,7 @@
   },
   "/v1/projects/{project_id}/sources/{attachment_id}/rules/preview": {
    "post": {
-    "description": "Count what a source's rules keep, before saving them.\n\nRuns the connector's own fetch with the query inside the provider call\n(the same fetch a sync runs) and answers how many items came back, whether\ncounting stopped early, a sample, per-container counts where the provider\nhas them, and whether the provider refused the query. Leave\n``source_query`` out to preview the saved query. Only the person who\nattached the source may preview, on its connection. A ``def`` route: the\nprovider fetch runs on a worker thread, never on the event loop.",
+    "description": "Count what a source's rules keep, before saving them.\n\nRuns the connector's own fetch with the query inside the provider call\n(the same fetch a sync runs) and answers how many items came back, whether\ncounting stopped early, a sample, per-container counts where the provider\nhas them, and whether the provider refused the query. Leave\n``source_query`` out to preview the saved query. Only the person who\nattached the source may preview, on its connection. A ``def`` route: the\nprovider fetch runs on a worker thread, never on the event loop.\n\nWith ``dry_run_pick`` the answer also carries ``dry_run``: what a sync\nwould bring in under these rules and why (the source picker's picks and\npasses with reasons in ``agent`` mode, every match in sync order in\n``all`` mode), the per-sync caps, how many syncs it takes, the model cost of\nthe preview and the estimated ingest cost, and an ``explain`` list of how\nfilter, mode, caps and guidance combine. Nothing is tracked or ingested. At\nmost 10 dry runs that ask the picker (a model call) per person per hour\n(429 after that).",
     "operationId": "preview_project_source_rules_v1_projects__project_id__sources__attachment_id__rules_preview_post",
     "parameters": [
      {
