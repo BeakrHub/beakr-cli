@@ -11,41 +11,33 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=18bc5fe5e87cca83affe155d02f9fbdd59bc159444dc332f1f62ba653340d699 changelog sha256=0bfca04867b2d6f751e3b39125caec2c7164d11b7552e036e5e9b585f27e3e44 -->
+<!-- contract-stamp: public-openapi sha256=aeef43fdd413f6678b0cd36e9c39b5c2425dc74a36d27e850a4e22b4682b7a53 changelog sha256=50c500dc9e5cb5a3650164dc7aac7cd5be4a36139676010715b10bb73f194197 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- A project's open review flags can now become one interview.
-  `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
-  and `kb:read`) writes one plain-language key question per open review flag,
-  naming its specifics (the values that disagree, the cards, the dates, where
-  each came from), and saves the interview with each flag's background in its
-  `supporting_info`. By default it asks about every open review flag
-  (contradictions, ambiguities and the rest), newest first, up to
-  `max_questions` (30, the interview's cap); flags past it are listed in
-  `skipped` as `over_question_limit`. `kinds` narrows the kinds and
-  `proposal_ids` names the flags. With a `participant` (a member's `user_id`, or
-  a `name` and/or `email`) it also makes that person's link, as
-  `POST /v1/interview/sendables/{sendable_id}/links` does: Beakr sends nothing,
-  and `link_url` is shown once (omitted on a replay, `secret_redacted: true`),
-  with `link` (`link_id`, `label`, `expires_at`, `result_url`). Without one the
-  interview is a draft to edit (`edit_url`) and send. It answers `201` with
-  `interview`, `link`, `link_url`, `questions` (each with its `proposal_id`,
-  `kind`, `asked_revision`, `written_by` and `linked`), `skipped`,
-  `questions_written_by` and `edit_url`; a project with nothing to ask about
-  answers `200` with `interview: null`, `empty_reason` and `message`. Errors:
-  `404 participant_not_found`, `429 interview_link_limit`,
-  `403 outside_interviews_unavailable`. When a link finishes, each answer is
-  attached to its flag as a suggestion: a review proposal's read
-  (`GET /v1/knowledge/wiki/proposals` and `GET .../proposals/{proposal_id}`)
-  carries `interview_questions` and `interview_answers` (each with
-  `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
-  `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
-  `suggested_option_id` names the drafted resolution the answer matches (null
-  when the flagged text changed since the question was asked, `stale`). Nothing
-  is applied: a person, or a key allowed to accept, resolves the flag with the
-  resolve routes.
+- A review flag (a proposal of type `review`: a section Knowledge flagged as
+  contradicted, unverifiable or unclear) can be resolved through the API, not
+  only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`
+  (`kb:read`) reads the flag: the section and its current text, why it was
+  flagged, the sources on each side and the page's `current_revision`.
+  `POST .../resolutions` (`kb:write`) drafts up to a few resolutions, each with
+  what it changes; they are kept for the page revision they were drafted
+  against, so asking again returns them at once (`cached: true`). Apply one with
+  `POST .../resolve` (a section rewrite: `section_id`, `new_section_body`,
+  `expected_revision`), `POST .../resolve-rows` (a drafted row operation on a
+  card's Facts or Connections table: `option_id`, `expected_revision`) or
+  `POST .../resolve-cards` (one `outcome` on every card a contradiction review
+  lists); all three need `kb:write`. A page that changed since
+  `expected_revision` answers `409` and nothing is applied. Where a person must
+  accept proposals, a person, or a key with the `proposals:accept` (reviewer)
+  permission, must apply a resolution, as for accepting: any other key or token
+  is refused with `403 person_review_required`. Drafting is open to any
+  `kb:write` key. A key restricted to projects reaches only flags in its
+  projects (another project's flag answers `404`), and a flag that is no longer
+  pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
+  `proposal_type`: `proposal_type=review` lists only review flags (with
+  `status=pending`, the default, the open ones).
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still

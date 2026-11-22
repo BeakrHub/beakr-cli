@@ -11,6 +11,8 @@
     "show_proposal",
     "accept_proposal",
     "dismiss_proposal",
+    "review_options",
+    "resolve_review",
     "conversations_search",
     "import_conversation",
     "org_audit_log",
@@ -185,7 +187,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, project setup (create a project, write its profile, upload files, add members), and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
+      "description": "Find Beakr tools beyond the ones listed: proposals and review flags, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, project setup (create a project, write its profile, upload files, add members), and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
       "name": "discover_tools",
       "surfaces": [
         "remote",
@@ -305,6 +307,38 @@
       ],
       "tier": "discovery",
       "title": "Dismiss a proposal"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Show a review flag (a proposal of type review: a section Knowledge flagged as contradicted, unverifiable or unclear) and Beakr's drafted resolutions, numbered, each with what it changes, and the page revision to resolve against. Drafting can take up to two minutes the first time; later calls for the same page revision return the same options at once.",
+      "name": "review_options",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Review flag options"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Resolve a review flag, only after the user explicitly chooses how: pass the option_id they chose from review_options (or their own section_body for the flagged section) with the expected_revision review_options printed, or for a contradiction between cards' rows an outcome applied on every card. The page changes at once and the flag clears. A page that changed since is refused, nothing applied: call review_options again. In a project that requires a person to accept proposals an agent's resolve is refused (person_review_required): ask the user to resolve it in Beakr.",
+      "name": "resolve_review",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Resolve a review flag"
     },
     {
       "annotations": {

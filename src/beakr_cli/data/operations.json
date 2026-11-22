@@ -2529,6 +2529,28 @@
    "summary": "Search and read original documents"
   },
   {
+   "action": "generate-proposal-conflict-resolutions",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolutions",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolutions",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Draft review flag resolutions"
+  },
+  {
    "action": "get-agent-review-settings",
    "anonymous": false,
    "area": "knowledge",
@@ -2606,6 +2628,28 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "Get a Knowledge proposal"
+  },
+  {
+   "action": "get-proposal-conflict",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/conflict",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a review flag"
   },
   {
    "action": "get-wiki-page",
@@ -2872,6 +2916,12 @@
     },
     {
      "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Restrict to one kind of proposal. `review` lists only review flags: sections Knowledge flagged as contradicted, unverifiable or unclear, which are resolved with `POST .../resolve` (and its row and card variants) rather than accepted. Other kinds include `create`, `edit`, `archive`, `mv` and `find_replace`.",
+     "name": "proposal_type",
      "required": false,
      "type": "string"
     },
@@ -3192,6 +3242,137 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "Research a question"
+  },
+  {
+   "action": "resolve-conflict-on-every-card",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "keep_disputed: the value the card stated stands and the disputing row is deleted; adopt_disputing: the disputing value stands and the row it disputed is deleted; both_valid: both rows stand.",
+      "enum": [
+       "keep_disputed",
+       "adopt_disputing",
+       "both_valid"
+      ],
+      "name": "outcome",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Resolve a contradiction everywhere"
+  },
+  {
+   "action": "resolve-conflict-with-rows",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The current_revision POST .../resolutions returned with that option.",
+      "name": "expected_revision",
+      "required": true,
+      "type": "integer"
+     },
+     {
+      "description": "The id of a row option POST .../resolutions returned (A, B, ...).",
+      "name": "option_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Resolve a flag with rows"
+  },
+  {
+   "action": "resolve-proposal-conflict",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The page revision the options were drafted or the flag read against (current_revision). A page that changed since answers 409 and nothing is applied. Omitted, the section is rewritten whatever changed since.",
+      "name": "expected_revision",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "The section's new Markdown: a drafted option's new_section_body, or your own.",
+      "name": "new_section_body",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The drafted option being applied (A, B, ...); informational only: new_section_body is what is written.",
+      "name": "option_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The flagged section: the section_id POST .../resolutions returned.",
+      "name": "section_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolve",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Resolve a review flag"
   },
   {
    "action": "retype-wiki-page-type-cards",

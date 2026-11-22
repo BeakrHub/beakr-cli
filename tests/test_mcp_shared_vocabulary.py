@@ -42,6 +42,8 @@ SURFACE_OWN_TOOLS = {
     "show_proposal",
     "accept_proposal",
     "dismiss_proposal",
+    "review_options",
+    "resolve_review",
     "wiki_stats",
     "wiki_graph",
     "beakr_version",

@@ -154,6 +154,10 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb types dismiss-suggestion",
         "kb compiles ls",
         "kb compiles cancel",
+        # Review flags: resolve what Knowledge flagged (draft options, apply one).
+        "kb review ls",
+        "kb review options",
+        "kb review resolve",
         "kb rows",
         "kb query",
         "kb add-fact",

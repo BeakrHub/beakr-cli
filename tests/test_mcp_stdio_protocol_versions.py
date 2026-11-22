@@ -148,6 +148,7 @@ def _assert_the_listing(tools: list[dict[str, Any]]) -> None:
         "wiki_stats",
         "wiki_graph",
         "show_proposal",
+        "review_options",
         "conversations_search",
         "org_audit_log",
         "upload_status",
