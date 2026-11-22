@@ -8,6 +8,16 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Stop queued work.** `beakr kb compiles ls -P <project>` counts the
+  Knowledge compiles queued and running in a project, or for one source
+  (`--source <id>` from `beakr sources ls`) or file (`--file <id>`), and shows
+  how the last cancel is going. `beakr kb compiles cancel -P <project>` cancels
+  the queued ones (with `--source` or `--file`, only that one's); compiles
+  already running finish and what Knowledge wrote stays. A source's cancel also
+  stops its running sync, and a whole-project cancel every running sync in the
+  project. It asks first (`--yes` skips the question; without a terminal it is
+  required) and takes `--json`. The MCP server has the same three tools as the
+  hosted one: `knowledge_queue`, `cancel_compiles` and `cancel_sync`.
 - **Card types from the command line.** `beakr kb types ls -P <project>` lists the
   card types a project uses, which scope defines each (project, organization or
   built-in) and whether a type is the project's own copy of a broader one.
@@ -97,6 +107,36 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- Queued Knowledge work can be cancelled, to stop paying for it.
+  `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
+  cancels every queued compile in the project, or one source's: give
+  `attachment_id` (a connected source) or `artifact_id` (an uploaded file), or
+  an empty body for the whole project. Compiles already running finish and keep
+  what they write; finished work is kept. Cancelling a connected source, or the
+  whole project, also cancels the running syncs it covers, so items they had not
+  handed off never queue. It answers `202` with `cancel_id`, `scope`
+  (`project` or `source`), `status` (`cancelling` while skipped compiles are
+  cleared, then `cancelled`), `will_be_skipped`, `already_running`,
+  `sync_stopped`, `syncs_stopped`, `sync_job_id`, `next_sync` (what the next
+  scheduled sync will do: an automatically synced source queues the skipped
+  items again) and `note`. A project admin may cancel anything; the person who
+  attached a source or uploaded a file may cancel its compiles while a member of
+  the project. Others get `403`; a project or source you cannot read is `404`.
+  `GET /v1/projects/{project_id}/knowledge/compiles` (`projects:read`) answers
+  `queued` and `running` counts for the project, or for one source
+  (`attachment_id` or `artifact_id`), and `last_cancel`: that scope's latest
+  cancel, with `status`, `done`, `total` and a `summary` such as "Cancelled 40
+  of 40 queued compiles".
+  `POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel`
+  (`uploads:write`) cancels a source's running sync: listing stops at its next
+  step and items not yet started are skipped; items already synced are kept,
+  and compiles they queued still run. It answers `sync_job_id`, `status`
+  (`cancelling`), `cancelled_by`, `next_sync` and `note`, and `409` with code
+  `no_running_sync` when nothing is syncing. The attacher (while a project
+  member), a project admin or an organization admin may cancel. Follow it with
+  `GET /v1/jobs/{job_id}`: a cancelled sync reads `running` (native status
+  `cancelling`) while items already started finish, then `cancelled`, with
+  `result.cancelled_by` and `result.cancel_summary` ("Cancelled at N of M").
 - A project chooses where its card types come from and who may change them, and
   every change to a card type is kept in a history.
   `PUT /v1/knowledge/wiki/page-types/settings` (`kb:write`, an owner of the

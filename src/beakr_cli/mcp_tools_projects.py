@@ -1,6 +1,7 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
-change its card types and the cards it already has, upload the person's files into it, and
-add the people who work in it.
+change its card types and the cards it already has, upload the person's files into it, add
+the people who work in it, and stop queued Knowledge work (``knowledge_queue``,
+``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``).
 
 The hosted MCP server has the same seven tools (beakr-engine
 ``beakr/api/mcp_remote/project_tools.py``, ``card_type_tools.py`` and
@@ -40,7 +41,7 @@ from beakr_sdk.resources._upload import (
     upload_relative_path,
 )
 
-from beakr_cli import card_settings, card_types, card_updates
+from beakr_cli import cancels, card_settings, card_types, card_updates
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
 from beakr_cli.upload_path_policy import (
@@ -890,6 +891,71 @@ def invitation_refusal(person: str, message: str) -> dict[str, Any] | None:
 #: The server ``upload_files`` reports progress through; set by :func:`register`.
 _SERVER: TieredMCPServer | None = None
 
+# --- knowledge_queue, cancel_compiles, cancel_sync -------------------------------------
+#
+# Stopping queued Knowledge work, to stop paying for it. The hosted halves are
+# beakr-engine ``beakr/api/mcp_remote/queue_tools.py``; the text is
+# :mod:`beakr_cli.cancels`, the same for the same REST answer. Each call is the
+# signed-in person's own request to a public route, which decides who may.
+
+
+def _cancel_source(
+    attachment_id: str | None, artifact_id: str | None
+) -> dict[str, str] | dict[str, Any]:
+    """``{attachment_id}`` or ``{artifact_id}`` or ``{}``; an error dict for both."""
+    attachment = str(attachment_id or "").strip()
+    artifact = str(artifact_id or "").strip()
+    if attachment and artifact:
+        return _error(
+            "invalid_arguments",
+            "Name one source: attachment_id or artifact_id, not both.",
+            "Pass one of them, or neither for the whole project.",
+        )
+    if attachment:
+        return {"attachment_id": attachment}
+    if artifact:
+        return {"artifact_id": artifact}
+    return {}
+
+
+async def knowledge_queue(
+    project: str, attachment_id: str | None = None, artifact_id: str | None = None
+) -> str | dict[str, Any]:
+    """Count a project's queued and running compiles (described in the shared surface)."""
+    source = _cancel_source(attachment_id, artifact_id)
+    if source.get("status") == "error":
+        return source
+    project_id = await _project_id(project)
+    queue = await call_api(lambda sdk: cancels.compile_queue(sdk, project_id, **source))
+    return cancels.queue_text(_dict(queue), source=bool(source))
+
+
+async def cancel_compiles(
+    project: str, attachment_id: str | None = None, artifact_id: str | None = None
+) -> str | dict[str, Any]:
+    """Cancel a project's or one source's queued compiles (described in the shared surface)."""
+    source = _cancel_source(attachment_id, artifact_id)
+    if source.get("status") == "error":
+        return source
+    project_id = await _project_id(project)
+    answer = await call_api(lambda sdk: cancels.cancel_queued_compiles(sdk, project_id, **source))
+    return cancels.cancel_compiles_text(_dict(answer))
+
+
+async def cancel_sync(project: str, attachment_id: str) -> str | dict[str, Any]:
+    """Cancel a source's running sync (described in the shared surface)."""
+    attachment = str(attachment_id or "").strip()
+    if not attachment:
+        return _error(
+            "invalid_arguments",
+            "Name the source: its attachment_id.",
+            "Pass attachment_id, the connected source's attachment id in the project.",
+        )
+    project_id = await _project_id(project)
+    answer = await call_api(lambda sdk: cancels.cancel_sync(sdk, project_id, attachment))
+    return cancels.cancel_sync_text(_dict(answer))
+
+
 PROJECT_TOOLS = (
     create_project,
     set_project_profile,
@@ -899,6 +965,9 @@ PROJECT_TOOLS = (
     upload_files,
     upload_status,
     add_project_member,
+    knowledge_queue,
+    cancel_compiles,
+    cancel_sync,
 )
 
 

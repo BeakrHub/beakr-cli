@@ -70,6 +70,9 @@ PROJECT_PARAMETER: dict[str, str] = {
     "update_existing_cards": "project",
     "upload_files": "project",
     "add_project_member": "project",
+    "knowledge_queue": "project",
+    "cancel_compiles": "project",
+    "cancel_sync": "project",
 }
 
 

@@ -23,6 +23,9 @@
     "upload_files",
     "upload_status",
     "add_project_member",
+    "knowledge_queue",
+    "cancel_compiles",
+    "cancel_sync",
     "beakr_version",
     "update_beakr"
   ],
@@ -493,6 +496,54 @@
       ],
       "tier": "discovery",
       "title": "Add a project member"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read a project's Knowledge compile queue: how many compiles are queued and running, for the whole project or one source (attachment_id for a connected source, artifact_id for an uploaded file), and how far the last cancel got.",
+      "name": "knowledge_queue",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Knowledge compile queue"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Cancel queued Knowledge compiles, to stop paying for them: the whole project's, or one source's (attachment_id or artifact_id). Ask the person first. Running compiles finish and finished work is kept. Cancelling a connected source, or the whole project, also cancels its running sync. An automatically synced source queues the skipped items again at its next sync; the answer says what that sync will do. A project admin may cancel anything; the person who added a source, its compiles.",
+      "name": "cancel_compiles",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Cancel queued compiles"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Cancel a connected source's running sync (attachment_id), after the person agrees: listing stops and items not yet started are skipped. Items already synced are kept, and compiles they queued still run (cancel_compiles cancels those).",
+      "name": "cancel_sync",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Cancel a running sync"
     },
     {
       "annotations": {

@@ -151,6 +151,7 @@ def _assert_the_listing(tools: list[dict[str, Any]]) -> None:
         "conversations_search",
         "org_audit_log",
         "upload_status",
+        "knowledge_queue",
         "beakr_version",
         "discover_tools",
     }
