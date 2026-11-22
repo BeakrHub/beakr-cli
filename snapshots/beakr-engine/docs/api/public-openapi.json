@@ -7078,7 +7078,7 @@
       },
       "InterviewFromReviewsBody": {
         "additionalProperties": false,
-        "description": "Which flags to ask about, and who the questions are for.",
+        "description": "Which flags to ask about, and who the interview is for.",
         "properties": {
           "goals": {
             "anyOf": [
@@ -7093,23 +7093,32 @@
             "description": "The interview's goals, in place of the drafted ones.",
             "title": "Goals"
           },
-          "include": {
-            "description": "Review kinds to ask about besides conflicts (`ambiguity`, `unverifiable`, `likely_error`), or `all` for every open review flag. Ignored with `proposal_ids`.",
+          "kinds": {
+            "description": "Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.",
             "items": {
               "enum": [
+                "contradiction",
                 "ambiguity",
                 "unverifiable",
                 "likely_error",
-                "all"
+                "other"
               ],
               "type": "string"
             },
-            "title": "Include",
+            "title": "Kinds",
             "type": "array"
           },
+          "link_expires_in_days": {
+            "default": 14,
+            "description": "How long the participant's link works, in days.",
+            "maximum": 90.0,
+            "minimum": 1.0,
+            "title": "Link Expires In Days",
+            "type": "integer"
+          },
           "max_questions": {
-            "default": 15,
-            "description": "The most flags to ask about, one question each (a sendable interview takes 30).",
+            "default": 30,
+            "description": "The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.",
             "maximum": 30.0,
             "minimum": 1.0,
             "title": "Max Questions",
@@ -7118,23 +7127,21 @@
           "participant": {
             "anyOf": [
               {
-                "maxLength": 200,
-                "type": "string"
+                "$ref": "#/components/schemas/ParticipantIn"
               },
               {
                 "type": "null"
               }
             ],
-            "description": "Who the questions are for (a name or a role). Used for wording only: nothing is sent.",
-            "title": "Participant"
+            "description": "Who the interview is for. Given, the interview also gets that person's link (`link`, `link_url`), made as `POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends nothing, you deliver the link. Omitted: a draft only."
           },
           "proposal_ids": {
-            "description": "The review flags to ask about (proposal ids), in order. Omitted: the project's open conflict flags, newest first, plus the kinds in `include`.",
+            "description": "The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).",
             "items": {
               "format": "uuid",
               "type": "string"
             },
-            "maxItems": 30,
+            "maxItems": 100,
             "title": "Proposal Ids",
             "type": "array"
           },
@@ -7156,7 +7163,7 @@
         "type": "object"
       },
       "InterviewFromReviewsOut": {
-        "description": "The drafted interview and which flag each question asks about.",
+        "description": "The drafted interview, which flag each question asks about, and the participant's link.",
         "properties": {
           "edit_url": {
             "anyOf": [
@@ -7196,7 +7203,30 @@
                 "type": "null"
               }
             ],
-            "description": "The saved draft interview (no links: nothing is sent). Edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask."
+            "description": "The saved interview. Without a participant it has no links: edit it, then send it with `POST /v1/interview/sendables/{sendable_id}/links`. Null when there was nothing to ask."
+          },
+          "link": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InterviewLinkMadeOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The participant's link, when a participant was given."
+          },
+          "link_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The link anyone can open to take the interview, with no Beakr account. Shown once. Shown on the first response only; absent from an idempotent replay.",
+            "title": "Link Url"
           },
           "message": {
             "anyOf": [
@@ -7234,8 +7264,20 @@
             "description": "`model` when the model wrote every question, `template` when any was built from its flag; null when nothing was drafted.",
             "title": "Questions Written By"
           },
+          "secret_redacted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "True on an idempotent replay (`Idempotent-Replayed` header): the one-time secret was not stored, so this response omits it. Absent on the first response.",
+            "title": "Secret Redacted"
+          },
           "skipped": {
-            "description": "Named flags that could not be asked about, and why.",
+            "description": "Flags not asked about, and why (including open flags past the question cap).",
             "items": {
               "$ref": "#/components/schemas/SkippedFlagOut"
             },
@@ -7326,6 +7368,53 @@
           "result_url"
         ],
         "title": "InterviewLinkCreated",
+        "type": "object"
+      },
+      "InterviewLinkMadeOut": {
+        "description": "The participant's link, made with the interview.",
+        "properties": {
+          "expires_at": {
+            "description": "When the link stops working.",
+            "examples": [
+              "2026-10-03T09:30:42Z"
+            ],
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "label": {
+            "description": "Who it is for, as shown beside the link in Beakr.",
+            "title": "Label",
+            "type": "string"
+          },
+          "link_id": {
+            "description": "Id of the link.",
+            "examples": [
+              "0f1e2d3c-4b5a-4c6d-9e8f-7a6b5c4d3e2f"
+            ],
+            "format": "uuid",
+            "title": "Link Id",
+            "type": "string"
+          },
+          "result_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where to read the interview's progress and answers (the link result route).",
+            "title": "Result Url"
+          }
+        },
+        "required": [
+          "link_id",
+          "label",
+          "expires_at"
+        ],
+        "title": "InterviewLinkMadeOut",
         "type": "object"
       },
       "InterviewLinkRecipient": {
@@ -11638,6 +11727,56 @@
           "data"
         ],
         "title": "OrgOutPage",
+        "type": "object"
+      },
+      "ParticipantIn": {
+        "additionalProperties": false,
+        "description": "Who the interview is for: a member of the organization, or a name and/or email.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "format": "email",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The person's email, shown beside the link in Beakr. Beakr sends nothing to it.",
+            "examples": [
+              "dana@example.com"
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The person's name, shown beside the link in Beakr.",
+            "title": "Name"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A member of your organization (user id); their name and email label the link.",
+            "title": "User Id"
+          }
+        },
+        "title": "ParticipantIn",
         "type": "object"
       },
       "PendingMemberInvitationOut": {
@@ -16171,7 +16310,7 @@
         "type": "object"
       },
       "SkippedFlagOut": {
-        "description": "A named flag that could not be asked about.",
+        "description": "A flag that was not asked about, and why.",
         "properties": {
           "proposal_id": {
             "description": "Id of the flag.",
@@ -16180,11 +16319,12 @@
             "type": "string"
           },
           "reason": {
-            "description": "`not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal).",
+            "description": "`not_found` (no such flag in this project, or not visible to you), `not_open` (already resolved or dismissed), `not_a_review_flag` (another kind of proposal), `over_question_limit` (an open flag left out because the interview was full).",
             "enum": [
               "not_found",
               "not_open",
-              "not_a_review_flag"
+              "not_a_review_flag",
+              "over_question_limit"
             ],
             "title": "Reason",
             "type": "string"
@@ -33699,7 +33839,7 @@
     },
     "/v1/projects/{project_id}/interviews/from-reviews": {
       "post": {
-        "description": "Draft an interview from review flags.\n\nBeakr writes one plain-language key question per open review flag in the\nproject, naming its specifics (the values that disagree, the cards, the\ndates, where each came from), and saves them as a draft interview. By\ndefault it asks about the project's open conflict flags, newest first, up\nto `max_questions`; `include` adds other review kinds, or `proposal_ids` names the\nflags. Nothing is sent: a person edits the draft and sends it\n(`edit_url`, or `POST /v1/interview/sendables/{sendable_id}/links`).\n\nEach flag records the question that asks about it. When a link of this\ninterview finishes, Beakr attaches each answer to its flag as a suggestion\n(`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),\nwith the drafted resolution it matches; a person applies it with the\nresolve routes. Nothing is ever applied automatically.\n\nA project with nothing to ask about answers 200 with `interview: null` and\n`empty_reason`. One model call; when no model answers, each question is\nbuilt from its flag (`questions_written_by: template`). Needs the\n`interviews:write` and `kb:read` scopes. PHI organizations are refused\n(403 `outside_interviews_unavailable`).",
+        "description": "Draft an interview from review flags.\n\nBeakr writes one plain-language key question per open review flag in the\nproject, naming its specifics (the values that disagree, the cards, the\ndates, where each came from), and saves them as an interview; the\ninterviewer gets each flag's background (`supporting_info`). By default it\nasks about every open review flag (contradictions, ambiguities and the\nrest), newest first, up to `max_questions` (30, the interview's cap); flags\npast it come back in `skipped` as `over_question_limit`. `kinds` narrows\nthe kinds, or `proposal_ids` names the flags.\n\nWith a `participant` (a member's `user_id`, or a name and/or email), the\ninterview also gets that person's link, made exactly as\n`POST /v1/interview/sendables/{sendable_id}/links` makes it: Beakr sends\nnothing, and `link_url` (shown once) is for you to deliver. So one call goes\nfrom open flags to a link, for example from a scheduled job with an API key.\nWithout one, it is a draft: a person edits it (`edit_url`) and sends it.\n\nEach flag records the question that asks about it. When a link of this\ninterview finishes, Beakr attaches each answer to its flag as a suggestion\n(`interview_answers` on `GET /v1/knowledge/wiki/proposals/{proposal_id}`),\nwith the drafted resolution it matches; a person applies it with the\nresolve routes. Nothing is ever applied automatically.\n\nA project with nothing to ask about answers 200 with `interview: null` and\n`empty_reason`. One model call; when no model answers, each question is\nbuilt from its flag (`questions_written_by: template`). Needs the\n`interviews:write` and `kb:read` scopes. PHI organizations are refused\n(403 `outside_interviews_unavailable`); a `user_id` that is not a member\nanswers 404 `participant_not_found`; past the daily link limit, 429\n`interview_link_limit`.",
         "operationId": "draft_interview_from_reviews_v1_projects__project_id__interviews_from_reviews_post",
         "parameters": [
           {

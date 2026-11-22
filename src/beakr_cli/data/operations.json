@@ -1915,33 +1915,41 @@
       "type": "string"
      },
      {
-      "description": "Review kinds to ask about besides conflicts (`ambiguity`, `unverifiable`, `likely_error`), or `all` for every open review flag. Ignored with `proposal_ids`.",
+      "description": "Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.",
       "enum": [
+       "contradiction",
        "ambiguity",
        "unverifiable",
        "likely_error",
-       "all"
+       "other"
       ],
       "multiple": true,
-      "name": "include",
+      "name": "kinds",
       "required": false,
       "type": "string"
      },
      {
-      "default": 15,
-      "description": "The most flags to ask about, one question each (a sendable interview takes 30).",
+      "default": 14,
+      "description": "How long the participant's link works, in days.",
+      "name": "link_expires_in_days",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "default": 30,
+      "description": "The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.",
       "name": "max_questions",
       "required": false,
       "type": "integer"
      },
      {
-      "description": "Who the questions are for (a name or a role). Used for wording only: nothing is sent.",
+      "description": "Who the interview is for: a member of the organization, or a name and/or email.",
       "name": "participant",
       "required": false,
-      "type": "string"
+      "type": "object"
      },
      {
-      "description": "The review flags to ask about (proposal ids), in order. Omitted: the project's open conflict flags, newest first, plus the kinds in `include`.",
+      "description": "The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).",
       "multiple": true,
       "name": "proposal_ids",
       "required": false,

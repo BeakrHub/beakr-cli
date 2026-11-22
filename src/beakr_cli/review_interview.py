@@ -1,10 +1,13 @@
-"""Draft an interview from a project's open review flags, and say what was drafted.
+"""Turn a project's open review flags into one interview, and say what was drafted.
 
-One documented operation (beakr-engine #3109):
+One documented operation (beakr-engine #3109, ENG-2467):
 ``POST /v1/projects/{project_id}/interviews/from-reviews`` writes one
-plain-language key question per open review flag and saves them as a draft
-sendable interview. It never sends it: a person edits and sends it in Beakr
-(``edit_url``). ``201`` with the draft, or ``200`` with ``interview: null``,
+plain-language key question per open review flag (every kind by default, up to
+30; the rest are listed as ``over_question_limit``) and saves the interview.
+Without a participant it is a draft a person edits and sends in Beakr
+(``edit_url``); with one (``{user_id}`` or ``{name, email}``) the interview also
+gets that person's link (``link``, and ``link_url`` shown once). Beakr sends
+nothing. ``201`` with the interview, or ``200`` with ``interview: null``,
 ``empty_reason`` and ``message`` when there is nothing to ask.
 
 It is called through the SDK's ``request`` so the command and the MCP tool work
@@ -23,10 +26,18 @@ from typing import Any
 
 from beakr_sdk._paths import segment
 
-#: Review kinds ``include`` takes besides conflicts (``all``: every open review flag).
-INCLUDE_KINDS: tuple[str, ...] = ("ambiguity", "unverifiable", "likely_error", "all")
-#: The most flags one draft asks about (a sendable interview takes 30 questions).
+#: A review flag's kinds (``other``: an older flag that names none).
+FLAG_KINDS: tuple[str, ...] = (
+    "contradiction",
+    "ambiguity",
+    "unverifiable",
+    "likely_error",
+    "other",
+)
+#: The most flags one interview asks about (its own question cap), and the default.
 MAX_QUESTIONS = 30
+#: The ``skipped`` reason of an open flag left out because the interview was full.
+OVER_QUESTION_LIMIT = "over_question_limit"
 
 
 def from_reviews_path(project_id: str) -> str:
@@ -36,9 +47,10 @@ def from_reviews_path(project_id: str) -> str:
 def request_body(
     *,
     proposal_ids: Iterable[str] | None = None,
-    include: Iterable[str] | None = None,
+    kinds: Iterable[str] | None = None,
     max_questions: int | None = None,
-    participant: str | None = None,
+    participant: dict[str, str | None] | None = None,
+    link_expires_in_days: int | None = None,
     title: str | None = None,
     goals: str | None = None,
 ) -> dict[str, Any]:
@@ -47,19 +59,28 @@ def request_body(
     flags = [str(flag) for flag in proposal_ids or ()]
     if flags:
         body["proposal_ids"] = flags
-    kinds = list(include or ())
-    if kinds:
-        body["include"] = kinds
+    chosen = list(kinds or ())
+    if chosen:
+        body["kinds"] = chosen
     if max_questions is not None:
         body["max_questions"] = max_questions
-    for key, value in (("participant", participant), ("title", title), ("goals", goals)):
+    person = {
+        key: str(value).strip()
+        for key, value in (participant or {}).items()
+        if str(value or "").strip()
+    }
+    if person:
+        body["participant"] = person
+    if link_expires_in_days is not None:
+        body["link_expires_in_days"] = link_expires_in_days
+    for key, value in (("title", title), ("goals", goals)):
         if str(value or "").strip():
             body[key] = str(value).strip()
     return body
 
 
 def draft_from_reviews(sdk: Any, project_id: str, body: dict[str, Any]) -> Any:
-    """Draft the interview (sync or async SDK client: awaitable from the async one)."""
+    """Make the interview (sync or async SDK client: awaitable from the async one)."""
     return sdk.request("POST", from_reviews_path(project_id), json=body)
 
 

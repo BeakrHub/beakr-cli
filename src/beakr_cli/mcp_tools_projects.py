@@ -966,21 +966,22 @@ async def cancel_sync(project: str, attachment_id: str) -> str | dict[str, Any]:
 # :func:`beakr_cli.review_interview.review_interview_text`, the same for the same REST
 # answer. Drafting only: nothing here can send an interview.
 
-ReviewKind = Literal["ambiguity", "unverifiable", "likely_error", "all"]
+ReviewKind = Literal["contradiction", "ambiguity", "unverifiable", "likely_error", "other"]
 
 
 async def draft_review_interview(
     project: str,
     flags: list[str] | None = None,
-    include: list[ReviewKind] | None = None,
-    participant: str | None = None,
+    kinds: list[ReviewKind] | None = None,
     title: str | None = None,
 ) -> str | dict[str, Any]:
-    """Draft an interview from a project's open review flags (described in the shared surface)."""
+    """Draft an interview from a project's open review flags (described in the shared surface).
+
+    Drafting only, as on the hosted server: no participant, so no link is made;
+    the person sends it from Beakr.
+    """
     project_id = await _project_id(project)
-    body = review_interview.request_body(
-        proposal_ids=flags, include=include, participant=participant, title=title
-    )
+    body = review_interview.request_body(proposal_ids=flags, kinds=kinds, title=title)
     answer = await call_api(lambda sdk: review_interview.draft_from_reviews(sdk, project_id, body))
     return review_interview.review_interview_text(_dict(answer))
 

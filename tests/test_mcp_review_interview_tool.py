@@ -3,9 +3,9 @@
 The hosted server has the same tool (beakr-engine
 ``beakr/api/mcp_remote/review_interview_tools.py``), and its
 ``tests/unit/test_mcp_every_tool_result_contract.py`` holds both servers to the
-same answer. These pin the arguments the tool takes (the hosted tool's), what it
-sends, and the hosted text, line for line. It drafts only: nothing it calls can
-send an interview.
+same answer. These pin the arguments the tool takes (the hosted tool's:
+project, flags, kinds, title), what it sends, and the hosted text, line for line.
+It drafts only: it takes no participant, so no link is made and nothing is sent.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ async def test_the_tool_takes_the_hosted_tools_arguments() -> None:
     listed = {tool.name: tool for tool in await mcp_server.mcp.list_tools()}
     tool = listed["draft_review_interview"]
     schema = tool.input_schema
-    assert set(schema["properties"]) == {"project", "flags", "include", "participant", "title"}
+    assert set(schema["properties"]) == {"project", "flags", "kinds", "title"}
     assert schema["required"] == ["project"]
     assert tool.description == tool_surface.description("draft_review_interview")
     hints = tool.annotations
@@ -80,8 +80,10 @@ async def test_the_tool_takes_the_hosted_tools_arguments() -> None:
 async def test_a_draft_answers_the_hosted_text() -> None:
     _project()
     route = respx.post(FROM_REVIEWS).respond(201, json=DRAFTED)
-    text = await mcp_tools_projects.draft_review_interview(PROJECT, participant="Dana")
-    assert json.loads(route.calls.last.request.content) == {"participant": "Dana"}
+    text = await mcp_tools_projects.draft_review_interview(
+        PROJECT, kinds=["contradiction", "ambiguity"]
+    )
+    assert json.loads(route.calls.last.request.content) == {"kinds": ["contradiction", "ambiguity"]}
     assert text == (
         f'Drafted interview "Settle the Lot 42 questions" (id {INTERVIEW}) with 1 question(s), '
         "one per review flag. Nothing was sent.\n"
@@ -94,21 +96,27 @@ async def test_a_draft_answers_the_hosted_text() -> None:
 
 
 @respx.mock
-async def test_flags_include_and_title_are_sent_as_the_hosted_tool_sends_them() -> None:
+async def test_flags_kinds_and_title_are_sent_as_the_hosted_tool_sends_them() -> None:
     _project()
     route = respx.post(FROM_REVIEWS).respond(201, json=DRAFTED)
     await mcp_tools_projects.draft_review_interview(
         PROJECT,
         flags=[FLAG, SKIPPED],
-        include=["ambiguity", "all"],
-        participant="  ",
+        kinds=["other"],
         title=" Lot 42 ",
     )
     assert json.loads(route.calls.last.request.content) == {
         "proposal_ids": [FLAG, SKIPPED],
-        "include": ["ambiguity", "all"],
+        "kinds": ["other"],
         "title": "Lot 42",
     }
+
+
+async def test_the_tool_takes_no_participant_so_it_never_makes_a_link() -> None:
+    listed = {tool.name: tool for tool in await mcp_server.mcp.list_tools()}
+    properties = listed["draft_review_interview"].input_schema["properties"]
+    assert "participant" not in properties
+    assert "link_expires_in_days" not in properties
 
 
 @respx.mock
@@ -143,7 +151,7 @@ def test_an_answer_without_a_message_names_the_empty_reason() -> None:
 @respx.mock
 async def test_an_unknown_kind_is_refused_before_anything_is_sent() -> None:
     result = await mcp_client.call_tool(
-        "draft_review_interview", {"project": PROJECT, "include": ["typo"]}
+        "draft_review_interview", {"project": PROJECT, "kinds": ["all"]}
     )
     assert result.is_error
     assert not respx.calls

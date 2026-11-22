@@ -553,7 +553,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Draft an interview from a project's open review flags, for a person who knows the answers: one plain-language question per flag, naming the values that disagree, the cards, the dates and their sources. By default it asks about the open conflict flags; include adds other review kinds (ambiguity, unverifiable, likely_error, all), or flags names them. The draft is saved, never sent: the person edits and sends it in Beakr (the answer gives the link). When it is answered, each answer comes back on its flag as a suggestion a person applies. Ask the person before drafting.",
+      "description": "Draft an interview from a project's open review flags, for a person who knows the answers: one plain-language question per flag, naming the values that disagree, the cards, the dates and their sources, with each flag's background for the interviewer. By default every open review flag (up to 30; the rest are listed as left out); kinds narrows it, or flags names them. The draft is saved, never sent: the person edits and sends it in Beakr (the answer gives the link). When it is answered, each answer comes back on its flag as a suggestion a person applies. Ask the person before drafting.",
       "name": "draft_review_interview",
       "surfaces": [
         "remote",

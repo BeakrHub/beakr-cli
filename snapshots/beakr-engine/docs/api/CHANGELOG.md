@@ -11,32 +11,41 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=54481c8bba44a66996a870f170fbba4177c5132c7a7307f5c53562b9283ec538 changelog sha256=c0c8e64672b7c4332be65da5a26bc060ea528d47d81c0f8aaf324f0f915d38c3 -->
+<!-- contract-stamp: public-openapi sha256=18bc5fe5e87cca83affe155d02f9fbdd59bc159444dc332f1f62ba653340d699 changelog sha256=0bfca04867b2d6f751e3b39125caec2c7164d11b7552e036e5e9b585f27e3e44 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- An interview can now be drafted from a project's open review flags.
+- A project's open review flags can now become one interview.
   `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
-  and `kb:read`) writes one plain-language key question per flag, naming its
-  specifics (the values that disagree, the cards, the dates, where each came
-  from), and saves them as a draft interview that is never sent: a person edits
-  it (`edit_url`) and sends it the usual way. By default it asks about the
-  project's open conflict flags, newest first, up to `max_questions` (15); `include`
-  adds `ambiguity`, `unverifiable`, `likely_error` or `all`, and
-  `proposal_ids` names the flags instead. It answers `201` with `interview`,
-  `questions` (each with its `proposal_id`, `kind`, `asked_revision`,
-  `written_by` and `linked`), `skipped` and `questions_written_by`; a project
-  with nothing to ask about answers `200` with `interview: null`,
-  `empty_reason` and `message`. When a link of that interview finishes, each
-  answer is attached to its flag as a suggestion: a review proposal's read
+  and `kb:read`) writes one plain-language key question per open review flag,
+  naming its specifics (the values that disagree, the cards, the dates, where
+  each came from), and saves the interview with each flag's background in its
+  `supporting_info`. By default it asks about every open review flag
+  (contradictions, ambiguities and the rest), newest first, up to
+  `max_questions` (30, the interview's cap); flags past it are listed in
+  `skipped` as `over_question_limit`. `kinds` narrows the kinds and
+  `proposal_ids` names the flags. With a `participant` (a member's `user_id`, or
+  a `name` and/or `email`) it also makes that person's link, as
+  `POST /v1/interview/sendables/{sendable_id}/links` does: Beakr sends nothing,
+  and `link_url` is shown once (omitted on a replay, `secret_redacted: true`),
+  with `link` (`link_id`, `label`, `expires_at`, `result_url`). Without one the
+  interview is a draft to edit (`edit_url`) and send. It answers `201` with
+  `interview`, `link`, `link_url`, `questions` (each with its `proposal_id`,
+  `kind`, `asked_revision`, `written_by` and `linked`), `skipped`,
+  `questions_written_by` and `edit_url`; a project with nothing to ask about
+  answers `200` with `interview: null`, `empty_reason` and `message`. Errors:
+  `404 participant_not_found`, `429 interview_link_limit`,
+  `403 outside_interviews_unavailable`. When a link finishes, each answer is
+  attached to its flag as a suggestion: a review proposal's read
   (`GET /v1/knowledge/wiki/proposals` and `GET .../proposals/{proposal_id}`)
-  now carries `interview_questions` and `interview_answers` (each with
+  carries `interview_questions` and `interview_answers` (each with
   `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
   `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
-  `suggested_option_id` names the drafted resolution the answer matches; it is
-  null when the flagged text changed since the question was asked (`stale`).
-  Nothing is applied: a person resolves the flag with the resolve routes.
+  `suggested_option_id` names the drafted resolution the answer matches (null
+  when the flagged text changed since the question was asked, `stale`). Nothing
+  is applied: a person, or a key allowed to accept, resolves the flag with the
+  resolve routes.
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still
