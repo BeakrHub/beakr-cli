@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=ee635e6efdc6df685fd6b475f51d106837784fcda28c1b63e758db7818b954f1 changelog sha256=52d1bd24c60a4368ffe8b32edeb0c54872a698fc69048c34d374a67e7fdfe666 -->
+<!-- contract-stamp: public-openapi sha256=5a65be1287d9b43640298ec5fa7caa6fa024484dcd4c11c90cf7b8aacc44e874 changelog sha256=0b98d9e908935adda576ef7952834659f0647ff1da516c89e30a3b3c4fbea353 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -47,6 +47,28 @@ The first public version.
   file's versions, oldest first, as a cursor-paged list, each with `version_no`,
   `size_bytes`, `mime_type`, `content_hash`, `created_at` and
   `written_by_agent`. A file the caller cannot see answers `404`.
+- A review flag (a proposal of type `review`: a section Knowledge flagged as
+  contradicted, unverifiable or unclear) can be resolved through the API, not
+  only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`
+  (`kb:read`) reads the flag: the section and its current text, why it was
+  flagged, the sources on each side and the page's `current_revision`.
+  `POST .../resolutions` (`kb:write`) drafts up to a few resolutions, each with
+  what it changes; they are kept for the page revision they were drafted
+  against, so asking again returns them at once (`cached: true`). Apply one with
+  `POST .../resolve` (a section rewrite: `section_id`, `new_section_body`,
+  `expected_revision`), `POST .../resolve-rows` (a drafted row operation on a
+  card's Facts or Connections table: `option_id`, `expected_revision`) or
+  `POST .../resolve-cards` (one `outcome` on every card a contradiction review
+  lists); all three need `kb:write`. A page that changed since
+  `expected_revision` answers `409` and nothing is applied. Where a person must
+  accept proposals, a person, or a key with the `proposals:accept` (reviewer)
+  permission, must apply a resolution, as for accepting: any other key or token
+  is refused with `403 person_review_required`. Drafting is open to any
+  `kb:write` key. A key restricted to projects reaches only flags in its
+  projects (another project's flag answers `404`), and a flag that is no longer
+  pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
+  `proposal_type`: `proposal_type=review` lists only review flags (with
+  `status=pending`, the default, the open ones).
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still

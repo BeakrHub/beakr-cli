@@ -240,6 +240,20 @@ CASES: list[SnapshotCase] = [
     c("kb-proposals-show", "kb", "proposals", "show", ID),
     c("kb-proposals-accept", "kb", "proposals", "accept", ID, "--yes"),
     c("kb-proposals-dismiss", "kb", "proposals", "dismiss", ID, "--yes"),
+    c(
+        "kb-review-ls", "kb", "review", "ls", "--project", PROJECT,
+        variants={"GET /v1/knowledge/wiki/proposals": "review"},
+    ),
+    c("kb-review-options", "kb", "review", "options", ID),
+    c("kb-review-resolve", "kb", "review", "resolve", ID, "--option", "2", "--yes"),
+    c(
+        "kb-review-resolve-body", "kb", "review", "resolve", ID, "--body", "-", "--yes",
+        stdin="## Solubility\n\nHX-07 dissolves at 4-12 mg/mL depending on buffer.\n",
+    ),
+    c(
+        "kb-review-resolve-outcome", "kb", "review", "resolve", ID, "--outcome", "both_valid",
+        "--yes",
+    ),
     # --- agent context and conversations ---------------------------------------
     c("context", "context", "--project", PROJECT),
     c("context-claude-md", "context", "--project", PROJECT, "--format", "claude_md"),
