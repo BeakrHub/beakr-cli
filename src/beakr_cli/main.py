@@ -42,6 +42,7 @@ from beakr_cli.commands import (
     profile,
     project_members,
     projects,
+    review_interview,
     runs,
     skills,
     sources,
@@ -97,6 +98,8 @@ for _module in (
     outputs,
     interviews,
     interview_links,
+    # After kb_compiles and any module that makes `kb review`: this one joins it.
+    review_interview,
     end_user_tokens,
     external_users,
     labels,

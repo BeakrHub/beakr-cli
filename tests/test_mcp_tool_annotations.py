@@ -61,6 +61,7 @@ WRITE_TOOLS = frozenset(
         "add_project_member",
         "cancel_compiles",
         "cancel_sync",
+        "draft_review_interview",
         "update_beakr",
     }
 )

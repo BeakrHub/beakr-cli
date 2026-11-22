@@ -1903,6 +1903,79 @@
    "summary": "Create a sendable interview"
   },
   {
+   "action": "draft-interview-from-reviews",
+   "anonymous": false,
+   "area": "interviews",
+   "body": {
+    "fields": [
+     {
+      "description": "The interview's goals, in place of the drafted ones.",
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Review kinds to ask about besides conflicts (`ambiguity`, `unverifiable`, `likely_error`), or `all` for every open review flag. Ignored with `proposal_ids`.",
+      "enum": [
+       "ambiguity",
+       "unverifiable",
+       "likely_error",
+       "all"
+      ],
+      "multiple": true,
+      "name": "include",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": 15,
+      "description": "The most flags to ask about, one question each (a sendable interview takes 30).",
+      "name": "max_questions",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Who the questions are for (a name or a role). Used for wording only: nothing is sent.",
+      "name": "participant",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The review flags to ask about (proposal ids), in order. Omitted: the project's open conflict flags, newest first, plus the kinds in `include`.",
+      "multiple": true,
+      "name": "proposal_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The interview's title, in place of the drafted one.",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/interviews/from-reviews",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/interviews/from-reviews",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:write",
+   "summary": "Draft an interview from review flags"
+  },
+  {
    "action": "link-result",
    "anonymous": false,
    "area": "interviews",

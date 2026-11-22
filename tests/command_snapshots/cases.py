@@ -434,4 +434,5 @@ EXEMPT: dict[str, str] = {
     "kb types dismiss-suggestion": ("no recorded response yet; tests/test_cli_kb_type_settings.py"),
     "kb compiles ls": "no recorded response yet; tests/test_cli_kb_compiles.py",
     "kb compiles cancel": "no recorded response yet; tests/test_cli_kb_compiles.py",
+    "kb review interview": "no recorded response yet; tests/test_cli_kb_review_interview.py",
 }

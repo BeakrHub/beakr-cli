@@ -8,6 +8,15 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Ask a person about review flags.** `beakr kb review interview -P <project>`
+  drafts an interview with one question per open review flag: the project's
+  conflict flags by default, `--include ambiguity,unverifiable,likely_error`
+  (or `all`) for other kinds, or `--flags <id>,<id>` for named ones; `--for`
+  names who it is for, and `--title`, `--goals` and `--max-questions` (1 to 30)
+  shape it. It prints the draft (each question with its flag id, kind, card and
+  reason, then any flags skipped and why) and the link where a person edits and
+  sends it; nothing is sent. It takes `--json`. The MCP server has the same
+  `draft_review_interview` tool as the hosted one, with the same answer.
 - **Attach connected items to a project from the command line.** `beakr sources
   attach <link> -P <project>` attaches a Notion page or database, a Google Drive
   folder or file, or a Slack channel by its link (the id, type and provider come
@@ -149,6 +158,46 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- An interview can now be drafted from a project's open review flags.
+  `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
+  and `kb:read`) writes one plain-language key question per flag, naming its
+  specifics (the values that disagree, the cards, the dates, where each came
+  from), and saves them as a draft interview that is never sent: a person edits
+  it (`edit_url`) and sends it the usual way. By default it asks about the
+  project's open conflict flags, newest first, up to `max_questions` (15); `include`
+  adds `ambiguity`, `unverifiable`, `likely_error` or `all`, and
+  `proposal_ids` names the flags instead. It answers `201` with `interview`,
+  `questions` (each with its `proposal_id`, `kind`, `asked_revision`,
+  `written_by` and `linked`), `skipped` and `questions_written_by`; a project
+  with nothing to ask about answers `200` with `interview: null`,
+  `empty_reason` and `message`. When a link of that interview finishes, each
+  answer is attached to its flag as a suggestion: a review proposal's read
+  (`GET /v1/knowledge/wiki/proposals` and `GET .../proposals/{proposal_id}`)
+  now carries `interview_questions` and `interview_answers` (each with
+  `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
+  `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
+  `suggested_option_id` names the drafted resolution the answer matches; it is
+  null when the flagged text changed since the question was asked (`stale`).
+  Nothing is applied: a person resolves the flag with the resolve routes.
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
+- A card type's field can say what to record under it. Each item of `fields`
+  takes an optional `description` (up to 300 characters) on
+  `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
+  `POST /v1/projects`: what counts under that name, or that there is one row for
+  each of several things (for example "one row per run, with its run number and
+  result"). Beakr follows it when it files Facts rows under that field. It is
+  returned in the type's `metadata_schema.attribute_notes`, a map of field name
+  to text holding only the fields given one. A field sent without `description`
+  has none.
 - Queued Knowledge work can be cancelled, to stop paying for it.
   `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
   cancels every queued compile in the project, or one source's: give

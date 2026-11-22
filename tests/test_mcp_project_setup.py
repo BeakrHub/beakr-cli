@@ -46,6 +46,7 @@ TOOLS = (
     "knowledge_queue",
     "cancel_compiles",
     "cancel_sync",
+    "draft_review_interview",
 )
 
 

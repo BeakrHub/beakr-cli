@@ -519,6 +519,15 @@ beakr interviews link send LINK_ID --project <id>
 beakr interviews link ls | revoke LINK_ID
 ```
 
+To ask someone about what Knowledge flagged for review, draft an interview with
+one question per open review flag (conflicts by default). It is saved, never
+sent: edit and send it in Beakr at the printed link, and each answer comes back
+on its flag as a suggestion:
+
+```bash
+beakr kb review interview -P Research [--include ambiguity,likely_error | --flags ID,ID] [--for "Dana"] [--title T]
+```
+
 ## Knowledge cards
 
 Project-map cards hold Facts, Connections and dated Findings. Knowledge reads

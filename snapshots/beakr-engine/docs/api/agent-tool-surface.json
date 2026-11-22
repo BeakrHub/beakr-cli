@@ -26,6 +26,7 @@
     "knowledge_queue",
     "cancel_compiles",
     "cancel_sync",
+    "draft_review_interview",
     "beakr_version",
     "update_beakr"
   ],
@@ -544,6 +545,22 @@
       ],
       "tier": "discovery",
       "title": "Cancel a running sync"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Draft an interview from a project's open review flags, for a person who knows the answers: one plain-language question per flag, naming the values that disagree, the cards, the dates and their sources. By default it asks about the open conflict flags; include adds other review kinds (ambiguity, unverifiable, likely_error, all), or flags names them. The draft is saved, never sent: the person edits and sends it in Beakr (the answer gives the link). When it is answered, each answer comes back on its flag as a suggestion a person applies. Ask the person before drafting.",
+      "name": "draft_review_interview",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Draft an interview from review flags"
     },
     {
       "annotations": {
