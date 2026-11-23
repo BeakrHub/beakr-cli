@@ -168,6 +168,7 @@ def _main(
 
     if ctx.invoked_subcommand in _NO_UPDATE_NOTICE or not sys.stderr.isatty():
         return
+    _installation_notice(ctx)
     from beakr_cli.updates import get_update_status
 
     status = get_update_status(timeout=1.5)
@@ -178,7 +179,44 @@ def _main(
         )
 
 
+def _installation_notice(ctx: typer.Context) -> None:
+    """A self-hosted build differs from the CLI its installation ships: say so, once a day.
+
+    The manifest is read from the cache, or refreshed in a background thread; the
+    line is printed when the command's context closes, after its own output, and
+    the command never waits more than what is left of a short budget for it.
+    """
+    from beakr_cli import installation_clients
+    from beakr_cli.output import err_console
+
+    notice = installation_clients.start_notice()
+    if notice is None:
+        return
+
+    def emit(line: str) -> None:
+        err_console.print(f"[yellow]{escape(line)}[/yellow]", soft_wrap=True, highlight=False)
+
+    def finish() -> None:
+        notice.finish(emit)
+
+    call_on_close = getattr(ctx, "call_on_close", None)
+    if callable(call_on_close):
+        call_on_close(finish)
+    else:
+        finish()
+
+
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
+
+
+def _installation_expected():
+    """What this installation's release ships, for a self-hosted build (else None)."""
+    from beakr_cli import installation_clients
+    from beakr_cli.updates import self_hosted_build
+
+    if not self_hosted_build():
+        return None
+    return installation_clients.expected(timeout=3.0, force=True)
 
 
 @internal_app.command()
@@ -217,6 +255,14 @@ def version(
             report["connected"] = connected
         if on_box:
             report.update(bundled_with_box=True, instructions=installation_instructions())
+            shipped = _installation_expected()
+            if shipped is not None:
+                report["installation"] = {
+                    "release": shipped.release,
+                    "beakr_cli": shipped.cli,
+                    "beakr_sdk": shipped.sdk,
+                    "matches": shipped.matches,
+                }
         elif check_off:
             report.update(update_check="off")
         elif not offline:
@@ -240,6 +286,11 @@ def version(
         return
     if on_box:
         print(f"Bundled with this Beakr installation. {installation_instructions()}")
+        from beakr_cli.installation_clients import version_line
+
+        line = version_line(_installation_expected())
+        if line:
+            print(line)
         return
     if check_off:
         print(CHECK_OFF)

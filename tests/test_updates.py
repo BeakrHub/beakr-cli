@@ -725,9 +725,12 @@ def test_a_self_hosted_build_never_asks_pypi_or_upgrades_from_it(monkeypatch) ->
     report = json.loads(CliRunner().invoke(app, ["version", "--json"]).output)
 
     assert version.exit_code == 0, version.output
-    assert "beakr-release.py clients" in version.output and "PyPI" in version.output
+    # Upgraded from the package index the installation serves, never from PyPI.
+    assert "/pypi/simple" in version.output and "PyPI" in version.output
+    assert "/clients/manifest.json" in version.output
+    assert "beakr-release.py clients" not in version.output
     assert "install-beakr.py" not in version.output
-    assert update.exit_code == 1 and "beakr-release.py clients" in update.output
+    assert update.exit_code == 1 and "/pypi/simple" in update.output
     assert report["bundled_with_box"] is True
     assert report["instructions"] == updates.RELEASE_INSTRUCTIONS
 
