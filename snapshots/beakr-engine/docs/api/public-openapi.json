@@ -2360,6 +2360,22 @@
             "title": "Key",
             "type": "string"
           },
+          "on_existing": {
+            "anyOf": [
+              {
+                "enum": [
+                  "version",
+                  "new"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "This file's `on_existing`. Omit to follow the request's.",
+            "title": "On Existing"
+          },
           "path": {
             "description": "Same path as in prepare request",
             "title": "Path",
@@ -2417,11 +2433,27 @@
             "title": "Ingest To Wiki",
             "type": "boolean"
           },
+          "on_existing": {
+            "default": "new",
+            "description": "What to do when a file's folder already holds a file with its `title` (exact, case-sensitive match). `new` (the default) creates a separate file. `version` adds the upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. With `version`, a folder holding several files of that name, or one you cannot change, leaves that file out (`failed`, with `error_code` `ambiguous_path` or `file_not_writable`); the rest of the batch completes.",
+            "enum": [
+              "version",
+              "new"
+            ],
+            "title": "On Existing",
+            "type": "string"
+          },
           "source": {
             "default": "upload",
             "description": "Provenance hint for all files in this batch (e.g. 'upload', 'capture').",
             "title": "Source",
             "type": "string"
+          },
+          "written_by_agent": {
+            "default": false,
+            "description": "Mark these files as written by an agent rather than a person. The mark is kept on each version this request creates; a file it creates is also marked as Beakr-written (`is_ai_generated`, source `ai_generated`), so search and agents treat it as an agent's output rather than a source.",
+            "title": "Written By Agent",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4356,6 +4388,24 @@
             "title": "Path",
             "type": "string"
           },
+          "result": {
+            "anyOf": [
+              {
+                "enum": [
+                  "created",
+                  "versioned",
+                  "restored",
+                  "unchanged"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`created`: a new file. `versioned`: a new version of the file already at this path (`id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again. `unchanged`: the bytes match its current version; no version is added.",
+            "title": "Result"
+          },
           "title": {
             "description": "Title of the created artifact.",
             "title": "Title",
@@ -4369,6 +4419,18 @@
             "format": "uuid",
             "title": "Version Id",
             "type": "string"
+          },
+          "version_no": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The number of `version_id` within its file (1 = first)",
+            "title": "Version No"
           }
         },
         "required": [
@@ -5863,6 +5925,18 @@
             "description": "What went wrong.",
             "title": "Error",
             "type": "string"
+          },
+          "error_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why, when it is a refusal of where the file would go: `ambiguous_path` (the folder holds several files of that name) or `file_not_writable` (the file there is one you cannot change). Nothing was created for it.",
+            "title": "Error Code"
           },
           "path": {
             "description": "Path where it lives.",
@@ -24525,7 +24599,7 @@
     },
     "/v1/bulk/complete": {
       "post": {
-        "description": "Complete a bulk upload by creating folders, artifacts, and versions.\n\nThis is the second step of a bulk upload:\n1. All files must be uploaded to S3 using the presigned URLs from /prepare\n2. Call this endpoint with the batch_id and file metadata (titles, types)\n3. Folders are created preserving the directory structure from file paths\n4. Artifacts and versions are created for each file\n5. Bulk indexing is triggered asynchronously\n\nSupports partial success - returns both created artifacts and failures.\n\nArgs:\n    payload: Batch ID and list of files with titles and artifact types.\n\nReturns:\n    Created folders, artifacts, failures, and indexing task ID.",
+        "description": "Complete a bulk upload by creating folders, artifacts, and versions.\n\nThis is the second step of a bulk upload:\n1. All files must be uploaded to S3 using the presigned URLs from /prepare\n2. Call this endpoint with the batch_id and file metadata (titles, types)\n3. Folders are created preserving the directory structure from file paths\n4. Artifacts and versions are created for each file\n5. Bulk indexing is triggered asynchronously\n\nSupports partial success - returns both created artifacts and failures.\nWith ``on_existing: \"version\"`` a file whose folder already holds a file of\nits title is added to that file as a new version (``result`` says what it\ndid); the default ``\"new\"`` always creates a file.\n\nArgs:\n    payload: Batch ID and list of files with titles and artifact types.\n\nReturns:\n    Created folders, artifacts, failures, and indexing task ID.",
         "operationId": "complete_bulk_upload_v1_bulk_complete_post",
         "requestBody": {
           "content": {
