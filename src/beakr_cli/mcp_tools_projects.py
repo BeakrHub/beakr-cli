@@ -1,14 +1,19 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
-upload the person's files into it, and add the people who work in it.
+change its card types and the cards it already has, upload the person's files into it, add
+the people who work in it, stop queued Knowledge work (``knowledge_queue``,
+``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``), and
+draft an interview from its open review flags (``draft_review_interview``; hosted in
+``review_interview_tools.py``).
 
-The hosted MCP server has the same five tools (beakr-engine
-``beakr/api/mcp_remote/project_tools.py``), and both take each description and tier
-from the shared agent tool surface (:mod:`beakr_cli.tool_surface`). The upload pair
-differs by design: this server reads the person's own disk (``paths``) and keeps a long
-upload running in this process, where the hosted server takes a file's content in the
-call (``files``) and reports one stored upload. This server takes ``files`` (and
-``folder``) too, with the hosted server's checks, so a call written for either works on
-both; ``resume_upload_id`` (finishing one interrupted local file) is this server's only.
+The hosted MCP server has the same seven tools (beakr-engine
+``beakr/api/mcp_remote/project_tools.py``, ``card_type_tools.py`` and
+``card_update_tools.py``), and both take each description and tier from the shared agent
+tool surface (:mod:`beakr_cli.tool_surface`). The upload pair differs by design: this
+server reads the person's own disk (``paths``) and keeps a long upload running in this
+process, where the hosted server takes a file's content in the call (``files``) and
+reports one stored upload. This server takes ``files`` (and ``folder``) too, with the
+hosted server's checks, so a call written for either works on both;
+``resume_upload_id`` (finishing one interrupted local file) is this server's only.
 
 Under a session (:mod:`beakr_cli.scope_session`) the API holds every call to the
 projects the person chose: an upload, a profile or a member needs a project the session
@@ -45,7 +50,14 @@ from beakr_sdk.resources._upload import (
     upload_relative_path,
 )
 
-from beakr_cli import scope_session
+from beakr_cli import (
+    cancels,
+    card_settings,
+    card_types,
+    card_updates,
+    review_interview,
+    scope_session,
+)
 from beakr_cli.mcp_errors import ApiCallError, call_api
 from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
 from beakr_cli.upload_path_policy import (
@@ -53,6 +65,11 @@ from beakr_cli.upload_path_policy import (
     named_path_refusal,
     outside_link,
     refused_path,
+)
+from beakr_cli.upload_placement import (
+    REFUSED_PLACEMENT,
+    placed,
+    placement_fields,
 )
 
 if TYPE_CHECKING:
@@ -62,6 +79,14 @@ if TYPE_CHECKING:
 UPLOAD_WAIT_SECONDS = 40.0
 #: Files one ``upload_files`` call takes; a larger tree is `beakr upload` in a terminal.
 MAX_UPLOAD_FILES = 500
+
+#: What to do about a file whose place the server refused (several files of its name
+#: in the folder, one the person cannot change): the person decides, in a terminal.
+_REFUSED_FIX = (
+    "Nothing was created for it. Ask the person which file it should update; in a "
+    "terminal, `beakr upload PATH --version-of FILE_ID` adds it to that file and "
+    "`beakr upload PATH --on-existing new` keeps it as a separate file."
+)
 
 #: Refusals that stop an upload: every later file would meet the same one.
 _STOPPING_CODES = frozenset(
@@ -131,7 +156,9 @@ def _lock_line(session: dict[str, Any], project: dict[str, Any]) -> str:
 # --- create_project -------------------------------------------------------------------
 
 
-async def create_project(name: str, description: str = "") -> str | dict[str, Any]:
+async def create_project(
+    name: str, description: str = "", card_types: dict[str, Any] | None = None
+) -> str | dict[str, Any]:
     """Create a project (described in the shared agent tool surface)."""
     name = (name or "").strip()
     if not name:
@@ -148,10 +175,18 @@ async def create_project(name: str, description: str = "") -> str | dict[str, An
             f"A project named {name!r} already exists (id: {taken[0].get('id')}).",
             "Use that project (pass its id), or choose another name.",
         )
+    chosen = await _card_types_argument(card_types)
+    if chosen.get("status") == "error":
+        return chosen
     session = _held_session()
     try:
         project = await call_api(
-            lambda sdk: sdk.projects.create(name, description=description.strip() or None)
+            # card_types only when chosen: a beakr-sdk before 0.4 does not take it.
+            lambda sdk: sdk.projects.create(
+                name,
+                description=(description or "").strip() or None,
+                **({"card_types": chosen} if chosen else {}),
+            )
         )
     except ApiCallError as exc:
         refused = exc.fields.get("error_code") == "insufficient_scope" or (
@@ -168,19 +203,33 @@ async def create_project(name: str, description: str = "") -> str | dict[str, An
             )
         raise
     project_id = str(project.get("id"))
-    lines = [f"Created project {project.get('name') or name!r} (id: {project_id})."]
+    session_lines: list[str] = []
     if session is not None:
         current = await session.refresh()
         if scope_session.lock_bound(current):
-            lines.append(_lock_line(current, project))
+            session_lines.append(_lock_line(current, project))
         else:
             writable = scope_session.project_ids(current.get("write_projects"))
-            lines.append(
+            session_lines.append(
                 "This session may read and write it."
                 if project_id in writable
                 else "It is not in this session's projects yet: ask the person to add it at "
                 f"{session.picker_url}."
             )
+    return created_text(project or {}, name, chosen, session_lines)
+
+
+def created_text(
+    project: dict[str, Any],
+    name: str,
+    card_types: dict[str, Any] | None = None,
+    session_lines: list[str] | None = None,
+) -> str:
+    """What ``create_project`` answers; the hosted server answers the same text, less
+    ``session_lines`` (what this server's session may do with the new project)."""
+    lines = [f"Created project {project.get('name') or name!r} (id: {project.get('id')})."]
+    lines += card_settings.created_card_type_lines(card_types)
+    lines += session_lines or []
     if project.get("requires_knowledge_profile"):
         lines.append(
             "The organization requires a Knowledge profile on every new project: files and "
@@ -194,6 +243,30 @@ async def create_project(name: str, description: str = "") -> str | dict[str, An
             "upload_files."
         )
     return "\n".join(lines)
+
+
+async def _card_types_argument(value: Any) -> dict[str, Any]:
+    """``card_types`` as the create route takes it; empty when nothing was chosen.
+
+    A refusal comes back as the error dict itself.
+    """
+    if not isinstance(value, dict):
+        return {}
+    card_types: dict[str, Any] = {}
+    inherit = str(value.get("inherit") or "").strip()
+    if inherit:
+        if inherit not in card_settings.INHERIT_VALUES:
+            return _error("invalid_arguments", *card_settings.CREATE_REFUSALS["bad_inherit"])
+        card_types["inherit"] = inherit
+    if isinstance(value.get("agent_may_change"), bool):
+        card_types["agent_may_change"] = value["agent_may_change"]
+    source = str(value.get("copy_types_from") or "").strip()
+    if source:
+        card_types["copy_from_project_id"] = await _project_id(source)
+    if inherit == "own" and not source:
+        # The route would refuse it too; said here in the tool's own argument names.
+        return _error("invalid_arguments", *card_settings.CREATE_REFUSALS["own_without_types"])
+    return card_types
 
 
 # --- set_project_profile ----------------------------------------------------------------
@@ -294,6 +367,185 @@ def _profile_saved_text(profile: dict[str, Any], project: dict[str, Any], *, cre
     return "\n".join(lines)
 
 
+# --- edit_card_type ---------------------------------------------------------------------
+
+
+async def edit_card_type(
+    type: str,
+    project: str = "",
+    org_wide: bool = False,
+    label: str | None = None,
+    description: str | None = None,
+    when_to_use: str | None = None,
+    when_not_to_use: str | None = None,
+    aliases: list[str] | None = None,
+    fields: list[dict[str, Any] | str] | None = None,
+    grain: Literal["card", "row"] | None = None,
+    status: Literal["active", "deprecated"] | None = None,
+    reset: bool = False,
+) -> str | dict[str, Any]:
+    """Change one card type (described in the shared agent tool surface).
+
+    The call is the signed-in person's own ``PATCH`` or ``DELETE
+    /v1/knowledge/wiki/page-types/{key}``: that route decides who may change a
+    type. The key is checked here because it becomes a path segment, and the
+    SDK percent-encodes it.
+    """
+    key = str(type or "").strip()
+    if not key:
+        return _error("invalid_arguments", *card_types.NO_TYPE)
+    if not card_types.valid_type_key(key):
+        return _error("invalid_arguments", *card_types.BAD_TYPE_KEY)
+    # Not `scope`: on every tool here that word is another name for the project
+    # (mcp_call_shaping.PROJECT_NAMES), so an agent sends its project under it.
+    scope = "org" if org_wide is True else "project"
+    project_id: str | None = None
+    if scope == "project":
+        if not str(project or "").strip():
+            return _error("invalid_arguments", *card_types.NO_PROJECT)
+        project_id = await _project_id(project)
+    elif project:
+        return _error("invalid_arguments", *card_types.ORG_WITH_PROJECT)
+    if reset:
+        await call_api(
+            lambda sdk: sdk.knowledge.remove_card_type_copy(key, scope=scope, project_id=project_id)
+        )
+        return card_types.card_type_reset_text(key, scope)
+    changes = card_types.changes(
+        {
+            "label": label,
+            "description": description,
+            "when_to_use": when_to_use,
+            "when_not_to_use": when_not_to_use,
+            "aliases": aliases,
+            "fields": fields,
+            "grain": grain,
+            "status": status,
+        }
+    )
+    if not changes:
+        return _error("invalid_arguments", *card_types.NOTHING_TO_CHANGE)
+    saved = await call_api(
+        lambda sdk: sdk.knowledge.update_card_type(
+            key, scope=scope, project_id=project_id, **changes
+        )
+    )
+    return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
+
+
+# --- card_type_settings -----------------------------------------------------------------
+
+
+async def card_type_settings(
+    project: str,
+    inherit: str | None = None,
+    agent_may_change: Any = None,
+    keep_types_in_use: Any = None,
+    apply: Any = None,
+) -> str | dict[str, Any]:
+    """Change a project's card type settings (described in the shared agent tool surface).
+
+    The call is the signed-in person's own ``PUT
+    /v1/knowledge/wiki/page-types/settings``: that route decides who may.
+    Without ``apply=true`` it sends a dry run and nothing is written.
+    """
+    changes: dict[str, Any] = {}
+    if inherit is not None and str(inherit).strip():
+        inherit = str(inherit).strip()
+        if inherit not in card_settings.INHERIT_VALUES:
+            return _error("invalid_arguments", *card_settings.REFUSALS["bad_inherit"])
+        changes["inherit"] = inherit
+    if agent_may_change is not None:
+        if not isinstance(agent_may_change, bool):
+            return _error("invalid_arguments", *card_settings.REFUSALS["bad_agent_may_change"])
+        changes["agent_may_change"] = agent_may_change
+    if not changes:
+        return _error("invalid_arguments", *card_settings.REFUSALS["no_change"])
+    if not str(project or "").strip():
+        return _error("invalid_arguments", *card_types.NO_PROJECT)
+    project_id = await _project_id(project)
+    answer = await call_api(
+        lambda sdk: sdk.knowledge.set_card_type_settings(
+            project_id,
+            keep_types_in_use=keep_types_in_use is True,
+            # Only apply=true writes: anything else, a missing value included, previews.
+            dry_run=apply is not True,
+            **changes,
+        )
+    )
+    return card_settings.settings_text(_dict(answer))
+
+
+# --- update_existing_cards --------------------------------------------------------------
+
+
+async def update_existing_cards(
+    type: str,
+    project: str,
+    change: str,
+    renames: list[dict[str, Any]] | dict[str, str] | None = None,
+    to_type: str | None = None,
+    apply: Any = None,
+) -> str | dict[str, Any]:
+    """Change the cards a project already has (described in the shared agent tool surface).
+
+    The call is the signed-in person's own ``POST
+    /v1/knowledge/wiki/page-types/{key}/rename-fields`` or ``.../retype-cards``:
+    those routes decide who may. Without ``apply=true`` it sends a dry run and
+    nothing is written.
+    """
+    key = str(type or "").strip()
+    if not key:
+        return _error("invalid_arguments", *card_updates.REFUSALS["no_type"])
+    if not card_types.valid_type_key(key):
+        return _error("invalid_arguments", *card_updates.REFUSALS["bad_type"])
+    change = str(change or "").strip()
+    if change not in card_updates.CHANGES:
+        return _error("invalid_arguments", *card_updates.REFUSALS["no_change"])
+    pairs: list[dict[str, str]] = []
+    target = ""
+    if change == "rename_fields":
+        pairs = card_updates.renames(renames)
+        if not pairs:
+            return _error("invalid_arguments", *card_updates.REFUSALS["no_renames"])
+    else:
+        target = str(to_type or "").strip()
+        if not target:
+            return _error("invalid_arguments", *card_updates.REFUSALS["no_to_type"])
+        if not card_types.valid_type_key(target):
+            return _error("invalid_arguments", *card_updates.REFUSALS["bad_to_type"])
+    if not str(project or "").strip():
+        return _error("invalid_arguments", *card_types.NO_PROJECT)
+    project_id = await _project_id(project)
+    # Only apply=true writes: anything else, a missing value included, previews.
+    dry_run = apply is not True
+
+    async def send(continue_event_id: str | None = None) -> dict[str, Any]:
+        if change == "rename_fields":
+            answer = await call_api(
+                lambda sdk: sdk.knowledge.rename_card_type_fields(
+                    key, project_id, pairs, dry_run=dry_run, continue_event_id=continue_event_id
+                )
+            )
+        else:
+            answer = await call_api(
+                lambda sdk: sdk.knowledge.retype_cards(
+                    key, project_id, target, dry_run=dry_run, continue_event_id=continue_event_id
+                )
+            )
+        return _dict(answer)
+
+    result = await send()
+    if not dry_run:
+        # One call writes a bounded number of cards; keep going as one change.
+        result = await card_updates.until_done_async(
+            result, send, written=card_updates.WRITTEN[change]
+        )
+    if change == "rename_fields":
+        return card_updates.fields_renamed_text(result)
+    return card_updates.cards_retyped_text(result)
+
+
 # --- upload_files -----------------------------------------------------------------------
 
 
@@ -335,6 +587,8 @@ class _Upload:
     task: asyncio.Task | None = None
     #: Where the call's inline ``files`` were written; removed when the upload ends.
     scratch: Path | None = None
+    #: Sent on each completion: the agent wrote these files (``written_by_agent``).
+    written_by_agent: bool = False
 
 
 #: Uploads this server has run, by id, for ``upload_status``.
@@ -414,13 +668,19 @@ def _file_flow(upload: _Upload, item: _Item, folders: dict[Path, str | None], ch
     recorded = upload_relative_path(item.path, item.root)
     if item.folder is not None:
         recorded = (item.folder / item.path.name).as_posix()
+    # A completion refused for where the file would go is aborted, not left open:
+    # nothing here completes it again, and an open upload counts against the person's.
     return (
-        yield from upload_flow(
-            item.path,
-            project_id=upload.project_id,
-            folder_id=target,
-            ingest=upload.ingest,
-            relative_path=recorded,
+        yield from placed(
+            upload_flow(
+                item.path,
+                project_id=upload.project_id,
+                folder_id=target,
+                ingest=upload.ingest,
+                relative_path=recorded,
+            ),
+            placement_fields(written_by_agent=upload.written_by_agent),
+            abort_refused=True,
         )
     )
 
@@ -447,6 +707,10 @@ async def _run_upload(upload: _Upload) -> None:
                     raise
                 failure = {"path": str(item.path), **exc.fields}
                 upload.failed.append(failure)
+                if exc.fields.get("error_code") in REFUSED_PLACEMENT:
+                    # This file's place only (a 403 file_not_writable included):
+                    # the next file goes to another path.
+                    continue
                 if exc.fields.get("error_code") in _STOPPING_CODES or exc.response.status_code in {
                     401,
                     403,
@@ -475,6 +739,9 @@ async def _run_upload(upload: _Upload) -> None:
                     "path": str(item.path),
                     "file_id": artifact.get("id"),
                     "job_id": result.get("job_id"),
+                    # created / versioned / restored / unchanged, and its version.
+                    "result": result.get("result"),
+                    "version_no": result.get("version_no"),
                     "given": item.given,
                     # Only a named file's: a folder upload's tree is the folder's own.
                     "folder": item.folder,
@@ -598,6 +865,7 @@ async def upload_files(
     folder_id: str = "",
     knowledge: bool = True,
     resume_upload_id: str = "",
+    written_by_agent: bool = False,
 ) -> str | dict[str, Any]:
     """Upload local files or folders into a project (described in the shared agent tool surface)."""
     project_id = await _project_id(project)
@@ -624,7 +892,9 @@ async def upload_files(
                 "resume_upload_id finishes one interrupted local file; it takes no files.",
                 "Pass the one path that was interrupted, without files.",
             )
-        return await _resume(resume_upload_id, paths, project_name)
+        return await _resume(
+            resume_upload_id, paths, project_name, written_by_agent=written_by_agent is True
+        )
     items, skipped = _gather(paths)
     scratch = None
     if files:
@@ -672,6 +942,7 @@ async def upload_files(
         items=items,
         total_bytes=total_bytes,
         scratch=scratch,
+        written_by_agent=written_by_agent is True,
     )
     _UPLOADS[upload.id] = upload
     # Not the call's own task: a client that gives up on the call (Codex after 60
@@ -684,7 +955,9 @@ async def upload_files(
     return _upload_text(upload, skipped=skipped)
 
 
-async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | dict[str, Any]:
+async def _resume(
+    upload_id: str, paths: list[str], project_name: str, *, written_by_agent: bool = False
+) -> str | dict[str, Any]:
     if len(paths) != 1:
         return _error(
             "invalid_arguments",
@@ -697,7 +970,9 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
     if refused or not path.is_file():
         return _error("invalid_arguments", f"Cannot resume {paths[0]}: {refused or 'not a file'}.")
     try:
-        result = await call_api(lambda sdk: sdk.files.resume_upload(upload_id, path))
+        result = await call_api(
+            lambda sdk: sdk.files.resume_upload(upload_id, path, written_by_agent=written_by_agent)
+        )
     except BeakrUploadInterrupted as exc:
         return _error(
             "upload_interrupted",
@@ -706,7 +981,31 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
             upload_id=exc.upload_id,
         )
     artifact = (result or {}).get("artifact") or {}
-    return f"Finished uploading {path.name} to {project_name} (file {artifact.get('id')})."
+    return (
+        f"Finished uploading {path.name} to {project_name} (file {artifact.get('id')})"
+        f"{_placement_words(result or {})}."
+    )
+
+
+def _placement_words(row: dict[str, Any]) -> str:
+    """`` (a new version, 2, of the file already there)`` and the like; empty for a new file."""
+    result = row.get("result")
+    version = row.get("version_no")
+    if result == "versioned":
+        return (
+            f", added as version {version} of the file already there"
+            if version
+            else (", added as a new version of the file already there")
+        )
+    if result == "restored":
+        return (
+            f": the same as its version {version}, which is current again"
+            if version
+            else (": the same as an earlier version, which is current again")
+        )
+    if result == "unchanged":
+        return ": unchanged, the same as the file's current version"
+    return ""
 
 
 def _sent_line(row: dict[str, Any]) -> str:
@@ -719,7 +1018,7 @@ def _sent_line(row: dict[str, Any]) -> str:
     name = Path(row["path"]).name
     folder = row.get("folder")
     where = f" (in folder {Path(folder).as_posix()}/)" if folder else ""
-    line = f"- {name}{where}: file {row['file_id']}"
+    line = f"- {name}{where}: file {row['file_id']}{_placement_words(row)}"
     if row.get("given"):
         line += f" (read from {Path(row['path']).resolve()})"
     return line
@@ -754,7 +1053,10 @@ def _upload_text(upload: _Upload, *, skipped: list[dict[str, Any]] | None = None
         lines.append(f"- ... and {len(upload.sent) - 50} more")
     for row in upload.failed[:20]:
         text = f"- Failed: {row['path']}: {row.get('message')}"
-        if row.get("upload_id"):
+        if row.get("error_code") in REFUSED_PLACEMENT:
+            # The API's fix names completion options this tool does not take.
+            text = f"- Not uploaded: {row['path']}: {row.get('message')} {_REFUSED_FIX}"
+        elif row.get("upload_id"):
             text += f" (resume it: upload_files with resume_upload_id={row['upload_id']!r})"
         lines.append(text)
     for row in (skipped or [])[:20]:
@@ -901,12 +1203,112 @@ def invitation_refusal(person: str, message: str) -> dict[str, Any] | None:
 #: The server ``upload_files`` reports progress through; set by :func:`register`.
 _SERVER: TieredMCPServer | None = None
 
+# --- knowledge_queue, cancel_compiles, cancel_sync -------------------------------------
+#
+# Stopping queued Knowledge work, to stop paying for it. The hosted halves are
+# beakr-engine ``beakr/api/mcp_remote/queue_tools.py``; the text is
+# :mod:`beakr_cli.cancels`, the same for the same REST answer. Each call is the
+# signed-in person's own request to a public route, which decides who may.
+
+
+def _cancel_source(
+    attachment_id: str | None, artifact_id: str | None
+) -> dict[str, str] | dict[str, Any]:
+    """``{attachment_id}`` or ``{artifact_id}`` or ``{}``; an error dict for both."""
+    attachment = str(attachment_id or "").strip()
+    artifact = str(artifact_id or "").strip()
+    if attachment and artifact:
+        return _error(
+            "invalid_arguments",
+            "Name one source: attachment_id or artifact_id, not both.",
+            "Pass one of them, or neither for the whole project.",
+        )
+    if attachment:
+        return {"attachment_id": attachment}
+    if artifact:
+        return {"artifact_id": artifact}
+    return {}
+
+
+async def knowledge_queue(
+    project: str, attachment_id: str | None = None, artifact_id: str | None = None
+) -> str | dict[str, Any]:
+    """Count a project's queued and running compiles (described in the shared surface)."""
+    source = _cancel_source(attachment_id, artifact_id)
+    if source.get("status") == "error":
+        return source
+    project_id = await _project_id(project)
+    queue = await call_api(lambda sdk: cancels.compile_queue(sdk, project_id, **source))
+    return cancels.queue_text(_dict(queue), source=bool(source))
+
+
+async def cancel_compiles(
+    project: str, attachment_id: str | None = None, artifact_id: str | None = None
+) -> str | dict[str, Any]:
+    """Cancel a project's or one source's queued compiles (described in the shared surface)."""
+    source = _cancel_source(attachment_id, artifact_id)
+    if source.get("status") == "error":
+        return source
+    project_id = await _project_id(project)
+    answer = await call_api(lambda sdk: cancels.cancel_queued_compiles(sdk, project_id, **source))
+    return cancels.cancel_compiles_text(_dict(answer))
+
+
+async def cancel_sync(project: str, attachment_id: str) -> str | dict[str, Any]:
+    """Cancel a source's running sync (described in the shared surface)."""
+    attachment = str(attachment_id or "").strip()
+    if not attachment:
+        return _error(
+            "invalid_arguments",
+            "Name the source: its attachment_id.",
+            "Pass attachment_id, the connected source's attachment id in the project.",
+        )
+    project_id = await _project_id(project)
+    answer = await call_api(lambda sdk: cancels.cancel_sync(sdk, project_id, attachment))
+    return cancels.cancel_sync_text(_dict(answer))
+
+
+# --- draft_review_interview -------------------------------------------------------------
+#
+# One question per open review flag, saved as a draft interview the person edits and
+# sends in Beakr. The hosted half is beakr-engine
+# ``beakr/api/mcp_remote/review_interview_tools.py``; the text is
+# :func:`beakr_cli.review_interview.review_interview_text`, the same for the same REST
+# answer. Drafting only: nothing here can send an interview.
+
+ReviewKind = Literal["contradiction", "ambiguity", "unverifiable", "likely_error", "other"]
+
+
+async def draft_review_interview(
+    project: str,
+    flags: list[str] | None = None,
+    kinds: list[ReviewKind] | None = None,
+    title: str | None = None,
+) -> str | dict[str, Any]:
+    """Draft an interview from a project's open review flags (described in the shared surface).
+
+    Drafting only, as on the hosted server: no participant, so no link is made;
+    the person sends it from Beakr.
+    """
+    project_id = await _project_id(project)
+    body = review_interview.request_body(proposal_ids=flags, kinds=kinds, title=title)
+    answer = await call_api(lambda sdk: review_interview.draft_from_reviews(sdk, project_id, body))
+    return review_interview.review_interview_text(_dict(answer))
+
+
 PROJECT_TOOLS = (
     create_project,
     set_project_profile,
+    edit_card_type,
+    update_existing_cards,
+    card_type_settings,
     upload_files,
     upload_status,
     add_project_member,
+    knowledge_queue,
+    cancel_compiles,
+    cancel_sync,
+    draft_review_interview,
 )
 
 

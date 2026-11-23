@@ -8,6 +8,161 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **`beakr upload` adds a version to a file already at the path.** Uploading
+  to a folder that already holds a file with the same name now adds a version
+  to that file (the server's default), and the output says so (`new version
+  N`; `result=` and `version=` in the plain lines). `--on-existing new` always
+  creates a separate file, `--version-of FILE_ID` adds the upload to that one
+  file whatever it is called, and `--written-by-agent` marks the upload as an
+  agent's work. The CLI sends them itself, so they work with the beakr-sdk it
+  locks. A file the server will not place (the folder already holds two files
+  of that name, or one you cannot change) is not uploaded: the rest go up, the
+  command exits 1, and it prints the `beakr upload PATH --resume UPLOAD_ID`
+  command that finishes it with `--version-of FILE_ID` or `--on-existing new`
+  (its bytes are already sent). `beakr files versions FILE_ID` lists a file's
+  versions, from the documented list.
+- **The MCP server's `upload_files` says when it added a version.** A file
+  already at the same folder and name gets the upload as its new version, and
+  the answer says so (or that it was unchanged). `written_by_agent: true` marks
+  content the agent wrote; the person's files on disk are not marked unless the
+  agent says so. A file the server will not place is skipped and its upload
+  aborted; the rest of the call goes on.
+- **Ask a person about review flags.** `beakr kb review interview -P <project>`
+  turns the project's open review flags into one interview, one question per
+  flag: every kind by default, up to 30 (`--max-questions`), with the flags past
+  it listed as left out; `--kinds contradiction,ambiguity,...` narrows it and
+  `--flags <id>,<id>` names flags. `--title` and `--goals` shape it. Without a
+  person it is a draft: it prints each question with its flag id, kind, card and
+  reason, any flags skipped and why, and the link where a person edits and sends
+  it. With `--for <name>`, `--email <email>` or `--user-id <id>` the interview
+  also gets that person's link, printed once with who it is for, when it expires
+  (`--expires-in-days`) and its result URL; Beakr sends nothing. It ends with how
+  a flag is resolved from its answer (`beakr kb review options` and `resolve`)
+  and takes `--json`. The MCP server has the same `draft_review_interview` tool
+  as the hosted one (drafting only), with the same answer.
+- **Resolve a review flag from the command line and over MCP.** `beakr kb
+  review ls` lists pending review flags (`proposal_type=review`); `beakr kb
+  review options <id>` shows a flag and Beakr's drafted resolutions, numbered, with what each changes (the
+  first call for a page revision drafts them, up to two minutes; later ones
+  return the same options at once); `beakr kb review resolve <id>` applies one:
+  `--option N` (a drafted option: a section rewrite, or a row change on a
+  card's Facts or Connections table, whichever it is), `--edit` (the flagged
+  section in `$EDITOR`), `--body FILE` (`-` for stdin) or `--outcome` (a
+  contradiction between cards' rows, settled on every card it lists). The page
+  revision is read and pinned automatically (or `--revision`): a page that
+  changed since, or options drafted by the resolve itself and so never shown,
+  exit 5 with nothing applied and say to run `options` again. Where a person
+  must accept proposals, a person, or a key with the `proposals:accept`
+  (reviewer) permission, must apply it; any other key or token exits 6 and says
+  so, as for `kb proposals accept`. The stdio MCP server has the same two tools as the hosted
+  one, `review_options` and `resolve_review`.
+- **Attach connected items to a project from the command line.** `beakr sources
+  attach <link> -P <project>` attaches a Notion page or database, a Google Drive
+  folder or file, or a Slack channel by its link (the id, type and provider come
+  from it), or any connected item by `<id> --provider --type --name`;
+  `--scope-mode all` attaches everything one connection reads (Beakr names it
+  *All <provider>*, so `--name` is refused there). `--knowledge`
+  builds Knowledge from it, `--auto-sync/--no-auto-sync` sets the nightly sync,
+  and `--sync` starts a sync once attached. The connection is the only one you
+  have for the provider, or `--connector ID` when you have several. A source's
+  integration rules, on `attach` and `edit`: `--query` (provider-native JSON:
+  `{"notion_filter": ...}` or `{"notion_view": ...}` for a Notion database,
+  `{"notion_page": {"default": ..., "databases": {...}}}` for a Notion page's
+  databases, `{"drive_q": ...}` for a Drive folder, and every other provider's
+  own key: `gmail_q`, `jql`, `cql`, `github_q`, `slack_filter`...; `beakr
+  sources keys` lists them from the engine and a key the provider does not
+  take is refused before sending), the shorthands `--drive-q`, `--gmail-q`, `--jql`, `--cql`
+  and `--github-q`, `--mode agent|all` (stored but not used for Notion item
+  sources, where the rule decides; the CLI says so) and `--guidance`, sent only
+  when given; `edit --clear-query` and `--clear-guidance` drop them. A Notion
+  link is looked up on your connection (the engine's `notion_metadata` tool), so
+  a database's own link attaches as a database and every Notion item, a saved
+  view's link included, is named by its title; when Notion cannot be asked the
+  link decides, and a database rule on a link that reads as a page says to pass
+  `--type database`. After a change to the query or mode, `edit` counts what the
+  saved rules match and warns when nothing would come in (no item matches,
+  every database under a page is left out, or the provider rejects the query;
+  `--no-check` skips it); a rule the engine refuses (422) says why and that
+  nothing was saved; and `edit` reports the source's latest sync, not
+  `sync=never` (piped, the count is a `matching=N` field). Attaching an item
+  the project already has exits 5 with *Already attached as <name> (<id>)* and
+  the `beakr sources edit` to change it, never advice to retry. `beakr sources preview`
+  counts what a source's saved or candidate query would pull, with up to 10
+  examples (each with when it last changed, where the engine says) and the provider's reason when it rejects the query (exit 1), and
+  `attach --preview` (`--dry-run`) does it before attaching.
+  `beakr sources ls`, `edit`, `rm`, `sync` and `status` list, change, detach,
+  sync and follow a project's sources; `ls` shows, for each database a Notion
+  source reads (by its title), how many rows matched at the last sync (and as of when), or
+  *N of M rows brought in* while follow-up syncs are still filling it in, and
+  says so when a project has no sources (piped too, as a `note:` line). Where
+  a project requires a person to approve what agents bring into Knowledge, an
+  agent's attach, edit or sync exits 6 and says to run it outside the agent
+  session.
+- **Stop queued work.** `beakr kb compiles ls -P <project>` counts the
+  Knowledge compiles queued and running in a project, or for one source
+  (`--source <id>` from `beakr sources ls`) or file (`--file <id>`), and shows
+  how the last cancel is going. `beakr kb compiles cancel -P <project>` cancels
+  the queued ones (with `--source` or `--file`, only that one's); compiles
+  already running finish and what Knowledge wrote stays. A source's cancel also
+  stops its running sync, and a whole-project cancel every running sync in the
+  project. It asks first (`--yes` skips the question; without a terminal it is
+  required) and takes `--json`. The MCP server has the same three tools as the
+  hosted one: `knowledge_queue`, `cancel_compiles` and `cancel_sync`.
+- **Card types from the command line.** `beakr kb types ls -P <project>` lists the
+  card types a project uses, which scope defines each (project, organization or
+  built-in) and whether a type is the project's own copy of a broader one.
+  `beakr kb types edit <key> -P <project>` changes one: `--label`,
+  `--description`, `--when-to-use`, `--when-not-to-use`, `--alias` (repeatable),
+  `--field` and `--required-field` (repeatable; the fields in the order given
+  replace the list), `--grain card|row` and `--status active|deprecated`.
+  `beakr kb types reset <key> -P <project>` removes the project's own copy, so
+  it uses the type it inherits again. `--org-wide` on `edit` and `reset` changes
+  the organization's type instead of one project's. A project's owners change
+  its types and an organization's admins the organization's; cards already
+  written are not rewritten.
+- **Carry card types elsewhere.** `beakr kb types copy <key>... --from <project>
+  --to <project>` copies the types one project defines into another project,
+  and `beakr kb types promote <key>... -P <project>` copies them up to the
+  organization (an organization admin). Both print what was copied, replaced
+  and skipped, with why; a type the destination already defines is skipped
+  unless `--replace`.
+- **Bring existing cards in line with a type.** `beakr kb types rename-fields
+  <key> -P <project> --rename "Old name=New name"` (repeatable) renames fields
+  on every card of a type the project already has, and `beakr kb types retype
+  <key> -P <project> --to <type>` moves every card of a type to another type.
+  Both preview and change nothing unless given `--apply`; applied, they print
+  what was written, what was refused or skipped, what remains and how to undo.
+- **A project's card type settings, history and suggestions.** `beakr kb types
+  settings -P <project>` shows where the project's card types come from and
+  whether Beakr may add and change them; with `--inherit
+  organization|builtin|own` or `--beakr-may-add/--no-beakr-may-add` it previews
+  a change, listing the types that would drop out with their card counts, and
+  changes nothing unless given `--apply` (`--keep-types-in-use` keeps the
+  dropped types that have cards as the project's own). `beakr kb types history
+  -P <project> [--org-wide] [--key <key>] [--suggestions]` lists the changes
+  made to card types; `beakr kb types suggestions -P <project>` lists what waits
+  for a person and how to answer each, and `beakr kb types dismiss-suggestion
+  <id> -P <project>` dismisses one. `beakr kb types retype` takes `--suggestion
+  <id>` to answer a suggestion to move cards.
+- `beakr kb types ls` prints the setting in force, and with `--counts` each
+  type's live cards and the types cards carry that are not offered.
+- `beakr projects create` takes `--card-types organization|builtin|own`,
+  `--beakr-may-add/--no-beakr-may-add`, `--copy-types-from <project>` and
+  `--copy-type <key>` (repeatable).
+- **`beakr mcp` has the `card_type_settings` tool** and `create_project` takes
+  `card_types` (`inherit`, `agent_may_change`, `copy_types_from`), both as the
+  hosted MCP server has them. `card_type_settings` previews unless `apply` is
+  exactly `true`.
+- **`beakr mcp` has the `update_existing_cards` tool**, the same one the
+  hosted MCP server lists: `change: "rename_fields"` with `renames`, or
+  `change: "retype"` with `to_type`. It previews unless `apply` is exactly
+  `true`.
+- **`beakr mcp` has the `edit_card_type` tool**, the same one the hosted MCP
+  server lists, with the same arguments and the same answers: an agent changes
+  one card type after the person agrees, for a project or (`org_wide=true`)
+  the organization, and `reset=true` drops a project's own copy. A type key
+  that is not letters, digits, spaces, hyphens and underscores is refused
+  before anything is sent.
 - **Cite a record outside Beakr.** `beakr kb add-fact`, `add-connection` and
   `add-finding` take `--cite-record URL` with `--record-system`, `--record-id` or
   `--source-title`, and `--excerpt`: an ELN entry, a registry compound, or an
@@ -68,6 +223,278 @@ Each release lists the public API changes it supports, taken from the API change
   ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
   session_already_started` refusal says to end the session and start a new
   agent conversation.
+- A project's open review flags can now become one interview.
+  `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
+  and `kb:read`) writes one plain-language key question per open review flag,
+  naming its specifics (the values that disagree, the cards, the dates, where
+  each came from), and saves the interview with each flag's background in its
+  `supporting_info`. By default it asks about every open review flag
+  (contradictions, ambiguities and the rest), newest first, up to
+  `max_questions` (30, the interview's cap); flags past it are listed in
+  `skipped` as `over_question_limit`. `kinds` narrows the kinds and
+  `proposal_ids` names the flags. With a `participant` (a member's `user_id`, or
+  a `name` and/or `email`) it also makes that person's link, as
+  `POST /v1/interview/sendables/{sendable_id}/links` does: Beakr sends nothing,
+  and `link_url` is shown once (omitted on a replay, `secret_redacted: true`),
+  with `link` (`link_id`, `label`, `expires_at`, `result_url`). Without one the
+  interview is a draft to edit (`edit_url`) and send. It answers `201` with
+  `interview`, `link`, `link_url`, `questions` (each with its `proposal_id`,
+  `kind`, `asked_revision`, `written_by` and `linked`), `skipped`,
+  `questions_written_by` and `edit_url`; a project with nothing to ask about
+  answers `200` with `interview: null`, `empty_reason` and `message`. Errors:
+  `404 participant_not_found`, `429 interview_link_limit`,
+  `403 outside_interviews_unavailable`. When a link finishes, each answer is
+  attached to its flag as a suggestion: a review proposal's read
+  (`GET /v1/knowledge/wiki/proposals` and `GET .../proposals/{proposal_id}`)
+  carries `interview_questions` and `interview_answers` (each with
+  `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
+  `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
+  `suggested_option_id` names the drafted resolution the answer matches (null
+  when the flagged text changed since the question was asked, `stale`). Nothing
+  is applied: a person, or a key allowed to accept, resolves the flag with the
+  resolve routes.
+- Row types are removed: every card type is a card. `grain: "row"` is refused
+  with `422` on `PATCH /v1/knowledge/wiki/page-types/{key}` and in the
+  `card_types` of `POST /v1/projects`; `grain: "card"` is still accepted, and
+  gives each instance of a type that was recorded as rows its own card. For
+  something that comes many to a card, add a field with a `description` to the
+  type it belongs to ("Assay runs": "one row per run, with its number and
+  result"). An imported ontology never produces a row type.
+  `POST /v1/knowledge/wiki/page-types/{key}/to-field` (`kb:write`)
+  turns an existing row type into a field: give `on_type` (the type whose cards the rows
+  belong on), `name` (the field to add there) and an optional `description`,
+  with `scope` and `project_id` as on the edit route. It answers `page_type`
+  (the type that gained the field) and `former_row_type` (now turned off, and a
+  card type). Cards and rows already written are not changed.
+  `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
+  the kinds of thing a project's profile names that Beakr recorded as a field
+  of another type, each with `name`, `page_type` and `field`.
+- A second upload to the same path adds a version to the file already there,
+  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
+  takes `on_existing`: `version` (the default) looks in the upload's folder for
+  a file with the name the upload would get (its `title`, else the last part of
+  `path`; exact, case-sensitive) and adds the upload to it as a new version,
+  which is indexed and compiled into Knowledge as a version added in the app
+  is, so the Knowledge built from the file is updated. With no such file, the
+  file is created as before. `new` always creates a separate file. The response
+  says which happened in `result` (`created`, `versioned`, `restored` when the
+  bytes match an earlier version, which becomes current again, or `unchanged`
+  when they match the current version and nothing is added) and gives
+  `version_no`. Identical bytes are recognized only when the upload was started
+  with `content_hash`. When nothing needed processing, `job_id` is the job that
+  processed that version earlier. Two or more files of that name in the folder
+  answer `409 ambiguous_path`, and a file the caller cannot change answers
+  `403 file_not_writable`; in both cases nothing is created and the upload stays
+  open, so it can be completed again with `on_existing: "new"`. Completions to the same
+  path at the same time are serialized, so they become versions of one file. The
+  same request takes `written_by_agent` (default false) to mark the upload as an
+  agent's work: the version records it, the response returns it, and a file the
+  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
+  agents treat it as an agent's output rather than a source. `title`,
+  `artifact_type`, `description` and `relative_path` apply only when the upload
+  creates a file. `POST /v1/bulk/complete` takes the same choice, as
+  `on_existing` for the batch (default `new`, so a batch keeps creating
+  separate files unless asked) and on each file to override it: with `version`,
+  a file whose folder already holds a file with its `title` is added to that
+  file as a new version. Each entry in `artifacts` gives `result` and
+  `version_no`. A file whose folder holds two or more files of that name, or one
+  the caller cannot change, is left out and listed in `failed` with `error_code`
+  `ambiguous_path` or `file_not_writable`; the rest of the batch completes. The
+  batch request also takes `written_by_agent`, which marks its files and
+  versions as above. To add an upload to
+  a specific file whatever its name, send `artifact_id` on the same request: the
+  file must be an uploaded file in the upload's project (else `400
+  invalid_artifact`, and the upload stays open). `GET
+  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
+  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
+  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
+  `written_by_agent`. A file the caller cannot see answers `404`.
+- Listing a project's card types also says what Beakr did with the kinds of
+  thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
+  `project_id` returns `profile_types`: `working` (true while Beakr is still
+  defining types from the profile), `made` (keys of the types it created),
+  `matched` (a name an existing type already covers, with `name`, `page_type`,
+  `scope` and `reason`), `suggested` (keys kept as suggestions in a project
+  whose types only people change) and `skipped` (a name that got no type, with
+  `name` and `reason`). The lists are empty for a project whose profile has
+  named nothing, and a `matched` item's `reason` may be empty. `profile_types`
+  is left out when no project is named.
+- A review flag (a proposal of type `review`: a section Knowledge flagged as
+  contradicted, unverifiable or unclear) can be resolved through the API, not
+  only accepted or dismissed. `GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict`
+  (`kb:read`) reads the flag: the section and its current text, why it was
+  flagged, the sources on each side and the page's `current_revision`.
+  `POST .../resolutions` (`kb:write`) drafts up to a few resolutions, each with
+  what it changes; they are kept for the page revision they were drafted
+  against, so asking again returns them at once (`cached: true`). Apply one with
+  `POST .../resolve` (a section rewrite: `section_id`, `new_section_body`,
+  `expected_revision`), `POST .../resolve-rows` (a drafted row operation on a
+  card's Facts or Connections table: `option_id`, `expected_revision`) or
+  `POST .../resolve-cards` (one `outcome` on every card a contradiction review
+  lists); all three need `kb:write`. A page that changed since
+  `expected_revision` answers `409` and nothing is applied. Where a person must
+  accept proposals, a person, or a key with the `proposals:accept` (reviewer)
+  permission, must apply a resolution, as for accepting: any other key or token
+  is refused with `403 person_review_required`. Drafting is open to any
+  `kb:write` key. A key restricted to projects reaches only flags in its
+  projects (another project's flag answers `404`), and a flag that is no longer
+  pending answers `400`. `GET /v1/knowledge/wiki/proposals` takes
+  `proposal_type`: `proposal_type=review` lists only review flags (with
+  `status=pending`, the default, the open ones).
+- A card type's field can say what to record under it. Each item of `fields`
+  takes an optional `description` (up to 300 characters) on
+  `PATCH /v1/knowledge/wiki/page-types/{key}` and on the `card_types` of
+  `POST /v1/projects`: what counts under that name, or that there is one row for
+  each of several things (for example "one row per run, with its run number and
+  result"). Beakr follows it when it files Facts rows under that field. It is
+  returned in the type's `metadata_schema.attribute_notes`, a map of field name
+  to text holding only the fields given one. A field sent without `description`
+  has none.
+- Queued Knowledge work can be cancelled, to stop paying for it.
+  `POST /v1/projects/{project_id}/knowledge/compiles/cancel` (`uploads:write`)
+  cancels every queued compile in the project, or one source's: give
+  `attachment_id` (a connected source) or `artifact_id` (an uploaded file), or
+  an empty body for the whole project. Compiles already running finish and keep
+  what they write; finished work is kept. Cancelling a connected source, or the
+  whole project, also cancels the running syncs it covers, so items they had not
+  handed off never queue. It answers `202` with `cancel_id`, `scope`
+  (`project` or `source`), `status` (`cancelling` while skipped compiles are
+  cleared, then `cancelled`), `will_be_skipped`, `already_running`,
+  `sync_stopped`, `syncs_stopped`, `sync_job_id`, `next_sync` (what the next
+  scheduled sync will do: an automatically synced source queues the skipped
+  items again) and `note`. A project admin may cancel anything; the person who
+  attached a source or uploaded a file may cancel its compiles while a member of
+  the project. Others get `403`; a project or source you cannot read is `404`.
+  `GET /v1/projects/{project_id}/knowledge/compiles` (`projects:read`) answers
+  `queued` and `running` counts for the project, or for one source
+  (`attachment_id` or `artifact_id`), and `last_cancel`: that scope's latest
+  cancel, with `status`, `done`, `total` and a `summary` such as "Cancelled 40
+  of 40 queued compiles".
+  `POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel`
+  (`uploads:write`) cancels a source's running sync: listing stops at its next
+  step and items not yet started are skipped; items already synced are kept,
+  and compiles they queued still run. It answers `sync_job_id`, `status`
+  (`cancelling`), `cancelled_by`, `next_sync` and `note`, and `409` with code
+  `no_running_sync` when nothing is syncing. The attacher (while a project
+  member), a project admin or an organization admin may cancel. Follow it with
+  `GET /v1/jobs/{job_id}`: a cancelled sync reads `running` (native status
+  `cancelling`) while items already started finish, then `cancelled`, with
+  `result.cancelled_by` and `result.cancel_summary` ("Cancelled at N of M").
+- A change to every card of a type that takes several calls is one Activity
+  entry. `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` and
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` write at most 500
+  cards per call and answer `cards_remaining`. Send the same request again with
+  `continue_event_id` set to the `undo_event_id` the first call answered: the
+  next cards are added to that entry, and undoing that entry undoes every call. A
+  `continue_event_id` that is not the caller's own entry of the same change in
+  that project answers `422` and writes nothing. Both operations now allow 30
+  calls a minute.
+- A project chooses where its card types come from and who may change them, and
+  every change to a card type is kept in a history.
+  `PUT /v1/knowledge/wiki/page-types/settings` (`kb:write`, an owner of the
+  project) takes `project_id` and either or both of `inherit` and
+  `agent_may_change`. `inherit` is `organization` (the organization's types and
+  the built-in ones; the default), `builtin` (the built-in ones only) or `own`
+  (only the types the project defines). `own` answers `422` unless the project
+  defines at least one active type whose `grain` is `card`. A few built-in
+  types stay offered under it (`topic`, `overview`, `index`, `person` and
+  `organization`, unless the project defines its own); they are returned as
+  `kept_types`. `agent_may_change: false` stops Beakr itself from
+  adding or changing the project's types: only people do, and a type Beakr would
+  have added is kept as a suggestion. `dry_run` defaults to `true` and answers
+  `types_dropped`, each type the project would stop being offered with its
+  `live_cards`; nothing is written. Applying never changes or removes a card or
+  a type: a type that drops out is offered again when the setting is switched
+  back, and each dropped type that still has cards gets a suggestion to move
+  them. `keep_types_in_use: true` makes the dropped types that have cards the
+  project's own instead (`types_kept`). The last usable type of a project on
+  `own` cannot be turned off or removed (`422` or `409`).
+  `POST /v1/projects` takes an optional `card_types` object with the same two
+  settings; `inherit: "own"` at creation needs `copy_from_project_id` (with
+  optional `copy_keys`) or a `types` list in the same request, and answers `422`
+  otherwise.
+  `GET /v1/knowledge/wiki/page-types` with `project_id` now also answers
+  `settings` and `kept_types`; with `include_counts=true` each type carries
+  `card_count` and `unlisted_types` lists the types the project's cards carry
+  that are not in the list.
+  `GET /v1/knowledge/wiki/page-types/history` (`kb:read`) lists the changes to a
+  project's types (`project_id`) or the organization's (`scope=org`), newest
+  first, filtered by `key`: who (`actor_type`, `actor_user_id` or `actor_name`),
+  when, the `kind` (`edited`, `turned_off`, `turned_on`, `created`,
+  `copy_removed`, `copied_in`, `promoted`, `settings_changed`, `undone`), a
+  `title`, the definition fields that `changed`, and the definition `before` and
+  `after`. A project's entries are visible to whoever can see the project, and
+  the organization's to its members. History starts with the first change made
+  after this release. Suggestions are left out unless `include_suggestions` is
+  true, which adds them with their `state` (`pending`, `applied` or
+  `dismissed`).
+  `GET /v1/knowledge/wiki/page-types/suggestions` (`kb:read`) lists what waits
+  for a person in a project (`project_id`): types Beakr was not allowed to add (`held_back`)
+  and cards to move (`retype_suggested`, with `details.from_type` and
+  `details.cards`). `POST /v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss`
+  (`kb:write`, an owner) dismisses one; `409` if it was already answered.
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` takes an optional
+  `suggestion_id`, which marks that suggestion applied once no card of the type
+  is left, and accepts a `{key}` no type defines when the project has cards
+  carrying it.
+- A change to a card type can be applied to the cards a project already has
+  (`kb:write`; the caller must be an owner of the project).
+  `POST /v1/knowledge/wiki/page-types/{key}/rename-fields` renames fields on
+  every card of the type in one project: `renames` is a list of `{old, new}`,
+  and the type's own field list is renamed with the cards. Rows that become the
+  same field are merged with their citations kept. It answers `cards`,
+  `cards_changed`, `cards_written`, `cards_conflicted`, `cards_refused`,
+  `cards_remaining`, `rows_renamed`, `rows_merged`, and the renames it
+  `applied` and `refused` (a rename between names that differ by one word whose
+  values disagree, or one that drops a word such as "planned" or "actual", is
+  refused). A new name holding `|`, `[[ ]]`, `{{ }}` or a line break answers
+  `422`.
+  `POST /v1/knowledge/wiki/page-types/{key}/retype-cards` moves every card of
+  the type in one project to `to_type`, which must be an active card type in
+  that project with `grain` `card`. It answers `from_type`, `to_type`, `cards`,
+  `cards_retyped`, `cards_skipped` and `cards_remaining`. A card's text is not
+  changed, so if the two types name a field differently, rename the fields on
+  the target type afterwards.
+  Both take `project_id` and `dry_run`, which defaults to `true`: a dry run
+  answers the counts and writes nothing. With `dry_run: false` one call changes
+  at most 500 cards; `cards_remaining` says how many are left, and the same
+  request again changes the next ones. An applied change answers `commit_id`
+  and `undo_event_id`, and shows in the project's activity; only an owner of
+  the project can undo it. Both answer `404` for a type the project does not
+  know, `422` for a mapping that cannot be applied, and `409` while Knowledge is
+  running maintenance on the project (try again in a few minutes).
+- Card types can be carried between projects and up to the organization
+  (`kb:write`).
+  `POST /v1/knowledge/wiki/page-types/copy` copies the types one project
+  defines (`from_project_id`, `keys`) into another (`to_project_id`), which gets
+  its own copies; the caller must see the source and be an owner of the
+  destination. `POST /v1/knowledge/wiki/page-types/promote` copies a project's
+  types (`source`, `keys`) to the organization, where every project without a
+  copy of its own inherits them; it takes an organization admin. Both answer
+  `{copied, replaced, skipped}`: a key the source project does not itself
+  define is skipped as `not_found`, and one the destination already defines is
+  skipped as `exists` unless `replace` is true. Cards are not copied or
+  changed.
+- Card types (a project's ontology) can be read and changed with a `kb:read` or
+  `kb:write` scope.
+  `GET /v1/knowledge/wiki/page-types` lists the card types one project uses
+  (`project_id`), each with its `scope` (`project`, `org` or `global`) and, in
+  `metadata_schema`, its fields (`key_attributes`), which of them are required
+  (`required_attributes`) and whether an instance is a card or a row (`grain`).
+  `PATCH /v1/knowledge/wiki/page-types/{key}` changes a type as one `scope`
+  holds it: `label`, `description`, `when_to_use`, `when_not_to_use`, `aliases`,
+  `fields` (the list in order, each `{name, required}`), `grain` (`card` or
+  `row`) and `status` (`deprecated` turns the type off for that scope and hides
+  a broader type of the same key from it). Changing a type the scope only
+  inherits gives the scope its own copy, so no other project changes; the
+  response's `page_type.overrides` names the scope the copy stands in front of.
+  `DELETE /v1/knowledge/wiki/page-types/{key}` removes that copy (it answers
+  `{removed, key, scope}`) and the scope goes back to the type it inherits; a type defined only in that scope answers
+  `409` and is turned off with `status` instead. A project's types are changed
+  by the project's owners and an organization's by its admins; others get
+  `403`. A change with scope `org` or `global` must not carry `project_id`
+  (`400`). Cards already written are
+  not rewritten by a change: later compiles use the new definition.
 - `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
   naming one project it returns that project's orientation map in about 3,000
   characters: its knowledge profile, how many pages of each card type, what a

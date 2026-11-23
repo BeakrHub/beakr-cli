@@ -36,6 +36,7 @@ READ_TOOLS = frozenset(
         "wiki_stats",
         "wiki_graph",
         "show_proposal",
+        "review_options",
         "conversations_search",
         "org_audit_log",
         "integrations",
@@ -43,6 +44,7 @@ READ_TOOLS = frozenset(
         "beakr_version",
         # The self-hosted line's session tools (engine #2930's hints).
         "session_status",
+        "knowledge_queue",
     }
 )
 #: Tools that change something. update_beakr upgrades this installation here (the
@@ -52,11 +54,18 @@ WRITE_TOOLS = frozenset(
         "knowledge_base_write",
         "accept_proposal",
         "dismiss_proposal",
+        "resolve_review",
         "import_conversation",
         "create_project",
         "set_project_profile",
+        "edit_card_type",
+        "card_type_settings",
+        "update_existing_cards",
         "upload_files",
         "add_project_member",
+        "cancel_compiles",
+        "cancel_sync",
+        "draft_review_interview",
         "update_beakr",
         "start_session",
     }

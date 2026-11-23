@@ -111,6 +111,8 @@ TOOL_OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "show_proposal": (("GET", "/v1/knowledge/wiki/proposals/{proposal_id}"),),
     "accept_proposal": (("POST", "/v1/knowledge/wiki/proposals/{proposal_id}/accept"),),
     "dismiss_proposal": (("POST", "/v1/knowledge/wiki/proposals/{proposal_id}/dismiss"),),
+    "review_options": (("POST", "/v1/knowledge/wiki/proposals/{proposal_id}/resolutions"),),
+    "resolve_review": (("POST", "/v1/knowledge/wiki/proposals/{proposal_id}/resolve"),),
     "conversations_search": (("GET", "/v1/conversations"), ("GET", "/v1/conversations/search")),
     "import_conversation": (("POST", "/v1/conversations/import"),),
     "skills": (("GET", "/v1/skills"),),

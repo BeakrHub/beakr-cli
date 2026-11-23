@@ -66,7 +66,6 @@ def test_unlisted_command_modules_stay_in_the_full_tree_only():
         "outputs ls",
         "usage",
         "members invite",
-        "files versions",
         "integrations sync",
         "kb blame",
         "kb undo-run",

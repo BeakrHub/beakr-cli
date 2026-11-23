@@ -55,8 +55,15 @@ _CALLS: dict[str, dict[str, Any]] = {
     "import_conversation": {"client": "generic", "session_id": "s-1", "summary": "Decided X."},
     "workboard": {},
     "set_project_profile": {"entity_types": ["lot"]},
+    "edit_card_type": {"type": "experiment", "label": "Experiment"},
+    "card_type_settings": {"inherit": "builtin"},
+    "update_existing_cards": {"type": "assay", "change": "retype", "to_type": "experiment"},
     "upload_files": {"paths": [__file__]},
     "add_project_member": {"person": "jane@example.com"},
+    "knowledge_queue": {},
+    "cancel_compiles": {},
+    "cancel_sync": {"attachment_id": "s1"},
+    "draft_review_interview": {},
 }
 
 
@@ -136,3 +143,30 @@ def test_names_that_agree_or_are_empty_are_one_project() -> None:
     assert mcp_call_shaping.normalize_arguments(
         "knowledge_base", {"command": "ls", "project_id": PROJECT_ID}, {"command", "scope"}
     ) == {"command": "ls", "scope": PROJECT_ID}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_scope_on_edit_card_type_is_the_project_and_org_wide_is_its_own_flag() -> None:
+    # Root cause guarded: edit_card_type first took `scope` ('project' or 'org')
+    # as an argument of its own, while every other tool reads `scope` as a name
+    # for the project, so `scope: "project"` beside `project` was refused as two
+    # projects. The tool takes `org_wide` now and `scope` names the project.
+    respx.get(f"{API}/v1/projects/{PROJECT_ID}").mock(
+        return_value=Response(200, json={"id": PROJECT_ID, "name": "Research"})
+    )
+    patch = respx.patch(f"{API}/v1/knowledge/wiki/page-types/experiment").mock(
+        return_value=Response(200, json={"page_type": {"key": "experiment", "label": "Run"}})
+    )
+    result = await _call(
+        "edit_card_type", {"type": "experiment", "label": "Run", "scope": PROJECT_ID}
+    )
+    assert not result.is_error, result.content[0].text
+    assert json.loads(patch.calls.last.request.content) == {
+        "scope": "project",
+        "project_id": PROJECT_ID,
+        "label": "Run",
+    }
+    wide = await _call("edit_card_type", {"type": "experiment", "label": "Run", "org_wide": True})
+    assert not wide.is_error, wide.content[0].text
+    assert json.loads(patch.calls.last.request.content) == {"scope": "org", "label": "Run"}

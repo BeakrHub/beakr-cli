@@ -178,6 +178,10 @@ SOURCES = (
             # The integrations tool's text: the stdio server carries a copy
             # (test_mcp_integration_results_match_engine).
             "beakr/api/mcp_remote/integration_results.py",
+            # What review_options and resolve_review print, and how an option is
+            # chosen: the stdio server and `beakr kb review` carry a copy
+            # (test_review_flags_match_engine).
+            "beakr/api/mcp_remote/review_text.py",
             # How a typed project name is matched and which names a refusal
             # suggests: the stdio server carries a copy
             # (test_project_scope_names_match_engine).

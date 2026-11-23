@@ -1,0 +1,38 @@
+$ beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --option 2 --yes --json
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolve
+  {"expected_revision": 7, "new_section_body": "<!-- sec:solubility -->\n## Solubility\n\nHX-07 dissolves at 4 mg/mL (Run 19).\n", "option_id": "B", "section_id": "solubility"}
+[exit 0]
+--- stdout
+{
+  "status": "resolved",
+  "proposal_id": "5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f",
+  "page_id": "9a2c4e61-7b3f-4d8a-a1c5-3e6f8b0d2c41",
+  "section_id": "solubility",
+  "new_revision": 8
+}
+--- stderr
+
+
+$ beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --option 2 --yes
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolve
+  {"expected_revision": 7, "new_section_body": "<!-- sec:solubility -->\n## Solubility\n\nHX-07 dissolves at 4 mg/mL (Run 19).\n", "option_id": "B", "section_id": "solubility"}
+[exit 0]
+--- stdout
+Resolved review flag 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f: section solubility changed; the page is now at revision 8.
+--- stderr
+
+
+$ beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --option 2 --yes
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+> POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolve
+  {"expected_revision": 7, "new_section_body": "<!-- sec:solubility -->\n## Solubility\n\nHX-07 dissolves at 4 mg/mL (Run 19).\n", "option_id": "B", "section_id": "solubility"}
+[exit 0]
+--- stdout
+5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f	status=resolved
+--- stderr
+

@@ -34,6 +34,7 @@ REPLAYING_CREATES: tuple[str, ...] = (
     "/v1/interview/requests",
     "/v1/invitations",
     "/v1/knowledge/profiles",
+    "/v1/projects/{project_id}/sources",
     "/v1/workflows/configs",
     "/v1/workflows/configs/{config_id}/run",
 )

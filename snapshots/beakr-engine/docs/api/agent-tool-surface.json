@@ -32,6 +32,8 @@
     "show_proposal",
     "accept_proposal",
     "dismiss_proposal",
+    "review_options",
+    "resolve_review",
     "conversations_search",
     "import_conversation",
     "org_audit_log",
@@ -40,9 +42,16 @@
     "session_status",
     "create_project",
     "set_project_profile",
+    "edit_card_type",
+    "update_existing_cards",
+    "card_type_settings",
     "upload_files",
     "upload_status",
     "add_project_member",
+    "knowledge_queue",
+    "cancel_compiles",
+    "cancel_sync",
+    "draft_review_interview",
     "beakr_version",
     "update_beakr"
   ],
@@ -105,7 +114,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Read the organization's Knowledge, the first step for any question about it. Pass the command as `command` and its options as a flat `arguments` object; `scope` (a project name or id) narrows the read to one project. There is no `search` command.\n\nStart with orient: a project's map (card types, what a card holds, hubs, read limits); without scope, the projects you can read.\nUse the narrowest read that answers it:\n- A fact, a count, the latest or largest, a comparison, as of a date: rows, every card's Facts, Connections and Findings as one table (entity, entity_type, table, field, value or to, When, sources). Filter by page_type, entity, attribute (match: exact, similar, meaning), to; view: census for one field across every card. It holds only what was structured: 0 rows means no card states it under that name, not that it is absent: confirm a count with ls or grep.\n- An exact name, id, number or phrase: grep (output_mode files_with_matches lists every page with the term, count counts them).\n- Something you can only describe: sections, a ranked selection, not a census. Each hit is Knowledge's own text with the documents it cites; [DISPUTED] marks one a later source contradicts.\n- One record: ls {page_type} lists them; hover, links {page, direction: out}, ls {parent} and timeline {page} walk its parties, documents and events: follow them, not a new search. cat {page, section_id} reads one section; outline: true lists a long page's sections.\n- Where a claim came from, how it changed: sources, provenance, blame; log, diff, show.\nConfirm a deciding detail in the original: sources {page} lists each cited passage and how to open it (a file with read_file, else the call on its entry). Quote the source or a cited passage, not a search hit.\nOne reply fits about 100 rows whatever `limit` (rows max 500): page with offset, after_title or `next`.\nGuidance: command='help' {topic?}.\n\nCommand index:\nFind pages: sections {query, page_type?, limit? (max 20)}; grep {query, mode?, output_mode?, target?, after_title?, context_lines?, matches_per_page?, limit?} (mode: text, regex, semantic, history; output_mode: content, files_with_matches, count: listings: exact total, paged by after_title, where results say 'in their prose'; target=title: titles); completions {prefix}; ls {parent?, page_type?, sort_by?: title|updated_at|created_at, limit?, created_by?, created_via?, created_since?, changed_by?, changed_via?, changed_since?}.\nRead: cat {page, section_id?, lines?, outline?, rev?, ledger?}; hover {page} (edges, summary).\nGraph: links {page, direction? (in|out), page_type?, relation?, limit?, offset?}; references {page}; timeline {page?, timeline_query?, start_date?, end_date?, include_content?, include_children?, cursor?}; rows {table: facts|connections|findings, page_type?, entity?, to?, attribute?, query?, start_date?, end_date?, current_only?, as_of?, connected_to?, match?, order_by?, descending?, limit?, offset?, include_evidence?, group_by?, regex?, view?, field_id?} (to: connections into a page; view: fields lists names; view: census, only entity and value, limit 300 by default: one field across all records); query {sql}, e.g. sql: \"SELECT value, COUNT(*) FROM facts WHERE field = 'Governing law' GROUP BY value\" (help: query: if on, ~, rank_fields_by); ontology {include_proposed?}; suggest_parent {page | title, content?}.\nTrust: provenance {page, section_id?}; blame {page}; sources {page}.\nHistory: log {page?, by?, via?, kind?, accepted_by?, since?, until?}; diff {page, rev, rev2?}; show {page, rev}.\nUtility: orient {}; diagnostics {}; proposals {status?: pending|accepted|dismissed} (+ log's filters); help {topic?}.\n`page`: a slug, title, UUID or citation key (wiki:8f3a0c21). Each result ends with its Sources: per cited document, its path, every place cited in it, the id documents read opens and its source_ref. Cite with the readable reference (memo.pdf \u203a p. 7), to people (linked when there is a url) and in writes, or with the source_ref.",
+      "description": "Read the organization's Knowledge, the first step for any question about it. Pass the command as `command` and its options as a flat `arguments` object; `scope` (a project name or id) narrows the read to one project. There is no `search` command.\n\nStart with orient: a project's map (card types, what a card holds, hubs, read limits); without scope, the projects you can read.\nUse the narrowest read that answers it:\n- A fact, a count, the latest or largest, a comparison, as of a date: rows, every card's Facts, Connections and Findings as one table (entity, entity_type, table, field, value or to, When, sources). Filter by page_type, entity, attribute (match: exact, similar, meaning), to; view: census for one field across every card. It holds only what was structured: 0 rows means no card states it under that name, not that it is absent: confirm a count with ls or grep.\n- An exact name, id, number or phrase: grep (output_mode files_with_matches lists every page with the term, count counts them).\n- Something you can only describe: sections, a ranked selection, not a census. Each hit is Knowledge's own text with the documents it cites; [DISPUTED] marks one a later source contradicts.\n- One record: ls {page_type} lists them; hover, links {page, direction: out}, ls {parent} and timeline {page} walk its parties, documents and events: follow them, not a new search. cat {page, section_id} reads one section; outline: true lists a long page's sections.\n- Where a claim came from, how it changed, who wrote it: sources, provenance, blame; log, diff, show.\nConfirm a deciding detail in the original: sources {page} lists each cited passage and how to open it (a file with read_file, else the call on its entry). Quote that, not a search hit.\nOne reply fits about 100 rows whatever `limit` (rows max 500): page with offset, after_title or `next`.\nGuidance: command='help' {topic?}.\n\nCommand index:\nFind pages: sections {query, page_type?, limit? (max 20)}; grep {query, mode?, output_mode?, target?, after_title?, context_lines?, matches_per_page?, limit?} (mode: text, regex, semantic, history; output_mode: content, files_with_matches, count: listings: exact total, paged by after_title, where results say 'in their prose'; target=title: titles); completions {prefix}; ls {parent?, page_type?, sort_by?: title|updated_at|created_at, limit?, created_by?, created_via?, created_since?, changed_by?, changed_via?, changed_since?}.\nRead: cat {page, section_id?, lines?, outline?, rev?, ledger?}; hover {page} (edges, summary).\nGraph: links {page, direction? (in|out), page_type?, relation?, limit?, offset?}; references {page}; timeline {page?, timeline_query?, start_date?, end_date?, include_content?, include_children?, cursor?}; rows {table: facts|connections|findings, page_type?, entity?, to?, attribute?, query?, start_date?, end_date?, current_only?, as_of?, connected_to?, match?, order_by?, descending?, limit?, offset?, include_evidence?, group_by?, regex?, view?, field_id?} (to: connections into a page; view: fields lists names; view: census, only entity and value, limit 300 by default: one field across all records); query {sql}, e.g. sql: \"SELECT value, COUNT(*) FROM facts WHERE field = 'Governing law' GROUP BY value\" (help: query: if on, ~, rank_fields_by); ontology {include_proposed?}; suggest_parent {page | title, content?}.\nTrust: provenance {page, section_id?}; blame {page}; sources {page}.\nHistory: log {page?, by?, via?, kind?, accepted_by?, session?, since?, until?}; diff {page, rev, rev2?}; show {page, rev}.\nUtility: orient {}; diagnostics {}; proposals {status?: pending|accepted|dismissed} (+ log's filters); help {topic?}.\n`page`: a slug, title, UUID or citation key (wiki:8f3a0c21). Each result ends with its Sources: per cited document, its path, every place cited in it, the id documents read opens and its source_ref. Cite with the readable reference (memo.pdf \u203a p. 7), to people (linked when there is a url) and in writes, or with the source_ref.",
       "name": "knowledge_base",
       "surfaces": [
         "remote",
@@ -201,7 +210,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Find Beakr tools beyond the ones listed: proposals review, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, this session's projects (start_session, session_status), project setup (create a project, write its profile, upload files, add members), and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
+      "description": "Find Beakr tools beyond the ones listed: proposals and review flags, profile lookups, knowledge base statistics, past conversations, imports, the audit log, your connected integrations' read tools, this session's projects (start_session, session_status), project setup (create a project, write its profile, upload files, add members), and Beakr's version and update. Pass `search` to filter by name or description, or nothing to see them all. Each result gives the tool's name, description and input schema; call it by that name.",
       "name": "discover_tools",
       "surfaces": [
         "remote",
@@ -425,7 +434,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Create a Beakr project, for files and Knowledge on one subject. Ask the person first, and use an existing project (list_projects) when one fits. Then agree its Knowledge profile with the person and save it with set_project_profile, entity types first, before any upload; the result says when the organization requires one. Needs permission to create projects.",
+      "description": "Create a Beakr project, for files and Knowledge on one subject. Ask the person first, and use an existing project (list_projects) when one fits. Then agree its Knowledge profile with the person and save it with set_project_profile, entity types first, before any upload; the result says when the organization requires one. Optional `card_types` chooses which card types the project is offered (`inherit`: 'organization', 'builtin' or 'own'; `own` needs `copy_types_from`, a project whose own card types to copy) and whether Beakr may change them (`agent_may_change`); card_type_settings changes it later. Needs permission to create projects.",
       "name": "create_project",
       "surfaces": [
         "remote",
@@ -457,7 +466,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Upload files into a project, after the person agrees. Knowledge compiles from them within a few minutes (knowledge=false keeps them out). On the beakr CLI's local MCP server pass `paths`: files or folders on this computer (absolute, or relative to the folder the server runs in). A folder keeps its subfolders, hidden files and credential files are refused, and it answers within about 40 seconds: a larger upload carries on in the background and upload_status reports it. The hosted MCP server cannot read the user's disk: pass `files`, a list of {name, text} or {name, content_base64}, with an optional `folder` to put them under, at most 20 files and about 3.5 MB of content in one call (the refusal names the exact limit). For anything larger, or a folder on disk, the hosted server uploads nothing: tell the user to run `beakr upload PATH --project NAME` in a terminal, or to add the files in the Beakr web app.",
+      "description": "Upload files into a project, after the person agrees. Knowledge compiles from them within a few minutes (knowledge=false keeps them out). A file already in the project under the same folder and name gets the upload as its new version, not a second file (the answer says so, or that it was unchanged). Pass written_by_agent: true for content you wrote yourself (a summary, notes, a report), false for the person's own files, which stay sources; it defaults to false on the beakr CLI's local MCP server (files on disk) and true on the hosted one (content in the call). On the beakr CLI's local MCP server pass `paths`: files or folders on this computer (absolute, or relative to the folder the server runs in). A folder keeps its subfolders, hidden files and credential files are refused, and it answers within about 40 seconds: a larger upload carries on in the background and upload_status reports it. The hosted MCP server cannot read the user's disk: pass `files`, a list of {name, text} or {name, content_base64}, with an optional `folder` to put them under, at most 20 files and about 3.5 MB of content in one call (the refusal names the exact limit). For anything larger, or a folder on disk, the hosted server uploads nothing: tell the user to run `beakr upload PATH --project NAME` in a terminal, or to add the files in the Beakr web app.",
       "name": "upload_files",
       "surfaces": [
         "remote",
@@ -545,6 +554,150 @@
       ],
       "tier": "discovery",
       "title": "Update Beakr"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Show a review flag (a proposal of type review: a section Knowledge flagged as contradicted, unverifiable or unclear) and Beakr's drafted resolutions, numbered, each with what it changes, and the page revision to resolve against. Drafting can take up to two minutes the first time; later calls for the same page revision return the same options at once.",
+      "name": "review_options",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Review flag options"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Resolve a review flag, only after the user explicitly chooses how: pass the option_id they chose from review_options (or their own section_body for the flagged section) with the expected_revision review_options printed, or for a contradiction between cards' rows an outcome applied on every card. The page changes at once and the flag clears. A page that changed since is refused, nothing applied: call review_options again. In a project that requires a person to accept proposals an agent's resolve is refused (person_review_required): ask the user to resolve it in Beakr.",
+      "name": "resolve_review",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Resolve a review flag"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Change one card type in a project's ontology, after the person agrees: its label, description, when to use it, its fields in order (each {name, required}), whether an instance is its own card or a row on the card it belongs to (grain), or turn it off (status 'deprecated'). Read the types first with knowledge_base command='ontology'. Changing a built-in or organization type from a project gives that project its own copy and changes nothing elsewhere; reset=true drops the copy. org_wide=true changes the organization's type for every project and needs an organization admin. Only the project's owners may change its types. This changes the definition later compiles use and rewrites no card; update_existing_cards brings the cards already written in line.",
+      "name": "edit_card_type",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Change a card type"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Bring the cards a project already has in line with a card type, after the person agrees. edit_card_type changes a type's definition for later compiles and rewrites no card; this changes the cards that exist. change='rename_fields' renames fields on every card of `type` (`renames`: a list of {old, new}) and renames them in the type's field list too; rows that become the same field are merged with their citations kept. change='retype' moves every card of `type` to `to_type`, an active type in the project; the cards' text is not changed. Without apply=true it only previews: it answers how many cards and rows would change and changes nothing. Preview first, show the person the counts, and call again with apply=true only after they agree. One call changes at most 500 cards and says how many are left; an applied change shows in the project's Activity, where an owner can undo it. Only the project's owners may do this, and it is refused while Knowledge is running maintenance on the project.",
+      "name": "update_existing_cards",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Update existing cards"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Change a project's card type settings, after the person agrees. `inherit` says which broader card types the project is offered: 'organization' (the organization's and the built-in types, the default), 'builtin' (the built-in types only) or 'own' (only the types the project itself defines, plus a few built-in types that are always kept; the project needs at least one card type of its own). `agent_may_change`=false means only people add or change the project's card types. Without apply=true it only previews: it answers which card types would drop out of the project and how many cards carry each, and changes nothing. Preview first, show the person what would drop out and the card counts, and call again with apply=true only after they agree. No card is changed or removed: cards of a dropped type stay readable, Beakr suggests moving them, and switching back offers the types again. keep_types_in_use=true makes each dropped type that has cards one of the project's own types instead. Only the project's owners may do this.",
+      "name": "card_type_settings",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Card type settings"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "Read a project's Knowledge compile queue: how many compiles are queued and running, for the whole project or one source (attachment_id for a connected source, artifact_id for an uploaded file), and how far the last cancel got.",
+      "name": "knowledge_queue",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Knowledge compile queue"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Cancel queued Knowledge compiles, to stop paying for them: the whole project's, or one source's (attachment_id or artifact_id). Ask the person first. Running compiles finish and finished work is kept. Cancelling a connected source, or the whole project, also cancels its running sync. An automatically synced source queues the skipped items again at its next sync; the answer says what that sync will do. A project admin may cancel anything; the person who added a source, its compiles.",
+      "name": "cancel_compiles",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Cancel queued compiles"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Cancel a connected source's running sync (attachment_id), after the person agrees: listing stops and items not yet started are skipped. Items already synced are kept, and compiles they queued still run (cancel_compiles cancels those).",
+      "name": "cancel_sync",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Cancel a running sync"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Draft an interview from a project's open review flags, for a person who knows the answers: one plain-language question per flag, naming the values that disagree, the cards, the dates and their sources, with each flag's background for the interviewer. By default every open review flag (up to 30; the rest are listed as left out); kinds narrows it, or flags names them. The draft is saved, never sent: the person edits and sends it in Beakr (the answer gives the link). When it is answered, each answer comes back on its flag as a suggestion a person applies. Ask the person before drafting.",
+      "name": "draft_review_interview",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Draft an interview from review flags"
     }
   ],
   "version": 1

@@ -279,3 +279,98 @@ def test_status_lines_name_failures_only_when_there_are_some() -> None:
     failing = {**building, "failed": 2}
     assert "failed=2" in _status_lines(failing)[0]
     assert progress_line(failing).endswith("2 failed")
+
+
+#: What the engine answers for the project Knowledge status inside an agent session
+#: (Claude Code, or BEAKR_SCOPE_SESSION): the route is refused to every session.
+SESSION_ROUTE_UNAVAILABLE = httpx.Response(
+    403,
+    json={
+        "error": {
+            "code": "session_route_unavailable",
+            "message": "A project's Knowledge status isn't available inside an agent session: "
+            "it's a Beakr web app view, not narrowed to this session's projects.",
+            "fix": "Call it outside the session (without the X-Beakr-Session header or a "
+            "session token), or use the Beakr web app.",
+        }
+    },
+)
+
+
+@respx.mock
+def test_wait_knowledge_inside_a_session_waits_on_the_files_own_status(tmp_path):
+    # Root cause (Full 1.0.6, CLI 0.6.0 and 0.7.0): inside an agent session the
+    # project Knowledge status answers 403 session_route_unavailable, and the
+    # upload, which had succeeded, failed while waiting. The wait now reads each
+    # uploaded file's own knowledge_status (GET /v1/artifacts/{id}), which a
+    # session may read, until none is queued or running.
+    respx.get(STATUS).mock(return_value=SESSION_ROUTE_UNAVAILABLE)
+    mock_resumable_uploads(API)
+    respx.get(url__regex=rf"{API}/v1/jobs/.+").respond(
+        json={"job_id": "j", "kind": "artifact_index", "status": "succeeded"}
+    )
+    reads = respx.get(f"{API}/v1/artifacts/art-notes.md").mock(
+        side_effect=[
+            httpx.Response(200, json={"id": "art-notes.md", "knowledge_status": status})
+            for status in ("queued", "running", "created")
+        ]
+    )
+    path = tmp_path / "notes.md"
+    path.write_text("hello")
+    result = runner.invoke(app, ["upload", str(path), "-P", PROJECT, "--wait-knowledge"])
+    assert result.exit_code == 0, result.output
+    assert reads.call_count == 3
+    progress = [line for line in result.stderr.splitlines() if line.startswith("Knowledge:")]
+    assert progress == [
+        "Knowledge: 1 queued, 0 running",
+        "Knowledge: 0 queued, 1 running",
+        "Knowledge: 0 queued, 0 running",
+    ]
+    assert "knowledge=created" in result.stdout
+    assert "session_route_unavailable" not in result.output
+
+
+@respx.mock
+def test_wait_knowledge_inside_a_session_names_the_uploaded_file_that_failed(tmp_path):
+    respx.get(STATUS).mock(return_value=SESSION_ROUTE_UNAVAILABLE)
+    respx.get(f"{API}/v1/projects/{PROJECT}/knowledge/failed-files").respond(
+        json={
+            "data": [
+                {
+                    "artifact_id": "art-notes.md",
+                    "filename": "notes.md",
+                    "path": "docs/notes.md",
+                    "error_code": "processing_failed",
+                    "reason": "The file could not be read.",
+                }
+            ],
+            "has_more": False,
+            "next_cursor": None,
+        }
+    )
+    result = _upload(tmp_path, "--json", knowledge_status="failed")
+    assert result.exit_code == 1
+    [row] = json.loads(result.stdout)
+    assert row["knowledge"]["status"] == "failed"
+    assert row["knowledge"]["error_code"] == "processing_failed"
+    assert "Failed: docs/notes.md  processing_failed" in result.stderr
+
+
+@respx.mock
+def test_another_refusal_of_the_knowledge_status_still_fails_the_wait(tmp_path):
+    respx.get(STATUS).respond(
+        403, json={"error": {"code": "insufficient_scope", "message": "Not allowed."}}
+    )
+    result = _upload(tmp_path)
+    assert result.exit_code != 0
+    assert "Not allowed." in result.stderr
+
+
+@respx.mock
+def test_wait_knowledge_inside_a_session_gives_up_at_the_timeout_naming_the_file(tmp_path):
+    respx.get(STATUS).mock(return_value=SESSION_ROUTE_UNAVAILABLE)
+    result = _upload(tmp_path, "--timeout", "1", knowledge_status="running")
+    assert result.exit_code == 1
+    assert "Knowledge is still compiling (1 running, 0 queued)" in result.stderr
+    # `beakr projects status` is refused in the session too; the file is not.
+    assert "beakr files show art-notes.md" in result.stderr
