@@ -609,7 +609,7 @@
         "openWorldHint": true,
         "readOnlyHint": false
       },
-      "description": "Attach a source to a project from a connected integration, by the service's own id of the thing: a Drive folder or file, a Slack channel, a Notion page or database. Pass the provider, item_id, item_type and a name. Knowledge is off for it unless you pass knowledge=true, so attaching reads nothing; a filter and guidance can be set in the same call. The person must have connected the integration already and must be able to add sources to the project.",
+      "description": "Attach a source to a project from a connected integration, by the service's own id of the thing: a Drive folder, a Slack channel, a Notion page or database. A file service (Drive, OneDrive, SharePoint, Box, Dropbox) takes folders only: attach the folder that holds a file, or upload the file to the project. Pass the provider, item_id, item_type and a name. Knowledge is off for it unless you pass knowledge=true, so attaching reads nothing; a filter and guidance can be set in the same call. The person must have connected the integration already and must be able to add sources to the project.",
       "name": "attach_source",
       "surfaces": [
         "remote",

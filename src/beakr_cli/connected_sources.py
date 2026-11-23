@@ -43,7 +43,7 @@ ATTACH_NEEDS = (
     "Attaching needs the provider, the item's id, its type and its name.",
     "Pass provider (as integrations command='list' prints it, e.g. 'gdrive:nango'), "
     "item_id (the service's own id: a Drive folder id, a Slack channel id, a Notion "
-    "page id), item_type (folder, file, channel, page, database, label, ...) and "
+    "page id), item_type (folder, channel, page, database, label, ...) and "
     "name (what to call it in the project).",
 )
 #: The refusal for an update that changes nothing.
