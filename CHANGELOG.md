@@ -236,6 +236,17 @@ Each release lists the public API changes it supports, taken from the API change
   ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
   session_already_started` refusal says to end the session and start a new
   agent conversation.
+- Creating a service account
+  (`POST /v1/organizations/{org_id}/service-accounts`) and minting a
+  service-account key
+  (`POST /v1/organizations/{org_id}/service-accounts/{account_id}/keys`) no
+  longer need a second factor, even when the organization requires step-up
+  for sensitive actions: a web session is no longer refused with
+  `mfa_required` or `mfa_enrollment_required` there. Both still need an
+  interactive session and an organization admin; keys and tokens answer
+  `403 session_required` whatever the organization's step-up setting.
+  Disabling a service account and revoking a member's credential still need
+  step-up where the organization requires it.
 - A project's open review flags can now become one interview.
   `POST /v1/projects/{project_id}/interviews/from-reviews` (`interviews:write`
   and `kb:read`) writes one plain-language key question per open review flag,
@@ -282,17 +293,6 @@ Each release lists the public API changes it supports, taken from the API change
   `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
   the kinds of thing a project's profile names that Beakr recorded as a field
   of another type, each with `name`, `page_type` and `field`.
-- Creating a service account
-  (`POST /v1/organizations/{org_id}/service-accounts`) and minting a
-  service-account key
-  (`POST /v1/organizations/{org_id}/service-accounts/{account_id}/keys`) no
-  longer need a second factor, even when the organization requires step-up
-  for sensitive actions: a web session is no longer refused with
-  `mfa_required` or `mfa_enrollment_required` there. Both still need an
-  interactive session and an organization admin; keys and tokens answer
-  `403 session_required` whatever the organization's step-up setting.
-  Disabling a service account and revoking a member's credential still need
-  step-up where the organization requires it.
 - A second upload to the same path adds a version to the file already there,
   instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
   takes `on_existing`: `version` (the default) looks in the upload's folder for
