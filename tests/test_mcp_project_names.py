@@ -41,6 +41,9 @@ async def _call(name: str, arguments: dict[str, Any]) -> types.CallToolResult:
     return await mcp_client.call_tool(name, arguments)
 
 
+#: A connected source's attachment id: the source tools take only a UUID.
+_SOURCE = "4dd25154-0d80-44ab-b4c2-167319bfacb4"
+
 #: Each tool that takes a project, with the rest of a call that reaches its route.
 _CALLS: dict[str, dict[str, Any]] = {
     "knowledge_base": {"command": "ls"},
@@ -63,6 +66,17 @@ _CALLS: dict[str, dict[str, Any]] = {
     "knowledge_queue": {},
     "cancel_compiles": {},
     "cancel_sync": {"attachment_id": "s1"},
+    "project_sources": {},
+    "attach_source": {
+        "provider": "gdrive:nango",
+        "item_id": "1AbC",
+        "item_type": "folder",
+        "name": "Protocols",
+    },
+    "update_source": {"attachment_id": _SOURCE, "knowledge": False},
+    "preview_source_rules": {"attachment_id": _SOURCE},
+    "sync_source": {"attachment_id": _SOURCE},
+    "remove_source": {"attachment_id": _SOURCE},
     "draft_review_interview": {},
 }
 

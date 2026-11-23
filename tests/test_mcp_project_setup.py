@@ -56,6 +56,12 @@ TOOLS = (
     "knowledge_queue",
     "cancel_compiles",
     "cancel_sync",
+    "project_sources",
+    "attach_source",
+    "update_source",
+    "preview_source_rules",
+    "sync_source",
+    "remove_source",
     "draft_review_interview",
 )
 

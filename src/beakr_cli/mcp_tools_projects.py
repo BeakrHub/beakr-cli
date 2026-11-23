@@ -1,9 +1,11 @@
 """MCP tools that set a project up from an agent: create it, write its Knowledge profile,
 change its card types and the cards it already has, upload the person's files into it, add
 the people who work in it, stop queued Knowledge work (``knowledge_queue``,
-``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``), and
-draft an interview from its open review flags (``draft_review_interview``; hosted in
-``review_interview_tools.py``).
+``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``), list,
+attach, change, preview, sync and remove its connected sources (``project_sources``,
+``attach_source``, ``update_source``, ``preview_source_rules``, ``sync_source``,
+``remove_source``; hosted in ``source_tools.py``), and draft an interview from its open
+review flags (``draft_review_interview``; hosted in ``review_interview_tools.py``).
 
 The hosted MCP server has the same seven tools (beakr-engine
 ``beakr/api/mcp_remote/project_tools.py``, ``card_type_tools.py`` and
@@ -55,6 +57,7 @@ from beakr_cli import (
     card_settings,
     card_types,
     card_updates,
+    connected_sources,
     review_interview,
     scope_session,
 )
@@ -1268,6 +1271,179 @@ async def cancel_sync(project: str, attachment_id: str) -> str | dict[str, Any]:
     return cancels.cancel_sync_text(_dict(answer))
 
 
+# --- project_sources, attach_source, update_source, preview_source_rules, sync_source,
+# --- remove_source ----------------------------------------------------------------------
+#
+# A project's connected sources, so setting a project up can be scripted. The hosted
+# halves are beakr-engine ``beakr/api/mcp_remote/source_tools.py``; the text is
+# :mod:`beakr_cli.connected_sources`, the same for the same REST answer. Each call is
+# the signed-in person's own request to the routes ``beakr sources`` uses, which decide
+# who may.
+#
+# Attaching leaves Knowledge OFF unless the caller turns it on: turning it on starts a
+# sync, which reads the source and spends the organization's ingest budget, so it is a
+# step an agent takes on purpose and not a side effect of attaching.
+
+
+def _given_filter(value: Any) -> dict[str, Any] | None:
+    """A filter that says something; ``{}`` is a model filling an optional property."""
+    return value if isinstance(value, dict) and value else None
+
+
+async def _connected_sources(project_id: str) -> tuple[list[dict[str, Any]], bool]:
+    """The project's sources, and whether more exist than the pages read."""
+    sources: list[dict[str, Any]] = []
+    cursor: str | None = None
+    for _ in range(connected_sources.PAGES):
+        page = _dict(
+            await call_api(lambda sdk, c=cursor: connected_sources.sources_page(sdk, project_id, c))
+        )
+        sources.extend(_dict(item) for item in page.get("data") or [])
+        cursor = page.get("next_cursor")
+        if not cursor:
+            break
+    return sources, bool(cursor)
+
+
+async def project_sources(project: str, attachment_id: str | None = None) -> str | dict[str, Any]:
+    """List a project's connected sources, or one and its sync (described in the surface)."""
+    project_id = await _project_id(project)
+    attachment = connected_sources.attachment_id(attachment_id)
+    if str(attachment_id or "").strip() and not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    sources, more = await _connected_sources(project_id)
+    if not attachment:
+        return connected_sources.sources_text(sources, more=more)
+    source = next((item for item in sources if str(item.get("id")) == attachment), None)
+    if source is None:
+        return _error(*connected_sources.NOT_ATTACHED)
+    status = await call_api(lambda sdk: sdk.project_sources.status(project_id, attachment))
+    return "\n".join(
+        [
+            connected_sources.source_line(source),
+            connected_sources.sync_status_text(_dict(status)),
+        ]
+    )
+
+
+async def attach_source(
+    project: str,
+    provider: str,
+    item_id: str,
+    item_type: str,
+    name: str,
+    url: str | None = None,
+    connector_id: str | None = None,
+    knowledge: bool | None = None,
+    nightly_sync: bool | None = None,
+    filter: dict[str, Any] | None = None,
+    guidance: str | None = None,
+) -> str | dict[str, Any]:
+    """Attach a source to a project, Knowledge off unless asked (described in the surface)."""
+    provider = str(provider or "").strip()
+    item_id = str(item_id or "").strip()
+    item_type = str(item_type or "").strip()
+    name = str(name or "").strip()
+    if not (provider and item_id and item_type and name):
+        return _error(*connected_sources.ATTACH_NEEDS)
+    project_id = await _project_id(project)
+    # Off unless asked: turning Knowledge on is what starts reading and spending.
+    reads = knowledge is True
+    source = await call_api(
+        lambda sdk: sdk.project_sources.attach(
+            project_id,
+            provider=provider,
+            external_item_id=item_id,
+            external_item_type=item_type,
+            external_item_name=name,
+            external_item_url=str(url or "").strip() or None,
+            connector_id=str(connector_id or "").strip() or None,
+            ingest_wiki=reads,
+            auto_sync_wiki=reads and nightly_sync is True,
+            source_query=_given_filter(filter),
+            guidance=str(guidance or "").strip() or None,
+        )
+    )
+    return connected_sources.attached_text(_dict(source))
+
+
+async def update_source(
+    project: str,
+    attachment_id: str,
+    knowledge: bool | None = None,
+    nightly_sync: bool | None = None,
+    filter: dict[str, Any] | None = None,
+    guidance: str | None = None,
+    clear_filter: bool | None = None,
+    clear_guidance: bool | None = None,
+) -> str | dict[str, Any]:
+    """Change a connected source's settings, filter or guidance (described in the surface)."""
+    attachment = connected_sources.attachment_id(attachment_id)
+    if not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    changes: dict[str, Any] = {}
+    clear: list[str] = []
+    if isinstance(knowledge, bool):
+        changes["ingest_wiki"] = knowledge
+    if isinstance(nightly_sync, bool):
+        changes["auto_sync_wiki"] = nightly_sync
+    # An empty value never clears: a model that fills every optional property
+    # sends {} and "" for what it is not changing. Clearing is asked for by name.
+    if clear_filter is True:
+        clear.append("source_query")
+    elif _given_filter(filter):
+        changes["source_query"] = filter
+    if clear_guidance is True:
+        clear.append("guidance")
+    elif str(guidance or "").strip():
+        changes["guidance"] = str(guidance).strip()
+    if not changes and not clear:
+        return _error(*connected_sources.NOTHING_TO_CHANGE)
+    project_id = await _project_id(project)
+    source = await call_api(
+        lambda sdk: sdk.project_sources.update(project_id, attachment, **changes, clear=clear)
+    )
+    return connected_sources.updated_text(
+        _dict(source), turned_on=changes.get("ingest_wiki") is True
+    )
+
+
+async def preview_source_rules(
+    project: str, attachment_id: str, filter: dict[str, Any] | None = None
+) -> str | dict[str, Any]:
+    """Count what a source's filter keeps; nothing changes (described in the surface)."""
+    attachment = connected_sources.attachment_id(attachment_id)
+    if not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    project_id = await _project_id(project)
+    # Left out, the saved filter is previewed.
+    candidate = {"source_query": filter} if _given_filter(filter) else {}
+    preview = await call_api(
+        lambda sdk: sdk.project_sources.preview(project_id, attachment, **candidate)
+    )
+    return connected_sources.preview_text(_dict(preview))
+
+
+async def sync_source(project: str, attachment_id: str) -> str | dict[str, Any]:
+    """Start a sync of a connected source now (described in the shared surface)."""
+    attachment = connected_sources.attachment_id(attachment_id)
+    if not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    project_id = await _project_id(project)
+    answer = await call_api(lambda sdk: sdk.project_sources.sync(project_id, attachment))
+    return connected_sources.sync_started_text(_dict(answer))
+
+
+async def remove_source(project: str, attachment_id: str) -> str | dict[str, Any]:
+    """Remove a connected source from a project (described in the shared surface)."""
+    attachment = connected_sources.attachment_id(attachment_id)
+    if not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    project_id = await _project_id(project)
+    await call_api(lambda sdk: sdk.project_sources.remove(project_id, attachment))
+    return connected_sources.removed_text(attachment)
+
+
 # --- draft_review_interview -------------------------------------------------------------
 #
 # One question per open review flag, saved as a draft interview the person edits and
@@ -1308,6 +1484,12 @@ PROJECT_TOOLS = (
     knowledge_queue,
     cancel_compiles,
     cancel_sync,
+    project_sources,
+    attach_source,
+    update_source,
+    preview_source_rules,
+    sync_source,
+    remove_source,
     draft_review_interview,
 )
 

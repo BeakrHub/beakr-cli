@@ -161,6 +161,8 @@ def _assert_the_listing(tools: list[dict[str, Any]]) -> None:
         "org_audit_log",
         "upload_status",
         "knowledge_queue",
+        "project_sources",
+        "preview_source_rules",
         "beakr_version",
         "discover_tools",
         # The self-hosted line's session tool.

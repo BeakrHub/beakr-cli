@@ -45,6 +45,8 @@ READ_TOOLS = frozenset(
         # The self-hosted line's session tools (engine #2930's hints).
         "session_status",
         "knowledge_queue",
+        "project_sources",
+        "preview_source_rules",
     }
 )
 #: Tools that change something. update_beakr upgrades this installation here (the
@@ -65,13 +67,17 @@ WRITE_TOOLS = frozenset(
         "add_project_member",
         "cancel_compiles",
         "cancel_sync",
+        "attach_source",
+        "update_source",
+        "sync_source",
+        "remove_source",
         "draft_review_interview",
         "update_beakr",
         "start_session",
     }
 )
 #: Reads that reach a connected service, or PyPI.
-OPEN_WORLD_READS = frozenset({"research", "integrations", "beakr_version"})
+OPEN_WORLD_READS = frozenset({"research", "integrations", "preview_source_rules", "beakr_version"})
 
 #: The hints as the wire names them (mcp 2's models spell the attributes in snake_case).
 _HINTS = ("readOnlyHint", "destructiveHint", "idempotentHint", "openWorldHint")
