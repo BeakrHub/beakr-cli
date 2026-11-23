@@ -36,7 +36,12 @@ from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
-from beakr_cli.source_links import SourceLinkError, parse_source_link, provider_slug
+from beakr_cli.source_links import (
+    FOLDER_SOURCE_NAMES,
+    SourceLinkError,
+    parse_source_link,
+    provider_slug,
+)
 
 app = typer.Typer(
     help=(
@@ -707,7 +712,8 @@ def attach(
         link_name = link.name
         if not kind:
             raise click.UsageError(
-                "The link does not say whether it is a file or a folder: pass --type file|folder."
+                "The link does not say whether it is a file or a folder: pass --type folder "
+                "(Drive sources are folders)."
             )
         title = name or link.name or item_id
         if link.view_id and source_query is None:
@@ -734,6 +740,14 @@ def attach(
         slug, item_id, kind = provider_slug(str(provider)), str(item), str(item_type)
         title = name or item_id
     url_sent = url if url and scope_mode != "all" else None
+    folder_source = FOLDER_SOURCE_NAMES.get(slug)
+    if folder_source and scope_mode != "all" and str(kind).lower() == "file":
+        # These connectors sync a source by listing it as a folder; a file
+        # syncs nothing, and the engine refuses it (422 item_not_folder).
+        raise click.UsageError(
+            f"{folder_source} sources are folders. Attach the folder that holds this file, "
+            "or upload the file to the project (`beakr files upload`)."
+        )
 
     project_id = _require_project(project)
     _note_mode(mode, slug)
