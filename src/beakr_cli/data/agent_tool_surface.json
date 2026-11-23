@@ -28,6 +28,12 @@
     "knowledge_queue",
     "cancel_compiles",
     "cancel_sync",
+    "project_sources",
+    "attach_source",
+    "update_source",
+    "preview_source_rules",
+    "sync_source",
+    "remove_source",
     "draft_review_interview",
     "beakr_version",
     "update_beakr"
@@ -579,6 +585,102 @@
       ],
       "tier": "discovery",
       "title": "Cancel a running sync"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List the sources connected to a project (a Drive folder, a Slack channel, a Notion page...): each one's attachment_id, whether Knowledge reads it, whether it syncs nightly, when it last synced, and its filter and guidance. With attachment_id: that source and how far its sync has got.",
+      "name": "project_sources",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Connected sources"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Attach a source to a project from a connected integration, by the service's own id of the thing: a Drive folder or file, a Slack channel, a Notion page or database. Pass the provider, item_id, item_type and a name. Knowledge is off for it unless you pass knowledge=true, so attaching reads nothing; a filter and guidance can be set in the same call. The person must have connected the integration already and must be able to add sources to the project.",
+      "name": "attach_source",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Attach a source"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Change a connected source (attachment_id): turn reading it into Knowledge on or off, turn nightly sync on or off, set its filter (in the service's own terms) and its guidance (what this project cares about from it). Turning Knowledge on starts reading the source and spends the organization's ingest budget, so ask the person first. clear_filter and clear_guidance remove a saved one; an empty value changes nothing.",
+      "name": "update_source",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Change a connected source"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": true,
+        "readOnlyHint": true
+      },
+      "description": "Count what a source's filter keeps, before saving it or syncing: how many items match and a sample of them, read from the service itself. Pass a filter to try one, or leave it out for the saved filter. Nothing is tracked, read into Knowledge or changed.",
+      "name": "preview_source_rules",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Preview a source's filter"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Start a sync of a connected source (attachment_id) now, after the person agrees: it brings in the newest items that match the source's filter and the ones Beakr picks from the rest, and spends the organization's ingest budget. Knowledge must be on for the source. project_sources reports progress; cancel_sync stops it.",
+      "name": "sync_source",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Sync a connected source"
+    },
+    {
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": false
+      },
+      "description": "Remove a connected source (attachment_id) from a project, after the person agrees. It is no longer synced; Knowledge already built from it is kept.",
+      "name": "remove_source",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Remove a connected source"
     },
     {
       "annotations": {
