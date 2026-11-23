@@ -2,11 +2,18 @@
 
 The SDK's folder upload stopped at the first file the server refused for itself (an
 instrument's ``.fcs`` export, a key-like file name): the files after it were never
-sent, and nothing said which. This walks the folder the way the SDK does (same order,
-same mirrored folders, same recorded paths) but skips a file refused for itself
-(:data:`SKIPPED_FILE_CODES`, or an empty file) and goes on, as ``beakr mcp``'s
-``upload_files`` does. A refusal about the credential, the project or the network
-still stops the upload.
+sent, and nothing said which. The CLI's folder upload
+(:meth:`beakr_cli._private_api.resources.files.Files.upload_folder`) walks the folder
+the way the SDK does (same order, same mirrored folders, same recorded paths) but
+skips a file refused for itself (:data:`SKIPPED_FILE_CODES`, or an empty file) and
+goes on, as ``beakr mcp``'s ``upload_files`` does. A refusal about the credential,
+the project or the network still stops the upload.
+
+``on_existing`` and ``written_by_agent`` go on each file's completion
+(:mod:`beakr_cli.upload_placement`), and a file whose placement the server refuses
+(:data:`~beakr_cli.upload_placement.REFUSED_PLACEMENT`: two files of that name in the
+folder, or one the caller cannot change) stays among the uploaded rows as
+``{"path", "refused"}``, as ``beakr upload`` reports it; the rest still go up.
 """
 
 from __future__ import annotations
@@ -28,6 +35,15 @@ SKIPPED_FILE_CODES = frozenset(
 EMPTY_FILE = "empty_file"
 
 
+class FolderRows(list):  # type: ignore[type-arg]
+    """A folder upload's rows in folder order, with the files it skipped in ``skipped``
+    (``{"path", "name", "code", "message"}``)."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.skipped: list[dict[str, Any]] = []
+
+
 def upload_folder_skipping(
     sdk: Any,
     root: Path,
@@ -36,61 +52,29 @@ def upload_folder_skipping(
     folder_id: str | None,
     mirror_folders: bool,
     ingest: bool,
+    on_existing: str | None = None,
+    written_by_agent: bool | None = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Upload ``root``'s files; return the uploaded rows and the skipped files
+    """Upload ``root``'s files; return the uploaded rows (with a ``refused`` row for a
+    file whose placement was refused) and the skipped files
     (``{"path", "name", "code", "message"}``), each in folder order."""
-    return sdk.files._drive(  # type: ignore[no-any-return]
-        _flow(
-            root,
-            project_id=project_id,
-            folder_id=folder_id,
-            mirror_folders=mirror_folders,
-            ingest=ingest,
-        )
+    placement: dict[str, Any] = {}
+    if on_existing is not None:
+        placement["on_existing"] = on_existing
+    if written_by_agent is not None:
+        placement["written_by_agent"] = written_by_agent
+    rows = sdk.files.upload_folder(
+        root,
+        project_id=project_id,
+        folder_id=folder_id,
+        mirror_folders=mirror_folders,
+        ingest=ingest,
+        **placement,
     )
+    return list(rows), list(getattr(rows, "skipped", None) or [])
 
 
-def _flow(
-    root: Path, *, project_id: str, folder_id: str | None, mirror_folders: bool, ingest: bool
-) -> Any:
-    from beakr_sdk.errors import BeakrError
-    from beakr_sdk.resources._upload import (
-        _ensure_folder,
-        iter_folder_files,
-        upload_flow,
-        upload_relative_path,
-    )
-
-    folder_ids: dict[Path, str | None] = {Path("."): folder_id}
-    children: dict[str, dict[str, str]] = {}
-    uploaded: list[dict[str, Any]] = []
-    skipped: list[dict[str, Any]] = []
-    for file_path in iter_folder_files(root):
-        if file_path.stat().st_size == 0:
-            skipped.append(_skip(file_path, EMPTY_FILE, "Beakr does not store empty files."))
-            continue
-        target = folder_id
-        if mirror_folders:
-            relative_dir = Path(root.name) / file_path.parent.relative_to(root)
-            target = yield from _ensure_folder(relative_dir, folder_ids, project_id, children)
-        try:
-            row = yield from upload_flow(
-                file_path,
-                project_id=project_id,
-                folder_id=target,
-                ingest=ingest,
-                relative_path=upload_relative_path(file_path, root),
-            )
-        except BeakrError as exc:
-            if exc.code not in SKIPPED_FILE_CODES:
-                raise
-            skipped.append(_skip(file_path, str(exc.code), exc.message))
-            continue
-        uploaded.append({"path": str(file_path), **row})
-    return uploaded, skipped
-
-
-def _skip(path: Path, code: str, message: str) -> dict[str, Any]:
+def skip_row(path: Path, code: str, message: str) -> dict[str, Any]:
     return {"path": str(path), "name": path.name, "code": code, "message": message}
 
 

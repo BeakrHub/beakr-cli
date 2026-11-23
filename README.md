@@ -278,8 +278,91 @@ beakr files ls --search budget | show ID | download ID --out ./ | rm ID
 beakr integrations ls | connect PROVIDER | status ID | rm ID
 beakr integrations tools --provider slack           # what your connected integrations can answer
 beakr integrations call slack_search --arg query="assay handover"
+beakr sources ls -P ID | attach LINK -P ID | edit SRC | rm SRC | sync SRC | status SRC
 beakr doctor                                        # auth, scopes, API, MCP, hooks, version
 ```
+
+### Attach connected items to a project
+
+A project's sources are the connected items it reads: a Google Drive folder or
+file, a Slack channel, a Notion page or database, or everything one connection
+can see. Connect the account first (`beakr integrations connect notion`), then
+attach items by their link; `--knowledge` builds Knowledge from it and `--sync`
+starts pulling it at once.
+
+```bash
+beakr sources attach https://www.notion.so/acme/Assay-Handbook-0123...cdef -P Basel --knowledge --sync
+beakr sources attach https://drive.google.com/drive/folders/1AbC... -P Basel --knowledge
+beakr sources attach https://acme.slack.com/archives/C01ABCDEF -P Basel --name "#assays"
+beakr sources attach C01ABCDEF --provider slack --type channel --name "#assays" -P Basel
+beakr sources attach --provider drive --scope-mode all -P Basel   # everything it reads, named "All Google Drive"
+beakr sources ls -P Basel                    # ids, Knowledge on/off, last sync, Notion rows matched
+beakr sources edit SRC -P Basel --no-knowledge | --auto-sync | --mode all | --clear-query
+beakr sources preview SRC -P Basel --jql 'status = Done'      # count + examples; saves nothing
+beakr sources sync SRC -P Basel && beakr sources status SRC -P Basel
+beakr sources rm SRC -P Basel --yes          # Knowledge already built from it stays
+```
+
+A link gives the provider, the item's id and, where it says, its type: Notion's
+32-character id ending the path (a `v=` view means a database; a `p=` page open
+in peek view is the item; whether any other Notion link is a page or a database,
+and its title, are looked up on your connection, and without an answer the link
+reads as a page, so pass `--type database`), Drive's `/folders/<id>` and `/file/d/<id>` (an
+`?id=` link needs `--type file|folder`), Slack's `/archives/<channel>`. Without a
+link, pass the id with `--provider`, `--type` and `--name`. When you have one
+connection for the provider it is used; with several, `attach` lists them and
+asks for `--connector ID`.
+
+A source's integration rules narrow what a sync takes, on `attach` and `edit`:
+`--query` is provider-native JSON with exactly one key, the provider's own:
+`notion_filter` or `notion_view` (a Notion database), `notion_page` (a Notion
+page: a `default` filter for its databases and, under `databases`, a
+`notion_filter`, `notion_view` or `{"exclude": true}` for each database id),
+`drive_q` (Google Drive),
+`gmail_q`, `outlook_filter` or `outlook_search`, `jql` (Jira), `cql`
+(Confluence), `linear_filter`, `github_q`, and the structured `slack_filter`,
+`teams_filter`, `files_filter`, `calendar_filter` and `granola_filter`.
+`beakr sources keys [--provider jira]` lists them, from the engine, with an
+example each, and a key the source's provider does not take is refused before
+anything is sent. `--drive-q`, `--gmail-q`, `--jql`, `--cql` and `--github-q`
+are shorthands (`--jql 'status = Done'` is `--query '{"jql": "status = Done"}'`).
+Attaching a Notion link that opened a saved view (`?v=`)
+prints the `--query` that pulls only that view's rows. `--mode agent` lets
+Beakr's source picker choose within scope (the default) and `--mode all` takes
+every item in scope; on a Notion item source it is stored but not used: the
+rule decides and everything under the item that passes it comes in (the CLI says
+so if given). `--guidance` is plain-language instructions that the source
+picker and the Knowledge compiler both read (at most 2,000 characters). `edit`
+clears the query and the guidance with `--clear-query` and `--clear-guidance`;
+the mode can be changed but not cleared. They are sent only when given; the
+engine refuses a rule that does not fit the source (422, with its reason, and
+nothing is saved). After a change to the query or mode, `edit` counts what the
+saved rules match and warns when nothing would come in: no item matches, every
+database under a Notion page is left out, or the provider rejects the query
+(`--no-check` skips the count). Piped, the count is a `matching=N` field on the source's line. Attaching an item the project already has exits 5 and names the existing source to `edit`.
+
+`beakr sources preview SRC` counts what a source would pull under its saved
+query, or under a candidate (`--query`, a shorthand, or `--no-query`), by the
+connector's own fetch, and saves nothing: the count ("at least N" when the
+preview stopped early), up to 10 matching items (with when each last changed), a count for each database
+under a Notion page (or why a rule left it out), and the provider's reason when it rejects the query (exit
+1: a rejected query cannot sync). `beakr sources attach ... --preview` (or
+`--dry-run`) does the same for an item before attaching it, and attaches
+nothing.
+
+```bash
+beakr sources attach https://www.notion.so/acme/Runs-0123...cdef?v=4567... -P Basel --knowledge \
+  --query '{"notion_filter": {"property": "Status", "select": {"equals": "Final"}}}' \
+  --guidance "Record each run's instrument and outcome."
+beakr sources edit SRC -P Basel --query '{"notion_view": "4567..."}'
+beakr sources edit SRC -P Basel --query '{"drive_q": "mimeType = '\''application/pdf'\''"}'
+```
+
+Where a project requires a person to approve what agents bring into Knowledge,
+attaching, changing and syncing a source with an agent's credential are refused
+(exit 6, `person_review_required`): run the command yourself, outside the agent
+session, or attach it in the web app. These routes are served to API keys but
+not yet in the documented API contract.
 
 ### Tell Knowledge what a project is about
 
@@ -313,6 +396,66 @@ beakr projects profile edit -P Basel                      # as YAML in $EDITOR
 beakr projects profile show -P Basel
 ```
 
+### Change a project's card types
+
+Card types are the kinds of cards Knowledge writes for a project. Each comes
+from the project itself, from the organization, or is built in.
+
+```bash
+beakr kb types ls -P Basel                          # each type, its fields, and where it comes from
+beakr kb types edit deviation -P Basel \
+  --description "One departure from a batch record" \
+  --field "Root cause" --field "CAPA" --required-field "Root cause"
+beakr kb types edit deviation -P Basel --grain row  # a Facts row on the card it belongs to
+beakr kb types edit supplier -P Basel --status deprecated   # turn a type off for this project
+beakr kb types reset deviation -P Basel             # drop the project's copy; inherit again
+beakr kb types edit deviation --org-wide --label "Deviation"  # the organization's type
+beakr kb types copy deviation capa --from Basel --to Lyon   # Lyon gets its own copies
+beakr kb types promote deviation -P Basel            # every project without a copy inherits it
+beakr kb types rename-fields deviation -P Basel --rename "Cause=Root cause"   # preview
+beakr kb types rename-fields deviation -P Basel --rename "Cause=Root cause" --apply
+beakr kb types retype deviation -P Basel --to incident [--apply]
+beakr kb types ls -P Basel --counts                  # live cards a type, and the setting in force
+beakr kb types settings -P Basel                     # where its types come from; who may change them
+beakr kb types settings -P Basel --inherit own [--keep-types-in-use] [--apply]
+beakr kb types settings -P Basel --no-beakr-may-add --apply
+beakr kb types history -P Basel [--key deviation] | --org-wide
+beakr kb types suggestions -P Basel | dismiss-suggestion ID -P Basel
+beakr projects create Lyon --card-types own --copy-types-from Basel
+```
+
+Changing a built-in or organization type from a project gives the project its
+own copy and changes nothing elsewhere; `ls` marks it (`copy of built-in`,
+`copy of organization type`) and `reset` removes it. `--field` and
+`--required-field` together replace the type's field list: the `--field`
+names in the order given, a `--required-field` marking the field of the same
+name required or adding it after them. A project's owners change its types and
+an organization's admins (`--org-wide`) the organization's. Cards already
+written are not rewritten; later compiles use the new definition. `copy` and
+`promote` print what was copied, replaced and skipped: a type the source does
+not itself define is skipped, and so is one the destination already defines
+unless `--replace`. `promote` needs an organization admin.
+
+`rename-fields` and `retype` are the two commands that change the cards a
+project already has. Without `--apply` they preview: they print the counts and
+change nothing. With it, one run changes at most 500 cards and says how many
+are left (run it again for the rest), names any rename the safety checks did
+not accept and any card that was skipped, and says how to undo: the change
+shows in the project's Activity, where a project owner can undo it.
+
+`settings` shows a project's two card type settings: which types it is offered
+(`--inherit organization`, the organization's and the built-in ones;
+`builtin`, the built-in ones only; `own`, only the types it defines) and
+whether Beakr itself may add and change them (`--beakr-may-add` /
+`--no-beakr-may-add`). A change previews, listing each type the project would
+stop being offered with its card count, and changes nothing unless given
+`--apply`. Applying never changes or removes a card or a type: a dropped type
+that still has cards gets a suggestion to move them, or with
+`--keep-types-in-use` becomes one of the project's own types. `suggestions`
+lists those, and the types Beakr was not allowed to add, with the command that
+answers each. `history` lists every change made to the project's types
+(`--org-wide`: the organization's), newest first.
+
 Flags change only the fields they name (a repeated flag replaces that list) and
 create the profile when the project has none; `--file` replaces the whole
 profile and refuses unknown fields.
@@ -341,6 +484,15 @@ beakr projects status -P Research                   # ready / queued / compiling
 #     docs/scan.pdf  processing_failed  The file could not be read, ...  (FILE_ID)
 beakr projects retry -P Research                    # every failed file, or --file FILE_ID
 beakr projects refusals Research --window 7d        # model refusals and fallbacks, by file
+```
+
+To stop paying for work still queued, cancel it. Compiles already running
+finish, and what Knowledge wrote stays; a source's cancel also stops its running
+sync, and a whole-project cancel every running sync in the project:
+
+```bash
+beakr kb compiles ls -P Research [--source SOURCE_ID | --file FILE_ID]   # queued, running, last cancel
+beakr kb compiles cancel -P Research [--source SOURCE_ID | --file FILE_ID] [--yes]
 ```
 
 `--wait-knowledge` waits until nothing in the project is queued or running
@@ -385,6 +537,18 @@ beakr interviews link create "Assay handover" --goal "How the binding assay is r
 beakr interviews link show LINK_ID
 beakr interviews link send LINK_ID --project <id>
 beakr interviews link ls | revoke LINK_ID
+```
+
+To ask someone about what Knowledge flagged for review, turn the open review
+flags into one interview, one question per flag (every kind by default, up to
+30). Without a person it is a draft to edit and send in Beakr at the printed
+link; with `--for`, `--email` or `--user-id` it also gets that person's link,
+printed once (Beakr sends nothing). Each answer comes back on its flag as a
+suggestion, applied with `beakr kb review resolve`:
+
+```bash
+beakr kb review interview -P Research [--kinds contradiction,ambiguity | --flags ID,ID] [--title T]
+beakr kb review interview -P Research --for "Dana Reyes" --email dana@example.com   # prints her link once
 ```
 
 ## Sessions: which projects a terminal writes
@@ -814,14 +978,37 @@ Knowledge write accepts as a citation. The hosted MCP server has the same tool.
 An agent can also set a project up, with the person's agreement. These tools
 are this server's own (the hosted MCP server has none of them):
 
-- `create_project` (`name`, `description`) creates a project. In a session the
-  project joins the projects the session may read and write. If the
-  organization requires a Knowledge profile, the answer says so.
+- `create_project` (`name`, `description`, `card_types`) creates a project. In a
+  session the project joins the projects the session may read and write. If
+  the organization requires a Knowledge profile, the answer says so.
+  `card_types` (`inherit`, `agent_may_change`, `copy_types_from`) chooses where
+  its card types come from; `inherit: "own"` needs `copy_types_from`.
 - `set_project_profile` (`project`, `entity_types`, `goals`, `focus_areas`,
   `description`, `industry`, `extraction_guidance`, `core_people`,
   `core_organizations`, `core_topics`) writes the project's Knowledge
   profile, the non-interactive `beakr projects profile set`. A first profile
   needs `entity_types`. After that, only the fields given change.
+- `edit_card_type` (`type`, `project`, `org_wide`, `label`, `description`,
+  `when_to_use`, `when_not_to_use`, `aliases`, `fields`, `grain`, `status`,
+  `reset`) changes one card type, the non-interactive `beakr kb types edit`.
+  `type` is the key `knowledge_base` command `ontology` prints. `fields` is the
+  type's fields in order, each `{name, required}`, and replaces the list.
+  Changing a built-in or organization type from a project gives the project
+  its own copy; `reset: true` drops the copy. `org_wide: true` changes the
+  organization's type and takes no `project`.
+- `update_existing_cards` (`type`, `project`, `change`, `renames`, `to_type`,
+  `apply`) changes the cards a project already has, which `edit_card_type`
+  never does: `change: "rename_fields"` with `renames` (`{old, new}` each)
+  renames fields on every card of the type, and `change: "retype"` with
+  `to_type` moves every card of the type to another type. It previews and
+  writes nothing unless `apply` is `true`; the non-interactive
+  `beakr kb types rename-fields` and `beakr kb types retype`.
+- `card_type_settings` (`project`, `inherit`, `agent_may_change`,
+  `keep_types_in_use`, `apply`) changes which card types a project is offered
+  (`organization`, `builtin` or `own`) and whether Beakr itself may add and
+  change them. It previews, naming the types that would drop out with their
+  card counts, and writes nothing unless `apply` is `true`; the
+  non-interactive `beakr kb types settings`.
 - `upload_files` (`project`, `paths`, `folder_id`, `knowledge`,
   `resume_upload_id`) uploads local files and folders, the way `beakr upload`
   does. A folder keeps its subfolders, and each file goes through the resumable

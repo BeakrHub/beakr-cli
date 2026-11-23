@@ -15,9 +15,6 @@
 # Sign-in: the OAuth issuer the CLI signs in with (beakr auth login).
 GET /v1/auth/config
 
-# Files: a file's versions (beakr files versions).
-GET /v1/artifacts/{artifact_id}/versions
-
 # Conversations: full-text settings and freshness of an imported session.
 GET /v1/conversations/settings
 PUT /v1/conversations/settings
@@ -28,6 +25,17 @@ GET /v1/integrations/{connector_id}/coverage
 POST /v1/integrations/{connector_id}/sync
 GET /v1/integrations/hosted/connectors/{connector_id}/scope
 PUT /v1/integrations/hosted/connectors/{connector_id}/scope
+
+# Project sources: what a project pulls from its connections (beakr sources).
+GET /v1/projects/{project_id}/sources
+POST /v1/projects/{project_id}/sources
+PATCH /v1/projects/{project_id}/sources/{attachment_id}
+DELETE /v1/projects/{project_id}/sources/{attachment_id}
+POST /v1/projects/{project_id}/sources/{attachment_id}/sync
+GET /v1/projects/{project_id}/sources/{attachment_id}/sync-status
+POST /v1/projects/{project_id}/sources/{attachment_id}/rules/preview
+POST /v1/projects/{project_id}/sources/rules/preview
+GET /v1/integrations/source-query-keys
 
 # Interviews: requests, sessions and the interview maker.
 GET /v1/interview/requests

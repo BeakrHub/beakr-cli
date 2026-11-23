@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     from beakr_cli._private_api.resources.org_admin import OrgAdmin
     from beakr_cli._private_api.resources.outputs import Outputs
     from beakr_cli._private_api.resources.profile import Profile
+    from beakr_cli._private_api.resources.project_sources import ProjectSources
     from beakr_cli._private_api.resources.usage import Trace, Usage
     from beakr_cli._private_api.resources.workflows import Workflows
 
@@ -52,6 +53,7 @@ class PrivateBeakr(Beakr):
     org: OrgAdmin[Sync]
     outputs: Outputs[Sync]
     profile: Profile[Sync]
+    project_sources: ProjectSources[Sync]
     trace: Trace[Sync]
     usage: Usage[Sync]
     workflows: Workflows[Sync]
@@ -98,6 +100,7 @@ class AsyncPrivateBeakr(AsyncBeakr):
     org: OrgAdmin[Async]
     outputs: Outputs[Async]
     profile: Profile[Async]
+    project_sources: ProjectSources[Async]
     trace: Trace[Async]
     usage: Usage[Async]
     workflows: Workflows[Async]

@@ -85,6 +85,15 @@ WRITE_COMMANDS: dict[str, str] = {
     "kb propose archive": TOKEN,
     "kb proposals accept": TOKEN,
     "kb proposals dismiss": TOKEN,
+    # A review flag's resolution rewrites the flagged section (or a card's rows). From
+    # a plain terminal it is the person's own review, like `kb proposals accept`
+    # (commands/kb_review.py sends it with their own key, joined to no session).
+    "kb review resolve": TOKEN,
+    # Rewriting a project's existing cards (dry runs unless --apply). Checked against
+    # an open session, then sent with the person's credential: the card-type routes
+    # are a project owner's, not a session token's.
+    "kb types rename-fields": CHECKED,
+    "kb types retype": CHECKED,
     "interviews link send": CHECKED,
     # Conversations, which compounding reads into a project's Knowledge
     "conversations import": CHECKED,
@@ -102,6 +111,10 @@ NO_NEW_SESSION: frozenset[str] = frozenset(
         # A person's review from a plain terminal is sent with their own key and no
         # session (commands/kb.py ``_accept_bound``): a new session would serve nothing.
         "kb proposals accept",
+        "kb review resolve",
+        # Dry runs by default: a preview must not open a session picker.
+        "kb types rename-fields",
+        "kb types retype",
     }
 )
 
@@ -163,6 +176,22 @@ NOT_GATED: frozenset[str] = frozenset(
         "session start", "session status", "session show", "session trail", "session ls",
         "session edit", "session end",
         "session forget",
+        # A file's versions; review flags and their drafted options (drafting
+        # writes no content); the compile queue; card types and their history
+        "files versions", "kb review ls", "kb review options", "kb compiles ls",
+        "kb types ls", "kb types history", "kb types suggestions",
+        # A project's card types and where they come from: its owners' and the
+        # organization admins' settings (like boundaries), not content
+        "kb types edit", "kb types reset", "kb types copy", "kb types promote",
+        "kb types settings", "kb types dismiss-suggestion",
+        # A project's connected sources: reads, and their administration (as for
+        # `integrations connect`): the sync's Knowledge is the compile's, not a write here
+        "sources ls", "sources keys", "sources preview", "sources status",
+        "sources attach", "sources edit", "sources rm", "sources sync",
+        # Stopping queued or running work, as `runs cancel`
+        "kb compiles cancel", "sources cancel-sync",
+        # An interview drafted from review flags: no Knowledge until its answers come back
+        "kb review interview",
     }
 )  # fmt: skip
 

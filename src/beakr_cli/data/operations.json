@@ -974,6 +974,42 @@
    "summary": "Get a file's content"
   },
   {
+   "action": "list-artifact-versions",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/artifacts/{artifact_id}/versions",
+   "paginated": true,
+   "path": "/v1/artifacts/{artifact_id}/versions",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List a file's versions"
+  },
+  {
    "action": "list-artifacts",
    "anonymous": false,
    "area": "files",
@@ -1525,6 +1561,33 @@
    "summary": "Call an integration tool"
   },
   {
+   "action": "cancel-source-sync",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/sources/{attachment_id}/sync/cancel",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "attachment_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Cancel a source's running sync"
+  },
+  {
    "action": "connect-integration",
    "anonymous": false,
    "area": "integrations",
@@ -1876,6 +1939,87 @@
    "summary": "Create a sendable interview"
   },
   {
+   "action": "draft-interview-from-reviews",
+   "anonymous": false,
+   "area": "interviews",
+   "body": {
+    "fields": [
+     {
+      "description": "The interview's goals, in place of the drafted ones.",
+      "name": "goals",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Ask only about flags of these kinds (`contradiction`, `ambiguity`, `unverifiable`, `likely_error`, `other`). Omitted: every kind. Ignored with `proposal_ids`.",
+      "enum": [
+       "contradiction",
+       "ambiguity",
+       "unverifiable",
+       "likely_error",
+       "other"
+      ],
+      "multiple": true,
+      "name": "kinds",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": 14,
+      "description": "How long the participant's link works, in days.",
+      "name": "link_expires_in_days",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "default": 30,
+      "description": "The most flags to ask about, one question each; 30, the interview's own cap, by default. Flags past it are listed in `skipped` as `over_question_limit`.",
+      "name": "max_questions",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "Who the interview is for: a member of the organization, or a name and/or email.",
+      "name": "participant",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "The review flags to ask about (proposal ids), in order. Omitted: every open review flag of the project, newest first (narrowed by `kinds`).",
+      "multiple": true,
+      "name": "proposal_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The interview's title, in place of the drafted one.",
+      "name": "title",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/interviews/from-reviews",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/interviews/from-reviews",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "interviews:write",
+   "summary": "Draft an interview from review flags"
+  },
+  {
    "action": "link-result",
    "anonymous": false,
    "area": "interviews",
@@ -2041,6 +2185,207 @@
    "summary": "Accept a Knowledge proposal"
   },
   {
+   "action": "cancel-queued-compiles",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "An uploaded file whose home is the project.",
+      "name": "artifact_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "A connected source attached to the project. Also stops its running sync. Give this or artifact_id, or neither for the whole project.",
+      "name": "attachment_id",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": false
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/knowledge/compiles/cancel",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge/compiles/cancel",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Cancel queued Knowledge compiles"
+  },
+  {
+   "action": "change-card-type-settings",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Whether Beakr itself may add or change the project's card types.",
+      "name": "agent_may_change",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": true,
+      "description": "Answer what would change and write nothing. Pass false to apply.",
+      "name": "dry_run",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "`organization`: the organization's and the built-in types. `builtin`: the built-in types only. `own`: only the types the project itself defines, which takes a project with at least one card type of its own.",
+      "name": "inherit",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Before switching, make every type that would drop out and still has cards one of the project's own types, so those cards keep a type the project offers.",
+      "name": "keep_types_in_use",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project whose settings to change.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PUT",
+   "op": "PUT /v1/knowledge/wiki/page-types/settings",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/settings",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Change a project's card type settings"
+  },
+  {
+   "action": "convert-row-type-to-field",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "What to record under the field, for example 'one row per run'.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The field to add to that type.",
+      "name": "name",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The key of the card type whose cards these rows belong on.",
+      "name": "on_type",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The project, with scope `project`; left out otherwise.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "project",
+      "description": "Whose types to change: `project` (one project) or `org`.",
+      "name": "scope",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/{key}/to-field",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}/to-field",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Make a row type a field"
+  },
+  {
+   "action": "copy-wiki-page-types",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The project whose types to copy.",
+      "name": "from_project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The keys of the types to copy.",
+      "multiple": true,
+      "name": "keys",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Overwrite a type the destination already defines; otherwise it is skipped.",
+      "name": "replace",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project that gets its own copies.",
+      "name": "to_project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/copy",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/copy",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Copy card types between projects"
+  },
+  {
    "action": "create-proposal",
    "anonymous": false,
    "area": "knowledge",
@@ -2177,6 +2522,40 @@
    "summary": "Create a Knowledge proposal"
   },
   {
+   "action": "dismiss-card-type-suggestion",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The project the suggestion belongs to.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/suggestions/{suggestion_id}/dismiss",
+   "path_params": [
+    {
+     "name": "suggestion_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Dismiss a card type suggestion"
+  },
+  {
    "action": "dismiss-proposal",
    "anonymous": false,
    "area": "knowledge",
@@ -2245,6 +2624,28 @@
    "summary": "Search and read original documents"
   },
   {
+   "action": "generate-proposal-conflict-resolutions",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolutions",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolutions",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Draft review flag resolutions"
+  },
+  {
    "action": "get-agent-review-settings",
    "anonymous": false,
    "area": "knowledge",
@@ -2267,6 +2668,41 @@
    "summary": "Get the agent review policy"
   },
   {
+   "action": "get-compile-queue",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/knowledge/compiles",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/knowledge/compiles",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Only this uploaded file's compiles.",
+     "name": "artifact_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Only this connected source's compiles.",
+     "name": "attachment_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Read the Knowledge compile queue"
+  },
+  {
    "action": "get-proposal",
    "anonymous": false,
    "area": "knowledge",
@@ -2287,6 +2723,28 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "Get a Knowledge proposal"
+  },
+  {
+   "action": "get-proposal-conflict",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/proposals/{proposal_id}/conflict",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/conflict",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "Get a review flag"
   },
   {
    "action": "get-wiki-page",
@@ -2443,6 +2901,97 @@
    "summary": "Get an ingestion event's read trail"
   },
   {
+   "action": "list-card-type-history",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/page-types/history",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/page-types/history",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": false,
+     "description": "Also list Beakr's suggestions (`held_back`, `retype_suggested`), each with its `state`: `pending`, `applied` or `dismissed`. They are not changes.",
+     "name": "include_suggestions",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "description": "Only the entries of this card type.",
+     "name": "key",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "The project whose card type history.",
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "`org` for the organization's card types; `project` goes with project_id.",
+     "name": "scope",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List card type changes"
+  },
+  {
+   "action": "list-card-type-suggestions",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/page-types/suggestions",
+   "paginated": true,
+   "path": "/v1/knowledge/wiki/page-types/suggestions",
+   "path_params": [],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "The project whose pending suggestions.",
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List card type suggestions"
+  },
+  {
    "action": "list-proposals",
    "anonymous": false,
    "area": "knowledge",
@@ -2488,6 +3037,12 @@
      "type": "string"
     },
     {
+     "description": "Restrict to one kind of proposal. `review` lists only review flags: sections Knowledge flagged as contradicted, unverifiable or unclear, which are resolved with `POST .../resolve` (and its row and card variants) rather than accepted. Other kinds include `create`, `edit`, `archive`, `mv` and `find_replace`.",
+     "name": "proposal_type",
+     "required": false,
+     "type": "string"
+    },
+    {
      "description": "Restrict to one proposal source. Omitted, a pending listing hides the sources reviewed elsewhere (an interview's proposals are reviewed on that interview's wrap-up, not in this queue).",
      "name": "source",
      "required": false,
@@ -2503,6 +3058,47 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "List Knowledge proposals"
+  },
+  {
+   "action": "list-wiki-page-types",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/knowledge/wiki/page-types",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types",
+   "path_params": [],
+   "query": [
+    {
+     "default": false,
+     "description": "With `project_id`: add each type's `card_count` (the project's cards that are not archived) and `unlisted_types`, the types cards carry that are not listed.",
+     "name": "include_counts",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": false,
+     "name": "include_deprecated",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "default": false,
+     "name": "include_proposed",
+     "required": false,
+     "type": "boolean"
+    },
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:read",
+   "summary": "List card types"
   },
   {
    "action": "list-wiki-pages",
@@ -2595,6 +3191,48 @@
    "summary": "List Knowledge pages"
   },
   {
+   "action": "promote-wiki-page-types",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The keys of the types to promote.",
+      "multiple": true,
+      "name": "keys",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Overwrite a type the organization already defines; otherwise it is skipped.",
+      "name": "replace",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The id of the project whose types to promote.",
+      "name": "source",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/promote",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/promote",
+   "path_params": [],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Promote card types to the organization"
+  },
+  {
    "action": "proposal-trail",
    "anonymous": false,
    "area": "knowledge",
@@ -2615,6 +3253,93 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "Get a proposal's read trail"
+  },
+  {
+   "action": "remove-wiki-page-type-override",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": null,
+   "destructive": true,
+   "method": "DELETE",
+   "op": "DELETE /v1/knowledge/wiki/page-types/{key}",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "name": "project_id",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": "project",
+     "name": "scope",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Remove a card type copy"
+  },
+  {
+   "action": "rename-wiki-page-type-fields",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+      "name": "continue_event_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": true,
+      "description": "Count what would change and write nothing. Pass false to apply.",
+      "name": "dry_run",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project whose cards to change.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The fields to rename.",
+      "name": "renames",
+      "required": true,
+      "type": "object"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/{key}/rename-fields",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}/rename-fields",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Rename fields on existing cards"
   },
   {
    "action": "research",
@@ -2656,6 +3381,196 @@
    "response": "json",
    "scope": "kb:read",
    "summary": "Research a question"
+  },
+  {
+   "action": "resolve-conflict-on-every-card",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "keep_disputed: the value the card stated stands and the disputing row is deleted; adopt_disputing: the disputing value stands and the row it disputed is deleted; both_valid: both rows stand.",
+      "enum": [
+       "keep_disputed",
+       "adopt_disputing",
+       "both_valid"
+      ],
+      "name": "outcome",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-cards",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Resolve a contradiction everywhere"
+  },
+  {
+   "action": "resolve-conflict-with-rows",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The current_revision POST .../resolutions returned with that option.",
+      "name": "expected_revision",
+      "required": true,
+      "type": "integer"
+     },
+     {
+      "description": "The id of a row option POST .../resolutions returned (A, B, ...).",
+      "name": "option_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Resolve a flag with rows"
+  },
+  {
+   "action": "resolve-proposal-conflict",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The page revision the options were drafted or the flag read against (current_revision). A page that changed since answers 409 and nothing is applied. Omitted, the section is rewritten whatever changed since.",
+      "name": "expected_revision",
+      "required": false,
+      "type": "integer"
+     },
+     {
+      "description": "The section's new Markdown: a drafted option's new_section_body, or your own.",
+      "name": "new_section_body",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The drafted option being applied (A, B, ...); informational only: new_section_body is what is written.",
+      "name": "option_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The flagged section: the section_id POST .../resolutions returned.",
+      "name": "section_id",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/proposals/{proposal_id}/resolve",
+   "path_params": [
+    {
+     "name": "proposal_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Resolve a review flag"
+  },
+  {
+   "action": "retype-wiki-page-type-cards",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "The `undo_event_id` an earlier apply of this same change answered. This call's cards are added to that Activity row, so a change that takes several calls (one call writes at most 500 cards) is one entry and one undo.",
+      "name": "continue_event_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": true,
+      "description": "Count what would change and write nothing. Pass false to apply.",
+      "name": "dry_run",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The project whose cards to move.",
+      "name": "project_id",
+      "required": true,
+      "type": "string"
+     },
+     {
+      "description": "The pending suggestion this move answers, from the card type suggestions list. It must be a suggestion to move this type's cards in this project. An apply that leaves no card of the type marks it applied.",
+      "name": "suggestion_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The key of the type the cards become: an active type of cards here.",
+      "name": "to_type",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/knowledge/wiki/page-types/{key}/retype-cards",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}/retype-cards",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Move existing cards to another type"
   },
   {
    "action": "revert-wiki-source",
@@ -3770,6 +4685,96 @@
    "summary": "Set a project's agent review policy"
   },
   {
+   "action": "update-wiki-page-type",
+   "anonymous": false,
+   "area": "knowledge",
+   "body": {
+    "fields": [
+     {
+      "description": "Other names people use for this type; replaces the list.",
+      "multiple": true,
+      "name": "aliases",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What a card of this type is about.",
+      "name": "description",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The type's fields in order; replaces the list.",
+      "name": "fields",
+      "required": false,
+      "type": "object"
+     },
+     {
+      "description": "`card` gives each instance of a type that was recorded as rows its own card. `row` is refused: row types were removed. For something that comes many to a card, add a field with a `description` to the type it belongs to.",
+      "name": "grain",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The type's display name.",
+      "name": "label",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "The project, with scope `project`; left out otherwise.",
+      "name": "project_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "default": "project",
+      "description": "Whose copy of the type to change: `project` (one project), `org` (every project in the organization that has no copy of its own) or `global` (the built-ins).",
+      "name": "scope",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "`deprecated` turns the type off for this scope, hiding a broader type of the same key.",
+      "name": "status",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "What looks like this type but belongs to another, and which.",
+      "name": "when_not_to_use",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "When a thing in a source should become a card of this type.",
+      "name": "when_to_use",
+      "required": false,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "PATCH",
+   "op": "PATCH /v1/knowledge/wiki/page-types/{key}",
+   "paginated": false,
+   "path": "/v1/knowledge/wiki/page-types/{key}",
+   "path_params": [
+    {
+     "name": "key",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "kb:write",
+   "summary": "Change a card type"
+  },
+  {
    "action": "add-label-member",
    "anonymous": false,
    "area": "labels",
@@ -4641,6 +5646,12 @@
       "name": "boundary_preset",
       "required": false,
       "type": "string"
+     },
+     {
+      "description": "A new project's card type settings, and the card types it starts with. Left out entirely, the project is offered the organization's and the built-in card types. `inherit: own` is accepted only when this request brings at least one type whose instances are cards (`copy_from_project_id` or `types`).",
+      "name": "card_types",
+      "required": false,
+      "type": "object"
      },
      {
       "description": "Optional long-form project description.",
@@ -5641,6 +6652,18 @@
       "type": "object"
      },
      {
+      "description": "Id of the decision.",
+      "name": "decision_id",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Version of the pending decision being answered; rejects stale answers.",
+      "name": "decision_version",
+      "required": false,
+      "type": "integer"
+     },
+     {
       "description": "Agent engine to run; null lets the server choose. Honored only if enabled for the organization.",
       "name": "engine",
       "required": false,
@@ -5737,6 +6760,12 @@
       "name": "profile_builder_meta",
       "required": false,
       "type": "object"
+     },
+     {
+      "description": "Id of the resume run.",
+      "name": "resume_run_id",
+      "required": false,
+      "type": "string"
      },
      {
       "description": "Unified scope selection for /ask and workflows. The scope is organized into three independent \"lanes\": 1. Artifacts lane: projects, labels, artifacts (internal documents) 2. Integrations lane: external integrations (GDrive, Dropbox, etc.) 3. Databases lane: public API databases (PubMed, OpenAlex, etc.) Each lane operates independently - selecting/deselecting items in one lane does not affect the others. The resolver handles defaults per lane based on context.",
@@ -7024,11 +8053,29 @@
       "type": "boolean"
      },
      {
+      "default": "new",
+      "description": "What to do when a file's folder already holds a file with its `title` (exact, case-sensitive match). `new` (the default) creates a separate file. `version` adds the upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. With `version`, a folder holding several files of that name, or one you cannot change, leaves that file out (`failed`, with `error_code` `ambiguous_path` or `file_not_writable`); the rest of the batch completes.",
+      "enum": [
+       "version",
+       "new"
+      ],
+      "name": "on_existing",
+      "required": false,
+      "type": "string"
+     },
+     {
       "default": "upload",
       "description": "Provenance hint for all files in this batch (e.g. 'upload', 'capture').",
       "name": "source",
       "required": false,
       "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Mark these files as written by an agent rather than a person. The mark is kept on each version this request creates; a file it creates is also marked as Beakr-written (`is_ai_generated`, source `ai_generated`), so search and agents treat it as an agent's output rather than a source.",
+      "name": "written_by_agent",
+      "required": false,
+      "type": "boolean"
      }
     ],
     "media": "json",
@@ -7052,6 +8099,12 @@
    "area": "uploads",
    "body": {
     "fields": [
+     {
+      "description": "Add this upload as a new version of this file, which must be an uploaded file in the upload's project. Its Knowledge is updated as for any new version; `on_existing`, `title`, `artifact_type`, `description` and `relative_path` do not apply.",
+      "name": "artifact_id",
+      "required": false,
+      "type": "string"
+     },
      {
       "description": "Kind of file.",
       "enum": [
@@ -7088,6 +8141,17 @@
       "type": "string"
      },
      {
+      "default": "version",
+      "description": "What to do when the upload's folder already holds a file with the name this file would get (`title`, else the last part of `path`; exact, case-sensitive match). `version` (the default) adds this upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. `new` always creates a separate file.",
+      "enum": [
+       "version",
+       "new"
+      ],
+      "name": "on_existing",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "The parts.",
       "name": "parts",
       "required": false,
@@ -7104,6 +8168,13 @@
       "name": "title",
       "required": false,
       "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Mark this upload as written by an agent rather than a person. The mark is kept on the version this upload creates; when the upload creates the file, the file is also marked as Beakr-written (`is_ai_generated`), so search and agents treat it as an agent's output rather than a source.",
+      "name": "written_by_agent",
+      "required": false,
+      "type": "boolean"
      }
     ],
     "media": "json",

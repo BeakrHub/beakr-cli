@@ -47,9 +47,22 @@ NAMES = {A: "Helios", B: "Assays", NEW: "Stability"}
 TOOLS = (
     "create_project",
     "set_project_profile",
+    "edit_card_type",
+    "card_type_settings",
+    "update_existing_cards",
     "upload_files",
     "upload_status",
     "add_project_member",
+    "knowledge_queue",
+    "cancel_compiles",
+    "cancel_sync",
+    "project_sources",
+    "attach_source",
+    "update_source",
+    "preview_source_rules",
+    "sync_source",
+    "remove_source",
+    "draft_review_interview",
 )
 
 
@@ -383,6 +396,112 @@ async def test_an_upload_that_outlasts_the_call_carries_on(tmp_path: Path, monke
     assert routes["create"].call_count == 1
     missing = await mcp_tools_projects.upload_status("up_nothing")
     assert missing["error_code"] == "upload_not_found"
+
+
+def _complete_answering(routes: dict, answers: dict[str, httpx.Response | dict]) -> list[dict]:
+    """Answer ``complete`` per title: an error response, or extra answer fields.
+
+    Returns each completion's body, in order, for the fields an upload sent.
+    """
+    accept = routes["complete"].side_effect
+    bodies: list[dict] = []
+
+    def complete(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        bodies.append(body)
+        answer = answers.get(body.get("title"))
+        if isinstance(answer, httpx.Response):
+            return answer
+        response = accept(request)
+        if answer:
+            return httpx.Response(200, json={**response.json(), **answer})
+        return response
+
+    routes["complete"].mock(side_effect=complete)
+    return bodies
+
+
+@respx.mock
+async def test_a_second_upload_to_the_same_path_says_it_added_a_version(tmp_path: Path) -> None:
+    """ENG-2465: the server versions a file at the same path; the answer says which
+    files became new versions and which were unchanged, not only their ids."""
+    first = _file(tmp_path, "memo.pdf")
+    second = _file(tmp_path, "notes.md")
+    respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    routes = mock_resumable_uploads(API)
+    bodies = _complete_answering(
+        routes,
+        {
+            "memo.pdf": {"result": "versioned", "version_no": 3},
+            "notes.md": {"result": "unchanged", "version_no": 1},
+        },
+    )
+
+    text = await mcp_tools_projects.upload_files(A, paths=[str(first), str(second)])
+
+    assert "- memo.pdf: file art-memo.pdf, added as version 3 of the file already there" in text
+    assert "- notes.md: file art-notes.md: unchanged, the same as the file's current version" in (
+        text
+    )
+    # The person's files by default: nothing marks them as the agent's.
+    assert all("written_by_agent" not in body for body in bodies)
+    assert all("on_existing" not in body for body in bodies)
+
+
+@respx.mock
+async def test_written_by_agent_marks_each_completion(tmp_path: Path) -> None:
+    summary = _file(tmp_path, "summary.md")
+    respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    routes = mock_resumable_uploads(API)
+    bodies = _complete_answering(routes, {})
+
+    text = await mcp_tools_projects.upload_files(A, paths=[str(summary)], written_by_agent=True)
+
+    assert "Uploaded 1 of 1 files" in text
+    assert [body.get("written_by_agent") for body in bodies] == [True]
+
+
+@pytest.mark.parametrize(("status", "code"), [(409, "ambiguous_path"), (403, "file_not_writable")])
+@respx.mock
+async def test_a_refused_place_skips_that_file_aborts_its_upload_and_goes_on(
+    tmp_path: Path, status: int, code: str
+) -> None:
+    """Two files of one name at the path (made before uploads versioned), or one the
+    person cannot change: that file only is not uploaded, even on a 403, and its
+    upload is aborted rather than left open against the person's open uploads."""
+    twin = _file(tmp_path, "twin.md")
+    other = _file(tmp_path, "other.md")
+    respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    routes = mock_resumable_uploads(API)
+    _complete_answering(
+        routes,
+        {
+            "twin.md": httpx.Response(
+                status,
+                json={
+                    "error": {
+                        "code": code,
+                        "message": "2 files named 'twin.md' are in the target folder.",
+                        "fix": 'Complete again with `on_existing: "new"`.',
+                    }
+                },
+            )
+        },
+    )
+    aborted = respx.delete(url__regex=rf"{API}/v1/uploads/up-\d+$").respond(
+        json={"id": "up-1", "status": "aborted"}
+    )
+
+    text = await mcp_tools_projects.upload_files(A, paths=[str(twin), str(other)])
+
+    assert "Uploaded 1 of 2 files" in text and "file art-other.md" in text
+    assert "- Not uploaded: " in text and "twin.md: 2 files named 'twin.md'" in text
+    assert "beakr upload PATH --version-of FILE_ID" in text
+    assert "Stopped" not in text
+    assert [call.request.url.path for call in aborted.calls] == ["/v1/uploads/up-1"]
 
 
 # --- add_project_member ------------------------------------------------------------------

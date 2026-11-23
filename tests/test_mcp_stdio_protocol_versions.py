@@ -156,9 +156,13 @@ def _assert_the_listing(tools: list[dict[str, Any]]) -> None:
         "wiki_stats",
         "wiki_graph",
         "show_proposal",
+        "review_options",
         "conversations_search",
         "org_audit_log",
         "upload_status",
+        "knowledge_queue",
+        "project_sources",
+        "preview_source_rules",
         "beakr_version",
         "discover_tools",
         # The self-hosted line's session tool.

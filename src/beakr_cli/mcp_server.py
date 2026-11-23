@@ -1299,6 +1299,115 @@ async def dismiss_proposal(proposal_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Review flags
+# ---------------------------------------------------------------------------
+
+
+@mcp.tool(**tool_surface.tool_kwargs("review_options"))
+async def review_options(proposal_id: str) -> str | dict[str, Any]:
+    """Show a review flag and Beakr's drafted resolutions, numbered, with what each changes."""
+    from beakr_cli.review_flags import options_text
+    from beakr_cli.review_resolve import ResolveRefused, base_path
+
+    try:
+        base = base_path(proposal_id)
+    except ResolveRefused as refused:
+        return refused.fields()
+    conflict = await _call_api(lambda sdk: sdk.request("GET", f"{base}/conflict"))
+    drafted = await _call_api(lambda sdk: sdk.request("POST", f"{base}/resolutions"))
+    return options_text(conflict or {}, drafted or {})
+
+
+@mcp.tool(**tool_surface.tool_kwargs("resolve_review"))
+async def resolve_review(
+    proposal_id: str,
+    option_id: Annotated[
+        str,
+        Field(
+            description="The drafted option the user chose (A, B, ... or its number as "
+            "review_options printed it)."
+        ),
+    ] = "",
+    section_body: Annotated[
+        str,
+        Field(
+            description="Instead of an option: the flagged section's new Markdown, as the "
+            "user wants it."
+        ),
+    ] = "",
+    outcome: Annotated[
+        Literal["keep_disputed", "adopt_disputing", "both_valid"] | None,
+        Field(
+            description="Instead of an option, for a contradiction between cards' rows: "
+            "settle it on every card it lists."
+        ),
+    ] = None,
+    expected_revision: Annotated[
+        int | None,
+        Field(
+            description="The page revision review_options printed; required with option_id "
+            "or section_body."
+        ),
+    ] = None,
+) -> str | dict[str, Any]:
+    """Resolve a review flag the way the user chose, pinned to the revision they chose against."""
+    from beakr_cli.mcp_errors import ApiCallError
+    from beakr_cli.review_flags import resolved_text
+    from beakr_cli.review_resolve import (
+        PERSON_ONLY_FIX,
+        PERSON_ONLY_MESSAGE,
+        ResolveRefused,
+        base_path,
+        checked_choice,
+        option_request,
+        page_changed,
+        require_revision,
+        section_request,
+    )
+
+    try:
+        base = base_path(proposal_id)
+        how = checked_choice(
+            proposal_id,
+            option_id=option_id,
+            section_body=section_body,
+            outcome=outcome,
+            expected_revision=expected_revision,
+        )
+        if how == "outcome":
+            path, body = "/resolve-cards", {"outcome": outcome}
+        else:
+            conflict = await _call_api(lambda sdk: sdk.request("GET", f"{base}/conflict")) or {}
+            require_revision(proposal_id, conflict, expected_revision)
+            if how == "section":
+                path, body = section_request(conflict, section_body, expected_revision)
+            else:
+                drafted = (
+                    await _call_api(lambda sdk: sdk.request("POST", f"{base}/resolutions")) or {}
+                )
+                require_revision(proposal_id, drafted, expected_revision)
+                path, body = option_request(
+                    proposal_id, conflict, drafted, option_id, expected_revision
+                )
+        result = await _call_api(lambda sdk: sdk.request("POST", base + path, json=body))
+    except ResolveRefused as refused:
+        return refused.fields()
+    except ApiCallError as exc:
+        code = exc.fields.get("error_code")
+        if code == "person_review_required":
+            return {
+                **exc.fields,
+                "status": "error",
+                "message": PERSON_ONLY_MESSAGE,
+                "fix": PERSON_ONLY_FIX,
+            }
+        if code == "conflict":
+            return {**exc.fields, **page_changed(proposal_id).fields(), "error_code": code}
+        raise
+    return resolved_text(result or {})
+
+
+# ---------------------------------------------------------------------------
 # Version and self-update
 # ---------------------------------------------------------------------------
 
@@ -1438,7 +1547,8 @@ integrations = _platform.integrations
 discover_tools = _platform.discover_tools
 _platform.register_platform_tools(mcp)
 
-# Setting a project up: create it, its profile, its files and its people.
+# Setting a project up: create it, its profile, its card types and existing cards, its
+# files and its people.
 from beakr_cli import mcp_tools_projects as _projects  # noqa: E402
 
 _projects.register(mcp)

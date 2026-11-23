@@ -52,17 +52,36 @@ jobs:
       - name: Install
         run: uv sync --frozen --extra dev
 
+      # Self-hosted line only: every step below runs with the beakr-sdk a self-hosted
+      # release bundles with this CLI (the self-hosted beakr-python line at
+      # .github/bundled-sdk-revision, the commit the engine's full-client-sources.json
+      # pins), not the lock's PyPI beakr-sdk 0.2.x, which lacks the 0.4 methods this
+      # line's commands call (card types, review flags, cancels). Nothing is published
+      # from this line, and the lock is unchanged. Every later `uv run` takes --no-sync,
+      # which would otherwise put the lock's beakr-sdk back. Move the revision with
+      # the release's beakr-sdk pin.
+      - name: Install the beakr-sdk the release bundles
+        run: |
+          set -euo pipefail
+          revision="$(tr -d '[:space:]' < .github/bundled-sdk-revision)"
+          [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo "bad revision: $revision"; exit 1; }
+          uv pip install --no-deps --reinstall \
+            "beakr-sdk @ git+https://github.com/BeakrHub/beakr-python@${revision}"
+          uv run --no-sync python -c \
+            "import importlib.metadata as m; print('beakr-sdk', m.version('beakr-sdk'))" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+
       - name: CLI command table is current
-        run: uv run python scripts/sync_operations.py --check
+        run: uv run --no-sync python scripts/sync_operations.py --check
 
       - name: Vendored agent tool surface is current
-        run: uv run python scripts/sync_tool_surface.py --check
+        run: uv run --no-sync python scripts/sync_tool_surface.py --check
 
       - name: Private client is current with its allowlist
-        run: uv run python scripts/generate_private_api.py --check
+        run: uv run --no-sync python scripts/generate_private_api.py --check
 
       - name: Lint
-        run: uv run ruff check .
+        run: uv run --no-sync ruff check .
 
       - name: Install shells for completion tests
         id: shells
@@ -110,7 +129,7 @@ jobs:
         # PowerShell (pwsh) is preinstalled on ubuntu-latest runners.
         env:
           BEAKR_REQUIRE_SHELLS: ${{ steps.shells.outputs.require }}
-        run: uv run pytest -q
+        run: uv run --no-sync pytest -q
 
       - name: Fish shell completion
         if: steps.shells.outputs.fish == 'true'
@@ -119,51 +138,14 @@ jobs:
           # fish is installed by "Install shells for completion tests" above.
           # The script `beakr --show-completion` prints when run from fish
           # (Typer detects the shell from the parent process).
-          uv run fish -c 'beakr --show-completion' > /tmp/beakr.fish
+          uv run --no-sync fish -c 'beakr --show-completion' > /tmp/beakr.fish
           fish -n /tmp/beakr.fish
           # It is the standard Click source script for fish...
-          _BEAKR_COMPLETE=source_fish uv run beakr | diff - /tmp/beakr.fish
+          _BEAKR_COMPLETE=source_fish uv run --no-sync beakr | diff - /tmp/beakr.fish
           # ...and, sourced, it completes real commands rather than merely parsing.
-          uv run fish -c 'source /tmp/beakr.fish; complete -C "beakr au"' > /tmp/beakr-fish-complete.txt
+          uv run --no-sync fish -c 'source /tmp/beakr.fish; complete -C "beakr au"' > /tmp/beakr-fish-complete.txt
           cat /tmp/beakr-fish-complete.txt
           grep -q '^auth' /tmp/beakr-fish-complete.txt
 
       - name: Release versions and notes
-        run: uv run python scripts/prepare_release.py check
-
-  bundled-sdk:
-    # uv.lock resolves beakr-sdk from PyPI (the public 0.2.x), but a self-hosted
-    # release bundles this CLI with the self-hosted beakr-sdk (0.4.x): the engine's
-    # full-client-sources.json and the box's client-artifacts.json name that commit.
-    # The job above never ran the pair people install; this one runs every test
-    # with it. Move .github/bundled-sdk-revision with the release's beakr-sdk pin.
-    name: tests-with-bundled-sdk
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    env:
-      BEAKR_ENGINE_PATH: ${{ github.workspace }}/snapshots/beakr-engine
-      BEAKR_REQUIRE_ENGINE: "1"
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: astral-sh/setup-uv@v6
-        with:
-          python-version: "3.12"
-
-      - name: Install
-        run: uv sync --frozen --extra dev
-
-      - name: Install the beakr-sdk the release bundles
-        run: |
-          set -euo pipefail
-          revision="$(tr -d '[:space:]' < .github/bundled-sdk-revision)"
-          [[ "$revision" =~ ^[0-9a-f]{40}$ ]] || { echo "bad revision: $revision"; exit 1; }
-          uv pip install --no-deps --reinstall \
-            "beakr-sdk @ git+https://github.com/BeakrHub/beakr-python@${revision}"
-          uv run --no-sync python -c \
-            "import importlib.metadata as m; print('beakr-sdk', m.version('beakr-sdk'))" \
-            | tee -a "$GITHUB_STEP_SUMMARY"
-
-      - name: Tests with it
-        # --no-sync: `uv run` would otherwise put the lock's beakr-sdk back.
-        run: uv run --no-sync pytest -q
+        run: uv run --no-sync python scripts/prepare_release.py check

@@ -125,6 +125,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "files approve",
         "files download",
         "files rm",
+        "files versions",
         "documents search",
         "documents grep",
         "documents ls",
@@ -161,6 +162,24 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb entities",
         "kb agent-review show",
         "kb agent-review set",
+        # Card types: the kinds of cards Knowledge writes for a project.
+        "kb types ls",
+        "kb types edit",
+        "kb types reset",
+        "kb types copy",
+        "kb types promote",
+        "kb types rename-fields",
+        "kb types retype",
+        "kb types settings",
+        "kb types history",
+        "kb types suggestions",
+        "kb types dismiss-suggestion",
+        "kb compiles ls",
+        "kb compiles cancel",
+        # Review flags: resolve what Knowledge flagged (draft options, apply one).
+        "kb review ls",
+        "kb review options",
+        "kb review resolve",
         "kb rows",
         "kb query",
         "kb add-fact",
@@ -173,6 +192,8 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "kb proposals show",
         "kb proposals accept",
         "kb proposals dismiss",
+        # Ask a person about review flags: a draft interview, never sent.
+        "kb review interview",
         "kb propose create",
         "kb propose edit",
         "kb propose replace",
@@ -212,6 +233,16 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "integrations rm",
         "integrations tools",
         "integrations call",
+        # A project's sources: attach connected items, Knowledge on or off, sync.
+        "sources ls",
+        "sources attach",
+        "sources edit",
+        "sources rm",
+        "sources sync",
+        "sources status",
+        "sources cancel-sync",
+        "sources preview",
+        "sources keys",
     }
 )
 

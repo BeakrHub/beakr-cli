@@ -199,6 +199,28 @@ _CODE_HINTS = {
 }
 
 
+#: The fix for a person-only refusal of a command that is not about proposals:
+#: attaching, changing or syncing a project's source (``beakr sources``) brings
+#: items into Knowledge, so the engine refuses it to an agent's credential with
+#: the same ``person_review_required`` as an accept, whose fix names proposals.
+_PERSON_HINTS_BY_COMMAND = {
+    "sources": (
+        "Nothing was changed: this project requires a person to attach, change or sync its "
+        "sources, and this credential acts for an agent. Run the command yourself, in your "
+        "own terminal outside the agent session (signed in with `beakr auth login`), or do "
+        "it on the project's Sources in the Beakr web app."
+    ),
+}
+
+
+def person_hint(command: tuple[str, ...] = ()) -> str:
+    """The fix for a ``person_review_required`` refusal of ``command``."""
+    return (
+        _PERSON_HINTS_BY_COMMAND.get(command[0] if command else "")
+        or _CODE_HINTS[PERSON_REVIEW_REQUIRED]
+    )
+
+
 def not_provided_message(exc: BaseException, command: tuple[str, ...] = ()) -> str | None:
     """The "does not provide" sentence when ``exc`` is for a route this server lacks."""
     if not isinstance(exc, NotFoundError):
@@ -260,9 +282,9 @@ def describe_error(exc: BaseException, command: tuple[str, ...] = ()) -> str:
         return ASK_DISABLED_MESSAGE
     if isinstance(exc, KnowledgeCommandError):
         text = _refusal_text(exc)
-        return f"{text}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}" if needs_a_person(exc) else text
+        return f"{text}\n{person_hint(command)}" if needs_a_person(exc) else text
     if isinstance(exc, PersonReviewRequiredError):
-        return f"{exc}\n{_CODE_HINTS[PERSON_REVIEW_REQUIRED]}"
+        return f"{exc}\n{person_hint(command)}"
     if isinstance(exc, BeakrError) and exc.code == PROJECT_PROFILE_REQUIRED:
         return f"{exc}\n{profile_required_hint(exc)}"
     from beakr_cli import lock_confirm
@@ -448,6 +470,8 @@ def error_object(
         elif exc.code == PROJECT_PROFILE_REQUIRED:
             # The project's own id in the commands, where the API's fix has a placeholder.
             error["fix"] = profile_required_hint(exc)
+        elif needs_a_person(exc) and command[:1] and command[0] in _PERSON_HINTS_BY_COMMAND:
+            error["fix"] = person_hint(command)
         elif exc.fix or exc.code in _CODE_HINTS:
             error["fix"] = exc.fix or _CODE_HINTS[str(exc.code)]
         if exc.request_id:
