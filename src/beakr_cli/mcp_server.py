@@ -1428,7 +1428,14 @@ async def beakr_version() -> str:
     connected = await _connected_line()
     if await asyncio.to_thread(bundled_with_box, info):
         # Upgraded with the installation, so PyPI's latest release says nothing about it.
-        return "\n".join(filter(None, [box_line(__version__), connected]))
+        from beakr_cli import installation_clients
+        from beakr_cli.updates import self_hosted_build
+
+        shipped = None
+        if self_hosted_build():
+            found = await asyncio.to_thread(installation_clients.expected)
+            shipped = installation_clients.version_line(found)
+        return "\n".join(filter(None, [box_line(__version__), shipped, connected]))
     status = await asyncio.to_thread(get_update_status, max_age=timedelta(hours=1))
     lines = [f"Installed: beakr-cli {status.current} ({info.method.value})"]
     if connected:
@@ -1488,11 +1495,22 @@ async def update_beakr() -> str:
 def _refresh_update_cache() -> None:
     """Refresh the release cache in the background and note staleness on stderr.
 
+    A self-hosted build also logs, on every start, the line saying which beakr-cli
+    its installation's release ships when it is not this one (installation_clients).
     stderr is the MCP client's log, never the protocol stream. Failures are
     silent: an update check must never take the server down.
     """
     import sys
 
+    from beakr_cli import installation_clients
+
+    try:
+        # A self-hosted build: the clients this installation's release ships.
+        line = installation_clients.server_log_line()
+    except Exception:
+        line = None
+    if line:
+        print(line, file=sys.stderr)
     try:
         status = get_update_status()
     except Exception:

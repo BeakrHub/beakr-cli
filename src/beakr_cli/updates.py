@@ -311,16 +311,34 @@ BOX_INSTRUCTIONS = (
 )
 
 
-#: How the CLI a full deployment's release ships is upgraded.
-RELEASE_INSTRUCTIONS = (
-    "It is upgraded with the installation's release: install the next release's clients "
-    "(`beakr-release.py clients` prints how), not beakr-cli from PyPI."
+#: Where a full deployment's instructions name the installation before one is configured.
+INSTALLATION_PLACEHOLDER = "https://<your Beakr host>"
+
+#: How the CLI a full deployment's release ships is upgraded: from the package index
+#: the installation itself serves (beakr-engine client_index.py), which holds exactly
+#: the clients of the release it runs. ``{origin}`` is the configured installation.
+RELEASE_INSTRUCTIONS_TEMPLATE = (
+    "It is upgraded with the installation's release, not from PyPI: install the "
+    "beakr-cli version {origin}/clients/manifest.json names, from the installation's "
+    "package index ({origin}/pypi/simple; see {origin}/docs/developers/use/install-clients)."
 )
+RELEASE_INSTRUCTIONS = RELEASE_INSTRUCTIONS_TEMPLATE.format(origin=INSTALLATION_PLACEHOLDER)
+
+
+def release_instructions() -> str:
+    """:data:`RELEASE_INSTRUCTIONS`, naming the configured installation when there is one."""
+    from beakr_cli.deployment import configured_base_url
+
+    try:
+        origin = configured_base_url()
+    except Exception:
+        origin = None
+    return RELEASE_INSTRUCTIONS_TEMPLATE.format(origin=origin or INSTALLATION_PLACEHOLDER)
 
 
 def installation_instructions() -> str:
     """How the CLI an installation ships is upgraded: its release's clients, or the box."""
-    return RELEASE_INSTRUCTIONS if self_hosted_build() else BOX_INSTRUCTIONS
+    return release_instructions() if self_hosted_build() else BOX_INSTRUCTIONS
 
 
 def check_off_fix() -> str:
@@ -330,7 +348,7 @@ def check_off_fix() -> str:
     the variable there only asks an index the installation does not install from.
     """
     if self_hosted_build():
-        return RELEASE_INSTRUCTIONS
+        return release_instructions()
     if server_deployment() == "self_hosted":
         return BOX_INSTRUCTIONS
     return "Unset it to look for a newer release."
