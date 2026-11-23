@@ -11,11 +11,25 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=2878e66c896b18ce1a8994516818d1f827fc0ce359e4831caa8d75c34eadf870 changelog sha256=9087eaa3f39332621cf9ac5f6c45170278c1f2604c0d48d7cccb8f4e7d522672 -->
+<!-- contract-stamp: public-openapi sha256=478e7ac05592d9bc045eebfeb63cbfdffc7841b3be5f9d89d0d3585478e00962 changelog sha256=b59a91acdae4b40a7e571abaed5aed7359bb4cc38c13c41b32354c8347c6df03 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A connected source's tracked items can be listed with a key:
+  `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`
+  (scope `projects:read`) lists every item the source's syncs picked and what
+  became of it: `state` is `ingested`, `pending` (not read into Knowledge yet),
+  `skipped` or `removed`, and a skipped item gives `reason_code` and `reason`,
+  including when Knowledge read the item and found nothing to add
+  (`nothing_to_add`). `state`, `reason_code`, `search` (title text) and `since`
+  (synced at or after a time) narrow the page; `counts` cover the whole source
+  and `matched` says how many the filters keep. Pages by `cursor`. For an
+  `integration_sync` job, `GET /v1/jobs/{job_id}` gives `result.outcomes`: what
+  became of each item that sync brought in, counted by outcome (`ingested`,
+  `skipped`, `pending`, `removed`, `failed`, `cancelled`) and by reason, the
+  first 25 items with their reasons (set-aside ones first), and
+  `tracked_items_path`, this list narrowed to the sync.
 - Creating a service account
   (`POST /v1/organizations/{org_id}/service-accounts`) and minting a
   service-account key

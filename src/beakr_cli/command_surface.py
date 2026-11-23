@@ -220,6 +220,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "sources sync",
         "sources status",
         "sources cancel-sync",
+        "sources tracked",
         "sources preview",
         "sources keys",
     }

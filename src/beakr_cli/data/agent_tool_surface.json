@@ -34,6 +34,7 @@
     "preview_source_rules",
     "sync_source",
     "remove_source",
+    "tracked_items",
     "draft_review_interview",
     "beakr_version",
     "update_beakr"
@@ -54,7 +55,8 @@
     "skills",
     "conversations_search",
     "org_audit_log",
-    "integrations"
+    "integrations",
+    "tracked_items"
   ],
   "tier_meta_key": "com.thebeakr/tier",
   "tools": [
@@ -593,7 +595,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "List the sources connected to a project (a Drive folder, a Slack channel, a Notion page...): each one's attachment_id, whether Knowledge reads it, whether it syncs nightly, when it last synced, and its filter and guidance. With attachment_id: that source and how far its sync has got.",
+      "description": "List the sources connected to a project (a Drive folder, a Slack channel, a Notion page...): each one's attachment_id, whether Knowledge reads it, whether it syncs nightly, when it last synced, and its filter and guidance. With attachment_id: that source, how far its sync has got, and what became of the items it brought in, including the ones Knowledge set aside after reading them and why.",
       "name": "project_sources",
       "surfaces": [
         "remote",
@@ -681,6 +683,22 @@
       ],
       "tier": "discovery",
       "title": "Remove a connected source"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List the items a connected source (attachment_id) tracks and what became of each: ingested into Knowledge, pending, skipped or removed. A skipped item says why it was set aside (reason_code and a sentence), including when Knowledge read it and found nothing to add. Filter by state, reason_code, search (title text) or since (synced at or after a time). Reads only. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "name": "tracked_items",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "A source's tracked items"
     },
     {
       "annotations": {

@@ -18378,6 +18378,221 @@
         "title": "ToolUsedIn",
         "type": "object"
       },
+      "TrackedItemCounts": {
+        "properties": {
+          "ingested": {
+            "description": "Items read into Knowledge.",
+            "title": "Ingested",
+            "type": "integer"
+          },
+          "pending": {
+            "description": "Items tracked and not read into Knowledge yet.",
+            "title": "Pending",
+            "type": "integer"
+          },
+          "removed": {
+            "description": "Items gone from the source.",
+            "title": "Removed",
+            "type": "integer"
+          },
+          "skipped": {
+            "description": "Items set aside; each one's reason says why.",
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Every item the source tracks, whatever the filters.",
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total",
+          "pending",
+          "ingested",
+          "skipped",
+          "removed"
+        ],
+        "title": "TrackedItemCounts",
+        "type": "object"
+      },
+      "TrackedItemOut": {
+        "properties": {
+          "external_id": {
+            "description": "The item's key in Beakr, stable across syncs.",
+            "title": "External Id",
+            "type": "string"
+          },
+          "ingested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the item was last read into Knowledge (ISO 8601).",
+            "title": "Ingested At"
+          },
+          "kind": {
+            "description": "What one item is: file, channel, thread, event, page or item.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "last_synced_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When a sync last read the item or Knowledge last decided on it (ISO 8601).",
+            "title": "Last Synced At"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a skipped item was set aside, for a person to read.",
+            "title": "Reason"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why a skipped item was set aside, as a stable code: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Null unless skipped, and for items skipped before reasons were recorded.",
+            "title": "Reason Code"
+          },
+          "selected_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the source's sync picked the item (ISO 8601).",
+            "title": "Selected At"
+          },
+          "selected_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why the source's sync picked the item.",
+            "title": "Selected Reason"
+          },
+          "state": {
+            "description": "pending (tracked, not read into Knowledge yet), ingested, skipped (set aside; reason says why) or removed (gone from the source).",
+            "enum": [
+              "pending",
+              "ingested",
+              "skipped",
+              "removed"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "description": "The item's title, or its key when it has none.",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "external_id",
+          "title",
+          "kind",
+          "state"
+        ],
+        "title": "TrackedItemOut",
+        "type": "object"
+      },
+      "TrackedItemsPage": {
+        "properties": {
+          "counts": {
+            "$ref": "#/components/schemas/TrackedItemCounts",
+            "description": "How many items are in each state, over the whole source, unfiltered."
+          },
+          "data": {
+            "description": "One page of items, newest picked first.",
+            "items": {
+              "$ref": "#/components/schemas/TrackedItemOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "description": "Whether more items match after this page.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "kind": {
+            "description": "What one item is for this source.",
+            "title": "Kind",
+            "type": "string"
+          },
+          "matched": {
+            "description": "How many items the filters keep.",
+            "title": "Matched",
+            "type": "integer"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as cursor for the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          },
+          "provider": {
+            "description": "The service the items come from, e.g. gdrive or notion.",
+            "title": "Provider",
+            "type": "string"
+          }
+        },
+        "required": [
+          "data",
+          "has_more",
+          "provider",
+          "kind",
+          "counts",
+          "matched"
+        ],
+        "title": "TrackedItemsPage",
+        "type": "object"
+      },
       "UnlistedCardType": {
         "properties": {
           "card_count": {
@@ -37287,6 +37502,203 @@
           "integrations"
         ],
         "x-beakr-scope": "uploads:write"
+      }
+    },
+    "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items": {
+      "get": {
+        "description": "List a source's tracked items.\n\nEvery item a connected source's syncs picked, and what became of it: read\ninto Knowledge, still pending, skipped (with the reason it was set aside,\nincluding what Knowledge decided after reading it) or removed from the\nsource. ``counts`` cover the whole source; ``state``, ``reason_code``,\n``search`` and ``since`` narrow the page and ``matched`` says how many they\nkeep. Pages by ``cursor``, newest picked first.",
+        "operationId": "list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Keep items in this state only.",
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "pending",
+                    "ingested",
+                    "skipped",
+                    "removed"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep items in this state only.",
+              "title": "State"
+            }
+          },
+          {
+            "description": "Keep skipped items set aside for this reason (e.g. nothing_to_add).",
+            "in": "query",
+            "name": "reason_code",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 64,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep skipped items set aside for this reason (e.g. nothing_to_add).",
+              "title": "Reason Code"
+            }
+          },
+          {
+            "description": "Keep items whose title holds this text (case-insensitive).",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 200,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep items whose title holds this text (case-insensitive).",
+              "title": "Search"
+            }
+          },
+          {
+            "description": "Keep items a sync read, or Knowledge decided on, at or after this time (ISO 8601). A sync status's outcomes link here with its run's start.",
+            "in": "query",
+            "name": "since",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Keep items a sync read, or Knowledge decided on, at or after this time (ISO 8601). A sync status's outcomes link here with its run's start.",
+              "title": "Since"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TrackedItemsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List a source's tracked items",
+        "tags": [
+          "public",
+          "integrations"
+        ],
+        "x-beakr-scope": "projects:read"
       }
     },
     "/v1/projects/{project_id}/threads": {
