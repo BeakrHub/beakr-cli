@@ -266,7 +266,16 @@ Each release lists the public API changes it supports, taken from the API change
   upload creates is marked as written by Beakr (`is_ai_generated`), so search and
   agents treat it as an agent's output rather than a source. `title`,
   `artifact_type`, `description` and `relative_path` apply only when the upload
-  creates a file. Uploads through `/v1/bulk` are unchanged. To add an upload to
+  creates a file. `POST /v1/bulk/complete` takes the same choice, as
+  `on_existing` for the batch (default `new`, so a batch keeps creating
+  separate files unless asked) and on each file to override it: with `version`,
+  a file whose folder already holds a file with its `title` is added to that
+  file as a new version. Each entry in `artifacts` gives `result` and
+  `version_no`. A file whose folder holds two or more files of that name, or one
+  the caller cannot change, is left out and listed in `failed` with `error_code`
+  `ambiguous_path` or `file_not_writable`; the rest of the batch completes. The
+  batch request also takes `written_by_agent`, which marks its files and
+  versions as above. To add an upload to
   a specific file whatever its name, send `artifact_id` on the same request: the
   file must be an uploaded file in the upload's project (else `400
   invalid_artifact`, and the upload stays open). `GET

@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a06eaa17d014c136ff1f8375b1dd4d3fc3a27c063ee565cf1b3e7204e92fcfc3 changelog sha256=e07fa49882e2e1309b26e6f2b2767d5a764f42707a94afae816f572db455ed24 -->
+<!-- contract-stamp: public-openapi sha256=bea5c19948930eb7518be65afba1f6934fb8e3c9c8d1f4b0e52ee5e0d6dc4331 changelog sha256=a54793686d9d0651fc9db64808cd5f42ed47a0c9d89280034ff94666bce5471d -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -39,7 +39,16 @@ The first public version.
   upload creates is marked as written by Beakr (`is_ai_generated`), so search and
   agents treat it as an agent's output rather than a source. `title`,
   `artifact_type`, `description` and `relative_path` apply only when the upload
-  creates a file. Uploads through `/v1/bulk` are unchanged. To add an upload to
+  creates a file. `POST /v1/bulk/complete` takes the same choice, as
+  `on_existing` for the batch (default `new`, so a batch keeps creating
+  separate files unless asked) and on each file to override it: with `version`,
+  a file whose folder already holds a file with its `title` is added to that
+  file as a new version. Each entry in `artifacts` gives `result` and
+  `version_no`. A file whose folder holds two or more files of that name, or one
+  the caller cannot change, is left out and listed in `failed` with `error_code`
+  `ambiguous_path` or `file_not_writable`; the rest of the batch completes. The
+  batch request also takes `written_by_agent`, which marks its files and
+  versions as above. To add an upload to
   a specific file whatever its name, send `artifact_id` on the same request: the
   file must be an uploaded file in the upload's project (else `400
   invalid_artifact`, and the upload stays open). `GET
