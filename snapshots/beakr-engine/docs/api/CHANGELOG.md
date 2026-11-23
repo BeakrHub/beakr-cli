@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=bea5c19948930eb7518be65afba1f6934fb8e3c9c8d1f4b0e52ee5e0d6dc4331 changelog sha256=a54793686d9d0651fc9db64808cd5f42ed47a0c9d89280034ff94666bce5471d -->
+<!-- contract-stamp: public-openapi sha256=2878e66c896b18ce1a8994516818d1f827fc0ce359e4831caa8d75c34eadf870 changelog sha256=9087eaa3f39332621cf9ac5f6c45170278c1f2604c0d48d7cccb8f4e7d522672 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -42,6 +42,17 @@ The first public version.
   ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
   session_already_started` refusal says to end the session and start a new
   agent conversation.
+- Creating a service account
+  (`POST /v1/organizations/{org_id}/service-accounts`) and minting a
+  service-account key
+  (`POST /v1/organizations/{org_id}/service-accounts/{account_id}/keys`) no
+  longer need a second factor, even when the organization requires step-up
+  for sensitive actions: a web session is no longer refused with
+  `mfa_required` or `mfa_enrollment_required` there. Both still need an
+  interactive session and an organization admin; keys and tokens answer
+  `403 session_required` whatever the organization's step-up setting.
+  Disabling a service account and revoking a member's credential still need
+  step-up where the organization requires it.
 - A second upload to the same path adds a version to the file already there,
   instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
   takes `on_existing`: `version` (the default) looks in the upload's folder for

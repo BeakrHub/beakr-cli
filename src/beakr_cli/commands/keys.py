@@ -138,7 +138,7 @@ def create_key(
     creation from an API key or a CLI sign-in token, so a leaked token cannot
     mint itself a long-lived key. Pass `--scope`, `--project`, `--expires-in` or
     `--name` and the page opens with the form filled in; you review it and press
-    Create there (with a recent second factor). Every key records the client it
+    Create there (no second factor is needed). Every key records the client it
     is for: `--client` (default `beakr-cli`) fills that in. `beakr keys scopes`
     lists what each scope allows.
     """
