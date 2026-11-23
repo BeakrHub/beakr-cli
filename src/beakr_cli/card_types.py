@@ -16,7 +16,9 @@ from typing import Any
 
 #: What a caller can change, as the route names it.
 TEXT_FIELDS = ("label", "description", "when_to_use", "when_not_to_use")
-GRAINS = ("card", "row")
+#: Row types were removed (beakr-engine ENG-2471): ``card`` is still taken, to give
+#: a type that was recorded as rows its own cards; ``row`` the engine refuses.
+GRAINS = ("card",)
 STATUSES = ("active", "deprecated")
 #: The key becomes a path segment: anything else (a slash, a dot) could name a
 #: different route.
@@ -37,6 +39,14 @@ ORG_WITH_PROJECT = (
 NO_PROJECT = (
     "Name the project.",
     "Pass `project`: a project name or id from list_projects.",
+)
+#: The engine's own words for ``grain: row`` (``wiki_type_details.ROW_TYPES_REMOVED``):
+#: ``beakr kb types edit --grain row`` says them before sending instead of after a 422.
+#: The stdio tool's schema offers only ``card``, as the hosted tool's does.
+ROW_TYPES_REMOVED = (
+    "Row types were removed: every card type is a card. For something that comes many "
+    "to a card, add a field to the type it belongs to and say what to record, for example "
+    "a field 'Assay runs' described as 'one row per run, with its number and result'."
 )
 NOTHING_TO_CHANGE = (
     "Nothing to change.",

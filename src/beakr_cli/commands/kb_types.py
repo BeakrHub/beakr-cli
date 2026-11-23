@@ -266,8 +266,9 @@ def edit_command(
     grain: str | None = typer.Option(
         None,
         "--grain",
-        help="'card': each instance gets its own card. 'row': each is a Facts row on the "
-        "card it belongs to.",
+        help="'card' gives each instance of a type that was recorded as rows its own card. "
+        "Row types were removed: for something that comes many to a card, add a --field to "
+        "the type it belongs to.",
     ),
     status: str | None = typer.Option(
         None,
@@ -285,8 +286,10 @@ def edit_command(
     already written are not rewritten; later compiles use the new definition.
     """
     key, where = _where(key, project, org_wide)
+    if grain == "row":
+        _usage(card_types.ROW_TYPES_REMOVED)
     if grain is not None and grain not in card_types.GRAINS:
-        _usage("--grain is 'card' or 'row'.")
+        _usage("--grain is 'card'.")
     if status is not None and status not in card_types.STATUSES:
         _usage("--status is 'active' or 'deprecated'.")
     changes = card_types.changes(
