@@ -320,7 +320,7 @@ INSTALLATION_PLACEHOLDER = "https://<your Beakr host>"
 RELEASE_INSTRUCTIONS_TEMPLATE = (
     "It is upgraded with the installation's release, not from PyPI: install the "
     "beakr-cli version {origin}/clients/manifest.json names, from the installation's "
-    "package index ({origin}/pypi/simple; see {origin}/docs/self-hosted/install-clients)."
+    "package index ({origin}/pypi/simple; see {origin}/docs/developers/use/install-clients)."
 )
 RELEASE_INSTRUCTIONS = RELEASE_INSTRUCTIONS_TEMPLATE.format(origin=INSTALLATION_PLACEHOLDER)
 
