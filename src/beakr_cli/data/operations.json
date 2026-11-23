@@ -1743,6 +1743,77 @@
    "summary": "List connected integrations"
   },
   {
+   "action": "list-tracked-items",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "attachment_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "Keep skipped items set aside for this reason (e.g. nothing_to_add).",
+     "name": "reason_code",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Keep items whose title holds this text (case-insensitive).",
+     "name": "search",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Keep items a sync read, or Knowledge decided on, at or after this time (ISO 8601). A sync status's outcomes link here with its run's start.",
+     "name": "since",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Keep items in this state only.",
+     "enum": [
+      "pending",
+      "ingested",
+      "skipped",
+      "removed"
+     ],
+     "name": "state",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List a source's tracked items"
+  },
+  {
    "action": "create-interview-link",
    "anonymous": false,
    "area": "interviews",

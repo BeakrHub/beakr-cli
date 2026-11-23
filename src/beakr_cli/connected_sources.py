@@ -1,8 +1,8 @@
 """A project's connected sources for the MCP tools: the text they answer and the listing.
 
 The stdio halves of ``project_sources``, ``attach_source``, ``update_source``,
-``preview_source_rules``, ``sync_source`` and ``remove_source`` are in
-:mod:`beakr_cli.mcp_tools_projects`; the hosted halves are beakr-engine
+``preview_source_rules``, ``sync_source``, ``remove_source`` and ``tracked_items``
+are in :mod:`beakr_cli.mcp_tools_projects`; the hosted halves are beakr-engine
 ``beakr/api/mcp_remote/source_tools.py``. Both servers answer the same text for
 the same REST answer (the engine's ``test_mcp_every_tool_result_contract.py``),
 so every function from ``source_line`` to ``removed_text`` is that file's,
@@ -11,7 +11,9 @@ character for character: change the wording there first, then here.
 The REST work is the CLI's own client (``sdk.project_sources``, the routes
 ``beakr sources`` uses). The listing alone is read a page at a time through the
 SDK's ``request``, because the tool reads a bounded number of pages and says so
-when more exist, where ``sdk.project_sources.list`` follows every page.
+when more exist, where ``sdk.project_sources.list`` follows every page; so is a
+source's tracked items (``tracked_items_page``), which the released beakr-sdk
+has no method for.
 """
 
 from __future__ import annotations
@@ -76,6 +78,21 @@ def sources_page(sdk: Any, project_id: str, cursor: str | None = None) -> Any:
     return sdk.request("GET", f"/v1/projects/{segment(project_id)}/sources", params=params)
 
 
+def tracked_items_path(project_id: str, attachment_id: str) -> str:
+    """The source's public tracked-items list (``GET .../tracked-items``)."""
+    return f"/v1/projects/{segment(project_id)}/sources/{segment(attachment_id)}/tracked-items"
+
+
+def tracked_items_page(
+    sdk: Any, project_id: str, attachment_id: str, params: dict[str, Any]
+) -> Any:
+    """One page of a source's tracked items (awaitable from the async client).
+
+    Through the SDK's ``request``: the released beakr-sdk predates a typed method.
+    """
+    return sdk.request("GET", tracked_items_path(project_id, attachment_id), params=params)
+
+
 def _dict(value: Any) -> dict[str, Any]:
     return value if isinstance(value, dict) else {}
 
@@ -128,13 +145,80 @@ def sources_text(sources: list[dict[str, Any]], *, more: bool) -> str:
     return "\n".join(lines)
 
 
+#: Items a sync status names in text; the rest are counted, and tracked_items lists them.
+STATUS_ITEMS_SHOWN = 10
+#: Run outcomes, in the order a sync status counts them.
+OUTCOME_ORDER = ("ingested", "skipped", "pending", "removed", "failed", "cancelled")
+
+
+def _reason_text(item: dict[str, Any]) -> str:
+    code = item.get("reason_code")
+    reason = str(item.get("reason") or "").strip()
+    if reason and code:
+        return f": {reason} ({code})"
+    if reason or code:
+        return f": {reason or code}"
+    return ""
+
+
+def outcomes_text(outcomes: dict[str, Any]) -> list[str]:
+    """What became of the items one sync brought in, and why any were set aside."""
+    counts = _dict(outcomes.get("counts"))
+    parts = [f"{counts[name]} {name}" for name in OUTCOME_ORDER if counts.get(name)]
+    if not parts:
+        return ["Items: none brought in by this sync yet."]
+    lines = [f"Items: {', '.join(parts)}."]
+    reasons = [
+        f"{reason.get('reason_code') or 'no reason recorded'} {reason.get('count')}"
+        for reason in (_dict(entry) for entry in outcomes.get("reasons") or [])
+    ]
+    if reasons:
+        lines.append(f"Why: {', '.join(reasons)}.")
+    listed = [
+        _dict(item)
+        for item in outcomes.get("items") or []
+        if _dict(item).get("outcome") != "ingested"
+    ][:STATUS_ITEMS_SHOWN]
+    for item in listed:
+        lines.append(f"- {item.get('title')} [{item.get('outcome')}]{_reason_text(item)}")
+    set_aside = sum(int(counts.get(name) or 0) for name in OUTCOME_ORDER if name != "ingested")
+    if set_aside > len(listed):
+        lines.append(
+            "tracked_items with this attachment_id lists every item and why it was set aside."
+        )
+    return lines
+
+
 def sync_status_text(status: dict[str, Any]) -> str:
     state = status.get("status") or "never synced"
     done = status.get("files_completed")
     total = status.get("files_expected") or status.get("files_total")
     progress = f", {done} of {total} items" if total else ""
     failed = int(status.get("files_failed") or 0)
-    return f"Sync: {state}{progress}" + (f", {failed} failed." if failed else ".")
+    line = f"Sync: {state}{progress}" + (f", {failed} failed." if failed else ".")
+    outcomes = _dict(status.get("outcomes"))
+    if not outcomes:
+        return line
+    return "\n".join([line, *outcomes_text(outcomes)])
+
+
+def tracked_items_text(page: dict[str, Any], rows: list[dict[str, Any]]) -> str:
+    """One page of a source's tracked items, with the whole source's counts."""
+    counts = _dict(page.get("counts"))
+    total = int(counts.get("total") or 0)
+    states = ", ".join(
+        f"{int(counts.get(name) or 0)} {name}"
+        for name in ("ingested", "skipped", "pending", "removed")
+    )
+    lines = [f"{total} tracked item(s) from {page.get('provider') or 'this source'}: {states}."]
+    matched = page.get("matched")
+    if isinstance(matched, int) and matched != total:
+        lines.append(f"{matched} match the filters.")
+    if not rows:
+        lines.append("No tracked items match.")
+    for row in rows:
+        lines.append(f"- {row.get('title')} [{row.get('state')}]{_reason_text(row)}")
+    return "\n".join(lines)
 
 
 def attached_text(source: dict[str, Any]) -> str:

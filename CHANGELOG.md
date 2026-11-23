@@ -8,6 +8,19 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **See why a source's items were set aside.** `beakr sources tracked SOURCE`
+  lists every item a source tracks and what became of it (ingested, pending,
+  skipped or removed), with the reason a skipped item was set aside, including
+  when Knowledge read it and found nothing to add (`nothing_to_add`).
+  `--skipped` (or `--state`), `--reason-code`, `--search` and `--since` narrow
+  it, `--cursor` and `--all` page, `--json` prints the answer.
+  `beakr sources status SOURCE` now says what became of the items the latest
+  sync brought in: counts by outcome, the reasons, and the items set aside
+  (`items_*=` counts in the plain line).
+- **The MCP server's `tracked_items` tool** lists a source's tracked items
+  with the same answer as the hosted server (read-only, paged by `cursor`), and
+  `project_sources` with an `attachment_id` says what became of the items its
+  sync brought in and why any were set aside.
 - **`beakr upload` adds a version to a file already at the path.** Uploading
   to a folder that already holds a file with the same name now adds a version
   to that file (the server's default), and the output says so (`new version
@@ -210,6 +223,20 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- A connected source's tracked items can be listed with a key:
+  `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`
+  (scope `projects:read`) lists every item the source's syncs picked and what
+  became of it: `state` is `ingested`, `pending` (not read into Knowledge yet),
+  `skipped` or `removed`, and a skipped item gives `reason_code` and `reason`,
+  including when Knowledge read the item and found nothing to add
+  (`nothing_to_add`). `state`, `reason_code`, `search` (title text) and `since`
+  (synced at or after a time) narrow the page; `counts` cover the whole source
+  and `matched` says how many the filters keep. Pages by `cursor`. For an
+  `integration_sync` job, `GET /v1/jobs/{job_id}` gives `result.outcomes`: what
+  became of each item that sync brought in, counted by outcome (`ingested`,
+  `skipped`, `pending`, `removed`, `failed`, `cancelled`) and by reason, the
+  first 25 items with their reasons (set-aside ones first), and
+  `tracked_items_path`, this list narrowed to the sync.
 - Creating a service account
   (`POST /v1/organizations/{org_id}/service-accounts`) and minting a
   service-account key

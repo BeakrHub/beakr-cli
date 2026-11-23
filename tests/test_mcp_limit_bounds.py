@@ -25,7 +25,14 @@ EMPTY_PAGE = {"data": [], "next_cursor": None, "has_more": False}
 REDUCED = "Repaired this call: reduced `limit` from 100 to 50, the most rows one page holds"
 
 #: Every stdio tool that takes a row ``limit``; the hosted server gives each ``_LIMIT``.
-PAGED_TOOLS = ("list_projects", "skills", "conversations_search", "org_audit_log", "integrations")
+PAGED_TOOLS = (
+    "list_projects",
+    "skills",
+    "conversations_search",
+    "org_audit_log",
+    "integrations",
+    "tracked_items",
+)
 
 
 @pytest.fixture(autouse=True)
