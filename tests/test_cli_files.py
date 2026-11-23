@@ -440,17 +440,147 @@ def test_without_the_flags_nothing_is_added_so_the_server_default_applies(tmp_pa
     assert sdk.calls == [("upload", {})]
 
 
-def test_the_flags_with_an_sdk_that_lacks_them_stop_before_uploading(tmp_path, monkeypatch):
-    sdk = _PlacementSDK(supports=False)
-    _with_sdk(monkeypatch, sdk)
-    path = tmp_path / "a.md"
+def _completions(routes: dict, answers: dict | None = None) -> list[dict]:
+    """Record each ``complete`` body; ``answers`` maps a title to an error response or to
+    extra answer fields."""
+    import httpx
+
+    accept = routes["complete"].side_effect
+    bodies: list[dict] = []
+
+    def complete(request):
+        body = json.loads(request.content)
+        bodies.append(body)
+        answer = (answers or {}).get(body.get("title"))
+        if isinstance(answer, httpx.Response):
+            return answer
+        response = accept(request)
+        return httpx.Response(200, json={**response.json(), **(answer or {})})
+
+    routes["complete"].mock(side_effect=complete)
+    return bodies
+
+
+@respx.mock
+def test_the_flags_reach_the_completion_with_the_locked_sdk(tmp_path):
+    """beakr-sdk 0.2.0 (the CLI's lock) sends none of them; the CLI adds them to the
+    completion itself, for a file, a folder and a resumed upload."""
+    routes = mock_resumable_uploads(API)
+    bodies = _completions(routes)
+    path = tmp_path / "summary.md"
     path.write_text("x")
+    folder = tmp_path / "docs"
+    folder.mkdir()
+    (folder / "a.md").write_text("a")
 
-    result = CliRunner().invoke(app, ["upload", str(path), "-P", "p1", "--written-by-agent"])
+    flags = ["--on-existing", "new", "--written-by-agent"]
+    both = CliRunner().invoke(app, ["upload", str(path), str(folder), "-P", "p1", *flags])
+    one = CliRunner().invoke(app, ["upload", str(path), "-P", "p1", "--version-of", "a7"])
 
-    assert result.exit_code == 2
-    assert "--written-by-agent needs a newer beakr-sdk" in result.output
-    assert sdk.calls == []
+    assert both.exit_code == 0, both.output
+    assert one.exit_code == 0, one.output
+    placed = [
+        {
+            key: body[key]
+            for key in ("on_existing", "written_by_agent", "artifact_id")
+            if key in body
+        }
+        for body in bodies
+    ]
+    assert placed == [
+        {"on_existing": "new", "written_by_agent": True},
+        {"on_existing": "new", "written_by_agent": True},
+        {"artifact_id": "a7"},
+    ]
+
+
+@respx.mock
+def test_resume_sends_the_flags_on_the_completion(tmp_path):
+    routes = mock_resumable_uploads(API)
+    routes["created"].append({"target_project_id": "p1", "content_length": 4, "path": "big.pdf"})
+    bodies = _completions(routes)
+    path = tmp_path / "big.pdf"
+    path.write_bytes(b"%PDF")
+
+    result = CliRunner().invoke(
+        app, ["upload", str(path), "--resume", "up-1", "--on-existing", "new"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert bodies[0]["on_existing"] == "new"
+
+
+def _refusal(status: int, code: str, message: str):
+    import httpx
+
+    return httpx.Response(
+        status,
+        json={"error": {"code": code, "message": message, "fix": "Complete again."}},
+    )
+
+
+@respx.mock
+def test_a_path_holding_two_files_is_reported_with_the_command_that_finishes_it(tmp_path):
+    """The upload stays open with its bytes sent, so the refusal names the resume
+    command with each way to place it; the other files still upload; exit 1."""
+    routes = mock_resumable_uploads(API)
+    _completions(
+        routes,
+        {"twin.md": _refusal(409, "ambiguous_path", "2 files named 'twin.md' are in 'docs'.")},
+    )
+    folder = tmp_path / "docs"
+    folder.mkdir()
+    (folder / "twin.md").write_text("t")
+    (folder / "other.md").write_text("o")
+
+    result = CliRunner().invoke(app, ["upload", str(folder), "-P", "p1"])
+
+    assert result.exit_code == 1, result.output
+    assert "art-other.md\t" in result.output
+    twin = folder / "twin.md"
+    assert f"-\t{twin}\trefused=ambiguous_path\tupload=up-" in result.output
+    assert f"Not uploaded {twin}: 2 files named 'twin.md' are in 'docs'." in result.output
+    assert f"beakr upload {twin} --resume up-" in result.output
+    assert "--version-of FILE_ID" in result.output and "--on-existing new" in result.output
+    assert "beakr files ls -P p1 --search twin.md" in result.output
+
+
+@respx.mock
+def test_a_file_the_person_cannot_change_is_refused_with_json_detail(tmp_path):
+    routes = mock_resumable_uploads(API)
+    _completions(
+        routes,
+        {"locked.pdf": _refusal(403, "file_not_writable", "A file named 'locked.pdf' is there.")},
+    )
+    path = tmp_path / "locked.pdf"
+    path.write_bytes(b"%PDF")
+
+    result = CliRunner().invoke(app, ["upload", str(path), "-P", "p1", "--json"])
+
+    assert result.exit_code == 1, result.output
+    rows = json.loads(result.stdout)
+    assert rows[0]["refused"]["code"] == "file_not_writable"
+    assert rows[0]["refused"]["upload_id"] == "up-1"
+    assert "--resume up-1 --on-existing new" in result.output
+
+
+@respx.mock
+def test_files_versions_is_a_published_command():
+    route = respx.get(f"{API}/v1/artifacts/a1/versions").respond(
+        json={
+            "data": [{"id": "v2", "version_no": 2, "size_bytes": 10, "mime_type": "text/plain"}],
+            "next_cursor": None,
+            "has_more": False,
+        }
+    )
+
+    result = CliRunner().invoke(app, ["files", "versions", "a1", "--json"])
+
+    assert result.exit_code == 0, result.output
+    assert route.called
+    shown = json.loads(result.stdout)
+    rows = shown["data"] if isinstance(shown, dict) else shown
+    assert [row["id"] for row in rows] == ["v2"]
 
 
 def test_on_existing_takes_version_or_new_only(tmp_path):

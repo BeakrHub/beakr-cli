@@ -104,6 +104,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "files approve",
         "files download",
         "files rm",
+        "files versions",
         "documents search",
         "documents grep",
         "documents ls",

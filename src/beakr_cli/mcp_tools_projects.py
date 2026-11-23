@@ -52,6 +52,11 @@ from beakr_cli.upload_path_policy import (
     outside_link,
     refused_path,
 )
+from beakr_cli.upload_placement import (
+    REFUSED_PLACEMENT,
+    placed,
+    placement_fields,
+)
 
 if TYPE_CHECKING:
     from beakr_cli.tool_surface import TieredMCPServer
@@ -60,6 +65,14 @@ if TYPE_CHECKING:
 UPLOAD_WAIT_SECONDS = 40.0
 #: Files one ``upload_files`` call takes; a larger tree is `beakr upload` in a terminal.
 MAX_UPLOAD_FILES = 500
+
+#: What to do about a file whose place the server refused (several files of its name
+#: in the folder, one the person cannot change): the person decides, in a terminal.
+_REFUSED_FIX = (
+    "Nothing was created for it. Ask the person which file it should update; in a "
+    "terminal, `beakr upload PATH --version-of FILE_ID` adds it to that file and "
+    "`beakr upload PATH --on-existing new` keeps it as a separate file."
+)
 
 #: Refusals that stop an upload: every later file would meet the same one.
 _STOPPING_CODES = frozenset({"insufficient_scope", "not_found"})
@@ -471,6 +484,8 @@ class _Upload:
     started: float = field(default_factory=time.monotonic)
     finished: float | None = None
     task: asyncio.Task | None = None
+    #: Sent on each completion: the agent wrote these files (``written_by_agent``).
+    written_by_agent: bool = False
 
 
 #: Uploads this server has run, by id, for ``upload_status``.
@@ -550,13 +565,19 @@ def _file_flow(upload: _Upload, item: _Item, folders: dict[Path, str | None], ch
     recorded = upload_relative_path(item.path, item.root)
     if item.folder is not None:
         recorded = (item.folder / item.path.name).as_posix()
+    # A completion refused for where the file would go is aborted, not left open:
+    # nothing here completes it again, and an open upload counts against the person's.
     return (
-        yield from upload_flow(
-            item.path,
-            project_id=upload.project_id,
-            folder_id=target,
-            ingest=upload.ingest,
-            relative_path=recorded,
+        yield from placed(
+            upload_flow(
+                item.path,
+                project_id=upload.project_id,
+                folder_id=target,
+                ingest=upload.ingest,
+                relative_path=recorded,
+            ),
+            placement_fields(written_by_agent=upload.written_by_agent),
+            abort_refused=True,
         )
     )
 
@@ -573,6 +594,10 @@ async def _run_upload(upload: _Upload) -> None:
             except ApiCallError as exc:
                 failure = {"path": str(item.path), **exc.fields}
                 upload.failed.append(failure)
+                if exc.fields.get("error_code") in REFUSED_PLACEMENT:
+                    # This file's place only (a 403 file_not_writable included):
+                    # the next file goes to another path.
+                    continue
                 if exc.fields.get("error_code") in _STOPPING_CODES or exc.response.status_code in {
                     401,
                     403,
@@ -601,6 +626,9 @@ async def _run_upload(upload: _Upload) -> None:
                     "path": str(item.path),
                     "file_id": artifact.get("id"),
                     "job_id": result.get("job_id"),
+                    # created / versioned / restored / unchanged, and its version.
+                    "result": result.get("result"),
+                    "version_no": result.get("version_no"),
                     "given": item.given,
                     # Only a named file's: a folder upload's tree is the folder's own.
                     "folder": item.folder,
@@ -634,6 +662,7 @@ async def upload_files(
     folder_id: str = "",
     knowledge: bool = True,
     resume_upload_id: str = "",
+    written_by_agent: bool = False,
 ) -> str | dict[str, Any]:
     """Upload local files or folders into a project (described in the shared surface)."""
     project_id = await _project_id(project)
@@ -645,7 +674,9 @@ async def upload_files(
     if not paths:
         return _error("invalid_arguments", "No paths given.", "Pass paths: files or folders.")
     if resume_upload_id:
-        return await _resume(resume_upload_id, paths, project_name)
+        return await _resume(
+            resume_upload_id, paths, project_name, written_by_agent=written_by_agent is True
+        )
     items, skipped = _gather(paths)
     if len(items) > MAX_UPLOAD_FILES:
         return _error(
@@ -683,6 +714,7 @@ async def upload_files(
         ingest=knowledge,
         items=items,
         total_bytes=total_bytes,
+        written_by_agent=written_by_agent is True,
     )
     _UPLOADS[upload.id] = upload
     # Not the call's own task: a client that gives up on the call (Codex after 60
@@ -695,7 +727,9 @@ async def upload_files(
     return _upload_text(upload, skipped=skipped)
 
 
-async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | dict[str, Any]:
+async def _resume(
+    upload_id: str, paths: list[str], project_name: str, *, written_by_agent: bool = False
+) -> str | dict[str, Any]:
     if len(paths) != 1:
         return _error(
             "invalid_arguments",
@@ -708,7 +742,9 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
     if refused or not path.is_file():
         return _error("invalid_arguments", f"Cannot resume {paths[0]}: {refused or 'not a file'}.")
     try:
-        result = await call_api(lambda sdk: sdk.files.resume_upload(upload_id, path))
+        result = await call_api(
+            lambda sdk: sdk.files.resume_upload(upload_id, path, written_by_agent=written_by_agent)
+        )
     except BeakrUploadInterrupted as exc:
         return _error(
             "upload_interrupted",
@@ -717,7 +753,31 @@ async def _resume(upload_id: str, paths: list[str], project_name: str) -> str | 
             upload_id=exc.upload_id,
         )
     artifact = (result or {}).get("artifact") or {}
-    return f"Finished uploading {path.name} to {project_name} (file {artifact.get('id')})."
+    return (
+        f"Finished uploading {path.name} to {project_name} (file {artifact.get('id')})"
+        f"{_placement_words(result or {})}."
+    )
+
+
+def _placement_words(row: dict[str, Any]) -> str:
+    """`` (a new version, 2, of the file already there)`` and the like; empty for a new file."""
+    result = row.get("result")
+    version = row.get("version_no")
+    if result == "versioned":
+        return (
+            f", added as version {version} of the file already there"
+            if version
+            else (", added as a new version of the file already there")
+        )
+    if result == "restored":
+        return (
+            f": the same as its version {version}, which is current again"
+            if version
+            else (": the same as an earlier version, which is current again")
+        )
+    if result == "unchanged":
+        return ": unchanged, the same as the file's current version"
+    return ""
 
 
 def _sent_line(row: dict[str, Any]) -> str:
@@ -730,7 +790,7 @@ def _sent_line(row: dict[str, Any]) -> str:
     name = Path(row["path"]).name
     folder = row.get("folder")
     where = f" (in folder {Path(folder).as_posix()}/)" if folder else ""
-    line = f"- {name}{where}: file {row['file_id']}"
+    line = f"- {name}{where}: file {row['file_id']}{_placement_words(row)}"
     if row.get("given"):
         line += f" (read from {Path(row['path']).resolve()})"
     return line
@@ -765,7 +825,10 @@ def _upload_text(upload: _Upload, *, skipped: list[dict[str, Any]] | None = None
         lines.append(f"- ... and {len(upload.sent) - 50} more")
     for row in upload.failed[:20]:
         text = f"- Failed: {row['path']}: {row.get('message')}"
-        if row.get("upload_id"):
+        if row.get("error_code") in REFUSED_PLACEMENT:
+            # The API's fix names completion options this tool does not take.
+            text = f"- Not uploaded: {row['path']}: {row.get('message')} {_REFUSED_FIX}"
+        elif row.get("upload_id"):
             text += f" (resume it: upload_files with resume_upload_id={row['upload_id']!r})"
         lines.append(text)
     for row in (skipped or [])[:20]:
