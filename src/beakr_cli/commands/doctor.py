@@ -40,6 +40,34 @@ def check_version() -> dict[str, Any]:
     return _check("version", "ok", f"beakr-cli {__version__}", version=__version__)
 
 
+def check_installation_clients(base_url: str) -> dict[str, Any]:
+    """A self-hosted build against the clients its installation's release ships.
+
+    The installation serves its release's manifest (``/clients/manifest.json``);
+    a CLI that differs from the beakr-cli it names gets the upgrade command. An
+    installation that serves no manifest (an older release) is not a problem.
+    """
+    from beakr_cli import installation_clients
+
+    found = installation_clients.expected(base_url, timeout=3.0, force=True)
+    if found is None:
+        return _check(
+            "clients",
+            "ok",
+            "this installation serves no client manifest (/clients/manifest.json)",
+        )
+    detail = {"release": found.release, "expected": found.cli}
+    line = installation_clients.mismatch_line(found)
+    if line:
+        return _check("clients", "warn", line, **detail)
+    return _check(
+        "clients",
+        "ok",
+        f"beakr-cli {found.cli} is what this installation (release {found.release}) ships",
+        **detail,
+    )
+
+
 def check_reachable(base_url: str) -> dict[str, Any]:
     try:
         response = httpx.get(f"{base_url}/v1/public/openapi.json", timeout=5.0)
@@ -222,6 +250,11 @@ def run_checks() -> list[dict[str, Any]]:
     checks = [check_version()]
     with get_sdk(timeout=10.0) as sdk:
         checks.append(check_reachable(sdk.base_url))
+        from beakr_cli.updates import self_hosted_build
+
+        if self_hosted_build():
+            base_url = sdk.base_url
+            checks.append(_safe(lambda: check_installation_clients(base_url), name="clients"))
         checks.extend(check_auth_and_scopes(sdk))
         checks.append(_safe(lambda: check_surface(sdk), name="surface"))
     for check in (check_binding, check_mcp, check_hooks, check_hook_queue):

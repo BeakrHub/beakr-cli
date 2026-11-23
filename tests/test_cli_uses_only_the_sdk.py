@@ -29,6 +29,10 @@ HTTPX_ALLOWED = {
     "mcp_errors.py": "error wording over the SDK's response",
     # Names an HTML page the SDK's error carries as its response (a wrong API URL).
     "wrong_api.py": "error wording over the SDK's response",
+    # Reads the static, unauthenticated /clients/manifest.json a self-hosted
+    # installation's web image serves (not the API, which is under /v1), sending
+    # no credential, to say which beakr-cli its release ships.
+    "installation_clients.py": "installation's static client manifest",
 }
 
 
