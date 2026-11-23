@@ -64,6 +64,20 @@ CONFIRM_LOCK_TOOLS = {
     "upload_files",
     "set_project_profile",
     "add_project_member",
+    # Review flags, the compile queue and its cancels, and connected sources: each
+    # call names a project (the 1.0.7 surface).
+    "review_options",
+    "resolve_review",
+    "draft_review_interview",
+    "knowledge_queue",
+    "cancel_compiles",
+    "cancel_sync",
+    "project_sources",
+    "attach_source",
+    "update_source",
+    "preview_source_rules",
+    "sync_source",
+    "remove_source",
 }
 
 runner = CliRunner()

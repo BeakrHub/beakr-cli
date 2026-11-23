@@ -137,7 +137,9 @@ async def test_the_tools_take_the_hosted_tools_arguments() -> None:
     }
     for name, (properties, required) in expected.items():
         schema = listed[name].input_schema
-        assert set(schema["properties"]) == properties, name
+        # The self-hosted line adds confirm_lock where the shared surface lists the
+        # tool (tests/test_lock_confirm.py); the hosted tool's own arguments are the rest.
+        assert set(schema["properties"]) - {"confirm_lock"} == properties, name
         assert schema["required"] == required, name
         assert listed[name].description == tool_surface.description(name), name
 

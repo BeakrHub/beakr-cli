@@ -78,12 +78,18 @@ def _project() -> None:
 
 async def test_the_tools_take_the_hosted_tools_arguments() -> None:
     listed = {tool.name: tool for tool in await mcp_server.mcp.list_tools()}
+    # The self-hosted line adds confirm_lock where the shared surface lists the tool
+    # (tests/test_lock_confirm.py); the hosted tool's own arguments are the rest.
     for name in ("knowledge_queue", "cancel_compiles"):
         schema = listed[name].input_schema
-        assert set(schema["properties"]) == {"project", "attachment_id", "artifact_id"}, name
+        assert set(schema["properties"]) - {"confirm_lock"} == {
+            "project",
+            "attachment_id",
+            "artifact_id",
+        }, name
         assert schema["required"] == ["project"], name
     schema = listed["cancel_sync"].input_schema
-    assert set(schema["properties"]) == {"project", "attachment_id"}
+    assert set(schema["properties"]) - {"confirm_lock"} == {"project", "attachment_id"}
     assert schema["required"] == ["project", "attachment_id"]
 
 

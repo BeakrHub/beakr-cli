@@ -258,8 +258,14 @@ def _document_key(record: dict[str, Any]) -> str:
 def _display_name(record: dict[str, Any]) -> str:
     """The name a Sources line leads with: where the source lives, else its name."""
     location = record.get("location") or {}
+    # An outside record is named as the text cites it, ``CDD Vault › MOL-1234``.
+    outside_reference = record.get("reference") if _kind(record) == _RECORD else None
     return str(
-        location.get("display_path") or record.get("filename") or record.get("name") or "source"
+        location.get("display_path")
+        or record.get("filename")
+        or outside_reference
+        or record.get("name")
+        or "source"
     )
 
 
@@ -560,15 +566,7 @@ def _document_lines(entry: dict[str, Any]) -> list[str]:
         shown += f" +{len(places) - PLACES_PER_DOCUMENT} more"
     # Where the source lives: a Beakr file's drive path, a connector file's path
     # in its service, or a connector item's place there.
-    # An outside record is named as the text cites it, ``CDD Vault › MOL-1234``;
-    # several sources that share a name carry the label that tells them apart.
-    name = entry.get("label") or str(
-        location.get("display_path")
-        or record.get("filename")
-        or (record.get("reference") if outside_record else None)
-        or record.get("name")
-        or "source"
-    )
+    name = entry.get("label") or _display_name(record)
     where = []
     # ``upload`` says only that Beakr holds the file, which the read_file id says.
     if record.get("provider") and record["provider"] != UPLOAD_PROVIDER:

@@ -10631,6 +10631,18 @@
       },
       "Message": {
         "properties": {
+          "answer_complete": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Whether this message contains a completed user-facing answer, independent of transport or worker status. Null for legacy history.",
+            "title": "Answer Complete"
+          },
           "canvases": {
             "anyOf": [
               {
@@ -10707,6 +10719,22 @@
             "description": "Whether the person sent this while a run was in progress.",
             "title": "Injected",
             "type": "boolean"
+          },
+          "injection_status": {
+            "anyOf": [
+              {
+                "enum": [
+                  "sent",
+                  "seen"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Injection status: one of `sent`, `seen`.",
+            "title": "Injection Status"
           },
           "is_ask_user_response": {
             "default": false,
@@ -12495,9 +12523,15 @@
         "properties": {
           "attempt_count": {
             "default": 0,
-            "description": "Number of attempt.",
+            "description": "Number of execution attempts recorded for this operation.",
             "title": "Attempt Count",
             "type": "integer"
+          },
+          "capacity_wait": {
+            "default": false,
+            "description": "Whether execution is waiting for available compute capacity.",
+            "title": "Capacity Wait",
+            "type": "boolean"
           },
           "deadline_at": {
             "anyOf": [
@@ -12509,13 +12543,49 @@
                 "type": "null"
               }
             ],
-            "description": "Time of the deadline (ISO 8601, UTC).",
+            "description": "The expected deadline used to determine whether the operation is overdue.",
             "title": "Deadline At"
           },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A short explanation of the work currently being performed.",
+            "title": "Description"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A user-visible explanation of an operation failure, when available.",
+            "title": "Error"
+          },
           "kind": {
-            "description": "What kind of pending operation this is.",
+            "description": "The type of background work, such as sandbox execution or a remote job.",
             "title": "Kind",
             "type": "string"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The interpreter used to execute the submitted code, when applicable.",
+            "title": "Language"
           },
           "last_heartbeat_at": {
             "anyOf": [
@@ -12527,13 +12597,44 @@
                 "type": "null"
               }
             ],
-            "description": "Time of the last heartbeat (ISO 8601, UTC).",
+            "description": "When the operation most recently reported that it was still alive.",
             "title": "Last Heartbeat At"
           },
+          "last_polled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the service most recently checked the external operation.",
+            "title": "Last Polled At"
+          },
           "operation_id": {
-            "description": "Id of the operation.",
+            "description": "Stable identifier used to track this background operation across polls.",
             "title": "Operation Id",
             "type": "string"
+          },
+          "overdue": {
+            "default": false,
+            "description": "Whether execution has passed its expected completion deadline.",
+            "title": "Overdue",
+            "type": "boolean"
+          },
+          "session_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The managed execution session that owns this operation, when available.",
+            "title": "Session Id"
           },
           "started_at": {
             "anyOf": [
@@ -12545,11 +12646,11 @@
                 "type": "null"
               }
             ],
-            "description": "When it started, or null if it has not.",
+            "description": "When the background operation began execution.",
             "title": "Started At"
           },
           "status": {
-            "description": "Current status of the pending operation.",
+            "description": "The current lifecycle state of the background operation.",
             "title": "Status",
             "type": "string"
           },
@@ -12562,7 +12663,7 @@
                 "type": "null"
               }
             ],
-            "description": "Last lines of the operation's error output.",
+            "description": "A bounded excerpt of the most recent standard error output.",
             "title": "Stderr Tail"
           },
           "stdout_tail": {
@@ -12574,7 +12675,7 @@
                 "type": "null"
               }
             ],
-            "description": "Last lines of the operation's output.",
+            "description": "A bounded excerpt of the most recent standard output.",
             "title": "Stdout Tail"
           }
         },
@@ -19260,6 +19361,32 @@
             "description": "Context from the client, such as the page the person is on.",
             "title": "Client Context"
           },
+          "decision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the decision.",
+            "title": "Decision Id"
+          },
+          "decision_version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Version of the pending decision being answered; rejects stale answers.",
+            "title": "Decision Version"
+          },
           "engine": {
             "anyOf": [
               {
@@ -19433,6 +19560,19 @@
             "description": "Marks a run that sets up a knowledge profile.",
             "title": "Profile Builder Meta"
           },
+          "resume_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Id of the resume run.",
+            "title": "Resume Run Id"
+          },
           "scope": {
             "anyOf": [
               {
@@ -19535,6 +19675,19 @@
           }
         ],
         "properties": {
+          "decision_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Authoritative pending question and its ordered revision, used to recover the current decision after reconnecting.",
+            "title": "Decision State"
+          },
           "injected_into_run": {
             "default": false,
             "description": "True when no new run was started because the thread's run was still working: the message was delivered to that run as a follow-up. run_id and stream_url are that run's, and user_message_id is the delivered message.",
@@ -21942,6 +22095,19 @@
             "description": "The page revision the options were drafted against.",
             "title": "Current Revision"
           },
+          "no_draft_explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "With no_row_change, the model's reason in one sentence, to show the reviewer. Null otherwise.",
+            "title": "No Draft Explanation"
+          },
           "no_draft_reason": {
             "anyOf": [
               {
@@ -21952,7 +22118,7 @@
               }
             ],
             "default": null,
-            "description": "Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.",
+            "description": "Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), no_row_change (the model found no row of the card table to change; see no_draft_explanation), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.",
             "title": "No Draft Reason"
           },
           "options": {

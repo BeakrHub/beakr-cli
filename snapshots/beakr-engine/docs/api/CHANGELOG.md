@@ -11,37 +11,11 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=2878e66c896b18ce1a8994516818d1f827fc0ce359e4831caa8d75c34eadf870 changelog sha256=9087eaa3f39332621cf9ac5f6c45170278c1f2604c0d48d7cccb8f4e7d522672 -->
+<!-- contract-stamp: public-openapi sha256=ae9e97d73331672d95382d799e23e8e6653c2060a133dabc0c6ab7d076021c14 changelog sha256=28be4027a89131445bfa4e87ac694f26aee25f472ecba80c036d5ad1e7861663 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
-- `POST /v1/sessions` and `PATCH /v1/sessions/{session_id}`: an agent's
-  session (one started for an agent conversation with `agent_session`, or held
-  by `beakr mcp`) is widened only by the person, in the Beakr web app. An API
-  key or session token that adds a project, moves the session between picked,
-  read everything and automatic, or makes the first choice of a pending
-  session is refused with `403 session_widen_needs_person` and its
-  `picker_url`. In a `must_pick` organization a new agent session declared
-  with lists or `read_everything` starts pending, with that refusal. What was
-  asked for is kept, never applied, in the session's new
-  `proposed_read_projects`, `proposed_write_projects`,
-  `proposed_read_everything`, `proposed_at` and `proposed_reasons` fields, and
-  the refusal carries `proposed_read_project_ids`,
-  `proposed_write_project_ids` and `proposed_read_everything`. Dropping
-  projects still works with any credential. A shell's own session is
-  unchanged.
-- `PATCH /v1/sessions/{session_id}`: lists that what the session has already
-  done rules out (a write other than the project it is locked to, or a write
-  into a project that takes no content from others after it read another) are
-  refused with `422 session_selection_invalid` and that reason; they were
-  stored.
-- `POST /v1/sessions/options`: the new `session_id` checks the lists against
-  what that session has already done, with the same reasons.
-- Session responses: `summary` names the session's lock once it has one
-  ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
-  session_already_started` refusal says to end the session and start a new
-  agent conversation.
 - Creating a service account
   (`POST /v1/organizations/{org_id}/service-accounts`) and minting a
   service-account key
@@ -325,6 +299,32 @@ The first public version.
   `403`. A change with scope `org` or `global` must not carry `project_id`
   (`400`). Cards already written are
   not rewritten by a change: later compiles use the new definition.
+- `POST /v1/sessions` and `PATCH /v1/sessions/{session_id}`: an agent's
+  session (one started for an agent conversation with `agent_session`, or held
+  by `beakr mcp`) is widened only by the person, in the Beakr web app. An API
+  key or session token that adds a project, moves the session between picked,
+  read everything and automatic, or makes the first choice of a pending
+  session is refused with `403 session_widen_needs_person` and its
+  `picker_url`. In a `must_pick` organization a new agent session declared
+  with lists or `read_everything` starts pending, with that refusal. What was
+  asked for is kept, never applied, in the session's new
+  `proposed_read_projects`, `proposed_write_projects`,
+  `proposed_read_everything`, `proposed_at` and `proposed_reasons` fields, and
+  the refusal carries `proposed_read_project_ids`,
+  `proposed_write_project_ids` and `proposed_read_everything`. Dropping
+  projects still works with any credential. A shell's own session is
+  unchanged.
+- `PATCH /v1/sessions/{session_id}`: lists that what the session has already
+  done rules out (a write other than the project it is locked to, or a write
+  into a project that takes no content from others after it read another) are
+  refused with `422 session_selection_invalid` and that reason; they were
+  stored.
+- `POST /v1/sessions/options`: the new `session_id` checks the lists against
+  what that session has already done, with the same reasons.
+- Session responses: `summary` names the session's lock once it has one
+  ("Locked: it can write only to …", "Read-only: …"). The `fix` of a `409
+  session_already_started` refusal says to end the session and start a new
+  agent conversation.
 - `POST /v1/knowledge/wiki/command`: new read command `orient`. With `scope`
   naming one project it returns that project's orientation map in about 3,000
   characters: its knowledge profile, how many pages of each card type, what a
@@ -344,6 +344,25 @@ The first public version.
   item reference a Knowledge write accepts as a citation. Cite such an item by
   that `source_ref`; cite any other item as an `external_record`. A credential
   confined to some projects sees only citations on pages in those projects.
+- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
+  page and section write operations: an API key or token can cite a record in
+  a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
+  Send `{source_type: "external_record", url, title, meta: {system, record_id,
+  excerpt}, stance}` in `citations` (a section's, the change's or a card row's).
+  `url` must be an `http` or `https` link with a host and no user name or
+  password, at most 2,048 characters; `meta.system` names the system (at most 60
+  characters), `meta.record_id` is the record's id there, and `title` (which may
+  be sent as `source_title`) its name, at most 300 characters; a record needs a
+  `record_id` or a `title`, and `meta.excerpt` holds at most 1,000 characters.
+  Anything else is refused with `citation_not_citeable`; nothing is trimmed.
+  Beakr stores the citation as you give it and never opens the link. Reads name
+  the record `(System › record_id)` in the text, for example `(CDD Vault ›
+  MOL-1234)`, with its link in the source record's `location.url` and on the
+  Sources line, and mark its excerpt `(unverified)`; a later write cites the
+  record by that reference again (in the prose, a row's `evidence` or a
+  citation's `reference`). One record is one citation, keyed `record:<hash>`; to
+  cite it in the prose by a name of your own, give it a `key` such as
+  `record:mol-1234` and write `{{record:mol-1234}}`.
 - `POST /v1/artifacts/read`: a file with no extracted text of its own whose
   bytes are not text (an Ask notebook, or any other format Beakr indexes
   without a stored extraction) now reads as the text `POST
@@ -881,10 +900,14 @@ The first public version.
   documented `coverage` object. Through the MCP
   servers `coverage.has_more` is true whenever `continue_with` is set;
   `next_cursor` stays null.
-- `DELETE /v1/projects/{project_id}` no longer requires step-up MFA, even
-  when the organization requires it for sensitive actions. Project deletion
-  permissions still apply. Keys and tokens remain blocked with
-  `403 session_required` in organizations requiring enterprise SSO.
+- `GET /v1/threads/{thread_id}` messages include `answer_complete`: whether
+  the assistant finished its user-facing answer. A paused stream is not a
+  completed answer; older messages without this information return null.
+
+- `GET /v1/artifacts?thread_outputs=true` lists every file and document a
+  chat produced, including ones not yet saved to a project. Each row's
+  `saved_to_files` says whether project Files lists it. Files attached to a
+  chat as context are still left out. Other listings are unchanged.
 
 - Project isolation, for organizations whose projects must not write into one
   another (each part is available where the organization has it turned on;
@@ -1075,6 +1098,10 @@ The first public version.
   or `system`. `person` names the person behind it and `accepted_by` who
   accepted a proposal. A file a client uploads records that client, agent and
   session, so a revision compiled from it names them too.
+- `DELETE /v1/projects/{project_id}` no longer requires step-up MFA, even
+  when the organization requires it for sensitive actions. Project deletion
+  permissions still apply. Keys and tokens remain blocked with
+  `403 session_required` in organizations requiring enterprise SSO.
 
 - Sessions (`/v1/sessions`): a person chooses which projects one agent session
   may read and which it may write, and can change them while it runs. Start a
@@ -1111,30 +1138,18 @@ The first public version.
   is named by its vendor-qualified id, for example
   `openrouter:deepseek/deepseek-v4-flash`. It was refused with `422` before.
 
-- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
-  page and section write operations: an API key or token can cite a record in
-  a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
-  Send `{source_type: "external_record", url, title, meta: {system, record_id,
-  excerpt}, stance}` in `citations` (a section's, the change's or a card row's).
-  `url` must be an `http` or `https` link with a host and no user name or
-  password, at most 2,048 characters; `meta.system` names the system (at most 60
-  characters), `meta.record_id` is the record's id there, and `title` (which may
-  be sent as `source_title`) its name, at most 300 characters; a record needs a
-  `record_id` or a `title`, and `meta.excerpt` holds at most 1,000 characters.
-  Anything else is refused with `citation_not_citeable`; nothing is trimmed.
-  Beakr stores the citation as you give it and never opens the link. Reads name
-  the record `(System › record_id)` in the text, for example `(CDD Vault ›
-  MOL-1234)`, with its link in the source record's `location.url` and on the
-  Sources line, and mark its excerpt `(unverified)`; a later write cites the
-  record by that reference again (in the prose, a row's `evidence` or a
-  citation's `reference`). One record is one citation, keyed `record:<hash>`; to
-  cite it in the prose by a name of your own, give it a `key` such as
-  `record:mol-1234` and write `{{record:mol-1234}}`.
-
 - `GET /v1/threads/{thread_id}` returns `last_run_failure` for the thread's
   owner when the newest turn failed without an answer: `run_id`, a `reason`
   (`server_update` when a server update interrupted the run, `failed` otherwise)
   and a `message` to show. It is null otherwise.
+- Chat run submission (`POST /v1/runs`) accepts `decision_id`
+  and `decision_version` to answer a specific pending question, rejecting stale
+  decision versions, and returns
+  `decision_state` when applicable. Message responses expose `injection_status`
+  (`sent` or `seen`) for follow-ups delivered to an active run. Pending-operation
+  responses also expose session and language details, a description, error,
+  last-poll time, and capacity-wait and overdue flags, with field descriptions
+  explaining how to interpret operation progress.
 - `POST /v1/knowledge/wiki/command` with `command: "query"` accepts `as_of`
   (`AS OF 'YYYY-MM-DD'` or `AS OF CURRENT_DATE`) on `connections`: every
   relation in effect that day, with relations that ended before it left out. On
