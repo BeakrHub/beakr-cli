@@ -113,7 +113,7 @@ def test_edit_sends_only_what_is_given_with_the_fields_in_order() -> None:
         "--alias",
         "run",
         "--grain",
-        "row",
+        "card",
     )
     assert result.exit_code == 0, result.output
     assert json.loads(route.calls.last.request.content) == {
@@ -125,7 +125,7 @@ def test_edit_sends_only_what_is_given_with_the_fields_in_order() -> None:
             {"name": "Operator", "required": False},
             {"name": "Instrument", "required": True},
         ],
-        "grain": "row",
+        "grain": "card",
     }
     assert "Changed the card type Experiment (experiment) for this project." in result.output
     assert "Fields: Run date (required); Operator" in result.output
@@ -193,6 +193,21 @@ def test_edit_refuses_bad_values_and_an_empty_change_before_any_request() -> Non
         result = _invoke("kb", "types", "edit", "experiment", "-P", PROJECT, *extra)
         assert result.exit_code == 2, extra
     assert not route.called
+
+
+@respx.mock
+def test_edit_refuses_row_types_in_the_engines_words_before_any_request() -> None:
+    # ENG-2471 removed row types: the engine answers `grain: row` with a 422. The
+    # CLI no longer offers it and says why, with what to do instead.
+    route = respx.route(url__startswith=API).respond(200, json={"page_type": EXPERIMENT})
+    result = _invoke("kb", "types", "edit", "experiment", "-P", PROJECT, "--grain", "row")
+    assert result.exit_code == 2
+    assert "Row types were removed: every card type is a card." in result.output
+    assert "add a field to the type it belongs to" in result.output
+    assert not route.called
+    help_text = _invoke("kb", "types", "edit", "--help").output
+    assert "'row'" not in help_text
+    assert "Row types were removed" in " ".join(help_text.split())
 
 
 def test_edit_without_a_project_says_how_to_name_one(tmp_path, monkeypatch) -> None:
