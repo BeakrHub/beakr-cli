@@ -28,7 +28,7 @@ SAVED = {
         "metadata_schema": {
             "key_attributes": ["Run date", "Operator"],
             "required_attributes": ["Run date"],
-            "grain": "row",
+            "grain": "card",
         },
     }
 }
@@ -68,6 +68,24 @@ async def test_the_tool_takes_the_hosted_tools_arguments() -> None:
 
 
 @respx.mock
+async def test_row_types_are_not_offered_and_a_row_grain_is_refused_before_any_call() -> None:
+    # ENG-2471 removed row types; the hosted tool's schema offers only "card" too.
+    listed = {tool.name: tool for tool in await mcp_server.mcp.list_tools()}
+    grain = listed["edit_card_type"].input_schema["properties"]["grain"]
+    assert "row" not in json.dumps(grain)
+    assert "card" in json.dumps(grain)
+    route = respx.route(url__startswith=API).respond(json=SAVED)
+
+    with pytest.raises(Exception, match="grain") as refused:
+        await mcp_server.mcp.call_tool(
+            "edit_card_type", {"type": "experiment", "project": PROJECT, "grain": "row"}
+        )
+
+    assert "'card'" in str(refused.value)
+    assert not route.called
+
+
+@respx.mock
 async def test_an_edit_is_one_patch_and_the_answer_says_what_it_left() -> None:
     _project()
     patch = respx.patch(URL).respond(json=SAVED)
@@ -76,7 +94,7 @@ async def test_an_edit_is_one_patch_and_the_answer_says_what_it_left() -> None:
         "experiment",
         project=PROJECT,
         fields=[{"name": "Run date", "required": True}, "Operator"],
-        grain="row",
+        grain="card",
     )
 
     assert json.loads(patch.calls.last.request.content) == {
@@ -86,12 +104,12 @@ async def test_an_edit_is_one_patch_and_the_answer_says_what_it_left() -> None:
             {"name": "Run date", "required": True},
             {"name": "Operator", "required": False},
         ],
-        "grain": "row",
+        "grain": "card",
     }
     assert text.splitlines() == [
         "Changed the card type Experiment (experiment) for this project.",
         "Fields: Run date (required); Operator",
-        "Each instance is a Facts row on the card it belongs to, not its own card.",
+        "Each instance gets its own card.",
         "This is this project's own copy; the built-in type is unchanged. "
         "reset=true drops the copy.",
         "Cards already written are not rewritten; later compiles use this definition.",
@@ -148,9 +166,9 @@ async def test_an_organization_wide_change_names_no_project() -> None:
     patch = respx.patch(URL).respond(json=SAVED)
 
     refused = await mcp_tools_projects.edit_card_type(
-        "experiment", org_wide=True, project=PROJECT, grain="row"
+        "experiment", org_wide=True, project=PROJECT, grain="card"
     )
-    sent = await mcp_tools_projects.edit_card_type("experiment", org_wide=True, grain="row")
+    sent = await mcp_tools_projects.edit_card_type("experiment", org_wide=True, grain="card")
 
     assert refused["error_code"] == "invalid_arguments"
     assert (refused["message"], refused["fix"]) == (
@@ -159,7 +177,7 @@ async def test_an_organization_wide_change_names_no_project() -> None:
     )
     assert "the organization" in sent
     assert patch.call_count == 1
-    assert json.loads(patch.calls.last.request.content) == {"scope": "org", "grain": "row"}
+    assert json.loads(patch.calls.last.request.content) == {"scope": "org", "grain": "card"}
 
 
 @respx.mock

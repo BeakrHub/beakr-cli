@@ -383,7 +383,7 @@ async def edit_card_type(
     when_not_to_use: str | None = None,
     aliases: list[str] | None = None,
     fields: list[dict[str, Any] | str] | None = None,
-    grain: Literal["card", "row"] | None = None,
+    grain: Literal["card"] | None = None,
     status: Literal["active", "deprecated"] | None = None,
     reset: bool = False,
 ) -> str | dict[str, Any]:
