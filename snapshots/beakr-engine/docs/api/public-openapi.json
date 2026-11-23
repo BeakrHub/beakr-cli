@@ -2074,6 +2074,144 @@
         "title": "ArtifactUpdate",
         "type": "object"
       },
+      "ArtifactVersionOut": {
+        "description": "Serialized representation of an artifact version.\n\nAttributes:\n    id: Unique identifier for the version row.\n    artifact_id: Identifier of the artifact that owns the version.\n    version_no: Monotonic version number assigned by the server.\n    mime_type: Optional MIME type for the stored binary.\n    size_bytes: Optional size in bytes of the payload.\n    content_hash: Optional integrity hash for deduplication.\n    metadata: Arbitrary metadata captured for the version.\n    created_at: Timestamp when the version was created.\n    managed_blob: if beakr owns the lifecycle of this blob",
+        "properties": {
+          "artifact_id": {
+            "description": "The file this version belongs to",
+            "examples": [
+              "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+            ],
+            "format": "uuid",
+            "title": "Artifact Id",
+            "type": "string"
+          },
+          "content_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Lowercase SHA-256 hex digest of the version's bytes",
+            "title": "Content Hash"
+          },
+          "created_at": {
+            "description": "When the version was added",
+            "examples": [
+              "2026-10-01T14:32:08Z"
+            ],
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "id": {
+            "description": "The version's id",
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "managed_blob": {
+            "default": true,
+            "description": "Whether Beakr stores and deletes this version's bytes",
+            "title": "Managed Blob",
+            "type": "boolean"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "description": "Details recorded with the version, such as `original_filename`",
+            "title": "Metadata",
+            "type": "object"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The version's MIME type",
+            "title": "Mime Type"
+          },
+          "size_bytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The version's size in bytes",
+            "title": "Size Bytes"
+          },
+          "version_no": {
+            "description": "The version's number within its file (1 = first)",
+            "title": "Version No",
+            "type": "integer"
+          },
+          "written_by_agent": {
+            "default": false,
+            "description": "Whether this version was uploaded marked as an agent's work (`written_by_agent` on the upload)",
+            "title": "Written By Agent",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "artifact_id",
+          "version_no",
+          "metadata",
+          "created_at"
+        ],
+        "title": "ArtifactVersionOut",
+        "type": "object"
+      },
+      "ArtifactVersionOutPage": {
+        "properties": {
+          "data": {
+            "description": "The items on this page.",
+            "items": {
+              "$ref": "#/components/schemas/ArtifactVersionOut"
+            },
+            "title": "Data",
+            "type": "array"
+          },
+          "has_more": {
+            "default": false,
+            "description": "Whether another page follows.",
+            "examples": [
+              false
+            ],
+            "title": "Has More",
+            "type": "boolean"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to read the next page; null on the last page.",
+            "examples": [
+              null
+            ],
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "title": "ArtifactVersionOutPage",
+        "type": "object"
+      },
       "BatchKnowledgeSummary": {
         "description": "How a batch's files are doing in reaching the project's Knowledge.",
         "properties": {
@@ -18215,10 +18353,28 @@
         "examples": [
           {
             "artifact_type": "protocol",
-            "title": "protocol.pdf"
+            "on_existing": "version",
+            "title": "protocol.pdf",
+            "written_by_agent": false
           }
         ],
         "properties": {
+          "artifact_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Add this upload as a new version of this file, which must be an uploaded file in the upload's project. Its Knowledge is updated as for any new version; `on_existing`, `title`, `artifact_type`, `description` and `relative_path` do not apply.",
+            "examples": [
+              "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+            ],
+            "title": "Artifact Id"
+          },
           "artifact_type": {
             "$ref": "#/components/schemas/ArtifactType",
             "default": "doc",
@@ -18235,6 +18391,16 @@
             ],
             "description": "Description of the upload complete, in plain text.",
             "title": "Description"
+          },
+          "on_existing": {
+            "default": "version",
+            "description": "What to do when the upload's folder already holds a file with the name this file would get (`title`, else the last part of `path`; exact, case-sensitive match). `version` (the default) adds this upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. `new` always creates a separate file.",
+            "enum": [
+              "version",
+              "new"
+            ],
+            "title": "On Existing",
+            "type": "string"
           },
           "parts": {
             "anyOf": [
@@ -18278,6 +18444,12 @@
             ],
             "description": "Defaults to the file name",
             "title": "Title"
+          },
+          "written_by_agent": {
+            "default": false,
+            "description": "Mark this upload as written by an agent rather than a person. The mark is kept on the version this upload creates; when the upload creates the file, the file is also marked as Beakr-written (`is_ai_generated`), so search and agents treat it as an agent's output rather than a source.",
+            "title": "Written By Agent",
+            "type": "boolean"
           }
         },
         "title": "UploadCompleteRequest",
@@ -18298,6 +18470,7 @@
             "batch_status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
             "folders": [],
             "job_id": "a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
+            "result": "versioned",
             "status_url": "/v1/jobs/a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63",
             "upload": {
               "artifact_id": "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40",
@@ -18313,7 +18486,9 @@
               "path": "protocol.pdf",
               "project_id": "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d",
               "status": "completed"
-            }
+            },
+            "version_no": 2,
+            "written_by_agent": false
           }
         ],
         "properties": {
@@ -18335,12 +18510,24 @@
             "type": "array"
           },
           "job_id": {
-            "description": "The new file's processing job (kind artifact_index in GET /v1/jobs)",
+            "description": "The file's processing job (kind artifact_index in GET /v1/jobs). When `result` is `unchanged` and nothing needed processing, the job that processed that version earlier.",
             "examples": [
               "a8c3d1e7-2f6b-4c59-8e0a-1b4d7f9c2e63"
             ],
             "format": "uuid",
             "title": "Job Id",
+            "type": "string"
+          },
+          "result": {
+            "default": "created",
+            "description": "`created`: a new file. `versioned`: a new version of the file already at this path (`artifact.id`), now its current version. `restored`: the bytes match an earlier version of that file, which is current again; no version is added. `unchanged`: the bytes match the file's current version; no version is added. Detecting identical bytes needs `content_hash` on the upload; without it, identical bytes are added as a new version.",
+            "enum": [
+              "created",
+              "versioned",
+              "restored",
+              "unchanged"
+            ],
+            "title": "Result",
             "type": "string"
           },
           "status_url": {
@@ -18351,6 +18538,18 @@
           "upload": {
             "$ref": "#/components/schemas/UploadSessionOut",
             "description": "The finished upload session."
+          },
+          "version_no": {
+            "default": 1,
+            "description": "The number of `artifact.version_id` within its file (1 = first)",
+            "title": "Version No",
+            "type": "integer"
+          },
+          "written_by_agent": {
+            "default": false,
+            "description": "Whether `artifact.version_id` is marked as written by an agent",
+            "title": "Written By Agent",
+            "type": "boolean"
           }
         },
         "required": [
@@ -23971,6 +24170,112 @@
           "files"
         ],
         "x-beakr-scope": "uploads:write"
+      }
+    },
+    "/v1/artifacts/{artifact_id}/versions": {
+      "get": {
+        "description": "A file's versions, oldest first, one page at a time: each version's number, size, type, content hash, when it was added, and whether it is marked as an agent's work (`written_by_agent`). A file is given a new version by uploading to its path or with `artifact_id` on `POST /v1/uploads/{upload_id}/complete`. A file the caller cannot see, or that does not exist, answers `404`.",
+        "operationId": "list_artifact_versions_route_v1_artifacts__artifact_id__versions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "artifact_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "3f6a1c2e-7b4d-4e9a-9c1f-2d8e5b7a6c40"
+              ],
+              "format": "uuid",
+              "title": "Artifact Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtifactVersionOutPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List a file's versions",
+        "tags": [
+          "public",
+          "files"
+        ],
+        "x-beakr-scope": "projects:read"
       }
     },
     "/v1/auth/end-user-tokens": {
@@ -38553,7 +38858,7 @@
     },
     "/v1/uploads/{upload_id}/complete": {
       "post": {
-        "description": "Assemble the parts and create the file; answers with its indexing job.",
+        "description": "Assemble the parts and create the file, or add it as a version.\n\nWhen the upload's folder already holds a file with the name this file would\nget, ``on_existing`` (default ``version``) adds the upload to that file as a\nnew version and updates the Knowledge built from it, instead of creating a\nsecond file; ``new`` always creates one. ``result`` says which happened\n(``created``, ``versioned``, ``restored`` or ``unchanged``). Several files of\nthat name in the folder answer ``409 ambiguous_path``, and a file the caller\ncannot change answers ``403 file_not_writable``; either way nothing is created\nand the upload stays open to complete again. ``artifact_id`` instead names\nthe file to add the upload to as a new version. ``written_by_agent`` marks\nthe upload as an agent's work. Answers with the file's indexing job.",
         "operationId": "complete_upload_v1_uploads__upload_id__complete_post",
         "parameters": [
           {
@@ -38599,7 +38904,17 @@
                 }
               }
             },
-            "description": "The `parts` list on completion does not name each part from 1 to `part_count` exactly once. The file was assembled but Beakr could not create it; `message` says why."
+            "description": "The `parts` list on completion does not name each part from 1 to `part_count` exactly once. `artifact_id` does not name an uploaded file in the upload's project that you can see (a document written in Beakr cannot take an uploaded version). The file was assembled but Beakr could not create it; `message` says why."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "With `on_existing: \"version\"`, the file already at this path is one you cannot change, so no version was added and no second file was created."
           },
           "404": {
             "content": {
@@ -38619,7 +38934,7 @@
                 }
               }
             },
-            "description": "The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted."
+            "description": "The upload is completing, completed, aborted or expired, so it takes no more parts; or another request finished it first. Some parts have not arrived; `missing_parts` lists up to 100 of them. S3 no longer holds the uploaded data, so the file cannot be assembled. The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted. With `on_existing: \"version\"`, the upload's folder holds more than one file with that name (or more than one folder of a name on its path), so Beakr cannot tell which file to add the version to. Nothing was created."
           },
           "422": {
             "content": {
@@ -38710,6 +39025,24 @@
             "recovery": "Use the file in `artifact_id`; to remove it, delete the file.",
             "status": 409,
             "when": "The upload already completed (`artifact_id` names its file), so it cannot be completed again or aborted."
+          },
+          {
+            "code": "ambiguous_path",
+            "recovery": "Complete again with `on_existing: \"new\"` to create a separate file, or remove the duplicate and complete again. The upload stays open.",
+            "status": 409,
+            "when": "With `on_existing: \"version\"`, the upload's folder holds more than one file with that name (or more than one folder of a name on its path), so Beakr cannot tell which file to add the version to. Nothing was created."
+          },
+          {
+            "code": "file_not_writable",
+            "recovery": "Ask the file's owner or a project admin for edit access, or complete again with `on_existing: \"new\"` to create your own file. The upload stays open.",
+            "status": 403,
+            "when": "With `on_existing: \"version\"`, the file already at this path is one you cannot change, so no version was added and no second file was created."
+          },
+          {
+            "code": "invalid_artifact",
+            "recovery": "Use the id of a file in the upload's project, or complete without `artifact_id`. The upload stays open.",
+            "status": 400,
+            "when": "`artifact_id` does not name an uploaded file in the upload's project that you can see (a document written in Beakr cannot take an uploaded version)."
           },
           {
             "code": "upload_failed",

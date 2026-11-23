@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
+import inspect
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -34,6 +36,18 @@ _project_opt = typer.Option(
 )
 
 
+_ON_EXISTING = ("version", "new")
+
+
+def _on_existing_choice(value: str | None) -> str | None:
+    if value is None:
+        return None
+    choice = value.strip().lower()
+    if choice not in _ON_EXISTING:
+        raise typer.BadParameter("must be 'version' or 'new'", param_hint="--on-existing")
+    return choice
+
+
 def upload_command(
     paths: list[Path] = typer.Argument(
         ...,
@@ -56,6 +70,28 @@ def upload_command(
         False,
         "--no-knowledge",
         help="Store the files without compiling them into Knowledge.",
+    ),
+    on_existing: str | None = typer.Option(
+        None,
+        "--on-existing",
+        metavar="version|new",
+        help="When the folder already holds a file with the same name: 'version' (the "
+        "server's default) adds this upload to it as a new version and updates the "
+        "Knowledge built from it; 'new' always creates a separate file.",
+        callback=_on_existing_choice,
+    ),
+    version_of: str | None = typer.Option(
+        None,
+        "--version-of",
+        metavar="FILE_ID",
+        help="Add the upload as a new version of this file (same project), whatever the "
+        "upload is called. One file only.",
+    ),
+    written_by_agent: bool = typer.Option(
+        False,
+        "--written-by-agent",
+        help="Mark the upload as an agent's work, not a person's: the version records it, "
+        "and a file it creates is marked as written by Beakr.",
     ),
     resume: str | None = typer.Option(
         None,
@@ -92,6 +128,9 @@ def upload_command(
     done (or run `beakr jobs wait JOB_ID ...` later). Files over 64 MB are sent
     in resumable parts; if one is interrupted, the error names an upload id to
     pass to ``--resume``.
+
+    Uploading to a folder that already holds a file with the same name adds a
+    version to that file (--on-existing new makes a separate file instead).
     """
     ingest = not no_knowledge
     if wait_knowledge and not ingest:
@@ -103,17 +142,24 @@ def upload_command(
             err_console.print("--resume takes exactly one file: the one that was interrupted.")
             raise typer.Exit(2)
         with get_sdk(timeout=300.0) as sdk:
+            placement = _placement_options(
+                sdk.files.resume_upload, on_existing, written_by_agent, version_of
+            )
             err_console.print(f"Resuming upload {resume} of {paths[0]}...", markup=False)
-            resumed = sdk.files.resume_upload(resume, paths[0])
+            resumed = sdk.files.resume_upload(resume, paths[0], **placement)
         emit(
             [{"path": str(paths[0]), **resumed}],
             json_out=json_out,
             render=lambda rows: console.print(
-                f"Uploaded {rows[0]['path']} -> {(rows[0].get('artifact') or {}).get('id')}",
+                f"Uploaded {rows[0]['path']} -> {(rows[0].get('artifact') or {}).get('id')}"
+                + _placement_note(rows[0]),
                 markup=False,
             ),
         )
         return
+    if version_of is not None and (len(paths) != 1 or not paths[0].is_file()):
+        err_console.print("--version-of takes exactly one file: the new version's bytes.")
+        raise typer.Exit(2)
     project_id = resolve_project(project)
     for path in paths:
         if not path.exists():
@@ -127,6 +173,9 @@ def upload_command(
 
     results: list[dict[str, Any]] = []
     with get_sdk(timeout=300.0) as sdk:
+        placement = _placement_options(sdk.files.upload, on_existing, written_by_agent, version_of)
+        if placement and any(path.is_dir() for path in paths):
+            _placement_options(sdk.files.upload_folder, on_existing, written_by_agent)
         for path in paths:
             if path.is_dir():
                 count = len(iter_folder_files(path))
@@ -137,12 +186,13 @@ def upload_command(
                     folder_id=folder,
                     mirror_folders=not no_mirror,
                     ingest=ingest,
+                    **placement,
                 )
                 results.extend(uploaded)
             else:
                 err_console.print(f"Uploading {path}...", markup=False)
                 uploaded_one = sdk.files.upload(
-                    path, project_id=project_id, folder_id=folder, ingest=ingest
+                    path, project_id=project_id, folder_id=folder, ingest=ingest, **placement
                 )
                 results.append({"path": str(path), **uploaded_one})
 
@@ -190,6 +240,7 @@ def upload_command(
                 continue
             console.print(
                 f"Uploaded {row['path']} -> {artifact.get('id')}"
+                + _placement_note(row)
                 + (f" ({status})" if status else ""),
                 markup=False,
             )
@@ -247,6 +298,52 @@ def upload_command(
         raise typer.Exit(1)
     if wait_knowledge and (knowledge_failed or knowledge_incomplete or not knowledge_settled):
         raise typer.Exit(1)
+
+
+def _placement_options(
+    method: Callable[..., Any],
+    on_existing: str | None,
+    written_by_agent: bool,
+    version_of: str | None = None,
+) -> dict[str, Any]:
+    """The keyword arguments --on-existing, --written-by-agent and --version-of add.
+
+    Only what was asked for: with neither flag nothing is added, and the server
+    versions a file at the same path by default. An installed beakr-sdk that
+    predates these options is refused up front rather than failing mid-upload.
+    """
+    options: dict[str, Any] = {}
+    if on_existing is not None:
+        options["on_existing"] = on_existing
+    if written_by_agent:
+        options["written_by_agent"] = True
+    if version_of is not None:
+        options["version_of"] = version_of
+    if options:
+        accepted = inspect.signature(method).parameters
+        unsupported = [name for name in options if name not in accepted]
+        if unsupported:
+            flags = ", ".join("--" + name.replace("_", "-") for name in unsupported)
+            err_console.print(
+                f"{flags} needs a newer beakr-sdk than the one installed; upgrade it "
+                "(uv pip install -U beakr-sdk) or leave the flag out.",
+                markup=False,
+            )
+            raise typer.Exit(2)
+    return options
+
+
+def _placement_note(row: dict[str, Any]) -> str:
+    """`` (new version 2)`` and the like: what the upload did to the file at its path."""
+    result = row.get("result")
+    version = row.get("version_no")
+    if result == "versioned":
+        return f" (new version {version})" if version else " (new version)"
+    if result == "restored":
+        return f" (version {version} is current again)" if version else " (earlier version)"
+    if result == "unchanged":
+        return " (unchanged: same as the current version)"
+    return ""
 
 
 #: A file's knowledge_status when its latest attempt saved only part of its
@@ -415,13 +512,22 @@ def _upload_hint(
 
 
 def _upload_lines(rows: list[dict[str, Any]]) -> list[str]:
-    """``file_id<TAB>path<TAB>job=JOB_ID[<TAB>status=...][<TAB>duplicate_of=...][<TAB>knowledge=...]``."""
+    """``file_id<TAB>path<TAB>job=JOB_ID[<TAB>result=...<TAB>version=N][<TAB>status=...][...]``.
+
+    ``result``/``version`` appear when the upload changed a file already at its
+    path (``versioned``, ``restored``, ``unchanged``); a new file has neither.
+    Then ``duplicate_of=``, ``knowledge=`` and ``knowledge_error=`` as they apply.
+    """
     lines = []
     for row in rows:
         artifact = row.get("artifact") or {}
         columns = [str(artifact.get("id") or "-"), str(row.get("path") or "")]
         if row.get("job_id"):
             columns.append(f"job={row['job_id']}")
+        if row.get("result") and row["result"] != "created":
+            columns.append(f"result={row['result']}")
+            if row.get("version_no"):
+                columns.append(f"version={row['version_no']}")
         job = row.get("job") or {}
         if job.get("status"):
             columns.append(f"status={job['status']}")

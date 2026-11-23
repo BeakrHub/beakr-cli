@@ -8,6 +8,15 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **`beakr upload` adds a version to a file already at the path.** Uploading
+  to a folder that already holds a file with the same name now adds a version
+  to that file (the server's default), and the output says so (`new version
+  N`; `result=` and `version=` in the plain lines). `--on-existing new` always
+  creates a separate file, `--version-of FILE_ID` adds the upload to that one
+  file whatever it is called, and `--written-by-agent` marks the upload as an
+  agent's work. These need a beakr-sdk with the options; with an older one the
+  command stops before uploading and says to upgrade. `beakr files versions`
+  now reads the documented versions list.
 - **Ask a person about review flags.** `beakr kb review interview -P <project>`
   turns the project's open review flags into one interview, one question per
   flag: every kind by default, up to 30 (`--max-questions`), with the flags past
@@ -224,6 +233,37 @@ Each release lists the public API changes it supports, taken from the API change
   `profile_types` on `GET /v1/knowledge/wiki/page-types` gains `as_details`:
   the kinds of thing a project's profile names that Beakr recorded as a field
   of another type, each with `name`, `page_type` and `field`.
+- A second upload to the same path adds a version to the file already there,
+  instead of creating a second file. `POST /v1/uploads/{upload_id}/complete`
+  takes `on_existing`: `version` (the default) looks in the upload's folder for
+  a file with the name the upload would get (its `title`, else the last part of
+  `path`; exact, case-sensitive) and adds the upload to it as a new version,
+  which is indexed and compiled into Knowledge as a version added in the app
+  is, so the Knowledge built from the file is updated. With no such file, the
+  file is created as before. `new` always creates a separate file. The response
+  says which happened in `result` (`created`, `versioned`, `restored` when the
+  bytes match an earlier version, which becomes current again, or `unchanged`
+  when they match the current version and nothing is added) and gives
+  `version_no`. Identical bytes are recognized only when the upload was started
+  with `content_hash`. When nothing needed processing, `job_id` is the job that
+  processed that version earlier. Two or more files of that name in the folder
+  answer `409 ambiguous_path`, and a file the caller cannot change answers
+  `403 file_not_writable`; in both cases nothing is created and the upload stays
+  open, so it can be completed again with `on_existing: "new"`. Completions to the same
+  path at the same time are serialized, so they become versions of one file. The
+  same request takes `written_by_agent` (default false) to mark the upload as an
+  agent's work: the version records it, the response returns it, and a file the
+  upload creates is marked as written by Beakr (`is_ai_generated`), so search and
+  agents treat it as an agent's output rather than a source. `title`,
+  `artifact_type`, `description` and `relative_path` apply only when the upload
+  creates a file. Uploads through `/v1/bulk` are unchanged. To add an upload to
+  a specific file whatever its name, send `artifact_id` on the same request: the
+  file must be an uploaded file in the upload's project (else `400
+  invalid_artifact`, and the upload stays open). `GET
+  /v1/artifacts/{artifact_id}/versions` (`projects:read`) is now documented: a
+  file's versions, oldest first, as a cursor-paged list, each with `version_no`,
+  `size_bytes`, `mime_type`, `content_hash`, `created_at` and
+  `written_by_agent`. A file the caller cannot see answers `404`.
 - Listing a project's card types also says what Beakr did with the kinds of
   thing the project's profile names. `GET /v1/knowledge/wiki/page-types` with
   `project_id` returns `profile_types`: `working` (true while Beakr is still

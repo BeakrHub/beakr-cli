@@ -974,6 +974,42 @@
    "summary": "Get a file's content"
   },
   {
+   "action": "list-artifact-versions",
+   "anonymous": false,
+   "area": "files",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/artifacts/{artifact_id}/versions",
+   "paginated": true,
+   "path": "/v1/artifacts/{artifact_id}/versions",
+   "path_params": [
+    {
+     "name": "artifact_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List a file's versions"
+  },
+  {
    "action": "list-artifacts",
    "anonymous": false,
    "area": "files",
@@ -7309,6 +7345,12 @@
    "body": {
     "fields": [
      {
+      "description": "Add this upload as a new version of this file, which must be an uploaded file in the upload's project. Its Knowledge is updated as for any new version; `on_existing`, `title`, `artifact_type`, `description` and `relative_path` do not apply.",
+      "name": "artifact_id",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "Kind of file.",
       "enum": [
        "doc",
@@ -7344,6 +7386,17 @@
       "type": "string"
      },
      {
+      "default": "version",
+      "description": "What to do when the upload's folder already holds a file with the name this file would get (`title`, else the last part of `path`; exact, case-sensitive match). `version` (the default) adds this upload to that file as a new version, and the Knowledge built from it is updated; with no such file the file is created as usual. `new` always creates a separate file.",
+      "enum": [
+       "version",
+       "new"
+      ],
+      "name": "on_existing",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "The parts.",
       "name": "parts",
       "required": false,
@@ -7360,6 +7413,13 @@
       "name": "title",
       "required": false,
       "type": "string"
+     },
+     {
+      "default": false,
+      "description": "Mark this upload as written by an agent rather than a person. The mark is kept on the version this upload creates; when the upload creates the file, the file is also marked as Beakr-written (`is_ai_generated`), so search and agents treat it as an agent's output rather than a source.",
+      "name": "written_by_agent",
+      "required": false,
+      "type": "boolean"
      }
     ],
     "media": "json",

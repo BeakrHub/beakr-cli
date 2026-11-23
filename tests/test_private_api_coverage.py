@@ -30,7 +30,6 @@ ORG = "org1"
 # (allowlisted operation, private-client call). Path params use fixed sample ids.
 MAPPING: list[tuple[str, Callable[[PrivateBeakr], Any]]] = [
     ("GET /v1/knowledge/wiki/work-board", lambda c: c.knowledge.work_board(project_id="p1")),
-    ("GET /v1/artifacts/{}/versions", lambda c: c.files.versions("a1")),
     ("GET /v1/organizations/{}/audit", lambda c: c.org.audit.list(org_id=ORG)),
     ("GET /v1/auth/config", lambda c: c.auth.config()),
     ("GET /v1/outputs/{}", lambda c: c.outputs.get("c1")),
