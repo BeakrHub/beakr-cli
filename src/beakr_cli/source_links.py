@@ -55,6 +55,17 @@ PROVIDER_ALIASES: dict[str, str] = {
     "netsuite": "netsuite:nango",
 }
 
+#: Providers whose sources are folders (or drives, libraries, a whole account),
+#: never one file: their connectors sync a source by listing it as a folder, and
+#: the engine refuses a file (422 ``item_not_folder``). Values name them to people.
+FOLDER_SOURCE_NAMES: dict[str, str] = {
+    "gdrive:nango": "Google Drive",
+    "one-drive:nango": "OneDrive",
+    "sharepoint:nango": "SharePoint",
+    "box:nango": "Box",
+    "dropbox:nango": "Dropbox",
+}
+
 
 def provider_slug(value: str) -> str:
     """The attachment provider for a typed name: ``drive`` -> ``gdrive:nango``."""

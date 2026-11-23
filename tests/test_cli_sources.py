@@ -1802,3 +1802,68 @@ def test_a_name_for_an_all_content_source_is_refused_not_dropped():
     assert "--name does not apply with --scope-mode all" in said
     assert '"All Gmail"' in said
     assert not route.called
+
+
+# -- folder sources take folders, never one file (engine 422 item_not_folder) ----------
+
+FOLDER_ONLY = "sources are folders. Attach the folder that holds this file, or upload the file"
+
+
+@pytest.mark.parametrize(
+    ("argv", "name"),
+    [
+        (["--url", "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view"], "Google Drive"),
+        (["https://docs.google.com/document/d/1AbCdEfGhIjKlMnOp/edit"], "Google Drive"),
+        (["1AbCdEfGhIjKlMnOp", "--provider", "drive", "--type", "file"], "Google Drive"),
+        (["01ABC", "--provider", "onedrive", "--type", "file", "--name", "a.pdf"], "OneDrive"),
+        (["s/d/i", "--provider", "sharepoint", "--type", "file", "--name", "a.pdf"], "SharePoint"),
+        (["123", "--provider", "box", "--type", "FILE", "--name", "a.pdf"], "Box"),
+        (["/a/b.pdf", "--provider", "dropbox", "--type", "file", "--name", "b.pdf"], "Dropbox"),
+        (
+            ["--url", "https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp/view", "--preview"],
+            "Google Drive",
+        ),
+    ],
+)
+@respx.mock
+def test_attaching_one_file_of_a_folder_source_is_refused_before_any_call(argv, name):
+    route = respx.post(SOURCES)
+    connections = respx.get(f"{API}/v1/integrations")
+    result = runner.invoke(app, ["sources", "attach", *argv, "-P", PROJECT])
+    assert result.exit_code == 2, result.output
+    # Click boxes a usage error; read it as one line without the border.
+    said = " ".join(result.output.replace("│", " ").split())
+    assert f"{name} {FOLDER_ONLY}" in said
+    assert not route.called
+    assert not connections.called
+
+
+@respx.mock
+def test_the_engines_item_not_folder_refusal_is_shown_as_it_says():
+    # The id was typed as a folder; Drive says it is a file, so the engine refuses.
+    _connections({"id": "c9", "provider": "gdrive:nango"})
+    message = (
+        "Google Drive sources are folders. Attach the folder that holds this file, "
+        "or upload the file to the project."
+    )
+    respx.post(SOURCES).respond(
+        422, json={"error": {"code": "item_not_folder", "message": message}}
+    )
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            "1AbCdEfGhIjKlMnOp",
+            "--provider",
+            "drive",
+            "--type",
+            "folder",
+            "--name",
+            "Protocol",
+            "-P",
+            PROJECT,
+        ],
+    )
+    assert result.exit_code == 1, result.output
+    assert message in " ".join(result.stderr.split())
