@@ -2,9 +2,10 @@
 
 All of these need an organization admin. Creating service accounts, minting
 their keys and changing the policy also need a signed-in browser session (the
-API refuses them to keys and CLI tokens with ``session_required``) and, when the
-org requires step-up, a recently verified second factor (``mfa_required``);
-the error message says which.
+API refuses them to keys and CLI tokens with ``session_required``). Changing the
+policy and disabling a service account also need, when the org requires
+step-up, a recently verified second factor (``mfa_required``); creating service
+accounts and minting their keys do not. The error message says which.
 
 The audit log, OAuth client approval, SCIM and data retention commands are not
 in this release.
