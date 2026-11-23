@@ -27,6 +27,19 @@ Each release lists the public API changes it supports, taken from the API change
   content the agent wrote; the person's files on disk are not marked unless the
   agent says so. A file the server will not place is skipped and its upload
   aborted; the rest of the call goes on.
+- **Set up a project's sources over MCP.** The MCP server has the hosted
+  server's six source tools, with the same answers: `project_sources` lists a
+  project's connected sources (each one's `attachment_id`, whether Knowledge
+  reads it, nightly sync, last sync, filter and guidance; with an
+  `attachment_id`, that source and how far its sync has got), `attach_source`
+  attaches one by the service's own id, `update_source` changes Knowledge,
+  nightly sync, the filter and the guidance, `preview_source_rules` counts what
+  a filter keeps, `sync_source` starts a sync and `remove_source` detaches it.
+  Attaching leaves Knowledge off unless `knowledge=true` is passed, so it reads
+  nothing; nightly sync is set only with Knowledge on. An empty filter or
+  guidance changes nothing (`clear_filter` and `clear_guidance` remove a saved
+  one), and an `attachment_id` that is not a UUID is refused before anything is
+  sent.
 - **Ask a person about review flags.** `beakr kb review interview -P <project>`
   turns the project's open review flags into one interview, one question per
   flag: every kind by default, up to 30 (`--max-questions`), with the flags past
