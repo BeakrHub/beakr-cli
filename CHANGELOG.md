@@ -14,9 +14,19 @@ Each release lists the public API changes it supports, taken from the API change
   N`; `result=` and `version=` in the plain lines). `--on-existing new` always
   creates a separate file, `--version-of FILE_ID` adds the upload to that one
   file whatever it is called, and `--written-by-agent` marks the upload as an
-  agent's work. These need a beakr-sdk with the options; with an older one the
-  command stops before uploading and says to upgrade. `beakr files versions`
-  now reads the documented versions list.
+  agent's work. The CLI sends them itself, so they work with the beakr-sdk it
+  locks. A file the server will not place (the folder already holds two files
+  of that name, or one you cannot change) is not uploaded: the rest go up, the
+  command exits 1, and it prints the `beakr upload PATH --resume UPLOAD_ID`
+  command that finishes it with `--version-of FILE_ID` or `--on-existing new`
+  (its bytes are already sent). `beakr files versions FILE_ID` lists a file's
+  versions, from the documented list.
+- **The MCP server's `upload_files` says when it added a version.** A file
+  already at the same folder and name gets the upload as its new version, and
+  the answer says so (or that it was unchanged). `written_by_agent: true` marks
+  content the agent wrote; the person's files on disk are not marked unless the
+  agent says so. A file the server will not place is skipped and its upload
+  aborted; the rest of the call goes on.
 - **Ask a person about review flags.** `beakr kb review interview -P <project>`
   turns the project's open review flags into one interview, one question per
   flag: every kind by default, up to 30 (`--max-questions`), with the flags past

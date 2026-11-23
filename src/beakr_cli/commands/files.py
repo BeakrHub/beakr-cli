@@ -4,9 +4,7 @@
 
 from __future__ import annotations
 
-import inspect
 import time
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +13,7 @@ from beakr_sdk.errors import BeakrError, PermissionDeniedError
 from beakr_sdk.resources._upload import iter_folder_files
 from rich.markup import escape
 
+from beakr_cli._private_api.resources.files import refused_row
 from beakr_cli.commands.jobs import all_uploaded, duplicate_of, wait_for_jobs
 from beakr_cli.compact import summary_line
 from beakr_cli.output import console, emit, err_console, page_rows, print_table, short
@@ -22,6 +21,7 @@ from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.sdk import get_sdk
+from beakr_cli.upload_placement import refused_placement
 
 app = typer.Typer(help="List, download and delete uploaded files.")
 
@@ -141,21 +141,34 @@ def upload_command(
         if len(paths) != 1 or not paths[0].is_file():
             err_console.print("--resume takes exactly one file: the one that was interrupted.")
             raise typer.Exit(2)
+        placement = _placement_options(on_existing, written_by_agent, version_of)
         with get_sdk(timeout=300.0) as sdk:
-            placement = _placement_options(
-                sdk.files.resume_upload, on_existing, written_by_agent, version_of
-            )
             err_console.print(f"Resuming upload {resume} of {paths[0]}...", markup=False)
-            resumed = sdk.files.resume_upload(resume, paths[0], **placement)
-        emit(
-            [{"path": str(paths[0]), **resumed}],
-            json_out=json_out,
-            render=lambda rows: console.print(
+            try:
+                row = {
+                    "path": str(paths[0]),
+                    **sdk.files.resume_upload(resume, paths[0], **placement),
+                }
+            except BeakrError as exc:
+                if not refused_placement(exc):
+                    raise
+                row = refused_row(paths[0], exc)
+
+        if row.get("refused"):
+            _print_refused(row, project_id=None)
+
+        def render_resumed(rows: list[dict[str, Any]]) -> None:
+            if rows[0].get("refused"):
+                return
+            console.print(
                 f"Uploaded {rows[0]['path']} -> {(rows[0].get('artifact') or {}).get('id')}"
                 + _placement_note(rows[0]),
                 markup=False,
-            ),
-        )
+            )
+
+        emit([row], json_out=json_out, render=render_resumed, lines=_upload_lines)
+        if row.get("refused"):
+            raise typer.Exit(1)
         return
     if version_of is not None and (len(paths) != 1 or not paths[0].is_file()):
         err_console.print("--version-of takes exactly one file: the new version's bytes.")
@@ -172,10 +185,9 @@ def upload_command(
             raise typer.Exit(2)
 
     results: list[dict[str, Any]] = []
+    placement = _placement_options(on_existing, written_by_agent, version_of)
+    folder_placement = {key: value for key, value in placement.items() if key != "version_of"}
     with get_sdk(timeout=300.0) as sdk:
-        placement = _placement_options(sdk.files.upload, on_existing, written_by_agent, version_of)
-        if placement and any(path.is_dir() for path in paths):
-            _placement_options(sdk.files.upload_folder, on_existing, written_by_agent)
         for path in paths:
             if path.is_dir():
                 count = len(iter_folder_files(path))
@@ -186,15 +198,22 @@ def upload_command(
                     folder_id=folder,
                     mirror_folders=not no_mirror,
                     ingest=ingest,
-                    **placement,
+                    **folder_placement,
                 )
                 results.extend(uploaded)
             else:
                 err_console.print(f"Uploading {path}...", markup=False)
-                uploaded_one = sdk.files.upload(
-                    path, project_id=project_id, folder_id=folder, ingest=ingest, **placement
-                )
+                try:
+                    uploaded_one = sdk.files.upload(
+                        path, project_id=project_id, folder_id=folder, ingest=ingest, **placement
+                    )
+                except BeakrError as exc:
+                    if not refused_placement(exc):
+                        raise
+                    results.append(refused_row(path, exc))
+                    continue
                 results.append({"path": str(path), **uploaded_one})
+    refused = [row for row in results if row.get("refused")]
 
     job_ids = [str(row["job_id"]) for row in results if row.get("job_id")]
     if wait and job_ids:
@@ -228,6 +247,8 @@ def upload_command(
 
     def render(rows: list[dict[str, Any]]) -> None:
         for row in rows:
+            if row.get("refused"):
+                continue
             artifact = row.get("artifact") or {}
             status = (row.get("job") or {}).get("status")
             kept = row.get("duplicate_of")
@@ -258,10 +279,15 @@ def upload_command(
             note = "Indexing runs in the background."
         else:
             note = "Not sent to Knowledge (--no-knowledge)."
-        console.print(f"[green]{len(rows)} file(s) uploaded.[/green] {escape(str(note))}")
+        sent = len(rows) - len(refused)
+        console.print(f"[green]{sent} file(s) uploaded.[/green] {escape(str(note))}")
+        if refused:
+            console.print(f"[red]{len(refused)} file(s) not uploaded[/red] (see above).")
         if ingest and job_ids and not waited:
             console.print(f"[dim]Wait for it: beakr jobs wait {escape(' '.join(job_ids))}[/dim]")
 
+    for row in refused:
+        _print_refused(row, project_id=project_id)
     if wait_knowledge:
         failed_ids = {str(row.get("artifact_id")) for row in knowledge_failed}
         for row in results:
@@ -294,6 +320,8 @@ def upload_command(
             knowledge_settled=knowledge_settled,
         ),
     )
+    if refused:
+        raise typer.Exit(1)
     if waited and not all_uploaded(list(states.values())):
         raise typer.Exit(1)
     if wait_knowledge and (knowledge_failed or knowledge_incomplete or not knowledge_settled):
@@ -301,7 +329,6 @@ def upload_command(
 
 
 def _placement_options(
-    method: Callable[..., Any],
     on_existing: str | None,
     written_by_agent: bool,
     version_of: str | None = None,
@@ -309,8 +336,9 @@ def _placement_options(
     """The keyword arguments --on-existing, --written-by-agent and --version-of add.
 
     Only what was asked for: with neither flag nothing is added, and the server
-    versions a file at the same path by default. An installed beakr-sdk that
-    predates these options is refused up front rather than failing mid-upload.
+    versions a file at the same path by default. The CLI's own ``files`` resource
+    sends them on completion with any installed beakr-sdk
+    (:mod:`beakr_cli.upload_placement`).
     """
     options: dict[str, Any] = {}
     if on_existing is not None:
@@ -319,18 +347,51 @@ def _placement_options(
         options["written_by_agent"] = True
     if version_of is not None:
         options["version_of"] = version_of
-    if options:
-        accepted = inspect.signature(method).parameters
-        unsupported = [name for name in options if name not in accepted]
-        if unsupported:
-            flags = ", ".join("--" + name.replace("_", "-") for name in unsupported)
-            err_console.print(
-                f"{flags} needs a newer beakr-sdk than the one installed; upgrade it "
-                "(uv pip install -U beakr-sdk) or leave the flag out.",
-                markup=False,
-            )
-            raise typer.Exit(2)
     return options
+
+
+#: What to run next for a refused placement, by refusal; ``{path}`` and ``{upload}``
+#: name the file and its upload, which stays open with its bytes sent.
+_REFUSED_NEXT = {
+    "ambiguous_path": (
+        "Add it to one of them: beakr upload {path} --resume {upload} --version-of FILE_ID "
+        "(beakr files ls{project} --search {name} lists them), or keep it as a separate "
+        "file: beakr upload {path} --resume {upload} --on-existing new"
+    ),
+    "file_not_writable": (
+        "Ask for edit access to {artifact}, or keep yours as a separate file: "
+        "beakr upload {path} --resume {upload} --on-existing new"
+    ),
+    "invalid_artifact": (
+        "Check the id (beakr files ls{project}), then: "
+        "beakr upload {path} --resume {upload} --version-of FILE_ID"
+    ),
+}
+
+
+def _print_refused(row: dict[str, Any], *, project_id: str | None) -> None:
+    """On stderr: why a file was not uploaded, and the command that finishes it."""
+    refused = row["refused"]
+    err_console.print(
+        f"Not uploaded {row['path']}: {refused.get('message')}",
+        highlight=False,
+        markup=False,
+        soft_wrap=True,
+    )
+    template = _REFUSED_NEXT.get(str(refused.get("code")))
+    if template and refused.get("upload_id"):
+        err_console.print(
+            template.format(
+                path=row["path"],
+                upload=refused["upload_id"],
+                name=Path(row["path"]).name,
+                project=f" -P {project_id}" if project_id else "",
+                artifact=refused.get("artifact_id") or "the file",
+            ),
+            highlight=False,
+            markup=False,
+            soft_wrap=True,
+        )
 
 
 def _placement_note(row: dict[str, Any]) -> str:
@@ -520,6 +581,13 @@ def _upload_lines(rows: list[dict[str, Any]]) -> list[str]:
     """
     lines = []
     for row in rows:
+        refused = row.get("refused")
+        if refused:
+            columns = ["-", str(row.get("path") or ""), f"refused={refused.get('code')}"]
+            if refused.get("upload_id"):
+                columns.append(f"upload={refused['upload_id']}")
+            lines.append("\t".join(columns))
+            continue
         artifact = row.get("artifact") or {}
         columns = [str(artifact.get("id") or "-"), str(row.get("path") or "")]
         if row.get("job_id"):
