@@ -1,6 +1,8 @@
 $ beakr kb review options 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 > GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
 > POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 [exit 0]
 --- stdout
 {
@@ -81,8 +83,10 @@ $ beakr kb review options 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
 
 
 $ beakr kb review options 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 > GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
 > POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 [exit 0]
 --- stdout
 Review flag 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
@@ -109,8 +113,10 @@ Or write the section yourself: `beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-
 Drafting options (up to two minutes the first time)...
 
 $ beakr kb review options 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 > GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/conflict
 > POST /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f/resolutions
+> GET /v1/knowledge/wiki/proposals/5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
 [exit 0]
 --- stdout
 Review flag 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f
