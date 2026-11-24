@@ -367,7 +367,7 @@ def cat(
     ledger: bool = typer.Option(
         False,
         "--ledger",
-        help="Also the citation records the text no longer cites, with their trust fields.",
+        help="Also the citation records the text no longer cites.",
     ),
     source_offset: int | None = typer.Option(
         None,

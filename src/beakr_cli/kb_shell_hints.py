@@ -593,8 +593,9 @@ def next_lines(
 #: The door's own first line of a ``cat`` whose section has citation records it no
 #: longer cites (``Citation records: ... cat {page, section_id, ledger: true} ...``).
 _LEDGER_HEADER = re.compile(
-    r"^Citation records: [^\n]*\bcat \{page, section_id, ledger: true\} returns them "
-    r"with their trust fields\.$"
+    r"^Citation records: [^\n]*\bcat \{page, section_id, ledger: true\} returns them"
+    # An engine from before the line stopped naming trust fields still ends it so.
+    r"(?: with their trust fields)?\.$"
 )
 
 

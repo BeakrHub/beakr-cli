@@ -1,9 +1,9 @@
 """What a citation is obliged to show an MCP reader.
 
 The engine's source endpoints return the whole citation record -- excerpt,
-fidelity, locator, url, artifact_id, availability, source_moved. Every tool here
-used to receive all of it and print the type and the title, so an agent holding a
-citation could not tell a checked quote from the compiler's paraphrase, could not
+whose words it is, locator, url, artifact_id, availability, source_moved. Every
+tool here used to receive all of it and print the type and the title, so an agent
+holding a citation could not tell the source's words from Beakr's own, could not
 see where in a document a claim came from, and in ``kb_cat``'s case could not see
 that the page had sources at all.
 
@@ -34,46 +34,103 @@ def base_url(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# The verdict must travel with the excerpt
+# An excerpt is shown by whose words it is, with no check state
+#
+# These lines used to carry a verdict -- ``(normalized)``, ``(paraphrase)``,
+# ``(human asserted)``, ``(unverified)`` -- so a result talked about checking
+# instead of about the source, and a person's attribution still sat in quotation
+# marks. The engine's rule (its ``services/evidence/display.py``) now decides:
+# only the source's own words are quoted and other text says who wrote it (a
+# typed quote that was not found in its source reads as Beakr's wording). These are the
+# columns an engine from before ``evidence.excerpt_kind`` sends.
 # ---------------------------------------------------------------------------
+
+_CHECK_WORDS = ("(unverified)", "(paraphrase)", "(human asserted)", "(normalized)")
 
 
 @pytest.mark.parametrize(
-    ("fidelity", "expected"),
+    ("columns", "expected"),
     [
-        ("verbatim", ""),
-        ("normalized", "(normalized)"),
-        ("asserted", "(paraphrase)"),
-        ("human_asserted", "(human asserted)"),
+        ({"fidelity": "verbatim"}, '"pH was 8.4"'),
+        ({"fidelity": "normalized"}, '"pH was 8.4"'),
+        ({"quote_origin": "located", "fidelity": "asserted"}, '"pH was 8.4"'),
+        ({"excerpt_kind": "quote"}, '"pH was 8.4"'),
+        # A passage a search returned carries no column at all: the source's text.
+        ({}, '"pH was 8.4"'),
+        ({"fidelity": "human_asserted"}, "Added by a person: pH was 8.4"),
+        ({"quote_origin": "human"}, "Added by a person: pH was 8.4"),
+        (
+            {"type": "external_record", "fidelity": "human_asserted"},
+            "Added by a person: pH was 8.4",
+        ),
+        ({"excerpt_kind": "person"}, "Added by a person: pH was 8.4"),
+        ({"quote_origin": "authored", "fidelity": "asserted"}, "Described by Beakr: pH was 8.4"),
+        ({"evidence_kind": "description"}, "Described by Beakr: pH was 8.4"),
+        ({"excerpt_kind": "description"}, "Described by Beakr: pH was 8.4"),
+        # A typed quote the source search did not find: shown, never quoted.
+        ({"fidelity": "asserted", "evidence_kind": "exact"}, "Described by Beakr: pH was 8.4"),
     ],
 )
-def test_excerpt_carries_its_verdict(fidelity: str, expected: str) -> None:
-    line = _excerpt_line({"excerpt": "pH was 8.4", "fidelity": fidelity}, excerpt_chars=None)
-    assert line is not None
-    assert '"pH was 8.4"' in line
-    if expected:
-        assert expected in line
-    else:
-        assert "(" not in line, "a verbatim quote must not be qualified"
+def test_an_excerpt_is_shown_by_its_origin(columns: dict, expected: str | None) -> None:
+    line = _excerpt_line({"excerpt": "pH was 8.4", **columns}, excerpt_chars=None)
+
+    assert line == expected
+    for word in _CHECK_WORDS:
+        assert word not in (line or "")
 
 
-def test_missing_fidelity_is_called_unverified() -> None:
-    """Absent is not the same as verified, and the default downstream is to trust it.
-
-    The frontend gate treats an absent or unrecognised fidelity as trusted, so a
-    quote that was never checked renders with quotation marks vouching for it
-    unless the absence is stated. Silence here fails OPEN.
-    """
-    line = _excerpt_line({"excerpt": "pH was 8.4"}, excerpt_chars=None)
-    assert line is not None
-    assert "(unverified)" in line
-
-
-def test_truncation_never_drops_the_verdict() -> None:
-    line = _excerpt_line({"excerpt": "x" * 500, "fidelity": "asserted"}, excerpt_chars=50)
+def test_truncation_never_drops_the_origin_label() -> None:
+    line = _excerpt_line({"excerpt": "x" * 500, "quote_origin": "authored"}, excerpt_chars=50)
     assert line is not None
     assert "..." in line
-    assert "(paraphrase)" in line
+    assert line.startswith("Described by Beakr: ")
+
+
+def test_the_shared_record_keeps_the_origin_and_drops_the_check_state() -> None:
+    from beakr_cli.mcp_server import _public_source
+
+    new_engine = _public_source(
+        {
+            "source_ref": "beakr-source:v1:abc",
+            "name": "reads.fastq",
+            "evidence": {
+                "excerpt": "a computed mean",
+                "excerpt_kind": "description",
+                "evidence_kind": "description",
+            },
+            "excerpts": [
+                {"text": "mean,12.4"},
+                {"text": "a computed mean", "excerpt_kind": "description", "authored": True},
+            ],
+        }
+    )
+    assert new_engine["evidence"] == {"excerpt": "a computed mean", "excerpt_kind": "description"}
+    assert new_engine["excerpts"] == [
+        {"text": "mean,12.4"},
+        {"text": "a computed mean", "excerpt_kind": "description"},
+    ]
+
+    # An engine from before ``excerpt_kind``: the same rule, worked out here.
+    older = _public_source(
+        {
+            "source_ref": "beakr-source:v1:abc",
+            "name": "memo.pdf",
+            "evidence": {"excerpt": "retyped", "fidelity": "asserted", "anchor_status": "stale"},
+        }
+    )
+    assert older["evidence"] == {"excerpt": "retyped", "excerpt_kind": "description"}
+    quoted = _public_source(
+        {
+            "source_ref": "beakr-source:v1:abc",
+            "name": "memo.pdf",
+            "evidence": {"excerpt": "the words", "fidelity": "verbatim", "locator": "p. 7"},
+        }
+    )
+    assert quoted["evidence"] == {
+        "excerpt": "the words",
+        "locator": "p. 7",
+        "excerpt_kind": "quote",
+    }
 
 
 def test_no_excerpt_yields_no_line() -> None:
@@ -244,7 +301,8 @@ async def test_wiki_read_returns_public_source_location_and_exact_evidence() -> 
             "evidence": {
                 "excerpt": "Launch is approved for September 4.",
                 "locator": "page 4",
-                "fidelity": "verbatim",
+                # Whose words it is; never the check state an older engine sends.
+                "excerpt_kind": "quote",
             },
             "retrieval": {
                 "tool": "dropbox_download",

@@ -25,7 +25,7 @@ If no specific focus is given, run a general health check. Pass a project's name
 6. **Check provenance.** For key pages, call command `provenance` and look for:
    - Sections with no citations (unsourced claims)
    - Sections with `contradicts` citations (disputed content)
-   - Excerpts marked (paraphrase) or (unverified), or sources that changed since cited
+   - Citations with no excerpt, excerpts that are not the source's own words ("Described by Beakr:", "Added by a person:"), or sources that changed since cited
 
 7. **Report findings** organized as:
    - **Critical** -- broken links, orphaned important pages, contradicted content
