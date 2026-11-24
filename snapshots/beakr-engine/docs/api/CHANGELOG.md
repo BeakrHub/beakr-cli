@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4f5e1f88cbd67b014d70e3b2f7489312b847a23127eaf9a05fa29689212b047a changelog sha256=c027e04f9bd8c181b380de5115303891b4fe371767edff223a73d17901287228 -->
+<!-- contract-stamp: public-openapi sha256=4f5e1f88cbd67b014d70e3b2f7489312b847a23127eaf9a05fa29689212b047a changelog sha256=cca8a4d9d7d85c9d76fa0794fe5a0df8efe3f150d6729bd7ec34c4c476e5f2af -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -41,6 +41,18 @@ The first public version.
   `status.changed_since_cited` are unchanged. A write still drops
   `(unverified)`, `(paraphrase)` and `(human asserted)` pasted after a
   citation.
+- A source that names one item now respects the limit an organization admin
+  set on a shared connection. Attaching a folder, library or mail folder that
+  is not at or inside what the admin shared from a Google Drive, OneDrive,
+  SharePoint, Box, Dropbox or Outlook mail connection is refused with
+  `403 outside_connector_limit`, and so is previewing what its rules would
+  keep; the account's top level counts as outside. Nothing is attached and
+  nothing is listed. Attach a folder inside what was shared, use another
+  connection, or ask an admin to share the folder. A source attached earlier
+  that is outside the limit stays attached and keeps what it already brought
+  in, but its syncs bring nothing more in: `GET /v1/jobs/{job_id}` reports
+  `empty_reason` for its `integration_sync` job. Connections with no limit,
+  personal connections and whole-account sources are unchanged.
 - A citation's quote is now part of the documented contract. The fields were
   already returned; nothing about the responses changes.
   `GET /v1/knowledge/wiki/pages/{page_id}/sources` documents, on each source:
