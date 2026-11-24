@@ -21766,7 +21766,7 @@
             "type": "string"
           },
           "reason": {
-            "description": "not_found in the source, or exists at the destination",
+            "description": "not_found in the source, exists at the destination, or row_type: the source's type is a row type, and row types were removed, so it is not copied.",
             "title": "Reason",
             "type": "string"
           }
@@ -28689,7 +28689,7 @@
     },
     "/v1/knowledge/wiki/page-types/copy": {
       "post": {
-        "description": "Copy card types one project defines into another project.\n\nThe destination gets its own copies, so later edits in either project stay\nthere. Only types the source project itself defines are copied; a type it\ninherits is already available to the destination. ``skipped`` lists each\nkey not copied: ``not_found`` in the source, or ``exists`` in the\ndestination when ``replace`` is false. Cards are not copied or changed.\nRequires being able to see the source and being an owner of the destination.",
+        "description": "Copy card types one project defines into another project.\n\nThe destination gets its own copies, so later edits in either project stay\nthere. Only types the source project itself defines are copied; a type it\ninherits is already available to the destination. ``skipped`` lists each\nkey not copied: ``not_found`` in the source, ``exists`` in the\ndestination when ``replace`` is false, or ``row_type`` when the source's\ntype is a row type (row types were removed; make it a field with\n``to-field`` first). Cards are not copied or changed.\nRequires being able to see the source and being an owner of the destination.",
         "operationId": "copy_wiki_page_types_v1_knowledge_wiki_page_types_copy_post",
         "requestBody": {
           "content": {
@@ -28922,7 +28922,7 @@
     },
     "/v1/knowledge/wiki/page-types/promote": {
       "post": {
-        "description": "Copy card types one project defines up to the organization.\n\nEvery project without a copy of its own inherits a promoted type from then\non, and every member of the organization can read its definition, so this\ntakes an organization admin. ``skipped`` lists each key not promoted:\n``not_found`` in the source, or ``exists`` in the organization when\n``replace`` is false. The source project keeps its own copy.",
+        "description": "Copy card types one project defines up to the organization.\n\nEvery project without a copy of its own inherits a promoted type from then\non, and every member of the organization can read its definition, so this\ntakes an organization admin. ``skipped`` lists each key not promoted:\n``not_found`` in the source, ``exists`` in the organization when\n``replace`` is false, or ``row_type`` when the source's type is a row type\n(row types were removed). The source project keeps its own copy.",
         "operationId": "promote_wiki_page_types_v1_knowledge_wiki_page_types_promote_post",
         "requestBody": {
           "content": {

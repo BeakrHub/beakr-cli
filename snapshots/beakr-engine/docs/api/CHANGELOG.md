@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=4f5e1f88cbd67b014d70e3b2f7489312b847a23127eaf9a05fa29689212b047a changelog sha256=cca8a4d9d7d85c9d76fa0794fe5a0df8efe3f150d6729bd7ec34c4c476e5f2af -->
+<!-- contract-stamp: public-openapi sha256=20528e3b242842931bbcbdc849d9ee702ad6a699958497b9585a9bee8d98b962 changelog sha256=39a762244c56427294ae89241db6e07b6a05005ab8cf5425b2bceef1cee9999e -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -53,6 +53,31 @@ The first public version.
   in, but its syncs bring nothing more in: `GET /v1/jobs/{job_id}` reports
   `empty_reason` for its `integration_sync` job. Connections with no limit,
   personal connections and whole-account sources are unchanged.
+- Row types can no longer be created, copied or brought back by any operation.
+  `POST /v1/knowledge/wiki/write` (`action: "page_type"`) creates nothing when
+  `metadata_schema.grain` is `row`, and its result says row types were removed
+  and to add a field to the type the rows belong on. `POST
+  /v1/knowledge/wiki/page-types/copy` and `.../promote` leave a row type
+  behind: its key is listed in `skipped` with the new reason `row_type`, and
+  the other types named are copied. Convert it first with `POST
+  /v1/knowledge/wiki/page-types/{key}/to-field` to carry it across. Undoing a
+  card type change is refused, saying row types were removed, where it would
+  make a type rows again, which includes undoing a `to-field` conversion's
+  change to the row type; `DELETE /v1/knowledge/wiki/page-types/{key}` answers
+  409 for a card copy whose broader type is still rows. `PATCH
+  /v1/knowledge/wiki/page-types/{key}` with `grain: "row"` now always answers
+  422 with that reason, including where it used to say the type was the
+  project's last. A row type that already exists and was not converted works
+  as before.
+- A copied or promoted card type carries its definition only. What Beakr
+  recorded about the source project's own cards of the type (its record
+  profile and the field names it settled on) is no longer copied with it, and
+  a destination that already has the type keeps its own on `replace`.
+  `POST /v1/knowledge/wiki/page-types/copy`, `POST
+  /v1/knowledge/wiki/page-types/promote`.
+- `GET /v1/knowledge/wiki/page-types` without `project_id` no longer serves a
+  guest of the organization a list cached for its members, or the reverse: a
+  guest is listed the built-in types only, as its access allows.
 - A citation's quote is now part of the documented contract. The fields were
   already returned; nothing about the responses changes.
   `GET /v1/knowledge/wiki/pages/{page_id}/sources` documents, on each source:
