@@ -8,7 +8,8 @@ change the page and clear the flag:
 - ``ls`` lists the pending flags;
 - ``options`` shows a flag and Beakr's drafted resolutions, numbered, with what
   each changes (drafted once per page revision, then kept: up to two minutes the
-  first time, at once after);
+  first time, at once after), each interview answer on it, and, for a flag
+  already decided, how it was decided;
 - ``resolve`` applies one: ``--option N`` (a drafted option, a section rewrite or
   a card-table row change, whichever it is), ``--edit`` (the section's text in
   $EDITOR), ``--body FILE`` (the section's new text from a file, ``-`` for
@@ -33,7 +34,12 @@ from typing import Any
 
 import click
 import typer
-from beakr_sdk.errors import ConflictError, PersonReviewRequiredError, ValidationError
+from beakr_sdk.errors import (
+    ConflictError,
+    NotFoundError,
+    PersonReviewRequiredError,
+    ValidationError,
+)
 
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.compact import cell
@@ -49,12 +55,13 @@ from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
 from beakr_cli.prompts import confirm_or_require_yes
 from beakr_cli.proposal_ids import resolve_proposal_id
-from beakr_cli.review_flags import options_text, resolved_text
+from beakr_cli.review_flags import decided_text, options_text, resolved_text
 from beakr_cli.review_resolve import (
     OUTCOMES,
     PERSON_ONLY_CLI_FIX,
     PERSON_ONLY_MESSAGE,
     ResolveRefused,
+    is_decided,
     option_request,
     section_request,
 )
@@ -178,30 +185,67 @@ def review_options(proposal_id: str = _id_arg, json_out: bool = _json_opt) -> No
     """Show a flag and Beakr's drafted resolutions, numbered, with what each changes.
 
     The first call for a page revision drafts them (up to two minutes); later
-    calls return the same options at once until the page changes.
+    calls return the same options at once until the page changes. A flag an
+    interview asked about also lists each answer and whether the answers agree;
+    a flag already resolved or dismissed says how it was decided instead.
     """
     with get_sdk(timeout=_DRAFT_TIMEOUT) as sdk:
-        proposal_id = _flag_id(sdk, proposal_id)
+        proposal_id = _any_flag_id(sdk, proposal_id)
+        flag = sdk.request("GET", _base(proposal_id)) or {}
+        if is_decided(flag):
+            if not machine_output(flag, json_out=json_out, lines=_decided_lines):
+                _print_lines(_decided_lines(flag))
+            return
         conflict = sdk.request("GET", f"{_base(proposal_id)}/conflict") or {}
         if output_mode(json_out) == "human":
             err_console.print("Drafting options (up to two minutes the first time)...")
         drafted = sdk.request("POST", f"{_base(proposal_id)}/resolutions") or {}
-    if machine_output({**drafted, "flag": conflict}, json_out=json_out, lines=_options_lines):
+        # Drafting may have matched an interview answer to the options as they are now.
+        flag = sdk.request("GET", _base(proposal_id)) or {}
+    data = {**drafted, "flag": conflict, **_answer_fields(flag)}
+    if machine_output(data, json_out=json_out, lines=_options_lines):
         return
-    for line in _options_lines({**drafted, "flag": conflict}):
+    _print_lines(_options_lines(data))
+
+
+def _any_flag_id(sdk: Any, given: str) -> str:
+    """The flag ``given`` names: a pending one first, else one already decided.
+
+    ``options`` says how a decided flag was settled, so a prefix may name one; the
+    pending flags are searched alone first, since those are the ones acted on.
+    """
+    try:
+        return resolve_proposal_id(sdk, given, pending_only=True)
+    except NotFoundError:
+        return resolve_proposal_id(sdk, given)
+
+
+def _answer_fields(flag: dict) -> dict[str, Any]:
+    """The interview answers on the proposal read, when the engine sends them."""
+    return {
+        key: flag[key]
+        for key in ("interview_answers", "interview_answers_note")
+        if flag.get(key) is not None
+    }
+
+
+def _print_lines(lines: list[str]) -> None:
+    for line in lines:
         console.print(line, markup=False, highlight=False, soft_wrap=True)
 
 
+def _decided_lines(flag: dict) -> list[str]:
+    return decided_text(flag).splitlines()
+
+
 def _options_lines(data: dict) -> list[str]:
-    """The shared text, with the CLI's own way of applying an option."""
+    """The shared text, with the CLI's own way of applying an option in place of the tool's."""
     proposal_id = data.get("proposal_id")
-    lines = [
-        line
-        for line in options_text(data.get("flag") or {}, data).splitlines()
-        if not line.startswith(_MCP_APPLY_LINE)
-    ]
-    if data.get("options"):
-        lines.append(f"Apply one with `beakr kb review resolve {proposal_id} --option <number>`.")
+    lines = []
+    for line in options_text(data.get("flag") or {}, data, data).splitlines():
+        if line.startswith(_MCP_APPLY_LINE):
+            line = f"Apply one with `beakr kb review resolve {proposal_id} --option <number>`."
+        lines.append(line)
     lines.append(f"Or write the section yourself: `beakr kb review resolve {proposal_id} --edit`.")
     return lines
 

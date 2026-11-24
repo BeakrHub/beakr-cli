@@ -1253,17 +1253,28 @@ async def dismiss_proposal(proposal_id: str) -> str:
 
 @mcp.tool(**tool_surface.tool_kwargs("review_options"))
 async def review_options(proposal_id: str) -> str | dict[str, Any]:
-    """Show a review flag and Beakr's drafted resolutions, numbered, with what each changes."""
-    from beakr_cli.review_flags import options_text
-    from beakr_cli.review_resolve import ResolveRefused, base_path
+    """Show a review flag and Beakr's drafted resolutions, numbered, with what each changes.
+
+    The calls are the hosted tool's (beakr-engine ``beakr/api/mcp_remote/tools.py``):
+    the flag first, so a decided one says how instead of asking for options that no
+    longer exist, then the drafts, then the flag again, since drafting may have
+    matched an interview answer to the options as they are now. An engine that
+    attaches no interview answers prints no answer lines.
+    """
+    from beakr_cli.review_flags import decided_text, options_text
+    from beakr_cli.review_resolve import ResolveRefused, base_path, is_decided
 
     try:
         base = base_path(proposal_id)
     except ResolveRefused as refused:
         return refused.fields()
+    flag = await _call_api(lambda sdk: sdk.request("GET", base)) or {}
+    if is_decided(flag):
+        return decided_text(flag)
     conflict = await _call_api(lambda sdk: sdk.request("GET", f"{base}/conflict"))
     drafted = await _call_api(lambda sdk: sdk.request("POST", f"{base}/resolutions"))
-    return options_text(conflict or {}, drafted or {})
+    flag = await _call_api(lambda sdk: sdk.request("GET", base)) or {}
+    return options_text(conflict or {}, drafted or {}, flag)
 
 
 @mcp.tool(**tool_surface.tool_kwargs("resolve_review"))

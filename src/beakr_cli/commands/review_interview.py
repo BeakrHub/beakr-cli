@@ -5,8 +5,11 @@ One plain-language question per open review flag: every kind by default, up to
 flags. Without a person it is a draft to edit and send in Beakr (the printed
 ``edit_url``). With ``--for``, ``--email`` or ``--user-id`` the interview also
 gets that person's link, printed once; Beakr sends nothing. When it is answered,
-each answer comes back on its flag as a suggestion a person applies with the
-``kb review`` resolve commands.
+each answer comes back on its flag (``kb review options`` shows them) as a
+suggestion a person applies with the ``kb review`` resolve commands. Beakr
+applies a person's own answer by itself only when they made the interview for
+themself in their own Beakr session; one drafted here, with a key or a CLI
+sign-in, never is, even when it names the person running it.
 
 Over ``POST /v1/projects/{project_id}/interviews/from-reviews``
 (:mod:`beakr_cli.review_interview`). The command joins the ``kb review`` group
@@ -70,11 +73,10 @@ def resolve_steps(flag_id: str = "<flag_id>") -> list[str]:
     """How a flag is resolved from its answer, with the ``kb review`` commands."""
     return [
         "When it is answered, each answer is attached to its flag as a suggestion "
-        "(interview_answers, with suggested_option_id). Nothing is applied until a person "
-        "resolves the flag:",
-        f"  beakr kb proposals show {flag_id} --json     # the answer and suggested_option_id",
-        f"  beakr kb review options {flag_id}            # the drafted resolutions",
-        f"  beakr kb review resolve {flag_id} --option <suggested_option_id>",
+        "(interview_answers). An interview drafted here is never applied by itself: a "
+        "person resolves the flag:",
+        f"  beakr kb review options {flag_id}            # the answers and drafted resolutions",
+        f"  beakr kb review resolve {flag_id} --option <the option an answer points to>",
     ]
 
 
@@ -251,8 +253,9 @@ def interview(
     Without --for, --email or --user-id it is a draft: edit and send it in
     Beakr at the printed link. With any of them the interview also gets that
     person's link, printed once; Beakr sends nothing, so deliver it yourself.
-    Each answer comes back on its flag as a suggestion, applied with
-    `beakr kb review resolve`. Needs interviews:write and kb:read.
+    Each answer comes back on its flag (`beakr kb review options` shows it)
+    as a suggestion, applied with `beakr kb review resolve`; an interview
+    drafted here is never applied by itself. Needs interviews:write and kb:read.
     Exit codes: 0 made (also when there was nothing to ask), 3 not allowed,
     4 no such project or person.
     """

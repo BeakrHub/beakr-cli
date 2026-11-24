@@ -8,6 +8,17 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Review flags show their interview answers.** `beakr kb review options`
+  and the MCP server's `review_options` list each answer an interview brought
+  back to a flag (who, when, their words, decisive or not, the option it points
+  to, the transcript file it quotes) and one line when the answers agree or
+  disagree, as the hosted server does. A flag already resolved or dismissed
+  says how it was decided, including an option Beakr applied from a person's
+  own answer, instead of drafting options (`options` also finds it by the start
+  of its id). `beakr kb review resolve` and `resolve_review` say when the row
+  or section left now cites an answer. Against an engine that sends no answers
+  the output is unchanged. `beakr kb review interview` now says an interview
+  drafted from the CLI is never applied by itself.
 - **Results no longer talk about checking a citation.** The MCP server's
   Sources list, its `research` answers and its instructions, and the Beakr
   skill, show an excerpt by whose words it is: the source's own words in
