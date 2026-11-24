@@ -11,11 +11,16 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=92c7976d504c32acfd988ea32665dbc688e4cd5964843d3d60bcb6e8857f4350 changelog sha256=17f7789617e4964b83871d7f09ea405fe858b40b664c98c5d2ecb8353f9110d6 -->
+<!-- contract-stamp: public-openapi sha256=7209c38c0360afc03a00c769ff731b06c89d94847f94dafdeffd70da7fc47ae0 changelog sha256=f5d8f976f06cefd35c51413e482d6e400ce762839e30e1b55948d9a2b6a91118 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- A citation's `meta.quote` on `POST /v1/knowledge/wiki/write` is described
+  without the word "unverified": a stitched or retyped quote that cannot be
+  located in its source is shown as Beakr's description, never as the
+  source's words. The behavior is the one the entry below describes; only the
+  field's description changed.
 - Knowledge reads no longer print check state beside a citation. A source's
   own words are shown as a plain quotation in every case; text that is not the
   source's own is never in quotation marks and says who wrote it: `Described by

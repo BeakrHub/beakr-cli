@@ -31876,7 +31876,7 @@
                                     "type": "string"
                                   },
                                   "quote": {
-                                    "description": "The exact passage from the source that this claim rests on, copied CONTIGUOUSLY and character for character from text you actually read. One unbroken span: never stitch two passages together with '...' or an ellipsis, never tidy the wording, and never retype it from memory of the document. A stitched or retyped quote cannot be located in the source, and is stored as an unverified assertion with its quotation marks removed. If the claim needs two separated passages, write two citations.",
+                                    "description": "The exact passage from the source that this claim rests on, copied CONTIGUOUSLY and character for character from text you actually read. One unbroken span: never stitch two passages together with '...' or an ellipsis, never tidy the wording, and never retype it from memory of the document. A stitched or retyped quote cannot be located in the source, and is then shown as Beakr's description, never as the source's words. If the claim needs two separated passages, write two citations.",
                                     "type": "string"
                                   }
                                 },
