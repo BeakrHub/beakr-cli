@@ -16584,6 +16584,84 @@
         "title": "SkippedFlagOut",
         "type": "object"
       },
+      "SourceEvidence": {
+        "additionalProperties": true,
+        "description": "What a citation quotes from its source.",
+        "properties": {
+          "context_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The passage around the quote, for reading it in place. Present on a `sources` read when the citation recorded one; a research answer leaves it out.",
+            "title": "Context Excerpt"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The words the citation rests on. A long one is shortened on a compact read and on a research answer. Present only for text that is shown: a quote that was not found in its source is left out, and the record keeps its reference and place.",
+            "title": "Excerpt"
+          },
+          "excerpt_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "quote",
+                  "description",
+                  "person"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whose words `excerpt` is. `quote`: the source's own words, the only kind to show in quotation marks. `description`: Beakr's own wording, such as a description of a figure or a computed value. `person`: a person's attribution, or the words its writer gave for a record in a system outside Beakr. Present whenever `excerpt` is.",
+            "title": "Excerpt Kind"
+          },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range. `location.unit_locator` is the same place written for a reader.",
+            "title": "Locator"
+          },
+          "source_recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "title": "Source Recorded At"
+          }
+        },
+        "title": "SourceEvidence",
+        "type": "object"
+      },
       "SourceExcerpt": {
         "additionalProperties": true,
         "description": "One cited passage of a compact record's document.",
@@ -16600,6 +16678,23 @@
             "default": null,
             "description": "The passage's citation key. The text cites the passage by its readable reference instead; a Knowledge write still accepts the key.",
             "title": "Citation Key"
+          },
+          "excerpt_kind": {
+            "anyOf": [
+              {
+                "enum": [
+                  "description",
+                  "person"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Whose words `text` is when they are not the source's own (see `evidence.excerpt_kind`). Absent for a quote from the source.",
+            "title": "Excerpt Kind"
           },
           "section_id": {
             "anyOf": [
@@ -16975,16 +17070,14 @@
           "evidence": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/SourceEvidence"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "The evidence that supports it.",
-            "title": "Evidence"
+            "description": "What the citation quotes from the source: the quote (`excerpt`), the passage around it (`context_excerpt`), where it sits (`locator`) and when the source system recorded it (`source_recorded_at`). Absent when the citation recorded none of them."
           },
           "excerpts": {
             "anyOf": [
@@ -20567,6 +20660,19 @@
             "description": "When it was added (ISO 8601, UTC), or null.",
             "title": "Added At"
           },
+          "block_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The block of the source's extracted layout the quote is in, keyed by page and position (`p3-table`).",
+            "title": "Block Id"
+          },
           "chunk_ref": {
             "anyOf": [
               {
@@ -20579,6 +20685,32 @@
             "default": null,
             "description": "Which part of the source fed the page: a chunk, a message or a page range.",
             "title": "Chunk Ref"
+          },
+          "context_excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The passage around the quote, for reading it in place, when recorded.",
+            "title": "Context Excerpt"
+          },
+          "excerpt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The quote: the words of the source this citation rests on. Absent when the citation recorded none.",
+            "title": "Excerpt"
           },
           "key": {
             "anyOf": [
@@ -20593,6 +20725,19 @@
             "description": "The key.",
             "title": "Key"
           },
+          "locator": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Where in the source the quote sits, as the citation recorded it: a page, a slide, a block, a message or a character range.",
+            "title": "Locator"
+          },
           "meta": {
             "anyOf": [
               {
@@ -20604,8 +20749,34 @@
               }
             ],
             "default": null,
-            "description": "Extra details, as key-value pairs.",
+            "description": "The citation's details as stored, as key-value pairs that vary by source. The quote, place, time and link fields above are the ones to read.",
             "title": "Meta"
+          },
+          "page_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The page of the source the quote is on, for a paged document.",
+            "title": "Page Number"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The quote as the citation's writer gave it, on citations that recorded one this way. Read `excerpt` first and this when `excerpt` is absent.",
+            "title": "Quote"
           },
           "section_id": {
             "anyOf": [
@@ -20620,6 +20791,19 @@
             "description": "Id of the page section.",
             "title": "Section Id"
           },
+          "slide_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The slide the quote is on, for a presentation.",
+            "title": "Slide Number"
+          },
           "source_id": {
             "anyOf": [
               {
@@ -20632,6 +20816,19 @@
             "default": null,
             "description": "Id of the source.",
             "title": "Source Id"
+          },
+          "source_recorded_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "title": "Source Recorded At"
           },
           "source_ref": {
             "anyOf": [
@@ -20684,6 +20881,32 @@
             "default": null,
             "description": "Whether the source supports or contradicts the claim.",
             "title": "Stance"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The source's address: the cited item's own link in its service (a message permalink, a comment anchor) when the citation recorded one, else the source's page there, a web page's address or a publication's page.",
+            "title": "Url"
+          },
+          "web_view_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The link that opens the source in its service's own web app, when one is known.",
+            "title": "Web View Url"
           }
         },
         "title": "WikiPageSource",

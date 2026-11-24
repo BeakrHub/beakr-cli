@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=45bb3debb1f35e978af092c0456a600a78f35419e7429a465c90701ba09439a6 changelog sha256=689690b8819ac032bec2e84eb52cccdf497de8766ed6c9203ed904144128bd68 -->
+<!-- contract-stamp: public-openapi sha256=4f5e1f88cbd67b014d70e3b2f7489312b847a23127eaf9a05fa29689212b047a changelog sha256=c027e04f9bd8c181b380de5115303891b4fe371767edff223a73d17901287228 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -21,9 +21,8 @@ The first public version.
   source's own is never in quotation marks and says who wrote it: `Described by
   Beakr: ...` for Beakr's own wording (a description of a figure, a computed
   value) and `Added by a person: ...` for a person's attribution and for a
-  record in a system outside Beakr. Text that is neither (a quote that was not
-  found in its source) is left out, and the citation keeps its reference and
-  place. This replaces `(unverified)`, `(paraphrase)`, `(human asserted)` and
+  record in a system outside Beakr. A quote that was not found in its source
+  is left out, and the citation keeps its reference and place. This replaces `(unverified)`, `(paraphrase)`, `(human asserted)` and
   `(normalized)`, and the `fidelity=` / `anchor=` words on a cited span, in the
   results of `POST /v1/knowledge/wiki/command` (`cat`, `sources`, `provenance`,
   `rows` with `include_evidence`) and in the Sources list both MCP servers
@@ -42,6 +41,23 @@ The first public version.
   `status.changed_since_cited` are unchanged. A write still drops
   `(unverified)`, `(paraphrase)` and `(human asserted)` pasted after a
   citation.
+- A citation's quote is now part of the documented contract. The fields were
+  already returned; nothing about the responses changes.
+  `GET /v1/knowledge/wiki/pages/{page_id}/sources` documents, on each source:
+  `excerpt` (the quote: the words of the source the citation rests on),
+  `context_excerpt` (the passage around it), `quote` (the quote as the
+  citation's writer gave it; read `excerpt` first), `locator` (where in the
+  source the quote sits), `page_number`, `slide_number` and `block_id`,
+  `source_recorded_at` (when the source system recorded the quoted part) and
+  the links `url` and `web_view_url`. Each is present only when the citation
+  recorded it. `POST /v1/knowledge/wiki/command`, `POST /v1/knowledge/wiki/write`
+  and `POST /v1/knowledge/research` document the same on each source record's
+  `evidence`: `excerpt`, `context_excerpt`, `locator` and `source_recorded_at`
+  (a research answer shortens `excerpt` and leaves `context_excerpt` out).
+  `source_recorded_at` is the source system's own time, passed on as recorded:
+  an ISO 8601 time with that system's offset, or a date (`2026-03-04`) for an
+  all-day event, so the contract declares it a plain string rather than
+  `date-time`.
 - Creating a card type with `POST /v1/knowledge/wiki/write` (`action:
   "page_type"`) now takes the rights that editing one takes. A project's type
   (`type_scope: "project"`, the default) is created by that project's owners
