@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=7209c38c0360afc03a00c769ff731b06c89d94847f94dafdeffd70da7fc47ae0 changelog sha256=f5d8f976f06cefd35c51413e482d6e400ce762839e30e1b55948d9a2b6a91118 -->
+<!-- contract-stamp: public-openapi sha256=61043d1d5fc638c4fcc51a2000b75d9e31b86794720b8f3da276f8dfbbab72df changelog sha256=44c42bc0123705085ea65af86016131e09493a0c3263e11cf0a60aaa6160b855 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -21,6 +21,24 @@ The first public version.
   located in its source is shown as Beakr's description, never as the
   source's words. The behavior is the one the entry below describes; only the
   field's description changed.
+- A connected item (a Slack message, an email, a Drive file read through a
+  connection) is read live only through
+  `POST /v1/integrations/tools/{tool_name}/call`, under `integrations:read`.
+  `POST /v1/knowledge/documents` `read` and `grep` now refuse a connected
+  item's citation token (`{{unit:...}}`, `{{external_item:...}}`) with
+  `error_code: not_a_file`, as `POST /v1/artifacts/read` does, instead of
+  reading the item live. A Knowledge write (`POST /v1/knowledge/wiki/write`,
+  `POST /v1/knowledge/wiki/proposals` and the page edit routes) that cites a
+  connected item by `source_type` `unit` or `external_item` is accepted only
+  for an item its writer can reach: one attached to a project they can read,
+  or cited on a page they can read, inside a project-restricted credential's
+  projects; any other is refused with the same 400 as an id that names
+  nothing. A write that lands in a project cites a source that project holds
+  or cites with that project's own citations of it, whether it names the
+  source by its readable reference, key, token or item `source_ref`; another
+  project's
+  quote of the same source is reused only when the write names that stored
+  citation's own `source_ref`.
 - Knowledge reads no longer print check state beside a citation. A source's
   own words are shown as a plain quotation in every case; text that is not the
   source's own is never in quotation marks and says who wrote it: `Described by
@@ -46,6 +64,63 @@ The first public version.
   `status.changed_since_cited` are unchanged. A write still drops
   `(unverified)`, `(paraphrase)` and `(human asserted)` pasted after a
   citation.
+- An interview drafted from a project's review flags
+  (`POST /v1/projects/{project_id}/interviews/from-reviews`) no longer has its
+  transcript compiled into Knowledge when it finishes. The transcript is kept
+  in the flags' project as a file, stored and readable like an upload made
+  with Knowledge off; its answers reach Knowledge through their flags.
+  Sending the interview to Knowledge
+  (`POST /v1/interview/sendables/links/{link_id}/knowledge`) is still yours to
+  do, and compiles that same file. Until then the file is counted as skipped
+  by `GET /v1/projects/{project_id}/knowledge-summary` (`knowledge_skipped`,
+  never `eligible`), and syncing the project's files does not compile it. A
+  flag is no longer resolved because a change from the transcript altered its
+  section: it stays `pending` until a resolution is applied.
+- Each interview answer on a review flag now says more, and can be cited. On
+  `GET /v1/knowledge/wiki/proposals/{proposal_id}`, each `interview_answers`
+  entry gains `decisive`, `points_to_option` (the drafted resolution it points
+  to), `source` (the passage of the stored transcript it quotes: `artifact_id`,
+  `title`, `file_name`, `quote`, `reference`; null when its words are in no
+  stored transcript) and `auto_resolution`. The proposal gains
+  `interview_answers_note`: one line when two or more decisive answers agree
+  ("2 answers point to option A.") or disagree ("Answers disagree: A from Dana,
+  B from Sam."). When they disagree no single resolution is suggested: those
+  answers read `suggestion_status: "answers_disagree"` with a null
+  `suggested_option_id`.
+- Resolving a review flag with the resolution an interview answer points to
+  (`POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve-rows`, or
+  `/resolve` with that resolution's text) makes the changed row or section cite
+  the answer, as a passage of the stored transcript, and the result lists
+  `cited_answers`. Choosing another resolution, or writing your own text, cites
+  no answer. The change and its citation are one history entry.
+- Answering your own review flags in an interview can settle them. When you
+  draft the interview in your own signed-in session, naming yourself as the
+  `participant` (your own `user_id`), and answer it, an answer that settles a flag's question and has a
+  resolution checked against it is applied as your own change: the page
+  changes as that resolution says and cites your answer, the flag becomes
+  `resolved` (its `payload.resolved_by_change` names the answer and the option,
+  with `approval: "interview_answer"`), and another open flag about the same
+  rows is resolved with it (`payload.resolved_with`). The answer reads
+  `suggestion_status: "applied"` and `auto_resolution` `{"status": "applied",
+  "option", "by": "interview_answer", "link_id", "interview_id", "at"}`. An
+  answer given through a link by anyone else, a member included, is never
+  applied by itself: it stays on its open flag for a person. A decisive answer
+  that was not applied carries `auto_resolution` `{"status":
+  "left_for_person", "reason"}` (`participant_not_verified`: it came through a
+  sent interview; `creator_cannot_resolve`: the interview was drafted with an
+  API key, an agent's or the CLI's token, or a credential that could not
+  resolve the flag itself; `person_required`: the project requires a person to accept
+  changes; `no_verified_option`; `answers_disagree`; `answer_not_citable`;
+  `several_cards`; `page_changed`; `not_permitted`; `not_applicable`) and
+  `suggestion_note` says why in a sentence. A skipped question leaves its flag
+  untouched.
+- Raising a contradiction with `POST /v1/knowledge/wiki/write` (`action:
+  "flag"`) about a disagreement the page's own conflict review already covers
+  now adds the raise to that review and returns its id, where it used to open
+  a second review of the same rows. Resolving a review flag
+  (`POST /v1/knowledge/wiki/proposals/{proposal_id}/resolve`, `/resolve-rows`,
+  `/resolve-cards`) also resolves another open flag about the same rows or the
+  same disagreement on that page; a flag about another field stays open.
 - A source that names one item now respects the limit an organization admin
   set on a shared connection. Attaching a folder, library or mail folder that
   is not at or inside what the admin shared from a Google Drive, OneDrive,
@@ -202,9 +277,10 @@ The first public version.
   `interview_id`, `link_id`, `question`, `answered`, `answer`, `excerpt`,
   `answered_by`, `answered_at`, `suggested_option_id` and `stale`).
   `suggested_option_id` names the drafted resolution the answer matches (null
-  when the flagged text changed since the question was asked, `stale`). Nothing
-  is applied: a person, or a key allowed to accept, resolves the flag with the
-  resolve routes.
+  when the flagged text changed since the question was asked, `stale`). An
+  answer is a suggestion a person, or a key allowed to accept, applies with the
+  resolve routes; your own answer to your own interview can be applied for you
+  (see the entries above).
 - Row types are removed: every card type is a card. `grain: "row"` is refused
   with `422` on `PATCH /v1/knowledge/wiki/page-types/{key}` and in the
   `card_types` of `POST /v1/projects`; `grain: "card"` is still accepted, and
