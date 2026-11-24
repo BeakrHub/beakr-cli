@@ -278,7 +278,8 @@ def _legacy_excerpt_kind(source: dict) -> str | None:
     the columns an engine from before ``evidence.excerpt_kind`` still sends: the
     origin decides first, then the older verdict. Such an engine marks no
     difference between a passage it retrieved and a citation nothing compared
-    with a source, so text with neither column is shown as the source's.
+    with a source, so text with neither column is shown as the source's. No
+    stored text is hidden.
     """
     evidence = source.get("evidence") or {}
     meta = source.get("meta") or {}
@@ -299,8 +300,9 @@ def _legacy_excerpt_kind(source: dict) -> str | None:
         return "description"
     if fidelity in _QUOTED_FIDELITIES or not fidelity:
         return "quote"
-    # A typed quote the source search did not find.
-    return None
+    # A typed quote the source search did not find: usually a formatting miss,
+    # so it is shown, as Beakr's wording and never in quotation marks.
+    return "description"
 
 
 def _excerpt_line(source: dict, *, excerpt_chars: int | None) -> str | None:
@@ -308,7 +310,7 @@ def _excerpt_line(source: dict, *, excerpt_chars: int | None) -> str | None:
 
     Only the source's own words stand in quotation marks; Beakr's wording and a
     person's attribution say who wrote them on the SAME line, so the text cannot
-    be read while skipping the label; text that is neither is left out.
+    be read while skipping the label.
     """
     excerpt = str(source.get("excerpt") or (source.get("meta") or {}).get("quote") or "").strip()
     kind = _legacy_excerpt_kind(source) if excerpt else None

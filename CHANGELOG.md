@@ -13,9 +13,9 @@ Each release lists the public API changes it supports, taken from the API change
   skill, show an excerpt by whose words it is: the source's own words in
   quotation marks, `Described by Beakr: ...` for Beakr's own wording (a
   description of a figure, a computed value) and `Added by a person: ...` for
-  a person's attribution and for a record in a system outside Beakr. Text
-  that is neither (a quote that was not found in its source) is left out and
-  the citation keeps its reference and place. `(unverified)`, `(paraphrase)`,
+  a person's attribution and for a record in a system outside Beakr. A quote
+  that was not found in its source as written reads as Beakr's wording; no
+  stored text is hidden. `(unverified)`, `(paraphrase)`,
   `(human asserted)` and `(normalized)` are gone, and a source record carries
   `evidence.excerpt_kind` (`quote`, `description` or `person`) in place of
   `fidelity`, `evidence_kind` and `anchor_status`. The same holds against an

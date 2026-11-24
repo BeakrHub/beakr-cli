@@ -40,8 +40,8 @@ def base_url(monkeypatch):
 # ``(human asserted)``, ``(unverified)`` -- so a result talked about checking
 # instead of about the source, and a person's attribution still sat in quotation
 # marks. The engine's rule (its ``services/evidence/display.py``) now decides:
-# only the source's own words are quoted, other text says who wrote it, and a
-# typed quote that was not found in its source is left out. These are the
+# only the source's own words are quoted and other text says who wrote it (a
+# typed quote that was not found in its source reads as Beakr's wording). These are the
 # columns an engine from before ``evidence.excerpt_kind`` sends.
 # ---------------------------------------------------------------------------
 
@@ -67,8 +67,8 @@ _CHECK_WORDS = ("(unverified)", "(paraphrase)", "(human asserted)", "(normalized
         ({"quote_origin": "authored", "fidelity": "asserted"}, "Described by Beakr: pH was 8.4"),
         ({"evidence_kind": "description"}, "Described by Beakr: pH was 8.4"),
         ({"excerpt_kind": "description"}, "Described by Beakr: pH was 8.4"),
-        # A typed quote the source search did not find: no text at all.
-        ({"fidelity": "asserted", "evidence_kind": "exact"}, None),
+        # A typed quote the source search did not find: shown, never quoted.
+        ({"fidelity": "asserted", "evidence_kind": "exact"}, "Described by Beakr: pH was 8.4"),
     ],
 )
 def test_an_excerpt_is_shown_by_its_origin(columns: dict, expected: str | None) -> None:
@@ -118,7 +118,7 @@ def test_the_shared_record_keeps_the_origin_and_drops_the_check_state() -> None:
             "evidence": {"excerpt": "retyped", "fidelity": "asserted", "anchor_status": "stale"},
         }
     )
-    assert "evidence" not in older
+    assert older["evidence"] == {"excerpt": "retyped", "excerpt_kind": "description"}
     quoted = _public_source(
         {
             "source_ref": "beakr-source:v1:abc",

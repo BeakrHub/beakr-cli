@@ -16611,7 +16611,7 @@
               }
             ],
             "default": null,
-            "description": "The words the citation rests on. A long one is shortened on a compact read and on a research answer. Present only for text that is shown: a quote that was not found in its source is left out, and the record keeps its reference and place.",
+            "description": "The words the citation rests on. A long one is shortened on a compact read and on a research answer. Only a `quote` (see `excerpt_kind`) is the source's own words.",
             "title": "Excerpt"
           },
           "excerpt_kind": {
@@ -16629,7 +16629,7 @@
               }
             ],
             "default": null,
-            "description": "Whose words `excerpt` is. `quote`: the source's own words, the only kind to show in quotation marks. `description`: Beakr's own wording, such as a description of a figure or a computed value. `person`: a person's attribution, or the words its writer gave for a record in a system outside Beakr. Present whenever `excerpt` is.",
+            "description": "Whose words `excerpt` is. `quote`: the source's own words, the only kind to show in quotation marks. `description`: Beakr's own wording, such as a description of a figure or a computed value, and words that were not found in the source as written. `person`: a person's attribution, or the words its writer gave for a record in a system outside Beakr. Present whenever `excerpt` is.",
             "title": "Excerpt Kind"
           },
           "locator": {

@@ -35,7 +35,7 @@ Each citation carries a stance:
 ## Reading evidence labels
 
 - An excerpt in quotation marks is the source's own words.
-- `Described by Beakr: ...` is Beakr's own wording (a description of a figure, a computed value), not the source's.
+- `Described by Beakr: ...` is Beakr's own wording (a description of a figure, a computed value, or words that were not found in the source as written), not the source's.
 - `Added by a person: ...` is a person's attribution, or the words its writer gave for a record in a system outside Beakr.
 - A citation with no excerpt keeps its reference and its place in the source.
 - "source changed since cited" means the source has a newer version than the one that was cited.

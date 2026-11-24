@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=20528e3b242842931bbcbdc849d9ee702ad6a699958497b9585a9bee8d98b962 changelog sha256=39a762244c56427294ae89241db6e07b6a05005ab8cf5425b2bceef1cee9999e -->
+<!-- contract-stamp: public-openapi sha256=92c7976d504c32acfd988ea32665dbc688e4cd5964843d3d60bcb6e8857f4350 changelog sha256=17f7789617e4964b83871d7f09ea405fe858b40b664c98c5d2ecb8353f9110d6 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -20,16 +20,16 @@ The first public version.
   own words are shown as a plain quotation in every case; text that is not the
   source's own is never in quotation marks and says who wrote it: `Described by
   Beakr: ...` for Beakr's own wording (a description of a figure, a computed
-  value) and `Added by a person: ...` for a person's attribution and for a
-  record in a system outside Beakr. A quote that was not found in its source
-  is left out, and the citation keeps its reference and place. This replaces `(unverified)`, `(paraphrase)`, `(human asserted)` and
-  `(normalized)`, and the `fidelity=` / `anchor=` words on a cited span, in the
+  value, and words that were not found in the source as written) and `Added
+  by a person: ...` for a person's attribution and for a record in a system
+  outside Beakr. No stored text is hidden. This replaces `(unverified)`,
+  `(paraphrase)`, `(human asserted)` and `(normalized)`, and the `fidelity=` / `anchor=` words on a cited span, in the
   results of `POST /v1/knowledge/wiki/command` (`cat`, `sources`, `provenance`,
   `rows` with `include_evidence`) and in the Sources list both MCP servers
   print. On a source record (`sources[]` of a command result, `citations[]` of
   `POST /v1/knowledge/research`), `evidence.excerpt_kind` is `quote`,
-  `description` or `person`, and `evidence.excerpt` is present only for text
-  that is shown; in `excerpts[]` an entry carries `excerpt_kind` only when it
+  `description` or `person` whenever `evidence.excerpt` is present; in
+  `excerpts[]` an entry carries `excerpt_kind` only when it
   is not `quote`. `evidence.fidelity`, `evidence.quote_origin` and
   `evidence.anchor_status` are no longer returned. `evidence.evidence_kind` is
   returned only as `"description"`, beside `excerpt_kind: "description"`, and
