@@ -8,9 +8,15 @@ said MIT while the specification and the TypeScript package said Apache-2.0.
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import tomllib
+import pytest
+
+if sys.version_info >= (3, 11):
+    import tomllib
+else:  # pragma: no cover - exercised only on 3.10
+    tomllib = pytest.importorskip("tomli")
 
 ROOT = Path(__file__).resolve().parents[1]
 
