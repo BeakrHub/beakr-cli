@@ -91,3 +91,52 @@ jobs:
 
       - name: Release versions and notes
         run: uv run python scripts/prepare_release.py check
+
+  # pyproject.toml declares requires-python >=3.10, and uv picks 3.10 on a Mac
+  # whose only other Python is the system 3.9. The job above tests 3.12 only, so
+  # a 3.11+ name (datetime.UTC in chatgpt_export.py) once broke every `beakr`
+  # command on 3.10, `beakr mcp` included, at import. This job runs the tests
+  # and a startup smoke test on the oldest supported version.
+  python-310:
+    name: tests-python-3.10
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BEAKR_ENGINE_PATH: ${{ github.workspace }}/snapshots/beakr-engine
+      BEAKR_REQUIRE_ENGINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.10"
+
+      - name: Install
+        run: uv sync --frozen --extra dev
+
+      - name: The environment runs Python 3.10
+        run: uv run python -c 'import sys; print(sys.version); assert sys.version_info[:2] == (3, 10), sys.version'
+
+      - name: Startup smoke test
+        run: |
+          set -euo pipefail
+          uv run beakr --version
+          uv run beakr --help > /dev/null
+          uv run beakr mcp --help > /dev/null
+          # Every module in the package imports, every command module included.
+          uv run python - <<'PY'
+          import importlib
+          import pkgutil
+
+          import beakr_cli
+
+          names = [m.name for m in pkgutil.walk_packages(beakr_cli.__path__, "beakr_cli.")]
+          for name in names:
+              importlib.import_module(name)
+          commands = [n for n in names if n.startswith("beakr_cli.commands.")]
+          assert commands, "no command modules found"
+          print(f"imported {len(names)} modules, {len(commands)} of them commands")
+          PY
+
+      - name: Tests
+        run: uv run pytest -q

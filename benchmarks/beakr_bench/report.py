@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from dataclasses import asdict
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -62,7 +62,7 @@ def build_report(results: dict[str, list[CaseRecord]], *, run_id: str, target: s
         "benchmark": "beakr-bench",
         "run_id": run_id,
         "target": target,
-        "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "summaries": [summarise(suite, records) for suite, records in results.items()],
         "cases": [asdict(record) for records in results.values() for record in records],
     }
