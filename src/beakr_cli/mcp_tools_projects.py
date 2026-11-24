@@ -49,6 +49,7 @@ from beakr_sdk.resources._upload import (
 from beakr_cli import (
     cancels,
     card_settings,
+    card_type_routes,
     card_types,
     card_updates,
     connected_sources,
@@ -130,7 +131,8 @@ async def create_project(
     if chosen.get("status") == "error":
         return chosen
     project = await call_api(
-        lambda sdk: sdk.projects.create(
+        lambda sdk: card_type_routes.create_project(
+            sdk,
             name,
             description=(description or "").strip() or None,
             card_types=chosen or None,
@@ -329,7 +331,9 @@ async def edit_card_type(
         return _error("invalid_arguments", *card_types.ORG_WITH_PROJECT)
     if reset:
         await call_api(
-            lambda sdk: sdk.knowledge.remove_card_type_copy(key, scope=scope, project_id=project_id)
+            lambda sdk: card_type_routes.remove_card_type_copy(
+                sdk, key, scope=scope, project_id=project_id
+            )
         )
         return card_types.card_type_reset_text(key, scope)
     changes = card_types.changes(
@@ -347,8 +351,8 @@ async def edit_card_type(
     if not changes:
         return _error("invalid_arguments", *card_types.NOTHING_TO_CHANGE)
     saved = await call_api(
-        lambda sdk: sdk.knowledge.update_card_type(
-            key, scope=scope, project_id=project_id, **changes
+        lambda sdk: card_type_routes.update_card_type(
+            sdk, key, scope=scope, project_id=project_id, **changes
         )
     )
     return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
@@ -386,7 +390,8 @@ async def card_type_settings(
         return _error("invalid_arguments", *card_types.NO_PROJECT)
     project_id = await _project_id(project)
     answer = await call_api(
-        lambda sdk: sdk.knowledge.set_card_type_settings(
+        lambda sdk: card_type_routes.set_card_type_settings(
+            sdk,
             project_id,
             keep_types_in_use=keep_types_in_use is True,
             # Only apply=true writes: anything else, a missing value included, previews.
@@ -444,14 +449,24 @@ async def update_existing_cards(
     async def send(continue_event_id: str | None = None) -> dict[str, Any]:
         if change == "rename_fields":
             answer = await call_api(
-                lambda sdk: sdk.knowledge.rename_card_type_fields(
-                    key, project_id, pairs, dry_run=dry_run, continue_event_id=continue_event_id
+                lambda sdk: card_type_routes.rename_card_type_fields(
+                    sdk,
+                    key,
+                    project_id,
+                    pairs,
+                    dry_run=dry_run,
+                    continue_event_id=continue_event_id,
                 )
             )
         else:
             answer = await call_api(
-                lambda sdk: sdk.knowledge.retype_cards(
-                    key, project_id, target, dry_run=dry_run, continue_event_id=continue_event_id
+                lambda sdk: card_type_routes.retype_cards(
+                    sdk,
+                    key,
+                    project_id,
+                    target,
+                    dry_run=dry_run,
+                    continue_event_id=continue_event_id,
                 )
             )
         return _dict(answer)
