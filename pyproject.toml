@@ -84,6 +84,8 @@ select = ["E", "F", "I", "UP"]
 # Carries the engine's hosted renderer byte for byte from ``organization_line``
 # on (tests/test_mcp_render_matches_engine.py); the engine allows longer lines.
 "src/beakr_cli/mcp_render.py" = ["E501"]
+# The engine's review-flag text byte for byte (tests/test_review_flags_match_engine.py).
+"src/beakr_cli/review_flags.py" = ["E501"]
 
 [tool.ruff.format]
 exclude = ["src/beakr_cli/_private_api/_generated/*"]

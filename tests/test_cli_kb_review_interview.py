@@ -173,10 +173,11 @@ def test_the_draft_reads_at_a_terminal(at_terminal):
     assert f"Nothing was sent. Edit and send it in Beakr: {EDIT_URL}" in out
     assert "built from their flag" not in out
     # How the flag is resolved from its answer, with the kb review commands.
-    assert "suggested_option_id" in out
-    assert f"beakr kb proposals show {FLAG} --json" in out
+    # A CLI-drafted interview is never applied by itself (the engine records
+    # creator_cannot_resolve for a key or OAuth sign-in), so the steps say so.
+    assert "An interview drafted here is never applied by itself" in out
     assert f"beakr kb review options {FLAG}" in out
-    assert f"beakr kb review resolve {FLAG} --option <suggested_option_id>" in out
+    assert f"beakr kb review resolve {FLAG} --option <the option an answer points to>" in out
 
 
 @respx.mock

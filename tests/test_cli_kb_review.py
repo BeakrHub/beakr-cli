@@ -10,6 +10,11 @@ A review flag is resolved pinned to the page revision the person chose against:
   an unchanged buffer applies nothing;
 - a 409 from the server says the page changed and to run ``options`` again;
 - an agent refused because a person must accept exits 6, as an accept does.
+- ``options`` reads the flag first: interview answers on an open flag are
+  listed after its revision, and a flag already decided (by a person, or by
+  Beakr from a person's own answer) says how instead of drafting options;
+  ``resolve`` says when the row or section it left now cites an answer. An
+  engine that sends none of these fields prints what it printed before.
 """
 
 from __future__ import annotations
@@ -17,6 +22,7 @@ from __future__ import annotations
 import asyncio
 import json
 
+import httpx
 import pytest
 import respx
 from typer.testing import CliRunner
@@ -66,6 +72,22 @@ RESOLVED = {
     "section_id": "dosing",
     "new_revision": 4,
 }
+#: The proposal read of an open flag, as an engine without interview answers sends it.
+PENDING_FLAG = {"id": FLAG, "proposal_type": "review", "status": "pending"}
+TRANSCRIPT = "7d1e3a90-2b4c-4f6e-9a8d-1c3b5e7f9a20"
+DECISIVE_ANSWER = {
+    "answered": True,
+    "answered_by": "Dana Reyes",
+    "answered_at": "2026-11-20T15:04:00Z",
+    "answer": "12nM is right.",
+    "excerpt": "12nM is right; the 40nM run used the old assay.",
+    "decisive": True,
+    "points_to_option": "A",
+    "suggested_option_id": "A",
+    "stale": False,
+    "auto_resolution": {"status": "left_for_person", "reason": "participant_not_verified"},
+    "source": {"reference": "Interview: IC50 questions", "artifact_id": TRANSCRIPT},
+}
 runner = CliRunner()
 
 
@@ -97,6 +119,7 @@ def _sent(route) -> dict:
 
 @respx.mock
 def test_options_lists_each_option_with_what_it_changes() -> None:
+    respx.get(BASE).respond(200, json=PENDING_FLAG)
     respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
     respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
     result = _invoke("kb", "review", "options", FLAG)
@@ -105,6 +128,177 @@ def test_options_lists_each_option_with_what_it_changes() -> None:
     assert "Row change: delete on facts (rows r-2)" in result.stdout
     assert f"beakr kb review resolve {FLAG} --option <number>" in result.stdout
     assert "resolve_review(" not in result.stdout
+    # An engine that attaches no interview answers prints no answer lines.
+    assert "Interview answers" not in result.stdout
+    assert "cite that answer" not in result.stdout
+
+
+@respx.mock
+def test_options_lists_a_decisive_interview_answer_after_the_revision() -> None:
+    flag = {**PENDING_FLAG, "interview_answers": [DECISIVE_ANSWER]}
+    # The flag is read before drafting and again after: drafting may match an
+    # answer to the options as they are now.
+    read = respx.get(BASE).respond(200, json=flag)
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    result = _invoke("kb", "review", "options", FLAG)
+    assert result.exit_code == 0, result.output
+    assert read.call_count == 2
+    lines = result.stdout.splitlines()
+    revision = lines.index("Page revision: 3")
+    assert lines[revision + 1 : revision + 4] == [
+        "",
+        "Interview answers:",
+        '- Dana Reyes, 2026-11-20: "12nM is right; the 40nM run used the old assay." '
+        "Decisive. Points to option A. "
+        f"Source: Interview: IC50 questions (file {TRANSCRIPT}).",
+    ]
+    apply = lines.index(f"Apply one with `beakr kb review resolve {FLAG} --option <number>`.")
+    assert lines[apply + 1] == (
+        "Applying the option an answer points to makes the row or section it leaves cite "
+        "that answer."
+    )
+    assert lines[-1] == f"Or write the section yourself: `beakr kb review resolve {FLAG} --edit`."
+
+
+@respx.mock
+def test_options_says_when_the_decisive_answers_disagree() -> None:
+    other = {
+        **DECISIVE_ANSWER,
+        "answered_by": "Sam Ortiz",
+        "answered_at": "2026-11-21T09:00:00Z",
+        "excerpt": None,
+        "answer": "Use 40nM, the new assay is the right one.",
+        "points_to_option": "B",
+        "suggested_option_id": None,
+        "auto_resolution": None,
+        "source": {},
+    }
+    first = {**DECISIVE_ANSWER, "suggested_option_id": None}
+    unanswered = {"answered": False, "answered_by": "Lee Park"}
+    note = "Answers disagree: A from Dana Reyes, B from Sam Ortiz."
+    flag = {
+        **PENDING_FLAG,
+        "interview_answers": [first, unanswered, other],
+        "interview_answers_note": note,
+    }
+    respx.get(BASE).respond(200, json=flag)
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    result = _invoke("kb", "review", "options", FLAG)
+    assert result.exit_code == 0, result.output
+    lines = result.stdout.splitlines()
+    start = lines.index("Interview answers:")
+    assert lines[start + 1].startswith('- Dana Reyes, 2026-11-20: "12nM is right;')
+    assert "Points to option A." in lines[start + 1]
+    # Its own words when there is no excerpt; no source part without a file.
+    assert lines[start + 2] == (
+        '- Sam Ortiz, 2026-11-21: "Use 40nM, the new assay is the right one." '
+        "Decisive. Points to option B."
+    )
+    assert lines[start + 3] == note
+    assert "Lee Park" not in result.stdout
+
+
+@respx.mock
+def test_options_marks_an_answer_about_text_that_has_changed() -> None:
+    stale = {**DECISIVE_ANSWER, "stale": True, "decisive": False}
+    respx.get(BASE).respond(200, json={**PENDING_FLAG, "interview_answers": [stale]})
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    result = _invoke("kb", "review", "options", FLAG)
+    assert result.exit_code == 0, result.output
+    assert "About text that has since changed." in result.stdout
+    assert "Points to option" not in result.stdout
+
+
+@respx.mock
+def test_options_json_carries_the_interview_answers() -> None:
+    note = "Answers agree on A."
+    flag = {**PENDING_FLAG, "interview_answers": [DECISIVE_ANSWER], "interview_answers_note": note}
+    respx.get(BASE).respond(200, json=flag)
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    result = _invoke("kb", "review", "options", FLAG, "--json")
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert data["interview_answers"] == [DECISIVE_ANSWER]
+    assert data["interview_answers_note"] == note
+    assert data["flag"] == CONFLICT
+
+
+AUTO_APPLIED = {
+    "id": FLAG,
+    "proposal_type": "review",
+    "status": "resolved",
+    "payload": {
+        "resolved_by_change": {
+            "approval": "interview_answer",
+            "option": "A",
+            "option_label": "Keep 12nM",
+            "answered_by": "Dana Reyes",
+            "answered_at": "2026-11-20T15:04:00Z",
+            "interview_title": "IC50 questions",
+        },
+        "resolved_with": {"proposal_id": "0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51"},
+    },
+    "interview_answers": [
+        {**DECISIVE_ANSWER, "auto_resolution": {"status": "applied", "option": "A"}}
+    ],
+}
+
+
+@respx.mock
+def test_options_says_how_a_flag_beakr_applied_from_an_answer_was_decided() -> None:
+    respx.get(BASE).respond(200, json=AUTO_APPLIED)
+    conflict = respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    drafts = respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    result = _invoke("kb", "review", "options", FLAG)
+    assert result.exit_code == 0, result.output
+    # Nothing is drafted for a flag that is no longer open.
+    assert not conflict.called and not drafts.called
+    assert result.stdout.splitlines() == [
+        f"Review flag {FLAG} is resolved: there is nothing to resolve.",
+        "Beakr applied option A (Keep 12nM) from the interview answer of Dana Reyes "
+        '(2026-11-20) in "IC50 questions".',
+        "Closed with review flag 0f4b6d82-3c5e-4a7f-8b19-2e6d8a0c4f51, about the same dispute.",
+        "Interview answers:",
+        '- Dana Reyes, 2026-11-20: "12nM is right; the 40nM run used the old assay." '
+        "Decisive. Points to option A. Beakr applied option A from this answer. "
+        f"Source: Interview: IC50 questions (file {TRANSCRIPT}).",
+    ]
+
+
+@respx.mock
+def test_options_finds_a_decided_flag_by_the_start_of_its_id() -> None:
+    def listed(request):
+        status = request.url.params["status"]
+        rows = [AUTO_APPLIED] if status == "resolved" else []
+        return httpx.Response(200, json={"data": rows, "has_more": False, "next_cursor": None})
+
+    respx.get(f"{API}/v1/knowledge/wiki/proposals").mock(side_effect=listed)
+    respx.get(BASE).respond(200, json=AUTO_APPLIED)
+    result = _invoke("kb", "review", "options", FLAG[:8])
+    assert result.exit_code == 0, result.output
+    assert f"Review flag {FLAG} is resolved" in result.stdout
+
+
+@respx.mock
+def test_resolve_says_the_row_it_left_cites_the_answer() -> None:
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    cited = [
+        {"answered_by": "Dana Reyes", "file_name": "IC50 questions.md"},
+        {"answered_by": "Dana Reyes", "file_name": "IC50 questions.md"},
+        {"answered_by": "Sam Ortiz", "file_name": None},
+    ]
+    respx.post(f"{BASE}/resolve-rows").respond(200, json={**RESOLVED, "cited_answers": cited})
+    result = _invoke("kb", "review", "resolve", FLAG, "--option", "B", "--yes")
+    assert result.exit_code == 0, result.output
+    assert " ".join(result.stdout.split()) == (
+        f"Resolved review flag {FLAG}: section dosing changed; the page is now at revision 4. "
+        "It now cites the interview answer of Dana Reyes, Sam Ortiz (IC50 questions.md)."
+    )
 
 
 @respx.mock
@@ -323,3 +517,38 @@ def test_the_stdio_tool_says_a_person_must_resolve_it() -> None:
     assert "person_review_required" in text
     assert "nothing was applied" in text and "do not retry" in text
     assert "proposals:accept (reviewer)" in text
+
+
+@respx.mock
+def test_the_stdio_tool_lists_interview_answers_like_the_hosted_one() -> None:
+    respx.get(BASE).respond(200, json={**PENDING_FLAG, "interview_answers": [DECISIVE_ANSWER]})
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    text = _tool("review_options", proposal_id=FLAG)
+    lines = text.splitlines()
+    assert "Interview answers:" in lines
+    assert lines[-2].startswith(f"Apply one with resolve_review(proposal_id='{FLAG}'")
+    assert lines[-1] == (
+        "Applying the option an answer points to makes the row or section it leaves cite "
+        "that answer."
+    )
+
+
+@respx.mock
+def test_the_stdio_tool_says_how_a_decided_flag_was_decided() -> None:
+    respx.get(BASE).respond(200, json=AUTO_APPLIED)
+    drafts = respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    text = _tool("review_options", proposal_id=FLAG)
+    assert text.startswith(f"Review flag {FLAG} is resolved: there is nothing to resolve.")
+    assert "from the interview answer of Dana Reyes" in text
+    assert not drafts.called
+
+
+@respx.mock
+def test_the_stdio_tool_says_the_resolved_row_cites_the_answer() -> None:
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    cited = [{"answered_by": "Dana Reyes", "file_name": "IC50 questions.md"}]
+    respx.post(f"{BASE}/resolve-rows").respond(200, json={**RESOLVED, "cited_answers": cited})
+    text = _tool("resolve_review", proposal_id=FLAG, option_id="B", expected_revision=3)
+    assert text.endswith(" It now cites the interview answer of Dana Reyes (IC50 questions.md).")
