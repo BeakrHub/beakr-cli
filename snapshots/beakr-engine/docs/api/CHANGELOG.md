@@ -11,11 +11,47 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=478e7ac05592d9bc045eebfeb63cbfdffc7841b3be5f9d89d0d3585478e00962 changelog sha256=b59a91acdae4b40a7e571abaed5aed7359bb4cc38c13c41b32354c8347c6df03 -->
+<!-- contract-stamp: public-openapi sha256=45bb3debb1f35e978af092c0456a600a78f35419e7429a465c90701ba09439a6 changelog sha256=689690b8819ac032bec2e84eb52cccdf497de8766ed6c9203ed904144128bd68 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- Knowledge reads no longer print check state beside a citation. A source's
+  own words are shown as a plain quotation in every case; text that is not the
+  source's own is never in quotation marks and says who wrote it: `Described by
+  Beakr: ...` for Beakr's own wording (a description of a figure, a computed
+  value) and `Added by a person: ...` for a person's attribution and for a
+  record in a system outside Beakr. Text that is neither (a quote that was not
+  found in its source) is left out, and the citation keeps its reference and
+  place. This replaces `(unverified)`, `(paraphrase)`, `(human asserted)` and
+  `(normalized)`, and the `fidelity=` / `anchor=` words on a cited span, in the
+  results of `POST /v1/knowledge/wiki/command` (`cat`, `sources`, `provenance`,
+  `rows` with `include_evidence`) and in the Sources list both MCP servers
+  print. On a source record (`sources[]` of a command result, `citations[]` of
+  `POST /v1/knowledge/research`), `evidence.excerpt_kind` is `quote`,
+  `description` or `person`, and `evidence.excerpt` is present only for text
+  that is shown; in `excerpts[]` an entry carries `excerpt_kind` only when it
+  is not `quote`. `evidence.fidelity`, `evidence.quote_origin` and
+  `evidence.anchor_status` are no longer returned. `evidence.evidence_kind` is
+  returned only as `"description"`, beside `excerpt_kind: "description"`, and
+  `authored: true` only on such an entry of `excerpts[]`, for clients released
+  before this change; both are deprecated: read `excerpt_kind`.
+  `cat {page, section_id, ledger: true}` returns each record with
+  `excerpt_kind` in place of `fidelity`, `anchor_status`, `evidence_kind`,
+  `quote_origin` and `claim_checked`. "source changed since cited" and
+  `status.changed_since_cited` are unchanged. A write still drops
+  `(unverified)`, `(paraphrase)` and `(human asserted)` pasted after a
+  citation.
+- Creating a card type with `POST /v1/knowledge/wiki/write` (`action:
+  "page_type"`) now takes the rights that editing one takes. A project's type
+  (`type_scope: "project"`, the default) is created by that project's owners
+  and admins; an organization's type (`type_scope: "org"`) only by an
+  organization admin or owner, with a credential that is not limited to
+  projects. Anyone else gets a result with `outcome.status` `error` and
+  `outcome.error_code` `permission_denied` that names what is needed, and no
+  type is created. A key limited to projects and an end-user token cannot
+  create an organization's type. Beakr's own background and scheduled work
+  creates project types only, where the project lets it add types.
 - A connected source's tracked items can be listed with a key:
   `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`
   (scope `projects:read`) lists every item the source's syncs picked and what

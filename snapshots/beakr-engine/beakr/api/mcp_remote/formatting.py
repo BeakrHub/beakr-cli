@@ -18,6 +18,12 @@ from beakr.api.mcp_remote.document_listing import fit_document_listing
 from beakr.engines.tools import agent_surface
 from beakr.engines.tools.graph.kb_read_v2.listing_cut import cut_listing, with_continuation
 from beakr.services.citation_filer import PUBLIC_FILER_FIELDS
+from beakr.services.evidence import (
+    EXCERPT_KIND_DESCRIPTION,
+    EXCERPT_KIND_QUOTE,
+    EXCERPT_KIND_VALUES,
+    source_record_excerpt_kind,
+)
 from beakr.services.public_sources import UPLOAD_PROVIDER
 from beakr.services.source_locations.sandbox_copies import source_path
 
@@ -438,6 +444,17 @@ def _result_text(result: Any) -> str:
     return json.dumps(result, indent=2, default=str)
 
 
+def _excerpt_kind(source: dict, evidence: dict) -> str | None:
+    """Whose words an excerpt is, or None when it is not shown."""
+    stated = str(evidence.get("excerpt_kind") or "").strip().lower()
+    if stated in EXCERPT_KIND_VALUES:
+        return stated
+    if evidence.get("authored") is True:
+        # A record written before ``excerpt_kind``: Beakr's own wording.
+        return EXCERPT_KIND_DESCRIPTION
+    return source_record_excerpt_kind({**source, **{k: v for k, v in evidence.items() if v}})
+
+
 def public_source(source: dict, *, citation_key: str | None = None) -> dict:
     """Keep only the public source contract; never forward backend row fields."""
     meta = source.get("meta") if isinstance(source.get("meta"), dict) else {}
@@ -497,12 +514,6 @@ def public_source(source: dict, *, citation_key: str | None = None) -> dict:
             for key, aliases in (
                 ("excerpt", ("excerpt", "excerpt_text", "quote")),
                 ("locator", ("locator", "chunk_ref")),
-                ("fidelity", ("fidelity",)),
-                ("evidence_kind", ("evidence_kind",)),
-                # ``authored`` marks the compiler's own analysis, which the
-                # Sources list labels (paraphrase) rather than quoting.
-                ("quote_origin", ("quote_origin",)),
-                ("anchor_status", ("anchor_status",)),
             )
         },
         "status": {
@@ -522,6 +533,16 @@ def public_source(source: dict, *, citation_key: str | None = None) -> dict:
             )
         },
     }
+    # Whose words the excerpt is (quote, description or person), and no check
+    # state: the Sources list quotes only the source's own words, and text that
+    # is nobody's to show is left out (``beakr.services.evidence.display``). The
+    # engine's public record says so itself; a raw record is put through the
+    # same rule.
+    if groups["evidence"].get("excerpt"):
+        kind = _excerpt_kind(source, nested["evidence"])
+        groups["evidence"]["excerpt_kind"] = kind
+        if kind is None:
+            del groups["evidence"]["excerpt"]
     for key, value in groups.items():
         cleaned = {k: v for k, v in value.items() if v not in (None, "")}
         if cleaned:
@@ -536,8 +557,12 @@ def public_source(source: dict, *, citation_key: str | None = None) -> dict:
                 for key in ("citation_key", "section_id", "unit_locator", "text")
                 if excerpt.get(key) not in (None, "")
             },
-            # The compiler's own analysis, never to be printed as a quote.
-            **({"authored": True} if excerpt.get("authored") is True else {}),
+            # Only text that is not the source's own says whose it is.
+            **(
+                {"excerpt_kind": kind}
+                if (kind := _excerpt_kind({}, excerpt)) not in (None, EXCERPT_KIND_QUOTE)
+                else {}
+            ),
         }
         for excerpt in source.get("excerpts") or []
         if isinstance(excerpt, dict) and excerpt.get("text")

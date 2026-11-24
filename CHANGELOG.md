@@ -8,6 +8,20 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Client changes
 
+- **Results no longer talk about checking a citation.** The MCP server's
+  Sources list, its `research` answers and its instructions, and the Beakr
+  skill, show an excerpt by whose words it is: the source's own words in
+  quotation marks, `Described by Beakr: ...` for Beakr's own wording (a
+  description of a figure, a computed value) and `Added by a person: ...` for
+  a person's attribution and for a record in a system outside Beakr. Text
+  that is neither (a quote that was not found in its source) is left out and
+  the citation keeps its reference and place. `(unverified)`, `(paraphrase)`,
+  `(human asserted)` and `(normalized)` are gone, and a source record carries
+  `evidence.excerpt_kind` (`quote`, `description` or `person`) in place of
+  `fidelity`, `evidence_kind` and `anchor_status`. The same holds against an
+  engine from before this change: the server works the kind out from the
+  fields that engine sends. `beakr kb cat --ledger` no longer promises trust
+  fields.
 - **See why a source's items were set aside.** `beakr sources tracked SOURCE`
   lists every item a source tracks and what became of it (ingested, pending,
   skipped or removed), with the reason a skipped item was set aside, including

@@ -31755,7 +31755,7 @@
                     "type": "string"
                   },
                   "type_scope": {
-                    "description": "Scope for action=page_type. Project is default; global requires admin review.",
+                    "description": "Scope for action=page_type. Project is the default and what a run proposes. org (a type every project is offered) is created only at an organization admin's own direct request, never by background or scheduled work; global requires admin review.",
                     "enum": [
                       "global",
                       "org",
