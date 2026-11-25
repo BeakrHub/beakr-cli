@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=7c6710d1bbd9ba4780ff8335c1dfc449a93b17aab2a3d7614e7e96a305af79c5 changelog sha256=bea5d40ebe5312f2c7ab32a1948060c00b1dc92181c9cfeecd577e9c37c82222 -->
+<!-- contract-stamp: public-openapi sha256=df7ee0954e18da7b57499ec2993296dd0875648ffdf9276a829dd4d691b83f11 changelog sha256=a8bee728f1bad85c96766740ec163f6c9f27e648fa67d7a35bbcadb24a301078 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -48,7 +48,12 @@ The first public version.
   `recompile_cooldown`, with `Retry-After`), up to 500 items each (`over_cap`
   counts the rest). `dry_run: true` counts what would be sent and sends nothing.
   409 `connection_unusable` when the attacher's connection can no longer read
-  the source, 409 `knowledge_off` when Knowledge is off for it.
+  the source, 409 `knowledge_off` when Knowledge is off for it, and 409
+  `sync_running` while a sync of the source is running (what it reads is
+  already on its way). `mode: retry` leaves alone every item the tracked-items
+  list reads `ingested`, and neither mode sends a pending item still on its way
+  into Knowledge (its compile queued or running, or read in the last 30
+  minutes); `in_progress_left` counts those.
 - `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: `state`
   now describes an item's newest version. An item edited at its source whose
   new version is still waiting for its compile reads `pending`, and one whose

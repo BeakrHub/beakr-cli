@@ -431,8 +431,9 @@ def test_recompile_sends_the_named_items_and_says_what_went(monkeypatch):
         "external_ids": ["conn:t1", "conn:t2", "conn:gone"],
     }
     assert result.stdout.splitlines() == [
-        "s1\tmode=retry\tdry_run=false\trequested=2\tin_knowledge_left=1\tover_cap=0"
-        "\tnot_found=1\tsync=started\tsync_job_id=11111111-2222-3333-4444-555555555555",
+        "s1\tmode=retry\tdry_run=false\trequested=2\tin_knowledge_left=1"
+        "\tin_progress_left=0\tover_cap=0\tnot_found=1\tsync=started"
+        "\tsync_job_id=11111111-2222-3333-4444-555555555555",
         "next: beakr sources status s1",
     ]
     monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
@@ -510,3 +511,31 @@ def test_tracked_says_when_an_older_version_is_in_knowledge(monkeypatch):
     result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
     assert result.exit_code == 0, result.output
     assert "Assay plan  [pending]  (an older version is in Knowledge)" in result.output
+
+
+@respx.mock
+def test_recompile_says_how_many_were_still_on_their_way(monkeypatch):
+    respx.post(RECOMPILE).respond(
+        200, json={**SENT, "dry_run": True, "in_progress_left": 4, "sync": "not_started"}
+    )
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "--dry-run", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "\tin_progress_left=4\t" in result.stdout
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "--dry-run", "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "4 still on their way into Knowledge were left out" in said
+
+
+@respx.mock
+def test_a_running_sync_refusal_is_said_as_the_engine_says_it():
+    message = (
+        "A sync is running; these items are already on their way. "
+        "You can send items again once it finishes."
+    )
+    respx.post(RECOMPILE).respond(409, json={"error": {"code": "sync_running", "message": message}})
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "-P", PROJECT, "--json"])
+    assert result.exit_code == 5, result.output
+    error = json.loads(result.stdout)["error"]
+    assert error["code"] == "sync_running"
+    assert error["message"] == message
