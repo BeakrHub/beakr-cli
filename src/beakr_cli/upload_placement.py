@@ -39,15 +39,15 @@ def placement_fields(
     on_existing: str | None = None,
     written_by_agent: bool | None = None,
     version_of: str | None = None,
-    authored_by: str | None = None,
+    authored_by: str | list[str] | None = None,
     authored_at: str | None = None,
 ) -> dict[str, Any]:
     """The completion fields for these options; only those given, so the server's
     defaults (version a file at the same path, a person's upload) apply otherwise.
 
     ``authored_by`` and ``authored_at`` record who wrote the file and when, apart
-    from who uploads it (R11): a name, ``Name <email>`` or an email, and a date
-    (``YYYY-MM-DD``) or an ISO 8601 date-time.
+    from who uploads it (R11): a name, ``Name <email>`` or an email, or a list of
+    up to 20 for co-authors, and a date (``YYYY-MM-DD``) or an ISO 8601 date-time.
     """
     fields: dict[str, Any] = {}
     if on_existing is not None:
