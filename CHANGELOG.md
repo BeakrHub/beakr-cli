@@ -8,6 +8,18 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
+  new `state`, `partial`: an item whose latest compile wrote to Knowledge and
+  left some planned changes undone. `unfinished_changes` says how many;
+  `reason_code` `compile_partial` means the next sync retries them, and
+  `compile_not_converging` that they could not be applied (Beakr stopped after
+  its tries made no progress, or after 3 tries). Such items used to read
+  `pending` or `failed`; `failed` now means nothing of the item's version
+  reached Knowledge. `counts.partial` counts them, and `state=partial` and
+  `reason_code` filter them. A sync's `result.outcomes` from
+  `GET /v1/jobs/{job_id}` counts them as `partial`, with their reasons.
+  `GET .../history-import/status` counts them in `in_knowledge`, with
+  `finishing` (retried) and `partly_applied` (could not be applied) beside it.
 - A file can record who wrote it and when, apart from who uploaded it.
   `POST /v1/uploads/{upload_id}/complete`, each `files[]` item of
   `POST /v1/bulk/complete` and `PATCH /v1/artifacts/{artifact_id}` take
@@ -613,6 +625,12 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **Partly compiled items read as partial.** `beakr sources tracked --state
+  partial` lists items in Knowledge with planned changes that did not land,
+  each with how many (`unfinished_changes`) and why (`compile_partial`: the
+  next sync retries them; `compile_not_converging`: they could not be
+  applied), and the counts include them. `beakr sources import-status` says how
+  many of those in Knowledge are being finished or partly applied.
 - **Uploads record who wrote a file and when.** `beakr upload --author NAME
   --date DATE` sends `authored_by` and `authored_at` with every file of the
   command (files, folders and `--resume`); repeat `--author` for co-authors (up

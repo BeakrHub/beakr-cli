@@ -539,3 +539,54 @@ def test_a_running_sync_refusal_is_said_as_the_engine_says_it():
     error = json.loads(result.stdout)["error"]
     assert error["code"] == "sync_running"
     assert error["message"] == message
+
+
+# -- partly compiled items (engine #3311) --------------------------------------------------
+
+PARTIAL = {
+    "external_id": "conn:t4",
+    "title": "Design review",
+    "kind": "thread",
+    "state": "partial",
+    "reason_code": "compile_partial",
+    "reason": "Some planned changes did not land; the next sync retries them.",
+    "unfinished_changes": 3,
+}
+
+
+@respx.mock
+def test_tracked_lists_partial_items_with_their_unfinished_changes(monkeypatch):
+    counts = {**COUNTS, "total": 4, "partial": 1, "failed": 0}
+    route = respx.get(TRACKED).respond(200, json={**_page([PARTIAL]), "counts": counts})
+    result = runner.invoke(app, ["sources", "tracked", "s1", "--state", "partial", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert dict(route.calls.last.request.url.params)["state"] == "partial"
+    assert result.stdout.splitlines() == ["conn:t4\tpartial\tcompile_partial\tDesign review"]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "1 ingested, 1 partial, 1 skipped, 0 failed, 1 pending, 0 removed." in said
+    assert "Design review [partial] (3 planned change(s) not applied)" in said
+
+
+@respx.mock
+def test_import_status_says_how_many_in_knowledge_are_partly_applied(monkeypatch):
+    partly = {**FINISHED, "finishing": 5, "partly_applied": 2}
+    respx.get(HISTORY).respond(
+        200,
+        json={
+            "provider": "gdrive:nango",
+            "supported": True,
+            "status": "idle",
+            "last_outcome": partly,
+        },
+    )
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "\tlast_finishing=5\tlast_partly_applied=2" in result.stdout
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert (
+        "    Of those in Knowledge: 5 being finished, 2 with changes that could not be applied."
+        in result.output.splitlines()
+    )

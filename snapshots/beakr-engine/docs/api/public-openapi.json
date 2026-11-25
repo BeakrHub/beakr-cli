@@ -6840,6 +6840,12 @@
             "description": "When the import finished (ISO 8601); null while working.",
             "title": "Finished At"
           },
+          "finishing": {
+            "default": 0,
+            "description": "Of in_knowledge: items partly in Knowledge whose planned changes left are retried.",
+            "title": "Finishing",
+            "type": "integer"
+          },
           "followup": {
             "anyOf": [
               {
@@ -6852,7 +6858,7 @@
             "description": "How Beakr is finishing the import; null for a running or an older import."
           },
           "in_knowledge": {
-            "description": "Items compiled into Knowledge.",
+            "description": "Items compiled into Knowledge, those partly in Knowledge included.",
             "title": "In Knowledge",
             "type": "integer"
           },
@@ -6872,6 +6878,12 @@
           "of": {
             "description": "The import's items: in Knowledge, skipped, failed and left.",
             "title": "Of",
+            "type": "integer"
+          },
+          "partly_applied": {
+            "default": 0,
+            "description": "Of in_knowledge: items partly in Knowledge with changes that couldn't be applied.",
+            "title": "Partly Applied",
             "type": "integer"
           },
           "removed": {
@@ -19440,6 +19452,11 @@
             "title": "Ingested",
             "type": "integer"
           },
+          "partial": {
+            "description": "Items in Knowledge with planned changes that did not land (not in ingested).",
+            "title": "Partial",
+            "type": "integer"
+          },
           "pending": {
             "description": "Items tracked and not read into Knowledge yet.",
             "title": "Pending",
@@ -19465,6 +19482,7 @@
           "total",
           "pending",
           "ingested",
+          "partial",
           "skipped",
           "failed",
           "removed"
@@ -19525,7 +19543,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why a skipped item was set aside, or a failed one failed, for a person.",
+            "description": "Why a skipped item was set aside, a failed one failed, or a partial one is not finished, for a person.",
             "title": "Reason"
           },
           "reason_code": {
@@ -19537,7 +19555,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Failed: compile_failed and compile_partial (the next sync sends it again), compile_not_converging (not sent again until it changes), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.",
+            "description": "Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Partial: compile_partial (the next sync retries the changes left), compile_not_converging (they could not be applied; not sent again until it changes). Failed: compile_failed (the next sync sends it again), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.",
             "title": "Reason Code"
           },
           "selected_at": {
@@ -19566,10 +19584,11 @@
             "title": "Selected Reason"
           },
           "state": {
-            "description": "The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.",
+            "description": "The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), partial (in Knowledge, with unfinished_changes planned changes that did not land; reason_code compile_partial means the next sync retries them, compile_not_converging that they could not be applied), skipped (set aside; reason says why), failed (nothing of it reached Knowledge; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.",
             "enum": [
               "pending",
               "ingested",
+              "partial",
               "skipped",
               "failed",
               "removed"
@@ -19581,6 +19600,18 @@
             "description": "The item's title, or its key when it has none.",
             "title": "Title",
             "type": "string"
+          },
+          "unfinished_changes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a partial item: how many planned changes to Knowledge did not land; null otherwise, or when the count is not known.",
+            "title": "Unfinished Changes"
           }
         },
         "required": [
@@ -39063,6 +39094,7 @@
                   "enum": [
                     "pending",
                     "ingested",
+                    "partial",
                     "skipped",
                     "failed",
                     "removed"
@@ -39078,7 +39110,7 @@
             }
           },
           {
-            "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
+            "description": "Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial).",
             "in": "query",
             "name": "reason_code",
             "required": false,
@@ -39092,7 +39124,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
+              "description": "Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial).",
               "title": "Reason Code"
             }
           },

@@ -1693,7 +1693,7 @@ def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
 
 
 #: ``--state`` values, as the tracked-items list takes them.
-TRACKED_STATES = ("pending", "ingested", "skipped", "failed", "removed")
+TRACKED_STATES = ("pending", "ingested", "partial", "skipped", "failed", "removed")
 #: The most items one request of ``tracked`` asks for (the route's page maximum).
 TRACKED_PAGE_MAX = 200
 
@@ -1731,12 +1731,13 @@ def tracked(
     state: str | None = typer.Option(
         None,
         "--state",
-        help="Only items in this state: pending, ingested, skipped, failed or removed.",
+        help="Only items in this state: pending, ingested, partial, skipped, failed or removed.",
     ),
     reason_code: str | None = typer.Option(
         None,
         "--reason-code",
-        help="Only skipped or failed items with this reason, e.g. nothing_to_add, compile_failed.",
+        help="Only skipped, failed or partial items with this reason, e.g. nothing_to_add, "
+        "compile_failed, compile_partial.",
     ),
     search: str | None = typer.Option(
         None, "--search", help="Only items whose title holds this text."
@@ -1757,13 +1758,15 @@ def tracked(
     """The items a source tracks, what became of each, and why skipped ones were set aside.
 
     \b
-    Each item is ingested (read into Knowledge), pending (not read yet),
-    skipped (set aside, with the reason: a blocked file type, a file too large,
-    or Knowledge read it and found nothing to add), failed (its compile did not
-    finish, with the reason: compile_failed or compile_partial are sent again
-    by the next sync, compile_not_converging only once the item changes,
-    import_gave_up when a history import stopped trying it) or removed (gone
-    from the source). Counts cover the whole source; the filters narrow the list.
+    Each item is ingested (read into Knowledge), partial (in Knowledge with some
+    planned changes not applied: compile_partial means the next sync retries
+    them, compile_not_converging that they could not be applied), pending (not
+    read yet), skipped (set aside, with the reason: a blocked file type, a file
+    too large, or Knowledge read it and found nothing to add), failed (nothing
+    of its version reached Knowledge, with the reason: compile_failed is sent
+    again by the next sync, import_gave_up when a history import stopped trying
+    it) or removed (gone from the source). Counts cover the whole source; the
+    filters narrow the list.
     """
     state = _choice(state, TRACKED_STATES, "--state")
     if skipped:
@@ -1815,6 +1818,9 @@ def tracked(
             reason = _item_reason(row)
             # The state is the newest version's; an earlier one may still be in Knowledge.
             older = "  (an older version is in Knowledge)" if row.get(_OLDER_VERSION) else ""
+            unfinished = row.get("unfinished_changes")
+            if isinstance(unfinished, int) and unfinished > 0:
+                older += f"  ({unfinished} planned change(s) not applied)"
             console.print(
                 f"  {row.get('title')}  [{row.get('state')}]{older}"
                 + (f"  {reason}" if reason else ""),
@@ -1861,9 +1867,10 @@ _OLDER_VERSION = "older_version_in_knowledge"
 
 
 def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:
-    """The states ``tracked`` counts, ``failed`` where the engine counts it (R12)."""
-    names = ("ingested", "skipped", "pending", "removed")
-    return ("ingested", "skipped", "failed", "pending", "removed") if "failed" in counts else names
+    """The states ``tracked`` counts: ``partial`` and ``failed`` where the engine counts them."""
+    order = ("ingested", "partial", "skipped", "failed", "pending", "removed")
+    optional = {"partial", "failed"}
+    return tuple(name for name in order if name not in optional or name in counts)
 
 
 # -- history import status (R6) ------------------------------------------------------------
@@ -1874,6 +1881,9 @@ def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:
 
 #: The counts of an import's outcome, in the order they are printed.
 IMPORT_COUNTS = ("in_knowledge", "skipped", "failed", "left", "removed")
+#: Of ``in_knowledge``: partly compiled items being finished, and those with changes
+#: that could not be applied (engine #3311); printed and piped when the engine sends them.
+IMPORT_PARTIAL_COUNTS = ("finishing", "partly_applied")
 
 
 def history_import_path(project_id: str, source_id: str) -> str:
@@ -1896,6 +1906,13 @@ def _outcome_text(outcome: dict[str, Any]) -> list[str]:
             f"{int(outcome.get(n) or 0)} {n.replace('_', ' ')}" for n in IMPORT_COUNTS
         )
     lines = [summary if summary.endswith(".") else f"{summary}."]
+    finishing = int(outcome.get("finishing") or 0)
+    partly = int(outcome.get("partly_applied") or 0)
+    if finishing or partly:
+        lines.append(
+            f"  Of those in Knowledge: {finishing} being finished, "
+            f"{partly} with changes that could not be applied."
+        )
     for label, rows, code in (
         ("Skipped", outcome.get("skipped_reasons"), "reason_code"),
         ("Failed", outcome.get("failed_reasons"), "reason_code"),
@@ -1991,6 +2008,11 @@ def import_status(
                 fields.append(f"{prefix}state={outcome.get('state') or ''}")
                 fields += [
                     f"{prefix}{name}={int(outcome.get(name) or 0)}" for name in IMPORT_COUNTS
+                ]
+                fields += [
+                    f"{prefix}{name}={int(outcome[name] or 0)}"
+                    for name in IMPORT_PARTIAL_COUNTS
+                    if name in outcome
                 ]
         return ["\t".join(fields)]
 

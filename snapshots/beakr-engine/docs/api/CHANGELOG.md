@@ -11,11 +11,23 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=df7ee0954e18da7b57499ec2993296dd0875648ffdf9276a829dd4d691b83f11 changelog sha256=a8bee728f1bad85c96766740ec163f6c9f27e648fa67d7a35bbcadb24a301078 -->
+<!-- contract-stamp: public-openapi sha256=120be362fa01f42408ef892db2391433f84cd82699e2e1cbbcad952c1ff989f2 changelog sha256=43b6789a28ee1554134f60f3c0d79085645fa71207d57788ad1d04770aae444b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
+  new `state`, `partial`: an item whose latest compile wrote to Knowledge and
+  left some planned changes undone. `unfinished_changes` says how many;
+  `reason_code` `compile_partial` means the next sync retries them, and
+  `compile_not_converging` that they could not be applied (Beakr stopped after
+  its tries made no progress, or after 3 tries). Such items used to read
+  `pending` or `failed`; `failed` now means nothing of the item's version
+  reached Knowledge. `counts.partial` counts them, and `state=partial` and
+  `reason_code` filter them. A sync's `result.outcomes` from
+  `GET /v1/jobs/{job_id}` counts them as `partial`, with their reasons.
+  `GET .../history-import/status` counts them in `in_knowledge`, with
+  `finishing` (retried) and `partly_applied` (could not be applied) beside it.
 - A file can record who wrote it and when, apart from who uploaded it.
   `POST /v1/uploads/{upload_id}/complete`, each `files[]` item of
   `POST /v1/bulk/complete` and `PATCH /v1/artifacts/{artifact_id}` take
