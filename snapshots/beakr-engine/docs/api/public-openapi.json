@@ -17486,6 +17486,130 @@
         "title": "SourceReadIn",
         "type": "object"
       },
+      "SourceRecompileIn": {
+        "description": "Which of a source's tracked items to send to Knowledge again, and how.",
+        "properties": {
+          "all": {
+            "default": false,
+            "description": "Send every item the source tracks (up to 500 per request) instead of a list.",
+            "title": "All",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "description": "Count what would be sent and send nothing (for a confirm step).",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "external_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 500,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The items to send again, by their tracked-items `external_id`. Leave out and set `all` to send every item the source tracks.",
+            "title": "External Ids"
+          },
+          "mode": {
+            "description": "retry: send again only items not in Knowledge at their current version (pending, failed, skipped). full: send every chosen item, items in Knowledge included, and have the compiler read each whole document again.",
+            "enum": [
+              "retry",
+              "full"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "SourceRecompileIn",
+        "type": "object"
+      },
+      "SourceRecompileOut": {
+        "description": "What sending a source's items to Knowledge again did.",
+        "properties": {
+          "dry_run": {
+            "description": "True when nothing was sent and only counted.",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "in_knowledge_left": {
+            "description": "In retry mode, chosen items already in Knowledge and left alone; else 0.",
+            "title": "In Knowledge Left",
+            "type": "integer"
+          },
+          "mode": {
+            "description": "The mode the request used.",
+            "enum": [
+              "retry",
+              "full"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "not_found": {
+            "description": "Requested external_ids this source does not track; nothing was sent for them.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Found",
+            "type": "array"
+          },
+          "over_cap": {
+            "description": "Chosen items past the 500-item limit, not sent; send them in a later request.",
+            "title": "Over Cap",
+            "type": "integer"
+          },
+          "requested": {
+            "description": "Items marked to be sent again (the count a dry run would mark).",
+            "title": "Requested",
+            "type": "integer"
+          },
+          "sync": {
+            "description": "started: a sync reading the marked items is running (follow it with sync_job_id). waiting_for_running_sync: a sync was already running; a new one starts when it ends. not_started: nothing was marked, or this was a dry run.",
+            "enum": [
+              "started",
+              "waiting_for_running_sync",
+              "not_started"
+            ],
+            "title": "Sync",
+            "type": "string"
+          },
+          "sync_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The started sync's job id (GET /v1/jobs/{job_id}), or null.",
+            "title": "Sync Job Id"
+          }
+        },
+        "required": [
+          "mode",
+          "dry_run",
+          "requested",
+          "in_knowledge_left",
+          "over_cap",
+          "not_found",
+          "sync"
+        ],
+        "title": "SourceRecompileOut",
+        "type": "object"
+      },
       "SourceRecord": {
         "additionalProperties": true,
         "description": "A structured public source record (``source_ref`` is reusable in writes).",
@@ -38312,6 +38436,100 @@
           "integrations"
         ],
         "x-beakr-scope": "projects:read"
+      }
+    },
+    "/v1/projects/{project_id}/sources/{attachment_id}/recompile": {
+      "post": {
+        "description": "Send a source's items to Knowledge again.\n\nSends chosen tracked items (`external_ids`), or every item (`all`), to\nKnowledge again in any state: pending, failed, skipped, or already in\nKnowledge (`mode: full`, for example after changing the source's guidance,\nor when a compile took in too little). The items are marked and a sync of\nthe source starts at once, run through the connection of the person who\nattached it; that sync reads each marked item from its service and compiles\nit, whatever its version. Not held by Sync now's hourly cooldown: one\nrequest per source every 10 minutes, up to 500 items each. Anyone who can\nedit the project may ask. `dry_run` counts without sending. Usage counts\nagainst the organization's Knowledge allowance as a sync does.",
+        "operationId": "recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRecompileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceRecompileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a source's items again",
+        "tags": [
+          "public",
+          "integrations"
+        ],
+        "x-beakr-scope": "uploads:write"
       }
     },
     "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {

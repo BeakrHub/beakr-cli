@@ -402,3 +402,101 @@ def test_import_status_says_when_a_source_takes_no_import():
     result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
     assert result.exit_code == 0, result.output
     assert result.stdout.splitlines() == ["s1\tstatus=idle\tsupported=false"]
+
+
+# -- recompile (R4; engine #3298) ----------------------------------------------------------
+
+RECOMPILE = f"{SOURCES}/s1/recompile"
+SENT = {
+    "mode": "retry",
+    "dry_run": False,
+    "requested": 2,
+    "in_knowledge_left": 1,
+    "over_cap": 0,
+    "not_found": ["conn:gone"],
+    "sync": "started",
+    "sync_job_id": "11111111-2222-3333-4444-555555555555",
+}
+
+
+@respx.mock
+def test_recompile_sends_the_named_items_and_says_what_went(monkeypatch):
+    route = respx.post(RECOMPILE).respond(200, json=SENT)
+    argv = ["sources", "recompile", "s1", "--items", "conn:t1,conn:t2", "--items", "conn:gone"]
+    result = runner.invoke(app, [*argv, "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls.last.request.content) == {
+        "mode": "retry",
+        "dry_run": False,
+        "external_ids": ["conn:t1", "conn:t2", "conn:gone"],
+    }
+    assert result.stdout.splitlines() == [
+        "s1\tmode=retry\tdry_run=false\trequested=2\tin_knowledge_left=1\tover_cap=0"
+        "\tnot_found=1\tsync=started\tsync_job_id=11111111-2222-3333-4444-555555555555",
+        "next: beakr sources status s1",
+    ]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, [*argv, "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "Sent 2 item(s) of s1 to Knowledge again (retry)." in said
+    assert "1 already in Knowledge at their current version were left alone" in said
+    assert "Not tracked by this source, nothing sent: conn:gone." in said
+    assert "A sync reading them has started (job 11111111-2222-3333-4444-555555555555)." in said
+
+
+@respx.mock
+def test_recompile_all_in_full_as_a_dry_run(monkeypatch):
+    route = respx.post(RECOMPILE).respond(
+        200,
+        json={
+            **SENT,
+            "mode": "full",
+            "dry_run": True,
+            "requested": 500,
+            "over_cap": 23,
+            "in_knowledge_left": 0,
+            "not_found": [],
+            "sync": "not_started",
+            "sync_job_id": None,
+        },
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(
+        app, ["sources", "recompile", "s1", "--all", "--full", "--dry-run", "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls.last.request.content) == {
+        "mode": "full",
+        "dry_run": True,
+        "all": True,
+    }
+    said = " ".join(result.output.split())
+    assert "Would send 500 item(s) of s1 to Knowledge again (full)." in said
+    assert "23 more are past the 500-item limit" in said
+    assert "sync" not in said.lower().replace("beakr sources status", "")
+
+
+@pytest.mark.parametrize("argv", [[], ["--items", "conn:t1", "--all"], ["--items", " , "]])
+def test_recompile_needs_items_or_all(argv):
+    result = runner.invoke(app, ["sources", "recompile", "s1", *argv, "-P", PROJECT])
+    assert result.exit_code == 2
+    assert "--items" in result.output and "--all" in result.output
+
+
+@respx.mock
+def test_a_recompile_cooldown_is_said_as_the_engine_says_it():
+    respx.post(RECOMPILE).respond(
+        429,
+        headers={"Retry-After": "540"},
+        json={
+            "error": {
+                "code": "recompile_cooldown",
+                "message": "This source was sent to Knowledge again less than 10 minutes ago.",
+            }
+        },
+    )
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "-P", PROJECT, "--json"])
+    assert result.exit_code != 0
+    error = json.loads(result.stdout)["error"]
+    assert error["code"] == "recompile_cooldown"
+    assert "less than 10 minutes ago" in error["message"]

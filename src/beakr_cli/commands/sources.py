@@ -1,4 +1,4 @@
-"""``beakr sources ls|attach|edit|rm|sync|status|tracked|import-status|...``: what a project reads.
+"""``beakr sources ls|attach|edit|rm|sync|recompile|status|tracked|...``: what a project reads.
 
 A project's sources are the connected items it reads: a Google Drive folder, a
 Slack channel, a Notion page or database, or everything one connection can see.
@@ -1374,6 +1374,132 @@ def sync(
         json_out=json_out,
         render=_render_sync,
         hint=f"beakr sources status {source_id}",
+    )
+
+
+# -- recompile (R4) -----------------------------------------------------------------------
+#
+# Send a source's tracked items to Knowledge again, in any state (POST .../recompile,
+# engine #3298). Through the SDK's ``request``: the released beakr-sdk predates a method.
+
+#: What the engine says about the sync a recompile starts.
+_RECOMPILE_SYNC = {
+    "started": "A sync reading them has started",
+    "waiting_for_running_sync": "A sync is already running; a new one reads them when it ends",
+    "not_started": "No sync was started",
+}
+
+
+def recompile_path(project_id: str, source_id: str) -> str:
+    return f"/v1/projects/{project_id}/sources/{source_id}/recompile"
+
+
+def _external_ids(items: list[str] | None) -> list[str]:
+    """``--items a,b --items c`` as ``["a", "b", "c"]``, in order, without repeats."""
+    seen: dict[str, None] = {}
+    for value in items or []:
+        for part in value.split(","):
+            if part.strip():
+                seen.setdefault(part.strip(), None)
+    return list(seen)
+
+
+def _recompile_lines(data: dict[str, Any], source_id: str) -> list[str]:
+    mode = data.get("mode") or "retry"
+    requested = int(data.get("requested") or 0)
+    verb = "Would send" if data.get("dry_run") else "Sent"
+    lines = [f"{verb} {requested} item(s) of {source_id} to Knowledge again ({mode})."]
+    left = int(data.get("in_knowledge_left") or 0)
+    if left:
+        lines.append(
+            f"{left} already in Knowledge at their current version were left alone "
+            "(--full sends them too)."
+        )
+    over = int(data.get("over_cap") or 0)
+    if over:
+        lines.append(f"{over} more are past the 500-item limit: send them in a later request.")
+    missing = [str(item) for item in data.get("not_found") or []]
+    if missing:
+        lines.append(f"Not tracked by this source, nothing sent: {', '.join(missing)}.")
+    if not data.get("dry_run"):
+        sync = _RECOMPILE_SYNC.get(str(data.get("sync")), str(data.get("sync") or ""))
+        job = data.get("sync_job_id")
+        lines.append(f"{sync}" + (f" (job {job})." if job else "."))
+    return lines
+
+
+@app.command("recompile")
+def recompile(
+    source_id: str = _source_arg,
+    items: list[str] | None = typer.Option(
+        None,
+        "--items",
+        help="Items to send again, by external_id (`beakr sources tracked`); comma-separated "
+        "or repeated.",
+    ),
+    all_items: bool = typer.Option(False, "--all", help="Every item the source tracks (500 max)."),
+    full: bool = typer.Option(
+        False,
+        "--full",
+        help="Also send items already in Knowledge and read each whole document again.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Count what would be sent; send nothing."
+    ),
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Send a source's items to Knowledge again, in any state, and sync them now.
+
+    \b
+    Without --full only items not in Knowledge at their current version go
+    (pending, failed, skipped). --full sends items already in Knowledge too and
+    has each whole document read again, for example after the source's guidance
+    changed. Anyone who can edit the project may; one request per source every
+    ten minutes, up to 500 items each. It is not held by `beakr sources sync`'s
+    hourly cooldown.
+
+    \b
+    beakr sources recompile <id> --items conn:t1,conn:t2
+    beakr sources recompile <id> --all --full --dry-run
+    """
+    external_ids = _external_ids(items)
+    if bool(external_ids) == all_items:
+        raise click.UsageError("Name the items with --items, or pass --all (not both).")
+    project_id = _require_project(project)
+    body: dict[str, Any] = {"mode": "full" if full else "retry", "dry_run": dry_run}
+    if all_items:
+        body["all"] = True
+    else:
+        body["external_ids"] = external_ids
+    with get_sdk() as sdk:
+        data = dict(sdk.request("POST", recompile_path(project_id, source_id), json=body) or {})
+
+    def render(answer: dict[str, Any]) -> None:
+        for line in _recompile_lines(answer, source_id):
+            console.print(line, highlight=False, markup=False, soft_wrap=True)
+
+    def lines(answer: dict[str, Any]) -> list[str]:
+        fields = [
+            cell(source_id),
+            f"mode={answer.get('mode') or body['mode']}",
+            f"dry_run={'true' if answer.get('dry_run') else 'false'}",
+            f"requested={int(answer.get('requested') or 0)}",
+            f"in_knowledge_left={int(answer.get('in_knowledge_left') or 0)}",
+            f"over_cap={int(answer.get('over_cap') or 0)}",
+            f"not_found={len(answer.get('not_found') or [])}",
+            f"sync={answer.get('sync') or ''}",
+        ]
+        if answer.get("sync_job_id"):
+            fields.append(f"sync_job_id={answer['sync_job_id']}")
+        return ["\t".join(fields)]
+
+    emit(
+        data,
+        json_out=json_out,
+        render=render,
+        lines=lines,
+        hint=None if data.get("dry_run") else f"beakr sources status {source_id}",
     )
 
 
