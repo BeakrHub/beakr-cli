@@ -6,6 +6,9 @@
   "body": {
     "access_via": "owner",
     "artifact_type": "doc",
+    "authored_at": null,
+    "authored_by": null,
+    "authored_by_user_id": null,
     "can_delete": true,
     "can_edit": true,
     "can_move": true,

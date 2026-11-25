@@ -423,9 +423,9 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
     The one shape the SDK, the CLI and this server share (``beakr_sdk.sources``),
     plus what a Knowledge read adds to name its citations readably: every place
     the text cites in the document (``cited_places``), the name it uses for it
-    when that is not ``filename`` (``reference``) and the call that re-reads a
-    connected item (``retrieval``), as the hosted server's
-    ``formatting.public_source`` keeps them.
+    when that is not ``filename`` (``reference``), the call that re-reads a
+    connected item (``retrieval``) and who wrote a cited file (``written_by``), as
+    the hosted server's ``formatting.public_source`` keeps them.
     """
     item = _shared_public_source(source, citation_key=citation_key)
     _show_excerpts_by_origin(item, source)
@@ -434,6 +434,15 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
         item["cited_places"] = places
     if source.get("reference"):
         item["reference"] = str(source["reference"])
+    # Who wrote a cited file, as its upload recorded it (``SourceRecord.written_by``,
+    # R11), as the hosted ``formatting.public_source`` keeps it beside ``filed_by``.
+    written_by = source.get("written_by")
+    if isinstance(written_by, dict) and written_by.get("text"):
+        item["written_by"] = {
+            field: written_by[field]
+            for field in ("name", "by_agent", "org_member", "text")
+            if written_by.get(field) not in (None, "")
+        }
     return with_read_call(item, source)
 
 

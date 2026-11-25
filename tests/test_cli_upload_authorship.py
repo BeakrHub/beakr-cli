@@ -112,3 +112,27 @@ def test_files_show_says_who_wrote_it(monkeypatch):
     assert result.exit_code == 0, result.output
     assert "Author:    Jane Doe <jane@example.com>" in result.output
     assert "Written:   2026-06-14" in result.output
+
+
+def test_the_stdio_server_keeps_who_wrote_a_cited_file():
+    """As the hosted ``formatting.public_source`` keeps it (engine fix/upload-authored-by)."""
+    from beakr_cli import mcp_server
+
+    written = {
+        "name": "Jane Doe",
+        "by_agent": False,
+        "org_member": True,
+        "text": "Jane Doe",
+        "user_id": "u-jane",
+    }
+    item = mcp_server._public_source(
+        {"source_ref": "file:a1", "title": "Assay notes", "written_by": written}
+    )
+    assert item["written_by"] == {
+        "name": "Jane Doe",
+        "by_agent": False,
+        "org_member": True,
+        "text": "Jane Doe",
+    }
+    bare = mcp_server._public_source({"source_ref": "file:a1", "written_by": {"name": "x"}})
+    assert "written_by" not in bare

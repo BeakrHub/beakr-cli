@@ -1254,6 +1254,18 @@
       "type": "string"
      },
      {
+      "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+      "name": "authored_at",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+      "name": "authored_by",
+      "required": false,
+      "type": "string"
+     },
+     {
       "description": "Optional new description for the artifact.",
       "name": "description",
       "required": false,
@@ -7594,6 +7606,18 @@
        "scientific_data"
       ],
       "name": "artifact_type",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+      "name": "authored_at",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+      "name": "authored_by",
       "required": false,
       "type": "string"
      },
