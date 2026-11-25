@@ -1854,7 +1854,7 @@
      "type": "integer"
     },
     {
-     "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
+     "description": "Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial).",
      "name": "reason_code",
      "required": false,
      "type": "string"
@@ -1876,6 +1876,7 @@
      "enum": [
       "pending",
       "ingested",
+      "partial",
       "skipped",
       "failed",
       "removed"
