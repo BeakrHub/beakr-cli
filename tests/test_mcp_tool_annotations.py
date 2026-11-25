@@ -47,6 +47,7 @@ READ_TOOLS = frozenset(
         "knowledge_queue",
         "project_sources",
         "preview_source_rules",
+        "tracked_items",
     }
 )
 #: Tools that change something. update_beakr upgrades this installation here (the

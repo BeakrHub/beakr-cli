@@ -163,6 +163,7 @@ def _assert_the_listing(tools: list[dict[str, Any]]) -> None:
         "knowledge_queue",
         "project_sources",
         "preview_source_rules",
+        "tracked_items",
         "beakr_version",
         "discover_tools",
         # The self-hosted line's session tool.

@@ -187,6 +187,7 @@ NOT_GATED: frozenset[str] = frozenset(
         # A project's connected sources: reads, and their administration (as for
         # `integrations connect`): the sync's Knowledge is the compile's, not a write here
         "sources ls", "sources keys", "sources preview", "sources status",
+        "sources tracked",
         "sources attach", "sources edit", "sources rm", "sources sync",
         # Stopping queued or running work, as `runs cancel`
         "kb compiles cancel", "sources cancel-sync",

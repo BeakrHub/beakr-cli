@@ -2,9 +2,10 @@
 change its card types and the cards it already has, upload the person's files into it, add
 the people who work in it, stop queued Knowledge work (``knowledge_queue``,
 ``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``), list,
-attach, change, preview, sync and remove its connected sources (``project_sources``,
-``attach_source``, ``update_source``, ``preview_source_rules``, ``sync_source``,
-``remove_source``; hosted in ``source_tools.py``), and draft an interview from its open
+attach, change, preview, sync and remove its connected sources and list what each
+tracks (``project_sources``, ``attach_source``, ``update_source``,
+``preview_source_rules``, ``sync_source``, ``remove_source``, ``tracked_items``; hosted
+in ``source_tools.py``), and draft an interview from its open
 review flags (``draft_review_interview``; hosted in ``review_interview_tools.py``).
 
 The hosted MCP server has the same seven tools (beakr-engine
@@ -55,6 +56,7 @@ from beakr_sdk.resources._upload import (
 from beakr_cli import (
     cancels,
     card_settings,
+    card_type_routes,
     card_types,
     card_updates,
     connected_sources,
@@ -62,7 +64,17 @@ from beakr_cli import (
     scope_session,
 )
 from beakr_cli.mcp_errors import ApiCallError, call_api
-from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
+from beakr_cli.mcp_result import page_result
+from beakr_cli.mcp_tools_platform import (
+    MAX_LIST_ITEMS,
+    PageLimit,
+    _bounded_limit,
+    _is_project_id,
+    _noted,
+    _page_of,
+    _project_id,
+    _readable_projects,
+)
 from beakr_cli.upload_path_policy import (
     MAX_UPLOAD_BYTES,
     named_path_refusal,
@@ -184,11 +196,11 @@ async def create_project(
     session = _held_session()
     try:
         project = await call_api(
-            # card_types only when chosen: a beakr-sdk before 0.4 does not take it.
-            lambda sdk: sdk.projects.create(
+            lambda sdk: card_type_routes.create_project(
+                sdk,
                 name,
                 description=(description or "").strip() or None,
-                **({"card_types": chosen} if chosen else {}),
+                card_types=chosen or None,
             )
         )
     except ApiCallError as exc:
@@ -411,7 +423,9 @@ async def edit_card_type(
         return _error("invalid_arguments", *card_types.ORG_WITH_PROJECT)
     if reset:
         await call_api(
-            lambda sdk: sdk.knowledge.remove_card_type_copy(key, scope=scope, project_id=project_id)
+            lambda sdk: card_type_routes.remove_card_type_copy(
+                sdk, key, scope=scope, project_id=project_id
+            )
         )
         return card_types.card_type_reset_text(key, scope)
     changes = card_types.changes(
@@ -429,8 +443,8 @@ async def edit_card_type(
     if not changes:
         return _error("invalid_arguments", *card_types.NOTHING_TO_CHANGE)
     saved = await call_api(
-        lambda sdk: sdk.knowledge.update_card_type(
-            key, scope=scope, project_id=project_id, **changes
+        lambda sdk: card_type_routes.update_card_type(
+            sdk, key, scope=scope, project_id=project_id, **changes
         )
     )
     return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
@@ -468,7 +482,8 @@ async def card_type_settings(
         return _error("invalid_arguments", *card_types.NO_PROJECT)
     project_id = await _project_id(project)
     answer = await call_api(
-        lambda sdk: sdk.knowledge.set_card_type_settings(
+        lambda sdk: card_type_routes.set_card_type_settings(
+            sdk,
             project_id,
             keep_types_in_use=keep_types_in_use is True,
             # Only apply=true writes: anything else, a missing value included, previews.
@@ -526,14 +541,24 @@ async def update_existing_cards(
     async def send(continue_event_id: str | None = None) -> dict[str, Any]:
         if change == "rename_fields":
             answer = await call_api(
-                lambda sdk: sdk.knowledge.rename_card_type_fields(
-                    key, project_id, pairs, dry_run=dry_run, continue_event_id=continue_event_id
+                lambda sdk: card_type_routes.rename_card_type_fields(
+                    sdk,
+                    key,
+                    project_id,
+                    pairs,
+                    dry_run=dry_run,
+                    continue_event_id=continue_event_id,
                 )
             )
         else:
             answer = await call_api(
-                lambda sdk: sdk.knowledge.retype_cards(
-                    key, project_id, target, dry_run=dry_run, continue_event_id=continue_event_id
+                lambda sdk: card_type_routes.retype_cards(
+                    sdk,
+                    key,
+                    project_id,
+                    target,
+                    dry_run=dry_run,
+                    continue_event_id=continue_event_id,
                 )
             )
         return _dict(answer)
@@ -1444,6 +1469,60 @@ async def remove_source(project: str, attachment_id: str) -> str | dict[str, Any
     return connected_sources.removed_text(attachment)
 
 
+# --- tracked_items ------------------------------------------------------------------------
+#
+# Every item a source tracks and what became of it, with why a skipped one was set aside.
+# One page per call, as the hosted ``tracked_items`` answers it (``source_tools.py``). The
+# route is read through the SDK's ``request``: the released beakr-sdk has no method for it.
+
+TrackedState = Literal["pending", "ingested", "skipped", "removed"]
+
+#: The filters tracked_items passes to the route, as the route names them.
+_TRACKED_FILTERS = ("state", "reason_code", "search", "since")
+
+
+async def tracked_items(
+    project: str,
+    attachment_id: str,
+    state: TrackedState | None = None,
+    reason_code: str | None = None,
+    search: str | None = None,
+    since: str | None = None,
+    cursor: str = "",
+    limit: PageLimit = MAX_LIST_ITEMS,
+) -> str | dict[str, Any]:
+    """List a source's tracked items and why skipped ones were set aside (described in the
+    shared surface)."""
+    attachment = connected_sources.attachment_id(attachment_id)
+    if not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    project_id = await _project_id(project)
+    page_size, reduced = _bounded_limit(limit)
+    params: dict[str, Any] = {"limit": page_size}
+    given_cursor = str(cursor or "").strip()
+    if given_cursor:
+        params["cursor"] = given_cursor
+    filters = {"state": state, "reason_code": reason_code, "search": search, "since": since}
+    for name in _TRACKED_FILTERS:
+        value = str(filters[name] or "").strip()
+        if value:
+            params[name] = value
+    page = _dict(
+        await call_api(
+            lambda sdk: connected_sources.tracked_items_page(sdk, project_id, attachment, params)
+        )
+    )
+    rows, has_more, next_cursor = _page_of(page, "data")
+    return page_result(
+        _noted(connected_sources.tracked_items_text(page, rows), reduced),
+        tool="tracked_items",
+        returned=len(rows),
+        has_more=has_more,
+        next_cursor=next_cursor,
+        same_args="and the same project, attachment_id and filters",
+    )
+
+
 # --- draft_review_interview -------------------------------------------------------------
 #
 # One question per open review flag, saved as a draft interview the person edits and
@@ -1490,6 +1569,7 @@ PROJECT_TOOLS = (
     preview_source_rules,
     sync_source,
     remove_source,
+    tracked_items,
     draft_review_interview,
 )
 

@@ -69,6 +69,7 @@
     "preview_source_rules",
     "sync_source",
     "remove_source",
+    "tracked_items",
     "draft_review_interview",
     "beakr_version",
     "update_beakr"
@@ -89,7 +90,8 @@
     "skills",
     "conversations_search",
     "org_audit_log",
-    "integrations"
+    "integrations",
+    "tracked_items"
   ],
   "tier_meta_key": "com.thebeakr/tier",
   "tools": [
@@ -356,7 +358,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Show a review flag (a proposal of type review: a section Knowledge flagged as contradicted, unverifiable or unclear) and Beakr's drafted resolutions, numbered, each with what it changes, and the page revision to resolve against. Drafting can take up to two minutes the first time; later calls for the same page revision return the same options at once.",
+      "description": "Show a review flag (a proposal of type review: a section Knowledge flagged as contradicted, unverifiable or unclear) and Beakr's drafted resolutions, numbered, each with what it changes, and the page revision to resolve against. A flag an interview asked about also lists each answer (who, when, their words, decisive or not, the option it points to, the transcript file it quotes) and one line when the answers agree or disagree; a flag already resolved says how. Drafting can take up to two minutes the first time; later calls for the same page revision return the same options at once.",
       "name": "review_options",
       "surfaces": [
         "remote",
@@ -660,7 +662,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "List the sources connected to a project (a Drive folder, a Slack channel, a Notion page...): each one's attachment_id, whether Knowledge reads it, whether it syncs nightly, when it last synced, and its filter and guidance. With attachment_id: that source and how far its sync has got.",
+      "description": "List the sources connected to a project (a Drive folder, a Slack channel, a Notion page...): each one's attachment_id, whether Knowledge reads it, whether it syncs nightly, when it last synced, and its filter and guidance. With attachment_id: that source, how far its sync has got, and what became of the items it brought in, including the ones Knowledge set aside after reading them and why.",
       "name": "project_sources",
       "surfaces": [
         "remote",
@@ -752,11 +754,27 @@
     {
       "annotations": {
         "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      },
+      "description": "List the items a connected source (attachment_id) tracks and what became of each: ingested into Knowledge, pending, skipped or removed. A skipped item says why it was set aside (reason_code and a sentence), including when Knowledge read it and found nothing to add. Filter by state, reason_code, search (title text) or since (synced at or after a time). Reads only. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "name": "tracked_items",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "A source's tracked items"
+    },
+    {
+      "annotations": {
+        "destructiveHint": false,
         "idempotentHint": false,
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Draft an interview from a project's open review flags, for a person who knows the answers: one plain-language question per flag, naming the values that disagree, the cards, the dates and their sources, with each flag's background for the interviewer. By default every open review flag (up to 30; the rest are listed as left out); kinds narrows it, or flags names them. The draft is saved, never sent: the person edits and sends it in Beakr (the answer gives the link). When it is answered, each answer comes back on its flag as a suggestion a person applies. Ask the person before drafting.",
+      "description": "Draft an interview from a project's open review flags, for a person who knows the answers: one plain-language question per flag, naming the values that disagree, the cards, the dates and their sources, with each flag's background for the interviewer. By default every open review flag (up to 30; the rest are listed as left out); kinds narrows it, or flags names them. The draft is saved, never sent: the person edits and sends it in Beakr (the answer gives the link). When it is answered, each answer comes back on its flag (review_options shows them) as a suggestion a person applies; only a person's own answer to an interview they made for themself is applied without that step. Ask the person before drafting.",
       "name": "draft_review_interview",
       "surfaces": [
         "remote",

@@ -134,6 +134,19 @@ async def test_the_tools_take_the_hosted_tools_arguments() -> None:
         ),
         "sync_source": ({"project", "attachment_id"}, ["project", "attachment_id"]),
         "remove_source": ({"project", "attachment_id"}, ["project", "attachment_id"]),
+        "tracked_items": (
+            {
+                "project",
+                "attachment_id",
+                "state",
+                "reason_code",
+                "search",
+                "since",
+                "cursor",
+                "limit",
+            },
+            ["project", "attachment_id"],
+        ),
     }
     for name, (properties, required) in expected.items():
         schema = listed[name].input_schema
@@ -164,6 +177,7 @@ async def test_the_hints_say_which_tools_read_which_change_and_which_remove() ->
     # Each call may start a sync, which reads the service and spends ingest budget.
     assert hints("sync_source") == (False, False, False, True)
     assert hints("remove_source") == (False, True, True, False)
+    assert hints("tracked_items")[:2] == (True, False)
 
 
 # -- project_sources ---------------------------------------------------------------------
@@ -502,6 +516,7 @@ _NEEDS_A_SOURCE = [
     mcp_tools_projects.preview_source_rules,
     mcp_tools_projects.sync_source,
     mcp_tools_projects.remove_source,
+    mcp_tools_projects.tracked_items,
 ]
 
 
@@ -577,3 +592,178 @@ async def test_a_refused_sync_is_an_error_the_agent_can_read():
 
 def test_the_six_tools_are_in_the_surface_this_server_lists() -> None:
     assert set(SIX) <= {tool.__name__ for tool in mcp_tools_projects.PROJECT_TOOLS}
+
+
+# -- project_sources: what became of the items a sync brought in -------------------------
+
+OUTCOMES = {
+    "since": "2026-11-23T10:00:00+00:00",
+    "until": None,
+    "total": 4,
+    "counts": {
+        "ingested": 2,
+        "skipped": 1,
+        "pending": 0,
+        "removed": 0,
+        "failed": 1,
+        "cancelled": 0,
+    },
+    "reasons": [
+        {"outcome": "skipped", "reason_code": "nothing_to_add", "count": 1},
+        {"outcome": "failed", "reason_code": "permission_denied", "count": 1},
+    ],
+    "items": [
+        {
+            "external_id": "conn:thread-1",
+            "title": "Lunch order",
+            "outcome": "skipped",
+            "reason_code": "nothing_to_add",
+            "reason": "A lunch order; nothing for the project.",
+        },
+        {
+            "external_id": None,
+            "title": "Locked.pdf",
+            "outcome": "failed",
+            "reason_code": "permission_denied",
+            "reason": "No permission.",
+        },
+        {
+            "external_id": "conn:t2",
+            "title": "Protocol",
+            "outcome": "ingested",
+            "reason_code": None,
+            "reason": None,
+        },
+    ],
+    "items_limit": 25,
+    "has_more": True,
+    "tracked_items_path": "/v1/projects/p/sources/a/tracked-items?since=x",
+}
+
+
+@respx.mock
+async def test_project_sources_for_one_source_says_what_knowledge_set_aside_and_why():
+    _project()
+    respx.get(SOURCES).respond(
+        json={"data": [{**ATTACHED, "ingest_wiki": True}], "next_cursor": None}
+    )
+    respx.get(f"{ONE}/sync-status").respond(
+        json={
+            "status": "completed",
+            "files_completed": 1,
+            "files_total": 2,
+            "files_failed": 1,
+            "outcomes": OUTCOMES,
+        }
+    )
+    text = await mcp_tools_projects.project_sources(PROJECT, attachment_id=SOURCE)
+    assert text.splitlines()[1:] == [
+        "Sync: completed, 1 of 2 items, 1 failed.",
+        "Items: 2 ingested, 1 skipped, 1 failed.",
+        "Why: nothing_to_add 1, permission_denied 1.",
+        "- Lunch order [skipped]: A lunch order; nothing for the project. (nothing_to_add)",
+        "- Locked.pdf [failed]: No permission. (permission_denied)",
+    ]
+
+
+def test_a_sync_with_outcomes_nobody_has_listed_points_at_tracked_items():
+    from beakr_cli import connected_sources
+
+    lines = connected_sources.outcomes_text(
+        {**OUTCOMES, "counts": {**OUTCOMES["counts"], "pending": 30}}
+    )
+    assert lines[-1] == (
+        "tracked_items with this attachment_id lists every item and why it was set aside."
+    )
+    assert connected_sources.outcomes_text({"counts": {}}) == [
+        "Items: none brought in by this sync yet."
+    ]
+
+
+# -- tracked_items -----------------------------------------------------------------------
+
+TRACKED_PAGE = {
+    "data": [
+        {
+            "external_id": "conn:thread-1",
+            "title": "Lunch order",
+            "kind": "thread",
+            "state": "skipped",
+            "reason_code": "nothing_to_add",
+            "reason": "A lunch order; nothing for the project.",
+        },
+        {"external_id": "conn:t2", "title": "Protocol", "kind": "thread", "state": "ingested"},
+    ],
+    "next_cursor": "c2",
+    "has_more": True,
+    "provider": "gmail",
+    "kind": "thread",
+    "counts": {"total": 5, "pending": 1, "ingested": 3, "skipped": 1, "removed": 0},
+    "matched": 2,
+}
+
+
+@respx.mock
+async def test_tracked_items_sends_the_filters_and_answers_one_page_with_how_to_continue():
+    _project()
+    route = respx.get(f"{ONE}/tracked-items").respond(json=TRACKED_PAGE)
+    result = await mcp_tools_projects.tracked_items(
+        PROJECT, SOURCE, state="skipped", reason_code=" nothing_to_add ", search="", cursor="c1"
+    )
+    assert dict(route.calls.last.request.url.params) == {
+        "limit": "50",
+        "cursor": "c1",
+        "state": "skipped",
+        "reason_code": "nothing_to_add",
+    }
+    assert result["coverage"] == {
+        "returned": 2,
+        "has_more": True,
+        "next_cursor": "c2",
+        "complete": False,
+    }
+    hint = (
+        'More results: call tracked_items again with cursor="c2" and the same project, '
+        "attachment_id and filters."
+    )
+    assert result["next"] == [hint]
+    assert result["content"] == "\n".join(
+        [
+            "5 tracked item(s) from gmail: 3 ingested, 1 skipped, 1 pending, 0 removed.",
+            "2 match the filters.",
+            "- Lunch order [skipped]: A lunch order; nothing for the project. (nothing_to_add)",
+            "- Protocol [ingested]",
+            "",
+            f"[{hint}]",
+        ]
+    )
+
+
+@respx.mock
+async def test_tracked_items_with_nothing_matching_says_so_and_is_complete():
+    _project()
+    respx.get(f"{ONE}/tracked-items").respond(
+        json={
+            "data": [],
+            "next_cursor": None,
+            "has_more": False,
+            "provider": "gdrive",
+            "counts": {"total": 2, "ingested": 2},
+            "matched": 0,
+        }
+    )
+    result = await mcp_tools_projects.tracked_items(PROJECT, SOURCE, search="nothing")
+    assert result["coverage"]["complete"] is True and result["next"] == []
+    assert result["content"].splitlines()[-1] == "No tracked items match."
+
+
+@respx.mock
+async def test_tracked_items_over_the_page_maximum_asks_for_fifty_and_says_so():
+    _project()
+    route = respx.get(f"{ONE}/tracked-items").respond(json={**TRACKED_PAGE, "has_more": False})
+    result = await mcp_client.call_tool(
+        "tracked_items", {"project": PROJECT, "attachment_id": SOURCE, "limit": 100}
+    )
+    assert not result.is_error, result.content[0].text
+    assert route.calls.last.request.url.params["limit"] == "50"
+    assert result.content[0].text.startswith("Repaired this call: reduced `limit` from 100 to 50")

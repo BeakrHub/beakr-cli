@@ -130,6 +130,7 @@ TOOL_OPERATIONS: dict[str, tuple[tuple[str, str], ...]] = {
     "upload_files": (("POST", "/v1/uploads"),),
     "upload_status": (("POST", "/v1/uploads"),),
     "add_project_member": (("POST", "/v1/projects/{project_id}/members"),),
+    "tracked_items": (("GET", "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items"),),
 }
 
 

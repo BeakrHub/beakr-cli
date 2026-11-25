@@ -13,7 +13,7 @@ from typing import Annotated, Any, Literal
 from beakr_sdk.sources import public_source as _shared_public_source
 from pydantic import Field
 
-from beakr_cli import __version__, tool_surface
+from beakr_cli import __version__, mcp_render, tool_surface
 
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
@@ -56,9 +56,9 @@ _INSTRUCTIONS_TEMPLATE = (
     "Something you can only describe: command='sections', a ranked selection of sections, "
     "not a census; each hit is Knowledge's own text with the documents it cites. Read one "
     "section with cat {page, section_id}; walk a record with links, hover and timeline "
-    "(its parties, documents and events) rather than searching again. Check the "
-    "excerpt's fidelity before quoting it, and open the source when a deciding detail is "
-    "missing. For 'every X', counts and superlatives use 'rows' or 'ls' (by page_type), "
+    "(its parties, documents and events) rather than searching again. Open the "
+    "source when a deciding detail is missing. "
+    "For 'every X', counts and superlatives use 'rows' or 'ls' (by page_type), "
     "then inspect coverage: rows holds only what was structured, and compilation, scan and "
     "result limits can omit records. "
     "An absent row or graph link does not establish absence from the source documents. "
@@ -112,10 +112,11 @@ _INSTRUCTIONS_TEMPLATE = (
     "record_id, excerpt}}; Beakr never opens either link. "
     "In answers to people cite inline the same way. Never invent Beakr's internal ids."
     "{setup}\n\n"
-    "Evidence: an excerpt marked (paraphrase) is the compiler's wording, (human asserted) "
-    "was supplied by a person, and (unverified) was never checked against the source -- "
-    "open the source before quoting one or resting a conclusion on it. 'at:' locates the "
-    "excerpt; 'source changed since cited' means a newer version exists.\n\n"
+    "Evidence: an excerpt in quotation marks is the source's own words. 'Described by "
+    "Beakr:' leads Beakr's own wording (a figure, a computed value) and 'Added by a "
+    "person:' a person's attribution or an outside record's words: open the source before "
+    "quoting either as the source. 'at:' locates the excerpt; 'source changed since cited' "
+    "means a newer version exists.\n\n"
     "Version: beakr_version says whether this server is out of date; call update_beakr "
     "only when the user asks, then they restart the client."
 )
@@ -274,12 +275,11 @@ def _format_proposal(data: dict) -> str:
 # ---------------------------------------------------------------------------
 # Source rendering
 #
-# The engine's source endpoints return the full citation record -- excerpt,
-# fidelity, locator, url, doi, artifact_id, availability, and whether the source
-# has changed since it was cited. Every tool below used to receive all of that
-# and print two fields of it, so an MCP agent holding a citation could not tell a
-# verbatim quote from the compiler's paraphrase, could not see where in the
-# document a claim came from, and could not open the source at all.
+# Used only for an engine without the public answer form (``research`` below).
+# The engine's source endpoints return the citation record -- excerpt, locator,
+# url, doi, artifact_id, availability, and whether the source has changed since
+# it was cited -- and an MCP agent holding a citation has to see where in the
+# document a claim came from and how to open it.
 #
 # The in-product twin of this is ``_source_detail_lines`` in
 # ``beakr/engines/tools/graph/wiki_tools.py``. This is deliberately NOT a copy of
@@ -300,39 +300,70 @@ _QUOTED_FIDELITIES = frozenset({"verbatim", "normalized"})
 _LIST_EXCERPT_CHARS = 600
 
 
-def _excerpt_line(source: dict, *, excerpt_chars: int | None) -> str | None:
-    """The recorded evidence, with the verdict it was recorded under.
+_EXCERPT_KINDS = frozenset({"quote", *mcp_render.EXCERPT_LABELS})
 
-    The verdict rides on the SAME line as the excerpt and never on one below it.
-    An excerpt whose fidelity is dropped renders as trusted downstream -- absent
-    fidelity is the legacy-trusted case in the frontend's gate -- so it must not
-    be possible to read the quote while skipping the label.
+#: What an engine from before ``evidence.excerpt_kind`` says about a check, which
+#: no result carries on.
+_CHECK_STATE_FIELDS = ("fidelity", "evidence_kind", "anchor_status", "quote_origin")
+
+
+def _legacy_excerpt_kind(source: dict) -> str | None:
+    """Whose words an older engine's excerpt is, or None when it is not shown.
+
+    The engine's rule (``beakr/services/evidence/display.py``), applied here to
+    the columns an engine from before ``evidence.excerpt_kind`` still sends: the
+    origin decides first, then the older verdict. Such an engine marks no
+    difference between a passage it retrieved and a citation nothing compared
+    with a source, so text with neither column is shown as the source's. No
+    stored text is hidden.
+    """
+    evidence = source.get("evidence") or {}
+    meta = source.get("meta") or {}
+
+    def column(name: str) -> str:
+        return str(source.get(name) or evidence.get(name) or meta.get(name) or "").strip().lower()
+
+    if column("excerpt_kind") in _EXCERPT_KINDS:
+        return column("excerpt_kind")
+    if "external_record" in (column("source_type"), column("type"), column("source_kind")):
+        return "person"
+    origin, fidelity, kind = column("quote_origin"), column("fidelity"), column("evidence_kind")
+    if origin == "located":
+        return "quote"
+    if origin == "human" or fidelity == "human_asserted":
+        return "person"
+    if origin == "authored" or kind in ("description", "caption"):
+        return "description"
+    if fidelity in _QUOTED_FIDELITIES or not fidelity:
+        return "quote"
+    # A typed quote the source search did not find: usually a formatting miss,
+    # so it is shown, as Beakr's wording and never in quotation marks.
+    return "description"
+
+
+def _excerpt_line(source: dict, *, excerpt_chars: int | None) -> str | None:
+    """The recorded evidence, shown by whose words it is and with no check state.
+
+    Only the source's own words stand in quotation marks; Beakr's wording and a
+    person's attribution say who wrote them on the SAME line, so the text cannot
+    be read while skipping the label.
     """
     excerpt = str(source.get("excerpt") or (source.get("meta") or {}).get("quote") or "").strip()
-    if not excerpt:
+    kind = _legacy_excerpt_kind(source) if excerpt else None
+    if kind is None:
         return None
     excerpt = " ".join(excerpt.split())
     if excerpt_chars is not None and len(excerpt) > excerpt_chars:
         excerpt = excerpt[:excerpt_chars].rstrip() + "..."
-    fidelity = str(source.get("fidelity") or "")
-    if not fidelity:
-        # No verdict recorded is NOT the same as verified, and the default
-        # downstream treatment is to trust it, so it is called out here.
-        verdict = " (unverified)"
-    elif fidelity in _QUOTED_FIDELITIES:
-        verdict = "" if fidelity == "verbatim" else " (normalized)"
-    elif fidelity == "human_asserted":
-        verdict = " (human asserted)"
-    else:
-        verdict = " (paraphrase)"
-    return f'"{excerpt}"{verdict}'
+    label = mcp_render.EXCERPT_LABELS.get(kind)
+    return f"{label}: {excerpt}" if label else f'"{excerpt}"'
 
 
 def _context_line(source: dict, *, excerpt_chars: int | None) -> str | None:
     """The larger verified source window surrounding the exact quote."""
     evidence = source.get("evidence") or {}
-    fidelity = source.get("fidelity") or evidence.get("fidelity")
-    if fidelity not in _QUOTED_FIDELITIES:
+    # The surrounding text is the source's: only beside the source's own words.
+    if _legacy_excerpt_kind(source) != "quote":
         return None
     context = str(
         source.get("context_excerpt")
@@ -433,12 +464,45 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
     ``formatting.public_source`` keeps them.
     """
     item = _shared_public_source(source, citation_key=citation_key)
+    _show_excerpts_by_origin(item, source)
     places = [str(place) for place in source.get("cited_places") or [] if place]
     if places:
         item["cited_places"] = places
     if source.get("reference"):
         item["reference"] = str(source["reference"])
     return with_read_call(item, source)
+
+
+def _show_excerpts_by_origin(item: dict, source: dict) -> None:
+    """Give ``item`` each excerpt's origin (``excerpt_kind``) and no check state.
+
+    The engine says whose words an excerpt is and sends none it would not show;
+    the shared record (``beakr_sdk.sources``) predates that field and keeps the
+    older state columns instead. So the kind is carried over here, worked out by
+    the same rule for an engine that does not state it, and the state columns
+    are dropped: a result says where text came from, never whether it was
+    checked.
+    """
+    evidence = item.get("evidence")
+    if isinstance(evidence, dict):
+        kind = _legacy_excerpt_kind(source) if evidence.get("excerpt") else None
+        for name in _CHECK_STATE_FIELDS:
+            evidence.pop(name, None)
+        if kind is None:
+            evidence.pop("excerpt", None)
+        else:
+            evidence["excerpt_kind"] = kind
+        if not evidence:
+            del item["evidence"]
+    raw = [e for e in source.get("excerpts") or [] if isinstance(e, dict) and e.get("text")]
+    kept = item.get("excerpts")
+    if isinstance(kept, list) and len(kept) == len(raw):
+        for shown, excerpt in zip(kept, raw, strict=True):
+            kind = str(excerpt.get("excerpt_kind") or "").strip().lower()
+            if not kind and excerpt.get("authored") is True:
+                kind = "description"
+            if kind in mcp_render.EXCERPT_LABELS:
+                shown["excerpt_kind"] = kind
 
 
 def _wiki_result(result: dict) -> dict:
@@ -498,9 +562,7 @@ def _research_document(key: str, source: dict) -> str:
     return _SPAN_SUFFIX.sub("", key)
 
 
-#: Appended wherever sources are listed. Says what the marks mean rather than
-#: leaving a reader to infer that an unmarked quote and a "(paraphrase)" one
-#: carry the same weight.
+#: Appended wherever sources are listed.
 _SOURCE_NOTE = (
     "\nCite with the readable reference in parentheses (memo.pdf \u203a p. 7); a Knowledge "
     "write accepts it as reference, or the source_ref above. Open the document "
@@ -508,10 +570,9 @@ _SOURCE_NOTE = (
 )
 #: The note under an older engine's answer, whose Sources list still names tokens.
 _TOKEN_SOURCE_NOTE = (
-    "\nCite with the {{token}}. An excerpt marked (paraphrase) is the compiler's "
-    "wording, one marked (human asserted) was supplied by a person, and one marked "
-    "(unverified) was never checked against the source -- "
-    "open the url before quoting either, or before resting a conclusion on it."
+    "\nCite with the {{token}}. An excerpt in quotation marks is the source's own words; "
+    "'Described by Beakr:' and 'Added by a person:' lead text that is not. "
+    "Open the url before quoting it, or before resting a conclusion on it."
 )
 
 
@@ -1047,10 +1108,9 @@ async def research(
             # have to survive the rendering that makes the answer readable.
             shown = " ".join(f"{{{{{key}}}}}" for key in keys)
             lines.append(f"  [{index}] {shown}  ({source_type}) {src.get('title', '')}")
-            # Excerpt and verdict, on the primary tool. This is where an MCP
-            # consumer is most exposed: research answers read as authoritative
-            # prose, and without the verdict a compiler paraphrase is
-            # indistinguishable from a checked quote.
+            # The excerpt, by whose words it is, on the primary tool: research
+            # answers read as authoritative prose, and Beakr's own wording must
+            # not read as the source's.
             lines.extend(_source_lines(src, indent="      ", excerpt_chars=_LIST_EXCERPT_CHARS))
         lines.append(_TOKEN_SOURCE_NOTE)
 
@@ -1305,17 +1365,28 @@ async def dismiss_proposal(proposal_id: str) -> str:
 
 @mcp.tool(**tool_surface.tool_kwargs("review_options"))
 async def review_options(proposal_id: str) -> str | dict[str, Any]:
-    """Show a review flag and Beakr's drafted resolutions, numbered, with what each changes."""
-    from beakr_cli.review_flags import options_text
-    from beakr_cli.review_resolve import ResolveRefused, base_path
+    """Show a review flag and Beakr's drafted resolutions, numbered, with what each changes.
+
+    The calls are the hosted tool's (beakr-engine ``beakr/api/mcp_remote/tools.py``):
+    the flag first, so a decided one says how instead of asking for options that no
+    longer exist, then the drafts, then the flag again, since drafting may have
+    matched an interview answer to the options as they are now. An engine that
+    attaches no interview answers prints no answer lines.
+    """
+    from beakr_cli.review_flags import decided_text, options_text
+    from beakr_cli.review_resolve import ResolveRefused, base_path, is_decided
 
     try:
         base = base_path(proposal_id)
     except ResolveRefused as refused:
         return refused.fields()
+    flag = await _call_api(lambda sdk: sdk.request("GET", base)) or {}
+    if is_decided(flag):
+        return decided_text(flag)
     conflict = await _call_api(lambda sdk: sdk.request("GET", f"{base}/conflict"))
     drafted = await _call_api(lambda sdk: sdk.request("POST", f"{base}/resolutions"))
-    return options_text(conflict or {}, drafted or {})
+    flag = await _call_api(lambda sdk: sdk.request("GET", base)) or {}
+    return options_text(conflict or {}, drafted or {}, flag)
 
 
 @mcp.tool(**tool_surface.tool_kwargs("resolve_review"))

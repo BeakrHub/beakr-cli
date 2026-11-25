@@ -14,13 +14,19 @@ from __future__ import annotations
 import functools
 import inspect
 import json
+import math
 import os
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Mapping
 from contextvars import ContextVar
+from datetime import datetime, timezone
 from functools import cache
 from importlib import resources
+from pathlib import Path
 from typing import Any
 
+import anyio
+import anyio.abc
 from mcp.server.lowlevel import NotificationOptions
 from mcp.server.mcpserver import Context, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
@@ -219,6 +225,75 @@ def _uniform(fn: Callable, tool: str) -> Callable:
 #: The request context of the tool call in progress (:meth:`TieredMCPServer.get_context`).
 _CALL_CONTEXT: ContextVar[Context | None] = ContextVar("beakr_mcp_call_context", default=None)
 
+#: Seconds the first tools/list of a run waits for the installation's document
+#: when no earlier run read it. Past that it lists from what it knows and says
+#: ``tools/list_changed`` once the document arrives.
+LISTING_GRACE_SECONDS = 1.0
+
+#: Seconds before the installation's document is asked for again after it
+#: could not be reached (the next tools/list or tool call asks).
+RELEARN_SECONDS = 60.0
+
+#: What each Beakr installation this machine's MCP servers have read leaves
+#: out, under the Beakr home, so the next server lists and instructs right at
+#: once (B10): ``{base_url: {"unserved": [tool, ...], "read_at": iso}}``.
+INSTALLATIONS_FILE = "mcp-installations.json"
+
+
+def _base_url() -> str | None:
+    """The API this server calls (``BEAKR_API_URL``, the config, else production)."""
+    from beakr_sdk.credentials import resolve_base_url
+
+    try:
+        return resolve_base_url()
+    except Exception:
+        return None
+
+
+def _installations_path() -> Path:
+    from beakr_sdk.credentials import beakr_home
+
+    return beakr_home() / INSTALLATIONS_FILE
+
+
+def _installation_key(base_url: str) -> str:
+    return base_url.strip().rstrip("/").lower()
+
+
+def remembered_unserved(base_url: str | None) -> set[str] | None:
+    """What the last read of ``base_url``'s document left out, or None if none was saved."""
+    if not base_url:
+        return None
+    try:
+        saved = json.loads(_installations_path().read_text())
+        entry = saved[_installation_key(base_url)]
+        return {str(name) for name in entry["unserved"]}
+    except Exception:
+        return None
+
+
+def remember_unserved(base_url: str | None, unserved: set[str]) -> None:
+    """Save what ``base_url``'s document leaves out, for the next server. Never raises."""
+    if not base_url:
+        return
+    from beakr_sdk.credentials import write_private_file
+
+    from beakr_cli.config import ensure_dir
+
+    path = _installations_path()
+    try:
+        saved = json.loads(path.read_text()) if path.exists() else {}
+        if not isinstance(saved, dict):
+            saved = {}
+        saved[_installation_key(base_url)] = {
+            "unserved": sorted(unserved),
+            "read_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }
+        ensure_dir()
+        write_private_file(path, json.dumps(saved, indent=2, sort_keys=True) + "\n")
+    except Exception:
+        return
+
 
 class TieredMCPServer(MCPServer):
     """An MCP server whose listing follows the mode and the installation (W8.2).
@@ -257,6 +332,21 @@ class TieredMCPServer(MCPServer):
         self._revealed: set[str] = set()
         #: Tools whose route this installation does not have.
         self._hidden: set[str] = set()
+        # While a client is served (:meth:`serve`), what the installation's
+        # document leaves out is read in the background, never before an answer.
+        #: The stdio loop's task group, which runs that read; None outside it.
+        self._tasks: anyio.abc.TaskGroup | None = None
+        #: What the document leaves out, once a read of it came back.
+        self._learned: set[str] | None = None
+        #: Until then: what an earlier server read for this installation, if any.
+        self._remembered: set[str] | None = None
+        #: Set when the read in flight ends; None when none is in flight.
+        self._learning: anyio.Event | None = None
+        self._last_read_started = -math.inf
+        #: The ``initialize`` answer's options, whose instructions a read refits.
+        self._options: InitializationOptions | None = None
+        #: The context of the latest tools/list, to announce a changed listing on.
+        self._listing_context: Context | None = None
 
     def initialization_options(self) -> InitializationOptions:
         """The ``initialize`` answer's options, declaring ``tools.listChanged``."""
@@ -265,20 +355,120 @@ class TieredMCPServer(MCPServer):
         )
 
     async def run_stdio_async(self) -> None:
+        async with stdio_server() as (read_stream, write_stream):
+            await self.serve(read_stream, write_stream)
+
+    async def serve(self, read_stream: Any, write_stream: Any) -> None:
+        """Answer one client on these streams, reading the installation alongside (B10).
+
+        ``initialize`` is answered at once. The installation's document (which
+        tools it serves) is read in the background with a short connect
+        timeout: before 0.7.1 the server read it first, and an unreachable
+        installation held ``initialize`` for 30 to 60 seconds, past Claude
+        Code's 30-second start-up limit. Until the read returns, the listing and
+        the instructions follow what the last server read for this
+        installation, else the whole surface; a read that changes the listing
+        sends ``tools/list_changed``.
+        """
         from beakr_cli import scope_session
 
-        # The session the person chooses this server's projects for
-        # (beakr_cli.scope_session). A conversation's session is left open on exit:
-        # the next server for the same conversation joins it again.
-        await scope_session.start_for_mcp()
+        self._remembered = remembered_unserved(_base_url())
+        self._refit_instructions()
+        self._options = self.initialization_options()
+        # Self-hosted line: the session the person chooses this server's projects for
+        # (beakr_cli.scope_session), made here without a request and started in the
+        # background, so a session start against an unreachable installation does not
+        # hold ``initialize`` either. Until it has started, every tool call waits for
+        # it (McpSession.ensure_started): none runs with the person's own credential.
+        # A conversation's session is left open on exit: the next server for the same
+        # conversation joins it again.
+        session = scope_session.prepare_for_mcp()
         try:
-            await self.fit_instructions()
-            async with stdio_server() as (read_stream, write_stream):
-                await self._lowlevel_server.run(
-                    read_stream, write_stream, self.initialization_options()
-                )
+            async with anyio.create_task_group() as tasks:
+                self._tasks = tasks
+                if session is not None:
+                    # Returns once the start holds the session's lock (no request yet).
+                    await tasks.start(self._start_session, session)
+                self._read_installation_soon()
+                await self._lowlevel_server.run(read_stream, write_stream, self._options)
+                tasks.cancel_scope.cancel()
         finally:
+            self._tasks = None
             await scope_session.release_for_mcp()
+
+    async def _start_session(
+        self, session: Any, *, task_status: anyio.abc.TaskStatus[None] = anyio.TASK_STATUS_IGNORED
+    ) -> None:
+        """Start the server's session in :meth:`serve`'s background (self-hosted line).
+
+        ``task_status`` is told once the start holds the session's lock, before any
+        request, so a tool call that comes first waits for this start. An
+        installation without sessions takes the session's tools out of the listing.
+        """
+        from beakr_cli import scope_session
+
+        await scope_session.start_prepared_for_mcp(session, ready=task_status.started)
+        if scope_session.ACTIVE is None:
+            await self._listing_changed(self._listing_context)
+
+    def _known_unserved(self) -> set[str]:
+        """What the installation leaves out, as far as this server knows yet."""
+        if self._learned is not None:
+            return self._learned
+        return self._remembered or set()
+
+    def _refit_instructions(self) -> None:
+        """Instructions naming only the tools listed now, in every answer still to come."""
+        if self._instructions_for is None:
+            return
+        text = self._instructions_for(self._hidden | self._known_unserved())
+        self._lowlevel_server.instructions = text
+        if self._options is not None:
+            # The ``initialize`` answer reads its options when it is sent.
+            self._options.instructions = text
+
+    def _read_installation_soon(self) -> None:
+        """Start reading the installation's document, unless read, in flight or just tried."""
+        if self._tasks is None or self._learned is not None or self._learning is not None:
+            return
+        now = time.monotonic()
+        if now - self._last_read_started < RELEARN_SECONDS:
+            return
+        self._last_read_started = now
+        self._learning = anyio.Event()
+        self._tasks.start_soon(self._read_installation, self._learning)
+
+    async def _read_installation(self, done: anyio.Event) -> None:
+        try:
+            names = [tool.name for tool in await super().list_tools()]
+            unserved = await self._read_unserved(names)
+            if unserved is None:
+                # Unreachable: keep listing what is known; asked again later.
+                return
+            before = self._hidden | self._known_unserved()
+            self._learned = unserved
+            remember_unserved(_base_url(), unserved)
+            self._refit_instructions()
+            if self._hidden | unserved != before:
+                await self._listing_changed(self._listing_context)
+        finally:
+            self._learning = None
+            done.set()
+
+    async def _listed_unserved(self, names: list[str]) -> set[str]:
+        """What the listing leaves out for the installation, without waiting on it.
+
+        Outside :meth:`serve` (a direct call, a test) nobody waits on a
+        handshake, so the document is read now, as before.
+        """
+        if self._tasks is None:
+            return await self._unserved(names)
+        self._read_installation_soon()
+        learning = self._learning
+        if self._learned is None and self._remembered is None and learning is not None:
+            with anyio.move_on_after(LISTING_GRACE_SECONDS):
+                await learning.wait()
+        return self._known_unserved()
 
     async def fit_instructions(self) -> None:
         """Rebuild the instructions without the tools this installation does not list."""
@@ -315,8 +505,19 @@ class TieredMCPServer(MCPServer):
             return current
         return Context(mcp_server=self, subscriptions=self._subscriptions)
 
-    async def _listing_changed(self) -> None:
-        """Tell the client to read the listing again, when a request is in progress.
+    async def _handle_list_tools(self, ctx: Any, params: Any) -> Any:
+        # Kept so a listing the background read changes can be announced.
+        self._listing_context = Context(
+            request_context=ctx, mcp_server=self, subscriptions=self._subscriptions
+        )
+        return await super()._handle_list_tools(ctx, params)
+
+    async def _listing_changed(self, context: Context | None = None) -> None:
+        """Tell the client to read the listing again.
+
+        On the connection of the request in progress, or of ``context`` (the
+        latest tools/list, for a change found in the background; with none, no
+        listing was sent yet and the first one will be right).
 
         A handshake-era client hears ``notifications/tools/list_changed`` on
         its connection. A 2026-07-28 client hears it only on a
@@ -324,7 +525,8 @@ class TieredMCPServer(MCPServer):
         on the server's subscription bus, which feeds those streams; the
         library drops a bare copy on the shared channel at that version.
         """
-        context = self.get_context()
+        if context is None:
+            context = self.get_context()
         try:
             session = context.session
         except ValueError:
@@ -341,15 +543,25 @@ class TieredMCPServer(MCPServer):
 
     async def _unserved(self, names: list[str]) -> set[str]:
         """Tools whose documented operations this installation's document leaves out."""
+        return await self._read_unserved(names) or set()
+
+    async def _read_unserved(self, names: list[str]) -> set[str] | None:
+        """:meth:`_unserved`, or None when the installation could not be reached."""
+        from beakr_sdk.capabilities import Capabilities
+        from beakr_sdk.errors import APIConnectionError
+
         from beakr_cli.capabilities import unserved_tools
         from beakr_cli.sdk import get_async_sdk
 
         try:
             async with get_async_sdk(timeout=10.0) as sdk:
-                capabilities = await sdk.meta.capabilities()
+                document = await sdk.meta.openapi()
+        except APIConnectionError:
+            return None
         except Exception:
-            # No credential or configuration yet: list everything, as before.
+            # No credential or configuration yet, or no document: list everything.
             return set()
+        capabilities = Capabilities(document if isinstance(document, Mapping) else None)
         return unserved_tools(capabilities, names)
 
     def tool(self, name: str | None = None, **kwargs: Any) -> Callable[[Callable], Callable]:
@@ -396,7 +608,7 @@ class TieredMCPServer(MCPServer):
             else tool
             for tool in tools
         ]
-        hidden = self._hidden | await self._unserved([tool.name for tool in tools])
+        hidden = self._hidden | await self._listed_unserved([tool.name for tool in tools])
         tools = [tool for tool in tools if tool.name not in hidden]
         if lists_every_tool():
             return tools + session_tools
@@ -442,6 +654,8 @@ class TieredMCPServer(MCPServer):
             )
         if context is None:
             context = Context(mcp_server=self, subscriptions=self._subscriptions)
+        # A document that could not be read at start-up is asked for again.
+        self._read_installation_soon()
         call_context = _CALL_CONTEXT.set(context)
         # Writes are attributed to the agent that made them: the MCP client's
         # clientInfo, unless BEAKR_AGENT names one (sdk._agent).
@@ -518,6 +732,8 @@ class TieredMCPServer(MCPServer):
         return client_agent(info.name, info.version)
 
     async def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+        from beakr_sdk.errors import APIConnectionError
+
         from beakr_cli import mcp_call_shaping
         from beakr_cli.capabilities import NOT_PROVIDED_CODE
         from beakr_cli.mcp_errors import ApiCallError
@@ -560,6 +776,9 @@ class TieredMCPServer(MCPServer):
                     mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
                 )
             if isinstance(cause, SessionScopeError):
+                if isinstance(cause.__cause__, APIConnectionError):
+                    # The session could not start: the installation can't be reached.
+                    return _error_result(unreachable_error(name, cause.__cause__))
                 return _error_result(
                     mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
                 )
@@ -569,6 +788,8 @@ class TieredMCPServer(MCPServer):
                 return _error_result(
                     mcp_call_shaping.compact_error(name, {**cause.fields, "status": "error"})
                 )
+            if isinstance(cause, APIConnectionError):
+                return _error_result(unreachable_error(name, cause))
             if isinstance(exc, UnexpectedToolError) and cause is not None:
                 # mcp 2 withholds an unanticipated exception's text ("Error
                 # executing tool <name>"). This server runs on the person's own
@@ -614,6 +835,52 @@ def _with_notices(result: Any, notices: list[str]) -> Any:
     else:
         content.insert(0, _text_content(prefixed("", notices)))
     return result.model_copy(update={"content": content})
+
+
+#: ``error_code`` of a call that never reached the installation.
+UNREACHABLE_CODE = "unreachable"
+#: ``error_code`` of a call whose connection opened and then failed or went quiet.
+NO_ANSWER_CODE = "no_answer"
+
+
+def unreachable_error(tool: str, exc: BaseException) -> dict[str, Any]:
+    """``{status, error_code, message, fix}`` for a call the API never answered (B10).
+
+    The SDK raises ``APIConnectionError`` with the transport's error as its
+    cause. A connection that could not be opened (refused, a name that does
+    not resolve, a connect that timed out) is ``unreachable``; one that opened
+    and then failed or went quiet is ``no_answer``.
+    """
+    import httpx
+
+    from beakr_cli.sdk import connect_timeout
+
+    url = _base_url() or "the configured API URL"
+    cause = exc.__cause__
+    if isinstance(cause, httpx.ConnectTimeout):
+        reason = f"no connection within {connect_timeout():g} seconds"
+    elif isinstance(cause, (httpx.ConnectError, httpx.ProxyError)):
+        reason = str(cause) or "the connection was refused"
+    else:
+        reason = None
+    if reason is not None:
+        return {
+            "status": "error",
+            "error_code": UNREACHABLE_CODE,
+            "message": f"Can't reach the Beakr installation at {url} ({reason}).",
+            "fix": (
+                "Check that the network path to it is up (VPN, proxy, firewall) and that "
+                "the API URL is right (BEAKR_API_URL, or `beakr auth status`), then call "
+                f"{tool} again."
+            ),
+        }
+    detail = str(cause or exc) or type(cause or exc).__name__
+    return {
+        "status": "error",
+        "error_code": NO_ANSWER_CODE,
+        "message": f"The Beakr installation at {url} did not answer ({detail}).",
+        "fix": f"Call {tool} again; if it keeps failing, check that the installation is up.",
+    }
 
 
 def _error_result(body: dict[str, Any]) -> CallToolResult:

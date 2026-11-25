@@ -35,6 +35,7 @@ import json
 import os
 import re
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1494,6 +1495,14 @@ class McpSession:
         self.reuse_remembered = True
         #: Tool calls this server has run (``adopt_conversation`` runs before the first).
         self.calls = 0
+        #: Starts tried so far, and how the latest one failed: a tool call that waited
+        #: for a start in flight (``beakr mcp``'s first, in the background) gets that
+        #: answer at once instead of waiting as long again.
+        self._starts = 0
+        self._start_failure: SessionScopeError | None = None
+        #: The first start found no session to hold (an installation without sessions,
+        #: or no sign-in): the server runs as before, as :func:`start_for_mcp` did.
+        self.no_session = False
 
     # The person's own credential: starting, renewing, choosing (elicitation), ending.
     @staticmethod
@@ -1600,38 +1609,85 @@ class McpSession:
             self.start_error = None
 
     async def ensure_started(self) -> None:
-        """Start the session now if starting it failed before; raise when it still fails."""
-        if self.state is not None:
+        """Start the session now if starting it failed before; raise when it still fails.
+
+        While a start is in flight (``beakr mcp``'s first, which runs in the background
+        of the stdio loop, :meth:`start_first`) this waits for it under the same lock,
+        so no tool call runs with the person's own credential because the session had
+        not started yet; when that start failed, its refusal is the answer.
+        """
+        if self.state is not None or self.no_session:
             return
         if self.ended_conversation:
             # The person ended this conversation's session: it is never started again.
             raise conversation_ended_error(self.ended_conversation)
+        starts = self._starts
         async with self._lock:
-            if self.state is not None:
+            if self.state is not None or self.no_session:
                 return
-            try:
-                started = await self.start()
-            except SessionScopeError as exc:
-                self.start_error = str(exc)
-                raise
-            except Exception as exc:  # noqa: BLE001 - reported to the agent
-                self.start_error = str(exc)
-                # A revoked or invalid key is not transient: say so, never "retry".
-                refused = key_refused(exc)
-                if refused is not None:
-                    raise refused from exc
-                raise SessionScopeError(
-                    f"Beakr could not start this session: {exc}",
-                    code="session_unavailable",
-                    fix="Retry shortly. Beakr's tools stay unavailable until the session starts.",
-                ) from exc
-            if not started:
-                raise SessionScopeError(
+            if self._starts != starts and self._start_failure is not None:
+                # The start this call waited for failed just now: its answer, not a
+                # second wait as long.
+                raise self._start_failure
+            failure = await self._start_locked()
+            if failure is not None:
+                raise failure
+
+    async def start_first(self, ready: Callable[[], Any] | None = None) -> None:
+        """``beakr mcp``'s first start, holding the lock tool calls wait on. Never raises.
+
+        ``ready`` is called once the lock is held, before any request (the stdio loop
+        answers ``initialize`` from then on). Where there is no session to hold (an
+        installation without sessions, or no sign-in at all) :attr:`no_session` is set
+        and the server runs as before; any other failure is kept for the tool calls
+        waiting on this start, and the next call after them starts it again.
+        """
+        async with self._lock:
+            if ready is not None:
+                ready()
+            if self.state is None:
+                await self._start_locked(first=True)
+
+    def _failed(self, failure: SessionScopeError) -> SessionScopeError:
+        self.start_error = str(failure)
+        self._start_failure = failure
+        return failure
+
+    async def _start_locked(self, *, first: bool = False) -> SessionScopeError | None:
+        """One start, under the lock: the refusal to answer when it failed, else None."""
+        self._starts += 1
+        self._start_failure = None
+        try:
+            started = await self.start()
+        except SessionScopeError as exc:
+            return self._failed(exc)
+        except Exception as exc:  # noqa: BLE001 - reported to the agent
+            if first and _no_credential(exc):
+                # No sign-in: the tools fail the same way with or without a session.
+                self.no_session = True
+                return None
+            # A revoked or invalid key is not transient: say so, never "retry".
+            failure = key_refused(exc) or SessionScopeError(
+                f"Beakr could not start this session: {exc}",
+                code="session_unavailable",
+                fix="Retry shortly. Beakr's tools stay unavailable until the session starts.",
+            )
+            failure.__cause__ = exc
+            return self._failed(failure)
+        if not started:
+            if first:
+                # Only an installation without sessions (404) runs as before.
+                self.no_session = True
+                return None
+            return self._failed(
+                SessionScopeError(
                     "This Beakr installation no longer offers sessions.",
                     code="session_unavailable",
                     fix="Restart the Beakr MCP server.",
                 )
-            self.start_error = None
+            )
+        self.start_error = None
+        return None
 
     async def fresh_token(self) -> str | None:
         """The token, renewed with the person's credential when it is about to expire."""
@@ -2030,19 +2086,45 @@ async def start_for_mcp() -> McpSession | None:
     person's credential. Any other failure (offline, a server error) leaves the
     session to be started by the next tool call (:meth:`McpSession.ensure_started`),
     so a transient error never hands the agent the person's whole reach.
+    ``beakr mcp`` itself runs the two halves apart (:func:`prepare_for_mcp`, then
+    :func:`start_prepared_for_mcp` in the background), so ``initialize`` never waits
+    on the start.
+    """
+    session = prepare_for_mcp()
+    if session is None:
+        return None
+    return await start_prepared_for_mcp(session)
+
+
+def prepare_for_mcp() -> McpSession | None:
+    """The server's session, made and held (:data:`ACTIVE`) but not started: no request.
+
+    Held before ``beakr mcp`` answers anything, so every tool call goes through
+    :meth:`McpSession.ensure_started`, which waits for the start in flight. None when
+    ``BEAKR_MCP_SESSIONS=off``.
     """
     global ACTIVE
     if os.environ.get(MCP_SESSIONS_ENV, "").strip().lower() in {"off", "0", "false", "no"}:
         return None
-    session = McpSession(folder=os.getcwd(), agent=agent_session_id())
-    try:
-        if not await session.start():
-            return None
-    except Exception as exc:  # noqa: BLE001 - retried by the next tool call
-        if _no_credential(exc):
-            return None
-        session.start_error = str(exc)
-    ACTIVE = session
+    ACTIVE = McpSession(folder=os.getcwd(), agent=agent_session_id())
+    return ACTIVE
+
+
+async def start_prepared_for_mcp(
+    session: McpSession, *, ready: Callable[[], Any] | None = None
+) -> McpSession | None:
+    """Start ``session`` (from :func:`prepare_for_mcp`); None when there is none to hold.
+
+    ``ready`` is called once the start holds the session's lock (see
+    :meth:`McpSession.start_first`). Where the installation has no sessions, or
+    nobody is signed in, the server lets go of it and runs as before.
+    """
+    global ACTIVE
+    await session.start_first(ready)
+    if session.no_session:
+        if ACTIVE is session:
+            ACTIVE = None
+        return None
     return session
 
 

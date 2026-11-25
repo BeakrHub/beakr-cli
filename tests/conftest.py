@@ -215,6 +215,8 @@ def capabilities_unread(request, monkeypatch):
         return set()
 
     monkeypatch.setattr(tool_surface.TieredMCPServer, "_unserved", nothing_unserved)
+    # The read a served client's listing waits for in the background (B10).
+    monkeypatch.setattr(tool_surface.TieredMCPServer, "_read_unserved", nothing_unserved)
 
 
 @pytest.fixture

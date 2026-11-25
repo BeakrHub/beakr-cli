@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TRANSCRIPT = ROOT / "tests/fixtures/transcripts/claude_code_session.jsonl"
 POLICY = """
 import json, sys
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from beakr.db.models.developer_platform import ImportedConversation
 from beakr.services.conversations.importing import apply_text_policy
 body = json.load(sys.stdin)
@@ -31,7 +31,7 @@ row = ImportedConversation(
 # Mirror the real route's mapping of capture and deferred-hold intent.
 apply_text_policy(
     row, compound=body.get('compound', False) or body.get('hold_text', False),
-    now=datetime.now(UTC),
+    now=datetime.now(timezone.utc),
 )
 print(json.dumps({'has_text': bool(row.messages), 'has_deadline': row.text_release_at is not None}))
 """

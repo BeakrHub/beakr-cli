@@ -1,4 +1,4 @@
-"""``beakr sources ls|attach|edit|rm|sync|status|cancel-sync``: what a project pulls in.
+"""``beakr sources ls|attach|edit|rm|sync|status|tracked|cancel-sync``: what a project pulls in.
 
 A project's sources are the connected items it reads: a Google Drive folder, a
 Slack channel, a Notion page or database, or everything one connection can see.
@@ -17,6 +17,11 @@ predate them.
 With an agent's credential, attaching, changing and syncing a source are refused
 (exit 6) while the project requires a person to approve what agents bring into
 Knowledge; the person runs the command themselves.
+
+``tracked`` lists every item a source's syncs picked and what became of it
+(ingested, pending, skipped or removed), with why a skipped item was set aside,
+including when Knowledge read it and found nothing to add. ``status`` says the
+same for the items the latest sync brought in.
 """
 
 from __future__ import annotations
@@ -26,11 +31,23 @@ from typing import Any
 
 import click
 import typer
-from beakr_sdk.errors import BeakrError, ConflictError, NotFoundError
+from beakr_sdk.errors import (
+    BeakrError,
+    ConflictError,
+    NotFoundError,
+    NotProvidedError,
+    PermissionDeniedError,
+)
 
-from beakr_cli import cancels
+from beakr_cli import cancels, connected_sources
 from beakr_cli.compact import cell
-from beakr_cli.errors import EXIT_NOT_FOUND, describe_error, error_object, exit_code_for
+from beakr_cli.errors import (
+    EXIT_AUTH,
+    EXIT_NOT_FOUND,
+    describe_error,
+    error_object,
+    exit_code_for,
+)
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -92,6 +109,12 @@ class NoConnection(click.ClickException):
     """No connection for the provider: connect one first (exit 4, not found)."""
 
     exit_code = EXIT_NOT_FOUND
+
+
+class ConnectionsRefused(click.ClickException):
+    """The credential may not list the connections to choose from (exit 3)."""
+
+    exit_code = EXIT_AUTH
 
 
 def _note_mode(mode: str | None, provider: str | None) -> None:
@@ -157,12 +180,21 @@ def _query(raw: str | None, **shorthands: str | None) -> dict[str, Any] | None:
     return parsed
 
 
-def _query_keys(sdk: Any) -> list[dict[str, Any]] | None:
-    """The engine's ``source_query`` keys, or None from an engine that does not list them."""
+def _query_keys(sdk: Any, *, refused: bool = True) -> list[dict[str, Any]] | None:
+    """The engine's ``source_query`` keys, or None when they cannot be listed.
+
+    None from an engine that does not list them, and (with ``refused``) for a
+    credential that may not: a project-limited key, since the listing names no
+    project. The query is then sent as given and the engine judges it.
+    """
     try:
         listing = sdk.project_sources.query_keys()
     except NotFoundError:
         return None
+    except PermissionDeniedError:
+        if refused:
+            return None
+        raise
     return list((listing or {}).get("keys") or [])
 
 
@@ -321,6 +353,63 @@ def _emit_preview(data: Any, json_out: bool) -> None:
 
 def _connection_label(row: dict[str, Any]) -> str:
     return f"{row.get('id')} ({row.get('label') or row.get('provider')})"
+
+
+def _connections_refused(provider: str, exc: BeakrError) -> ConnectionsRefused:
+    notion = ' and --type page|database --name "..."' if provider == "notion:nango" else ""
+    return ConnectionsRefused(
+        f"This credential cannot list the connections to choose one ({exc}). Pass the "
+        f"connection with --connector <connection id>{notion}: the connection's id is "
+        "under Settings > Integrations in Beakr, or in `beakr integrations ls` run with "
+        "an unrestricted credential."
+    )
+
+
+def project_connections_path(project_id: str) -> str:
+    return f"/v1/projects/{project_id}/integrations"
+
+
+def _all_pages(first: Any, fetch: Any) -> list[dict[str, Any]]:
+    """Every row of a cursor-paged list, from its first page and a fetch(cursor)."""
+    rows: list[dict[str, Any]] = []
+    page = first if isinstance(first, dict) else {}
+    seen: set[str] = set()
+    while True:
+        rows.extend(row for row in page.get("data") or [] if isinstance(row, dict))
+        cursor = page.get("next_cursor")
+        if not page.get("has_more") or not cursor or cursor in seen:
+            return rows
+        seen.add(cursor)
+        page = fetch(cursor)
+        page = page if isinstance(page, dict) else {}
+
+
+def connector_for(sdk: Any, project_id: str, provider: str) -> str:
+    """The connection to attach ``provider``'s item with, when --connector names none (B11).
+
+    The project's own list comes first (``GET /v1/projects/{id}/integrations``):
+    the connections ``POST .../sources`` takes, which a key limited to the
+    project may read. An engine without that route (404) falls back to the
+    caller's organization-wide list (``GET /v1/integrations``), which such a key
+    may not call; its refusal says to pass --connector.
+    """
+    path = project_connections_path(project_id)
+    try:
+        connections = _all_pages(
+            sdk.request("GET", path),
+            lambda cursor: sdk.request("GET", path, params={"cursor": cursor}),
+        )
+    except NotProvidedError:
+        # An engine before the route. (A project that is missing answers a plain
+        # NotFoundError with its own message, which is shown as it is.)
+        try:
+            listing = sdk.integrations.list()
+        except PermissionDeniedError as refused:
+            raise _connections_refused(provider, refused) from refused
+        connections = (listing or {}).get("data") or []
+    except PermissionDeniedError as exc:
+        raise _connections_refused(provider, exc) from exc
+    return pick_connector(connections, provider)
 
 
 def pick_connector(connections: list[dict[str, Any]], provider: str) -> str:
@@ -756,7 +845,7 @@ def attach(
         keys = _query_keys(sdk) if source_query else None
         if source_query and slug != "notion:nango":
             _check_query(keys, source_query, provider=slug, item_type=kind)
-        connector_id = connector or pick_connector(sdk.integrations.list().get("data") or [], slug)
+        connector_id = connector or connector_for(sdk, project_id, slug)
         type_unsure = False
         if slug == "notion:nango" and scope_mode != "all" and not (item_type and name):
             # Ask Notion what the item is and what it is called: a database's
@@ -1136,7 +1225,8 @@ def keys(
 ) -> None:
     """The source query keys --query takes: which providers and items take each, and an example."""
     with get_sdk() as sdk:
-        listing = _query_keys(sdk)
+        # A credential refused the listing hears the refusal, not "not listed".
+        listing = _query_keys(sdk, refused=False)
     if listing is None:
         raise click.ClickException(
             "This Beakr does not list source query keys yet; --query is sent as given."
@@ -1269,7 +1359,8 @@ def status(
     \b
     With a source: its sync state (syncing, cancelling, cancelled, completed,
     failed), files done, failed (and why) and skipped by a cancel, how a cancel
-    went, and how many of its Knowledge
+    went, what became of the items it brought in (ingested, skipped, pending,
+    failed) and why any were set aside, and how many of its Knowledge
     compiles are queued and running. A running sync can be stopped with
     `beakr sources cancel-sync`.
     Without one: the sources whose sync is running (exit 0, also when none is).
@@ -1306,13 +1397,20 @@ def status(
                     highlight=False,
                     markup=False,
                 )
-            failed = [f for f in data.get("files") or [] if f.get("outcome") == "failed"]
-            for entry in failed:
-                console.print(
-                    f"  {entry.get('name')}  {entry.get('reason') or ''}",
-                    highlight=False,
-                    markup=False,
-                )
+            outcomes = data.get("outcomes")
+            if isinstance(outcomes, dict) and outcomes:
+                # What became of each item, Knowledge's own verdicts included; the
+                # failed deliveries are among its items.
+                for line in _outcome_lines(outcomes, source_id):
+                    console.print(line, highlight=False, markup=False, soft_wrap=True)
+            else:
+                failed = [f for f in data.get("files") or [] if f.get("outcome") == "failed"]
+                for entry in failed:
+                    console.print(
+                        f"  {entry.get('name')}  {entry.get('reason') or ''}",
+                        highlight=False,
+                        markup=False,
+                    )
         if queue is not None:
             for line in cancels.queue_lines(queue, "for this source"):
                 console.print(line, highlight=False, markup=False)
@@ -1329,6 +1427,13 @@ def status(
         ]
         if data.get("files_cancelled") is not None:
             fields.append(f"files_cancelled={int(data.get('files_cancelled') or 0)}")
+        outcomes = data.get("outcomes")
+        if isinstance(outcomes, dict):
+            counts = outcomes.get("counts") or {}
+            fields += [
+                f"items_{name}={int(counts.get(name) or 0)}"
+                for name in connected_sources.OUTCOME_ORDER
+            ]
         if queue is not None:
             fields += [
                 f"compiles_queued={int(queue.get('queued') or 0)}",
@@ -1344,6 +1449,208 @@ def status(
         hint=f"beakr sources cancel-sync {source_id}"
         if _sync_running(result.get("status"))
         else None,
+    )
+
+
+#: Items ``status`` names by line; the rest are counted, and ``tracked`` lists them.
+STATUS_ITEMS_SHOWN = connected_sources.STATUS_ITEMS_SHOWN
+
+
+def _item_reason(item: dict[str, Any]) -> str:
+    code = item.get("reason_code")
+    reason = str(item.get("reason") or "").strip()
+    if reason and code:
+        return f"{reason} ({code})"
+    return reason or str(code or "")
+
+
+def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
+    """What became of the items one sync brought in, for ``status``."""
+    counts = outcomes.get("counts") or {}
+    parts = [
+        f"{counts[name]} {name}" for name in connected_sources.OUTCOME_ORDER if counts.get(name)
+    ]
+    if not parts:
+        return ["Items: none brought in by this sync yet."]
+    lines = [f"Items: {', '.join(parts)}."]
+    reasons = [
+        f"{entry.get('reason_code') or 'no reason recorded'} {entry.get('count')}"
+        for entry in outcomes.get("reasons") or []
+        if isinstance(entry, dict)
+    ]
+    if reasons:
+        lines.append(f"Why: {', '.join(reasons)}.")
+    listed = [
+        item
+        for item in outcomes.get("items") or []
+        if isinstance(item, dict) and item.get("outcome") != "ingested"
+    ][:STATUS_ITEMS_SHOWN]
+    for item in listed:
+        reason = _item_reason(item)
+        lines.append(
+            f"  {item.get('title')}  [{item.get('outcome')}]" + (f"  {reason}" if reason else "")
+        )
+    set_aside = sum(
+        int(counts.get(name) or 0) for name in connected_sources.OUTCOME_ORDER if name != "ingested"
+    )
+    if set_aside > len(listed):
+        lines.append(f"Every item and why: beakr sources tracked {source_id}")
+    return lines
+
+
+#: ``--state`` values, as the tracked-items list takes them.
+TRACKED_STATES = ("pending", "ingested", "skipped", "removed")
+#: The most items one request of ``tracked`` asks for (the route's page maximum).
+TRACKED_PAGE_MAX = 200
+
+
+def _tracked_params(
+    *,
+    state: str | None,
+    reason_code: str | None,
+    search: str | None,
+    since: str | None,
+    limit: int,
+    cursor: str | None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"limit": limit}
+    if cursor:
+        params["cursor"] = cursor
+    for name, value in (
+        ("state", state),
+        ("reason_code", reason_code),
+        ("search", search),
+        ("since", since),
+    ):
+        text = str(value or "").strip()
+        if text:
+            params[name] = text
+    return params
+
+
+@app.command("tracked")
+def tracked(
+    source_id: str = _source_arg,
+    skipped: bool = typer.Option(
+        False, "--skipped", help="Only items set aside (same as --state skipped)."
+    ),
+    state: str | None = typer.Option(
+        None, "--state", help="Only items in this state: pending, ingested, skipped or removed."
+    ),
+    reason_code: str | None = typer.Option(
+        None,
+        "--reason-code",
+        help="Only skipped items set aside for this reason, e.g. nothing_to_add.",
+    ),
+    search: str | None = typer.Option(
+        None, "--search", help="Only items whose title holds this text."
+    ),
+    since: str | None = typer.Option(
+        None,
+        "--since",
+        help="Only items synced at or after this time (ISO 8601), e.g. a sync's start.",
+    ),
+    limit: int = typer.Option(
+        50, "--limit", "-n", min=1, max=TRACKED_PAGE_MAX, help="Items per page (1-200)."
+    ),
+    cursor: str | None = typer.Option(None, "--cursor", help="Continue from a page's next_cursor."),
+    all_pages: bool = typer.Option(False, "--all", help="Follow every page."),
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """The items a source tracks, what became of each, and why skipped ones were set aside.
+
+    \b
+    Each item is ingested (read into Knowledge), pending (not read yet),
+    skipped (set aside, with the reason: a blocked file type, a file too large,
+    or Knowledge read it and found nothing to add) or removed (gone from the
+    source). Counts cover the whole source; the filters narrow the list.
+    """
+    state = _choice(state, TRACKED_STATES, "--state")
+    if skipped:
+        if state not in (None, "skipped"):
+            raise click.UsageError("--skipped is --state skipped; give one of them.")
+        state = "skipped"
+    project_id = _require_project(project)
+    pages: list[dict[str, Any]] = []
+    next_cursor = cursor
+    with get_sdk() as sdk:
+        while True:
+            params = _tracked_params(
+                state=state,
+                reason_code=reason_code,
+                search=search,
+                since=since,
+                limit=limit,
+                cursor=next_cursor,
+            )
+            page = connected_sources.tracked_items_page(sdk, project_id, source_id, params)
+            pages.append(dict(page or {}))
+            next_cursor = pages[-1].get("next_cursor") if pages[-1].get("has_more") else None
+            if not (all_pages and next_cursor):
+                break
+    result = dict(pages[-1])
+    result["data"] = [row for page in pages for row in page.get("data") or []]
+    if all_pages:
+        result["next_cursor"] = None
+        result["has_more"] = False
+
+    def render(data: dict[str, Any]) -> None:
+        counts = data.get("counts") or {}
+        total = int(counts.get("total") or 0)
+        states = ", ".join(
+            f"{int(counts.get(name) or 0)} {name}"
+            for name in ("ingested", "skipped", "pending", "removed")
+        )
+        console.print(
+            f"{total} tracked item(s) from {data.get('provider') or 'this source'}: {states}.",
+            highlight=False,
+            markup=False,
+        )
+        matched = data.get("matched")
+        if isinstance(matched, int) and matched != total:
+            console.print(f"{matched} match the filters.", highlight=False, markup=False)
+        rows = data.get("data") or []
+        if not rows:
+            console.print("No tracked items match.", markup=False)
+        for row in rows:
+            reason = _item_reason(row)
+            console.print(
+                f"  {row.get('title')}  [{row.get('state')}]" + (f"  {reason}" if reason else ""),
+                highlight=False,
+                markup=False,
+                soft_wrap=True,
+            )
+        if data.get("has_more") and data.get("next_cursor"):
+            err_console.print(
+                f"More: beakr sources tracked {source_id} --cursor {data['next_cursor']} "
+                "(or --all)",
+                markup=False,
+            )
+
+    def lines(data: dict[str, Any]) -> list[str]:
+        return [
+            "\t".join(
+                [
+                    cell(row.get("external_id") or ""),
+                    str(row.get("state") or ""),
+                    cell(row.get("reason_code") or "-"),
+                    cell(row.get("title") or ""),
+                ]
+            )
+            for row in data.get("data") or []
+        ] or ["note: No tracked items match."]
+
+    emit(
+        result,
+        json_out=json_out,
+        render=render,
+        lines=lines,
+        hint=(
+            f"beakr sources tracked {source_id} --cursor {result['next_cursor']}"
+            if result.get("has_more") and result.get("next_cursor")
+            else None
+        ),
     )
 
 

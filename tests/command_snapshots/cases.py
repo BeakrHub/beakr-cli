@@ -476,6 +476,7 @@ EXEMPT: dict[str, str] = {
     "sources cancel-sync": "no recorded response yet; tests/test_cli_sources_cancel.py",
     "sources preview": "no recorded response yet; tests/test_cli_sources.py",
     "sources keys": "no recorded response yet; tests/test_cli_sources.py",
+    "sources tracked": "no recorded response yet; tests/test_cli_sources_tracked.py",
     "interviews link create": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link ls": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link show": "no recorded response yet; tests/test_cli_core_surface.py",
