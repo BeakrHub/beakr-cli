@@ -616,11 +616,19 @@ def public_source(source: dict, *, citation_key: str | None = None) -> dict:
     # Who wrote a cited file, as its upload recorded it (``SourceRecord.written_by``).
     written_by = source.get("written_by")
     if isinstance(written_by, dict) and written_by.get("text"):
-        item["written_by"] = {
+        public_written: dict = {
             field: written_by[field]
-            for field in ("name", "by_agent", "org_member", "text")
+            for field in ("by_agent", "text")
             if written_by.get(field) not in (None, "")
         }
+        authors = [
+            {key: author[key] for key in ("name", "org_member") if key in author}
+            for author in written_by.get("authors") or []
+            if isinstance(author, dict) and author.get("name")
+        ]
+        if authors:
+            public_written["authors"] = authors
+        item["written_by"] = public_written
     return {key: value for key, value in item.items() if value not in (None, "")}
 
 

@@ -72,6 +72,7 @@ ARTIFACT = {
     "id": "a1",
     "title": "Assay notes",
     "authored_by": "Jane Doe and Bob Smith",
+    "authored_by_user_id": "u-jane",
     "authors": [
         {"name": "Jane Doe", "user_id": "u-jane", "email": "jane@example.com"},
         {"name": "Bob Smith", "user_id": None, "email": None},
@@ -120,24 +121,27 @@ def test_files_show_says_who_wrote_it(monkeypatch):
 
 
 def test_the_stdio_server_keeps_who_wrote_a_cited_file():
-    """As the hosted ``formatting.public_source`` keeps it (engine fix/upload-authored-by)."""
+    """As the hosted ``formatting.public_source`` keeps it (engine fix/upload-authors-list)."""
     from beakr_cli import mcp_server
 
     written = {
-        "name": "Jane Doe",
-        "by_agent": False,
-        "org_member": True,
-        "text": "Jane Doe",
-        "user_id": "u-jane",
+        "authors": [
+            {"name": "Jane Doe", "org_member": True, "user_id": "u-jane"},
+            {"name": "Bob Smith", "org_member": False},
+        ],
+        "by_agent": True,
+        "text": "an agent for Jane Doe and Bob Smith",
     }
     item = mcp_server._public_source(
         {"source_ref": "file:a1", "title": "Assay notes", "written_by": written}
     )
     assert item["written_by"] == {
-        "name": "Jane Doe",
-        "by_agent": False,
-        "org_member": True,
-        "text": "Jane Doe",
+        "by_agent": True,
+        "text": "an agent for Jane Doe and Bob Smith",
+        "authors": [
+            {"name": "Jane Doe", "org_member": True},
+            {"name": "Bob Smith", "org_member": False},
+        ],
     }
-    bare = mcp_server._public_source({"source_ref": "file:a1", "written_by": {"name": "x"}})
+    bare = mcp_server._public_source({"source_ref": "file:a1", "written_by": {"authors": []}})
     assert "written_by" not in bare

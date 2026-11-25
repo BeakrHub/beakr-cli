@@ -767,7 +767,7 @@
                 "type": "null"
               }
             ],
-            "description": "Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.",
+            "description": "The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.",
             "readOnly": true,
             "title": "Authored By"
           },
@@ -781,9 +781,18 @@
                 "type": "null"
               }
             ],
-            "description": "The org member `authored_by` matched, if any.",
+            "description": "Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.",
             "readOnly": true,
             "title": "Authored By User Id"
+          },
+          "authors": {
+            "description": "Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.",
+            "items": {
+              "$ref": "#/components/schemas/AuthorOut"
+            },
+            "readOnly": true,
+            "title": "Authors",
+            "type": "array"
           },
           "can_delete": {
             "default": false,
@@ -1296,6 +1305,7 @@
           "updated_at",
           "created_at",
           "queue_result",
+          "authors",
           "authored_by",
           "authored_by_user_id",
           "authored_at",
@@ -1385,6 +1395,7 @@
             "authored_at": null,
             "authored_by": null,
             "authored_by_user_id": null,
+            "authors": [],
             "can_delete": true,
             "can_edit": true,
             "can_move": true,
@@ -1449,7 +1460,7 @@
                 "type": "null"
               }
             ],
-            "description": "Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.",
+            "description": "The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.",
             "readOnly": true,
             "title": "Authored By"
           },
@@ -1463,9 +1474,18 @@
                 "type": "null"
               }
             ],
-            "description": "The org member `authored_by` matched, if any.",
+            "description": "Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.",
             "readOnly": true,
             "title": "Authored By User Id"
+          },
+          "authors": {
+            "description": "Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.",
+            "items": {
+              "$ref": "#/components/schemas/AuthorOut"
+            },
+            "readOnly": true,
+            "title": "Authors",
+            "type": "array"
           },
           "can_delete": {
             "default": false,
@@ -1939,6 +1959,7 @@
           "metadata",
           "updated_at",
           "created_at",
+          "authors",
           "authored_by",
           "authored_by_user_id",
           "authored_at",
@@ -2114,7 +2135,7 @@
         "type": "string"
       },
       "ArtifactUpdate": {
-        "description": "Request payload for updating an artifact's metadata.\n\nAttributes:\n    title: Optional new title for the artifact.\n    artifact_type: Optional new artifact type.\n    description: Optional new description for the artifact.\n    authored_by: Who wrote the file (\"\" clears it).\n    authored_at: When the file was written (\"\" clears it).",
+        "description": "Request payload for updating an artifact's metadata.\n\nAttributes:\n    title: Optional new title for the artifact.\n    artifact_type: Optional new artifact type.\n    description: Optional new description for the artifact.\n    authored_by: Who wrote the file: one author or a list ([] or \"\" clears them).\n    authored_at: When the file was written (\"\" clears it).",
         "examples": [
           {
             "description": "Extraction protocol, revision 4",
@@ -2153,10 +2174,18 @@
                 "type": "string"
               },
               {
+                "items": {
+                  "maxLength": 320,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
                 "type": "null"
               }
             ],
-            "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+            "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
             "title": "Authored By"
           },
           "description": {
@@ -2327,6 +2356,49 @@
         "title": "ArtifactVersionOutPage",
         "type": "object"
       },
+      "AuthorOut": {
+        "description": "One author of a file, as recorded.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The author's email, when given.",
+            "examples": [
+              "dana@example.com"
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "description": "The author's name; an email when only that was given.",
+            "title": "Name",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The org member this author matched, if any.",
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AuthorOut",
+        "type": "object"
+      },
       "BatchKnowledgeSummary": {
         "description": "How a batch's files are doing in reaching the project's Knowledge.",
         "properties": {
@@ -2453,10 +2525,18 @@
                 "type": "string"
               },
               {
+                "items": {
+                  "maxLength": 320,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
                 "type": "null"
               }
             ],
-            "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+            "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
             "title": "Authored By"
           },
           "content_hash": {
@@ -4495,7 +4575,7 @@
                 "type": "null"
               }
             ],
-            "description": "Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.",
+            "description": "The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.",
             "title": "Authored By"
           },
           "authored_by_user_id": {
@@ -4508,8 +4588,16 @@
                 "type": "null"
               }
             ],
-            "description": "The org member `authored_by` matched, if any.",
+            "description": "Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.",
             "title": "Authored By User Id"
+          },
+          "authors": {
+            "description": "Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.",
+            "items": {
+              "$ref": "#/components/schemas/AuthorOut"
+            },
+            "title": "Authors",
+            "type": "array"
           },
           "folder_id": {
             "anyOf": [
@@ -18015,7 +18103,7 @@
               }
             ],
             "default": null,
-            "description": "On a citation of an uploaded file whose upload recorded its author (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own."
+            "description": "On a citation of an uploaded file whose upload recorded its authors (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own."
           }
         },
         "title": "SourceRecord",
@@ -18025,6 +18113,22 @@
         "additionalProperties": true,
         "description": "Who wrote a cited file, as its upload recorded it (`authored_by`).",
         "properties": {
+          "authors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SourceWrittenByAuthor"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Each author, in the order recorded.",
+            "title": "Authors"
+          },
           "by_agent": {
             "anyOf": [
               {
@@ -18035,9 +18139,30 @@
               }
             ],
             "default": null,
-            "description": "True when an agent wrote the file for this person (`written_by_agent`).",
+            "description": "True when an agent wrote the file for these authors (`written_by_agent`).",
             "title": "By Agent"
           },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One line for a reader: \"Jane Doe\", \"Jane Doe and Bob Smith\" or \"an agent for Jane Doe and Bob Smith\".",
+            "title": "Text"
+          }
+        },
+        "title": "SourceWrittenBy",
+        "type": "object"
+      },
+      "SourceWrittenByAuthor": {
+        "additionalProperties": true,
+        "description": "One author of a cited file, as its upload recorded them.",
+        "properties": {
           "name": {
             "anyOf": [
               {
@@ -18063,22 +18188,9 @@
             "default": null,
             "description": "True when the author is a member of the org.",
             "title": "Org Member"
-          },
-          "text": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "One line for a reader: \"Jane Doe\" or \"an agent for Jane Doe\".",
-            "title": "Text"
           }
         },
-        "title": "SourceWrittenBy",
+        "title": "SourceWrittenByAuthor",
         "type": "object"
       },
       "StagedProposalRef": {
@@ -19634,10 +19746,18 @@
                 "type": "string"
               },
               {
+                "items": {
+                  "maxLength": 320,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
                 "type": "null"
               }
             ],
-            "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+            "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
             "title": "Authored By"
           },
           "description": {

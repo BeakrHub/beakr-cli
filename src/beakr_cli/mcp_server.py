@@ -438,11 +438,19 @@ def _public_source(source: dict, *, citation_key: str | None = None) -> dict:
     # R11), as the hosted ``formatting.public_source`` keeps it beside ``filed_by``.
     written_by = source.get("written_by")
     if isinstance(written_by, dict) and written_by.get("text"):
-        item["written_by"] = {
+        public_written: dict = {
             field: written_by[field]
-            for field in ("name", "by_agent", "org_member", "text")
+            for field in ("by_agent", "text")
             if written_by.get(field) not in (None, "")
         }
+        authors = [
+            {key: author[key] for key in ("name", "org_member") if key in author}
+            for author in written_by.get("authors") or []
+            if isinstance(author, dict) and author.get("name")
+        ]
+        if authors:
+            public_written["authors"] = authors
+        item["written_by"] = public_written
     return with_read_call(item, source)
 
 
