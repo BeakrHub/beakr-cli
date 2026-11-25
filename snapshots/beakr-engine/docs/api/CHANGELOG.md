@@ -11,11 +11,33 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=2d730f5c736fbdd18525179eec85eb7036f4ba190e22a5191e74e2620351832c changelog sha256=230cb79d0f6d3d1e12dec17de257a4e7b240b0d1f2ada3b75ea63eaceadd1e12 -->
+<!-- contract-stamp: public-openapi sha256=a27aeaa5959bc4e805e7bae86f016f9b25881c0cf59fbecf684cf1b23b397b26 changelog sha256=7ec562b2a5f75c2c8c1ee26ce069b8ac80ee331182548129840b9cb458d6352b -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- New: `GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status`
+  (scope `projects:read`; a key limited to projects may call it for one of
+  them) says whether a source (`provider`, as the source lists it) takes a
+  history import (`supported`), whether one is waiting or running (`status`:
+  `idle`, `pending`, `running` or `cancelling`) and how far it has got
+  (`progress`), and how an import ended: `outcome` for the running one and
+  `last_outcome` for the last one, each counting its items `in_knowledge`,
+  `skipped`, `failed` and `left`, with `skipped_reasons`, `failed_reasons` and
+  `left_reasons` (`compiling`, `waiting_for_compile`, `retry_after_failure`,
+  `not_read_yet`), `removed` for items deleted or trashed in the source,
+  `state` (`working` or `finished`), `finished_at`, the follow-up that sends
+  what the import left again (`followup`), and a `summary` sentence such as
+  "Import finished on 24 Nov 2026: 492 in Knowledge, 93 skipped, 26 failed,
+  0 left".
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
+  new `state`, `failed`: an item whose compile did not finish, with
+  `reason_code` `compile_failed` or `compile_partial` (the next sync sends it
+  again), `compile_not_converging` (not sent again until it changes) or
+  `import_gave_up` (a history import stopped trying it), and `reason`.
+  `counts.failed` counts them; such items used to read `pending`.
+  `reason_code` filters failed items too. A sync's `result.outcomes` from
+  `GET /v1/jobs/{job_id}` counts them as `failed` with their reasons.
 - New: `GET /v1/projects/{project_id}/integrations` (`integrations:read`) lists
   the connections the caller can attach that project's sources from: their own
   and the organization's active connections, the ones

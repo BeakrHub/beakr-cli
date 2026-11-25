@@ -8,6 +8,28 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- New: `GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status`
+  (scope `projects:read`; a key limited to projects may call it for one of
+  them) says whether a source (`provider`, as the source lists it) takes a
+  history import (`supported`), whether one is waiting or running (`status`:
+  `idle`, `pending`, `running` or `cancelling`) and how far it has got
+  (`progress`), and how an import ended: `outcome` for the running one and
+  `last_outcome` for the last one, each counting its items `in_knowledge`,
+  `skipped`, `failed` and `left`, with `skipped_reasons`, `failed_reasons` and
+  `left_reasons` (`compiling`, `waiting_for_compile`, `retry_after_failure`,
+  `not_read_yet`), `removed` for items deleted or trashed in the source,
+  `state` (`working` or `finished`), `finished_at`, the follow-up that sends
+  what the import left again (`followup`), and a `summary` sentence such as
+  "Import finished on 24 Nov 2026: 492 in Knowledge, 93 skipped, 26 failed,
+  0 left".
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
+  new `state`, `failed`: an item whose compile did not finish, with
+  `reason_code` `compile_failed` or `compile_partial` (the next sync sends it
+  again), `compile_not_converging` (not sent again until it changes) or
+  `import_gave_up` (a history import stopped trying it), and `reason`.
+  `counts.failed` counts them; such items used to read `pending`.
+  `reason_code` filters failed items too. A sync's `result.outcomes` from
+  `GET /v1/jobs/{job_id}` counts them as `failed` with their reasons.
 - New: `GET /v1/projects/{project_id}/integrations` (`integrations:read`) lists
   the connections the caller can attach that project's sources from: their own
   and the organization's active connections, the ones
@@ -802,6 +824,13 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **`beakr sources import-status <id>` says how a history import went.**
+  Whether the source takes one, whether one is waiting or running and how far
+  it has got, and how the running or last import ended: in Knowledge,
+  skipped, failed and left, each with why, removed, and how Beakr is sending
+  what it left again. `sources tracked --state failed` lists items whose
+  compile did not finish, with the reason (`compile_failed`, `compile_partial`,
+  `compile_not_converging`, `import_gave_up`), and the counts include them.
 - **`sources attach` works with a key limited to the project.** With no
   `--connector`, the connection is chosen from the project's own list
   (`GET /v1/projects/{project_id}/integrations`), which such a key may read,

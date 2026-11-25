@@ -21,6 +21,15 @@ from beakr_cli.main import app
 API = "https://api.test"
 PROJECT = "p1"
 SOURCES = f"{API}/v1/projects/{PROJECT}/sources"
+
+
+def _listed(*rows: dict) -> None:
+    """The project's sources as ``ls`` lists them; ``status`` reads its source's health there."""
+    respx.get(SOURCES).respond(
+        200, json={"data": list(rows), "has_more": False, "next_cursor": None}
+    )
+
+
 TRACKED = f"{SOURCES}/s1/tracked-items"
 COMPILES = f"{API}/v1/projects/{PROJECT}/knowledge/compiles"
 runner = CliRunner()
@@ -224,6 +233,7 @@ STATUS = {
 
 @respx.mock
 def test_status_says_what_knowledge_set_aside_and_why(at_terminal):
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(json=STATUS)
     respx.get(COMPILES).respond(json={"queued": 0, "running": 0, "last_cancel": None})
     result = runner.invoke(app, ["sources", "status", "s1", "-P", PROJECT])
@@ -242,6 +252,7 @@ def test_status_says_what_knowledge_set_aside_and_why(at_terminal):
 
 @respx.mock
 def test_status_points_at_tracked_when_more_items_were_set_aside_than_it_names(at_terminal):
+    _listed()
     many = {**OUTCOMES, "counts": {**OUTCOMES["counts"], "pending": 40}}
     respx.get(f"{SOURCES}/s1/sync-status").respond(json={**STATUS, "outcomes": many})
     respx.get(COMPILES).respond(json={"queued": 0, "running": 0, "last_cancel": None})
@@ -252,6 +263,7 @@ def test_status_points_at_tracked_when_more_items_were_set_aside_than_it_names(a
 
 @respx.mock
 def test_status_piped_counts_each_outcome():
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(json=STATUS)
     respx.get(COMPILES).respond(json={"queued": 0, "running": 0, "last_cancel": None})
     result = runner.invoke(app, ["sources", "status", "s1", "-P", PROJECT])
@@ -259,3 +271,134 @@ def test_status_piped_counts_each_outcome():
     fields = result.stdout.splitlines()[0].split("\t")
     assert "items_skipped=1" in fields and "items_failed=1" in fields
     assert "items_ingested=2" in fields
+
+
+# -- failed items and the history import's status (R6, R12; engine #3292) ---------------
+
+ASSAY = {
+    "external_id": "conn:t3",
+    "title": "Assay plan",
+    "kind": "thread",
+    "state": "failed",
+    "reason_code": "compile_failed",
+    "reason": "The compile did not finish; the next sync sends it again.",
+}
+
+
+@respx.mock
+def test_tracked_lists_failed_items_and_counts_them(monkeypatch):
+    counts = {**COUNTS, "total": 4, "failed": 1}
+    route = respx.get(TRACKED).respond(200, json={**_page([ASSAY]), "counts": counts})
+    result = runner.invoke(app, ["sources", "tracked", "s1", "--state", "failed", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert dict(route.calls.last.request.url.params)["state"] == "failed"
+    assert result.stdout.splitlines() == ["conn:t3\tfailed\tcompile_failed\tAssay plan"]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "1 ingested, 1 skipped, 1 failed, 1 pending, 0 removed." in said
+
+
+HISTORY = f"{SOURCES}/s1/history-import/status"
+FINISHED = {
+    "in_knowledge": 492,
+    "skipped": 93,
+    "failed": 26,
+    "left": 0,
+    "removed": 3,
+    "of": 611,
+    "state": "finished",
+    "finished_at": "2026-11-24T03:00:00Z",
+    "summary": "Import finished on 24 Nov 2026: 492 in Knowledge, 93 skipped, 26 failed, 0 left",
+    "skipped_reasons": [{"reason_code": "nothing_to_add", "count": 90}],
+    "failed_reasons": [
+        {"reason_code": "compile_failed", "count": 20},
+        {"reason_code": "import_gave_up", "count": 6},
+    ],
+    "left_reasons": [],
+    "followup": {"status": "finished", "attempts": 2, "last_sent": 4, "next_at": None},
+}
+
+
+@respx.mock
+def test_import_status_says_how_the_last_import_ended(monkeypatch):
+    respx.get(HISTORY).respond(
+        200,
+        json={
+            "attachment_id": "s1",
+            "provider": "gdrive:nango",
+            "supported": True,
+            "status": "idle",
+            "retrying": False,
+            "request": None,
+            "progress": None,
+            "outcome": None,
+            "last_import": {"requested_at": "2026-11-23T20:00:00Z"},
+            "last_import_cancelled": False,
+            "last_outcome": FINISHED,
+        },
+    )
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines() == [
+        "s1\tstatus=idle\tsupported=true\tlast_state=finished\tlast_in_knowledge=492"
+        "\tlast_skipped=93\tlast_failed=26\tlast_left=0\tlast_removed=3"
+    ]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert result.output.splitlines() == [
+        "No history import is waiting or running.",
+        "Last import:",
+        "  Import finished on 24 Nov 2026: 492 in Knowledge, 93 skipped, 26 failed, 0 left.",
+        "    Skipped: nothing_to_add 90",
+        "    Failed: compile_failed 20, import_gave_up 6",
+        "    Follow-up finished: sent the leftovers again 2 time(s), 4 item(s) last time.",
+    ]
+    data = json.loads(
+        runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT, "--json"]).stdout
+    )
+    assert data["last_outcome"]["failed_reasons"][0]["reason_code"] == "compile_failed"
+
+
+@respx.mock
+def test_import_status_of_a_running_import_shows_its_progress(monkeypatch):
+    working = {**FINISHED, "state": "working", "finished_at": None, "left": 12, "followup": None}
+    working["summary"] = "Importing: 492 in Knowledge, 93 skipped, 26 failed, 12 left"
+    working["left_reasons"] = [{"reason": "compiling", "label": "being compiled", "count": 12}]
+    respx.get(HISTORY).respond(
+        200,
+        json={
+            "provider": "gdrive:nango",
+            "supported": True,
+            "status": "running",
+            "retrying": True,
+            "progress": {"tracked": 623, "brought_in": 611, "compiled": 492, "unprocessable": 93},
+            "outcome": working,
+            "last_outcome": None,
+        },
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.output.splitlines()[:3] == [
+        "History import running (a sync stopped partway; the next sync runs it again).",
+        "  623 tracked, 611 read, 492 compiled, 93 set aside.",
+        "Importing: 492 in Knowledge, 93 skipped, 26 failed, 12 left.",
+    ]
+    assert "  Left: compiling 12" in result.output.splitlines()
+
+
+@respx.mock
+def test_import_status_says_when_a_source_takes_no_import():
+    respx.get(HISTORY).respond(
+        200,
+        json={
+            "provider": "notion:nango",
+            "supported": False,
+            "unsupported_reason": "Notion pages have no history to import",
+            "status": "idle",
+        },
+    )
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines() == ["s1\tstatus=idle\tsupported=false"]
