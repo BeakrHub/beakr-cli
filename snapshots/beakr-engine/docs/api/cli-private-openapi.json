@@ -1527,6 +1527,19 @@
       "description": "Direct link.",
       "title": "External Item Url"
      },
+     "failing_since": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the first sync after the latest successful one started, while every sync that finished since has failed; null when the latest finished sync succeeded or none has failed. Syncs still running and cancelled syncs are not counted.",
+      "title": "Failing Since"
+     },
      "guidance": {
       "anyOf": [
        {
@@ -1550,6 +1563,19 @@
       "description": "Whether its content is compiled into Knowledge.",
       "title": "Ingest Wiki",
       "type": "boolean"
+     },
+     "last_successful_sync_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the latest successful sync of this source started; null when none has succeeded. `last_sync_at` is the latest attempt, whatever its outcome.",
+      "title": "Last Successful Sync At"
      },
      "last_sync_at": {
       "anyOf": [
@@ -1614,6 +1640,18 @@
       "description": "Whether this provider's content can be compiled into Knowledge.",
       "title": "Supports Wiki Ingest",
       "type": "boolean"
+     },
+     "sync_failure_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Why the latest sync failed, in plain words (for example, the connection has expired); set only while `failing_since` is set.",
+      "title": "Sync Failure Reason"
      },
      "sync_status": {
       "anyOf": [
