@@ -17813,6 +17813,12 @@
             "title": "In Knowledge Left",
             "type": "integer"
           },
+          "in_progress_left": {
+            "default": 0,
+            "description": "Chosen pending items still on their way into Knowledge (their compile is queued or running, or they were read in the last 30 minutes), left out; send them again once they finish.",
+            "title": "In Progress Left",
+            "type": "integer"
+          },
           "mode": {
             "description": "The mode the request used.",
             "enum": [
@@ -38842,7 +38848,7 @@
     },
     "/v1/projects/{project_id}/sources/{attachment_id}/recompile": {
       "post": {
-        "description": "Send a source's items to Knowledge again.\n\nSends chosen tracked items (`external_ids`), or every item (`all`), to\nKnowledge again in any state: pending, failed, skipped, or already in\nKnowledge (`mode: full`, for example after changing the source's guidance,\nor when a compile took in too little). The items are marked and a sync of\nthe source starts at once, run through the connection of the person who\nattached it; that sync reads each marked item from its service and compiles\nit, whatever its version. Not held by Sync now's hourly cooldown: one\nrequest per source every 10 minutes, up to 500 items each. Anyone who can\nedit the project may ask. `dry_run` counts without sending. Usage counts\nagainst the organization's Knowledge allowance as a sync does.",
+        "description": "Send a source's items to Knowledge again.\n\nSends chosen tracked items (`external_ids`), or every item (`all`), to\nKnowledge again in any state: pending, failed, skipped, or already in\nKnowledge (`mode: full`, for example after changing the source's guidance,\nor when a compile took in too little). The items are marked and a sync of\nthe source starts at once, run through the connection of the person who\nattached it; that sync reads each marked item from its service and compiles\nit, whatever its version. Not held by Sync now's hourly cooldown: one\nrequest per source every 10 minutes, up to 500 items each. Anyone who can\nedit the project may ask. `dry_run` counts without sending. Usage counts\nagainst the organization's Knowledge allowance as a sync does. Pending\nitems still on their way into Knowledge are left out (`in_progress_left`),\nand while a sync of the source runs the request is refused (409\n`sync_running`).",
         "operationId": "recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post",
         "parameters": [
           {

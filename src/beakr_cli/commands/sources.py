@@ -1415,6 +1415,12 @@ def _recompile_lines(data: dict[str, Any], source_id: str) -> list[str]:
             f"{left} already in Knowledge at their current version were left alone "
             "(--full sends them too)."
         )
+    in_progress = int(data.get("in_progress_left") or 0)
+    if in_progress:
+        lines.append(
+            f"{in_progress} still on their way into Knowledge were left out "
+            "(their compile is queued or running): send them again once they finish."
+        )
     over = int(data.get("over_cap") or 0)
     if over:
         lines.append(f"{over} more are past the 500-item limit: send them in a later request.")
@@ -1455,9 +1461,10 @@ def recompile(
     Without --full only items not in Knowledge at their current version go
     (pending, failed, skipped). --full sends items already in Knowledge too and
     has each whole document read again, for example after the source's guidance
-    changed. Anyone who can edit the project may; one request per source every
-    ten minutes, up to 500 items each. It is not held by `beakr sources sync`'s
-    hourly cooldown.
+    changed. Items still on their way into Knowledge are left out and counted.
+    Anyone who can edit the project may; one request per source every ten
+    minutes, up to 500 items each, and none while a sync of the source runs. It
+    is not held by `beakr sources sync`'s hourly cooldown.
 
     \b
     beakr sources recompile <id> --items conn:t1,conn:t2
@@ -1486,6 +1493,7 @@ def recompile(
             f"dry_run={'true' if answer.get('dry_run') else 'false'}",
             f"requested={int(answer.get('requested') or 0)}",
             f"in_knowledge_left={int(answer.get('in_knowledge_left') or 0)}",
+            f"in_progress_left={int(answer.get('in_progress_left') or 0)}",
             f"over_cap={int(answer.get('over_cap') or 0)}",
             f"not_found={len(answer.get('not_found') or [])}",
             f"sync={answer.get('sync') or ''}",
