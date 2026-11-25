@@ -43,7 +43,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Literal
 
 from beakr_sdk.errors import BeakrError, BeakrUploadInterrupted
 from beakr_sdk.resources._upload import (
@@ -52,6 +52,7 @@ from beakr_sdk.resources._upload import (
     upload_flow,
     upload_relative_path,
 )
+from typing_extensions import TypedDict
 
 from beakr_cli import (
     cancels,
@@ -805,6 +806,9 @@ async def _report_progress(upload: _Upload) -> None:
         return
 
 
+# typing_extensions' TypedDict, not typing's: pydantic (the MCP library's tool schemas)
+# refuses typing.TypedDict below Python 3.12, so `beakr mcp` failed at import on 3.10
+# and 3.11, which requires-python allows. The docstring is the listed schema's text.
 class InlineFile(TypedDict, total=False):
     """One file sent in the call, as the hosted server takes it: a name and its content once."""
 
