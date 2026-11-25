@@ -1260,10 +1260,10 @@
       "type": "string"
      },
      {
-      "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+      "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
       "name": "authored_by",
       "required": false,
-      "type": "string"
+      "type": "object"
      },
      {
       "description": "Optional new description for the artifact.",
@@ -7616,10 +7616,10 @@
       "type": "string"
      },
      {
-      "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+      "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
       "name": "authored_by",
       "required": false,
-      "type": "string"
+      "type": "object"
      },
      {
       "description": "Description of the upload complete, in plain text.",

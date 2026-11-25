@@ -60,7 +60,7 @@ class Files(_public.Files[M]):
         self,
         artifact_id: str,
         *,
-        authored_by: str | None = None,
+        authored_by: str | list[str] | None = None,
         authored_at: str | None = None,
     ) -> Any:
         """Record who wrote a file and when (``PATCH /v1/artifacts/{id}``, R11).
@@ -100,7 +100,7 @@ class Files(_public.Files[M]):
         on_existing: str | None = None,
         written_by_agent: bool | None = None,
         version_of: str | None = None,
-        authored_by: str | None = None,
+        authored_by: str | list[str] | None = None,
         authored_at: str | None = None,
     ) -> Any:
         """The SDK's ``files.upload``, completed with the placement options given."""
@@ -142,7 +142,7 @@ class Files(_public.Files[M]):
         on_existing: str | None = None,
         written_by_agent: bool | None = None,
         version_of: str | None = None,
-        authored_by: str | None = None,
+        authored_by: str | list[str] | None = None,
         authored_at: str | None = None,
     ) -> Any:
         """The SDK's ``files.resume_upload``, completed with the placement options given.
@@ -189,7 +189,7 @@ class Files(_public.Files[M]):
         root_folder: bool = True,
         on_existing: str | None = None,
         written_by_agent: bool | None = None,
-        authored_by: str | None = None,
+        authored_by: str | list[str] | None = None,
         authored_at: str | None = None,
     ) -> Any:
         """The SDK's ``files.upload_folder``, completed with the placement options given.

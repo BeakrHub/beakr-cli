@@ -40,7 +40,8 @@ def test_author_and_date_reach_every_completion(tmp_path):
     folder.mkdir()
     (folder / "a.md").write_text("a")
 
-    author = ["--author", "Jane Doe <jane@example.com>", "--date", "2026-06-14"]
+    author = ["--author", "Jane Doe <jane@example.com>", "--author", "Bob Smith"]
+    author += ["--date", "2026-06-14"]
     result = runner.invoke(app, ["upload", str(note), str(folder), "-P", "p1", *author])
     resumed = runner.invoke(app, ["upload", str(note), "-P", "p1", "--date", "2026-06-15"])
 
@@ -49,9 +50,10 @@ def test_author_and_date_reach_every_completion(tmp_path):
     authored = [
         {key: body[key] for key in ("authored_by", "authored_at") if key in body} for body in bodies
     ]
+    both = ["Jane Doe <jane@example.com>", "Bob Smith"]
     assert authored == [
-        {"authored_by": "Jane Doe <jane@example.com>", "authored_at": "2026-06-14"},
-        {"authored_by": "Jane Doe <jane@example.com>", "authored_at": "2026-06-14"},
+        {"authored_by": both, "authored_at": "2026-06-14"},
+        {"authored_by": both, "authored_at": "2026-06-14"},
         {"authored_at": "2026-06-15"},
     ]
 
@@ -69,29 +71,33 @@ def test_without_them_nothing_is_sent(tmp_path):
 ARTIFACT = {
     "id": "a1",
     "title": "Assay notes",
-    "authored_by": "Jane Doe <jane@example.com>",
+    "authored_by": "Jane Doe and Bob Smith",
     "authored_by_user_id": "u-jane",
+    "authors": [
+        {"name": "Jane Doe", "user_id": "u-jane", "email": "jane@example.com"},
+        {"name": "Bob Smith", "user_id": None, "email": None},
+    ],
     "authored_at": "2026-06-14",
 }
 
 
 @respx.mock
-def test_files_edit_records_and_clears_the_author(monkeypatch):
+def test_files_edit_records_and_clears_the_authors(monkeypatch):
     route = respx.patch(f"{API}/v1/artifacts/a1").respond(200, json=ARTIFACT)
-    result = runner.invoke(
-        app,
-        ["files", "edit", "a1", "--author", "Jane Doe <jane@example.com>", "--date", "2026-06-14"],
-    )
+    argv = ["files", "edit", "a1", "--author", "Jane Doe <jane@example.com>"]
+    result = runner.invoke(app, [*argv, "--author", "Bob Smith", "--date", "2026-06-14"])
     assert result.exit_code == 0, result.output
     assert json.loads(route.calls.last.request.content) == {
-        "authored_by": "Jane Doe <jane@example.com>",
+        "authored_by": ["Jane Doe <jane@example.com>", "Bob Smith"],
         "authored_at": "2026-06-14",
     }
     assert result.stdout.splitlines() == [
-        "a1\tauthored_by=Jane Doe <jane@example.com>\tauthored_at=2026-06-14"
-        "\tauthored_by_user_id=u-jane"
+        "a1\tauthored_by=Jane Doe and Bob Smith\tauthored_at=2026-06-14\tauthors=2"
     ]
-    route.respond(200, json={**ARTIFACT, "authored_by": None, "authored_by_user_id": None})
+    one = runner.invoke(app, ["files", "edit", "a1", "--author", "Jane Doe"])
+    assert one.exit_code == 0, one.output
+    assert json.loads(route.calls.last.request.content) == {"authored_by": "Jane Doe"}
+    route.respond(200, json={**ARTIFACT, "authored_by": None, "authors": []})
     monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
     result = runner.invoke(app, ["files", "edit", "a1", "--author", ""])
     assert json.loads(route.calls.last.request.content) == {"authored_by": ""}
@@ -110,29 +116,32 @@ def test_files_show_says_who_wrote_it(monkeypatch):
     monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
     result = runner.invoke(app, ["files", "show", "a1"])
     assert result.exit_code == 0, result.output
-    assert "Author:    Jane Doe <jane@example.com>" in result.output
+    assert "Authors:   Jane Doe <jane@example.com>; Bob Smith" in result.output
     assert "Written:   2026-06-14" in result.output
 
 
 def test_the_stdio_server_keeps_who_wrote_a_cited_file():
-    """As the hosted ``formatting.public_source`` keeps it (engine fix/upload-authored-by)."""
+    """As the hosted ``formatting.public_source`` keeps it (engine fix/upload-authors-list)."""
     from beakr_cli import mcp_server
 
     written = {
-        "name": "Jane Doe",
-        "by_agent": False,
-        "org_member": True,
-        "text": "Jane Doe",
-        "user_id": "u-jane",
+        "authors": [
+            {"name": "Jane Doe", "org_member": True, "user_id": "u-jane"},
+            {"name": "Bob Smith", "org_member": False},
+        ],
+        "by_agent": True,
+        "text": "an agent for Jane Doe and Bob Smith",
     }
     item = mcp_server._public_source(
         {"source_ref": "file:a1", "title": "Assay notes", "written_by": written}
     )
     assert item["written_by"] == {
-        "name": "Jane Doe",
-        "by_agent": False,
-        "org_member": True,
-        "text": "Jane Doe",
+        "by_agent": True,
+        "text": "an agent for Jane Doe and Bob Smith",
+        "authors": [
+            {"name": "Jane Doe", "org_member": True},
+            {"name": "Bob Smith", "org_member": False},
+        ],
     }
-    bare = mcp_server._public_source({"source_ref": "file:a1", "written_by": {"name": "x"}})
+    bare = mcp_server._public_source({"source_ref": "file:a1", "written_by": {"authors": []}})
     assert "written_by" not in bare

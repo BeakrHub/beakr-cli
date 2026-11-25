@@ -94,12 +94,12 @@ def upload_command(
         help="Mark the upload as an agent's work, not a person's: the version records it, "
         "and a file it creates is marked as written by Beakr.",
     ),
-    author: str | None = typer.Option(
+    author: list[str] | None = typer.Option(
         None,
         "--author",
         metavar="NAME",
-        help="Who wrote the file, if not you: a name, 'Name <email>' or an email. "
-        "Knowledge attributes what it states to them.",
+        help="Who wrote the file, if not you: a name, 'Name <email>' or an email; repeat "
+        "it for co-authors (up to 20). Knowledge attributes what it states to them.",
     ),
     date: str | None = typer.Option(
         None,
@@ -347,11 +347,33 @@ def upload_command(
         raise typer.Exit(1)
 
 
+def authored_by(authors: list[str] | None) -> str | list[str] | None:
+    """``--author`` as the API takes ``authored_by``: one author as given, several as a
+    list (up to 20), and ``--author ""`` as ``""``, which clears them on an edit."""
+    if authors is None:
+        return None
+    named = [author.strip() for author in authors if author.strip()]
+    if not named:
+        return ""
+    return named[0] if len(named) == 1 else named
+
+
+def authors_text(artifact: dict[str, Any]) -> str | None:
+    """Every author of a file, ``Name <email>`` each, or its display line."""
+    rows = [row for row in artifact.get("authors") or [] if isinstance(row, dict)]
+    if rows:
+        return "; ".join(
+            f"{row.get('name')} <{row['email']}>" if row.get("email") else str(row.get("name"))
+            for row in rows
+        )
+    return artifact.get("authored_by") or None
+
+
 def _placement_options(
     on_existing: str | None,
     written_by_agent: bool,
     version_of: str | None = None,
-    author: str | None = None,
+    author: list[str] | None = None,
     date: str | None = None,
 ) -> dict[str, Any]:
     """The keyword arguments --on-existing, --written-by-agent, --version-of, --author
@@ -370,7 +392,7 @@ def _placement_options(
     if version_of is not None:
         options["version_of"] = version_of
     if author is not None:
-        options["authored_by"] = author
+        options["authored_by"] = authored_by(author)
     if date is not None:
         options["authored_at"] = date
     return options
@@ -731,12 +753,15 @@ def show_file(
 
     def render(a: dict[str, Any]) -> None:
         console.print(f"[bold]{escape(str(a.get('title')))}[/bold] ({escape(str(a.get('id')))})")
+        written_by = authors_text(a)
+        if written_by:
+            label = "Authors:" if len(a.get("authors") or []) > 1 else "Author:"
+            console.print(f"{label:<11}{written_by}", markup=False)
         for label, key in (
             ("Type", "artifact_type"),
             ("Knowledge", "knowledge_status"),
             ("MIME", "mime_type"),
             ("Project", "home_project_id"),
-            ("Author", "authored_by"),
             ("Written", "authored_at"),
             ("Version", "current_version_id"),
             ("Created", "created_at"),
@@ -832,11 +857,12 @@ def remove_file(
 @app.command("edit")
 def edit_file(
     artifact_id: str = typer.Argument(..., help="File id."),
-    author: str | None = typer.Option(
+    author: list[str] | None = typer.Option(
         None,
         "--author",
         metavar="NAME",
-        help="Who wrote it: a name, 'Name <email>' or an email; '' clears it.",
+        help="Who wrote it: a name, 'Name <email>' or an email; repeat it for co-authors "
+        "(it replaces every author). '' clears them.",
     ),
     date: str | None = typer.Option(
         None,
@@ -850,12 +876,15 @@ def edit_file(
 
     \b
     beakr files edit FILE_ID --author "Jane Doe <jane@example.com>" --date 2026-06-14
+    beakr files edit FILE_ID --author "Jane Doe" --author "Bob Smith"
     beakr files edit FILE_ID --author ""
     """
     if author is None and date is None:
         raise click.UsageError("Give --author or --date (an empty value clears it).")
     with get_sdk() as sdk:
-        artifact = sdk.files.set_authorship(artifact_id, authored_by=author, authored_at=date)
+        artifact = sdk.files.set_authorship(
+            artifact_id, authored_by=authored_by(author), authored_at=date
+        )
 
     def render(a: dict[str, Any]) -> None:
         by = a.get("authored_by")
@@ -876,7 +905,7 @@ def edit_file(
                     cell(a.get("id") or artifact_id),
                     f"authored_by={cell(a.get('authored_by') or '')}",
                     f"authored_at={a.get('authored_at') or ''}",
-                    f"authored_by_user_id={a.get('authored_by_user_id') or ''}",
+                    f"authors={len(a.get('authors') or [])}",
                 ]
             )
         ]
