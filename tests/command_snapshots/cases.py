@@ -411,6 +411,7 @@ EXEMPT: dict[str, str] = {
     # the engine recorded positive-path responses for them; their requests and
     # output are pinned with mocked responses in tests/test_cli_core_surface.py.
     "files upload": "the `upload` command registered under `files` too (snapshot `upload`)",
+    "files edit": "no recorded response yet; tests/test_cli_upload_authorship.py",
     "end-user-tokens mint": "no recorded response yet; tests/test_cli_core_surface.py",
     "end-user-tokens ls": "no recorded response yet; tests/test_cli_core_surface.py",
     "end-user-tokens revoke": "no recorded response yet; tests/test_cli_core_surface.py",

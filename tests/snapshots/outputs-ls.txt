@@ -7,6 +7,9 @@ $ beakr outputs ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
     {
       "access_via": "owner",
       "artifact_type": "doc",
+      "authored_at": null,
+      "authored_by": null,
+      "authored_by_user_id": null,
       "can_delete": true,
       "can_edit": true,
       "can_move": true,
@@ -56,6 +59,9 @@ $ beakr outputs ls --project 4dd25154-0d80-44ab-b4c2-167319bfacb4 --json
     {
       "access_via": "owner",
       "artifact_type": "doc",
+      "authored_at": null,
+      "authored_by": null,
+      "authored_by_user_id": null,
       "can_delete": true,
       "can_edit": true,
       "can_move": true,

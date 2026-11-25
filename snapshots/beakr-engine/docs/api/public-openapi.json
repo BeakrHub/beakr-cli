@@ -745,6 +745,46 @@
             "$ref": "#/components/schemas/ArtifactType",
             "description": "Kind of file."
           },
+          "authored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.",
+            "readOnly": true,
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.",
+            "readOnly": true,
+            "title": "Authored By"
+          },
+          "authored_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The org member `authored_by` matched, if any.",
+            "readOnly": true,
+            "title": "Authored By User Id"
+          },
           "can_delete": {
             "default": false,
             "description": "Whether the caller can delete.",
@@ -1256,6 +1296,9 @@
           "updated_at",
           "created_at",
           "queue_result",
+          "authored_by",
+          "authored_by_user_id",
+          "authored_at",
           "saved_to_files"
         ],
         "title": "ArtifactKnowledgeQueueResponse",
@@ -1339,6 +1382,9 @@
         "examples": [
           {
             "artifact_type": "protocol",
+            "authored_at": null,
+            "authored_by": null,
+            "authored_by_user_id": null,
             "can_delete": true,
             "can_edit": true,
             "can_move": true,
@@ -1380,6 +1426,46 @@
           "artifact_type": {
             "$ref": "#/components/schemas/ArtifactType",
             "description": "Stored artifact type."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.",
+            "readOnly": true,
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.",
+            "readOnly": true,
+            "title": "Authored By"
+          },
+          "authored_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The org member `authored_by` matched, if any.",
+            "readOnly": true,
+            "title": "Authored By User Id"
           },
           "can_delete": {
             "default": false,
@@ -1853,6 +1939,9 @@
           "metadata",
           "updated_at",
           "created_at",
+          "authored_by",
+          "authored_by_user_id",
+          "authored_at",
           "saved_to_files"
         ],
         "title": "ArtifactOut",
@@ -2025,7 +2114,7 @@
         "type": "string"
       },
       "ArtifactUpdate": {
-        "description": "Request payload for updating an artifact's metadata.\n\nAttributes:\n    title: Optional new title for the artifact.\n    artifact_type: Optional new artifact type.\n    description: Optional new description for the artifact.",
+        "description": "Request payload for updating an artifact's metadata.\n\nAttributes:\n    title: Optional new title for the artifact.\n    artifact_type: Optional new artifact type.\n    description: Optional new description for the artifact.\n    authored_by: Who wrote the file (\"\" clears it).\n    authored_at: When the file was written (\"\" clears it).",
         "examples": [
           {
             "description": "Extraction protocol, revision 4",
@@ -2043,6 +2132,32 @@
               }
             ],
             "description": "Optional new artifact type."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+            "title": "Authored By"
           },
           "description": {
             "anyOf": [
@@ -2317,6 +2432,32 @@
             "$ref": "#/components/schemas/ArtifactType",
             "default": "doc",
             "description": "The kind of file to create, such as `doc` or `dataset`."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+            "title": "Authored By"
           },
           "content_hash": {
             "anyOf": [
@@ -4333,6 +4474,43 @@
       "CreatedArtifactOut": {
         "description": "Created artifact info.",
         "properties": {
+          "authored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, as recorded at upload or set later: `Jane Doe <jane@example.com>`, `Jane Doe` or an email. Null when none was given.",
+            "title": "Authored By"
+          },
+          "authored_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The org member `authored_by` matched, if any.",
+            "title": "Authored By User Id"
+          },
           "folder_id": {
             "anyOf": [
               {
@@ -17120,7 +17298,7 @@
               }
             ],
             "default": null,
-            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.",
             "title": "Source Recorded At"
           }
         },
@@ -17826,9 +18004,81 @@
             "default": null,
             "description": "Current status of the source record.",
             "title": "Status"
+          },
+          "written_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceWrittenBy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a citation of an uploaded file whose upload recorded its author (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own."
           }
         },
         "title": "SourceRecord",
+        "type": "object"
+      },
+      "SourceWrittenBy": {
+        "additionalProperties": true,
+        "description": "Who wrote a cited file, as its upload recorded it (`authored_by`).",
+        "properties": {
+          "by_agent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when an agent wrote the file for this person (`written_by_agent`).",
+            "title": "By Agent"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The author's name, as recorded.",
+            "title": "Name"
+          },
+          "org_member": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when the author is a member of the org.",
+            "title": "Org Member"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One line for a reader: \"Jane Doe\" or \"an agent for Jane Doe\".",
+            "title": "Text"
+          }
+        },
+        "title": "SourceWrittenBy",
         "type": "object"
       },
       "StagedProposalRef": {
@@ -19363,6 +19613,32 @@
             "$ref": "#/components/schemas/ArtifactType",
             "default": "doc",
             "description": "Kind of file."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, when that is not who uploads it: a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email. Matched to an org member by email, else by exact display name. Knowledge built from the file attributes what it says to this person and links their person card when they are a member with one. With `written_by_agent`, an agent wrote it for this person.",
+            "title": "Authored By"
           },
           "description": {
             "anyOf": [
@@ -21438,7 +21714,7 @@
               }
             ],
             "default": null,
-            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.",
             "title": "Source Recorded At"
           },
           "source_ref": {
@@ -24899,7 +25175,7 @@
         "x-beakr-scope": "projects:read"
       },
       "patch": {
-        "description": "Change a file's `title`, `description` or `artifact_type`; fields left out are kept. Needs write access to the file.",
+        "description": "Change a file's `title`, `description` or `artifact_type`, or who wrote it and when (`authored_by`, `authored_at`; `\"\"` clears one); fields left out are kept. Knowledge built from the file earlier keeps its attribution until it is compiled again. Needs write access to the file.",
         "operationId": "update_artifact_route_v1_artifacts__artifact_id__patch",
         "parameters": [
           {

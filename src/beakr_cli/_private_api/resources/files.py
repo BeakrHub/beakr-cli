@@ -8,7 +8,8 @@ defers to. The stdio MCP server's ``read_file`` reads text through the SDK's
 documented ``files.read``.
 
 ``upload``, ``upload_folder`` and ``resume_upload`` take ``on_existing``,
-``written_by_agent`` and ``version_of`` with any beakr-sdk: they run the SDK's
+``written_by_agent``, ``version_of``, ``authored_by`` and ``authored_at`` with any
+beakr-sdk: they run the SDK's
 own upload flows and add those fields to the completion
 (:mod:`beakr_cli.upload_placement`), since the locked beakr-sdk (0.2.0) does not
 send them. ``upload_folder`` goes on past a file whose placement the server
@@ -20,7 +21,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from beakr_sdk._calls import Flow, ListCall
+from beakr_sdk._calls import Call, Flow, ListCall
 from beakr_sdk._paths import segment as _seg
 from beakr_sdk._resource import M
 from beakr_sdk.errors import BeakrError
@@ -55,6 +56,27 @@ def refused_row(path: str | Path, exc: BeakrError) -> dict[str, Any]:
 class Files(_public.Files[M]):
     """:class:`beakr_sdk.resources.files.Files` plus what the locked beakr-sdk lacks."""
 
+    def set_authorship(
+        self,
+        artifact_id: str,
+        *,
+        authored_by: str | None = None,
+        authored_at: str | None = None,
+    ) -> Any:
+        """Record who wrote a file and when (``PATCH /v1/artifacts/{id}``, R11).
+
+        A field left as None is unchanged; ``""`` clears it. The locked beakr-sdk's
+        ``files.update`` does not send these, so the route is called directly.
+        """
+        body = {
+            key: value
+            for key, value in (("authored_by", authored_by), ("authored_at", authored_at))
+            if value is not None
+        }
+        if not body:
+            raise ValueError("give authored_by or authored_at")
+        return self._run(Call("PATCH", f"/v1/artifacts/{_seg(artifact_id)}", json=body))
+
     def versions(self, artifact_id: str) -> Any:
         return self._run(
             ListCall(
@@ -78,13 +100,19 @@ class Files(_public.Files[M]):
         on_existing: str | None = None,
         written_by_agent: bool | None = None,
         version_of: str | None = None,
+        authored_by: str | None = None,
+        authored_at: str | None = None,
     ) -> Any:
         """The SDK's ``files.upload``, completed with the placement options given."""
         file_path = Path(path)
         if not file_path.is_file():
             raise FileNotFoundError(f"Not a file: {file_path}")
         fields = placement_fields(
-            on_existing=on_existing, written_by_agent=written_by_agent, version_of=version_of
+            on_existing=on_existing,
+            written_by_agent=written_by_agent,
+            version_of=version_of,
+            authored_by=authored_by,
+            authored_at=authored_at,
         )
         return self._drive(
             placed(
@@ -114,6 +142,8 @@ class Files(_public.Files[M]):
         on_existing: str | None = None,
         written_by_agent: bool | None = None,
         version_of: str | None = None,
+        authored_by: str | None = None,
+        authored_at: str | None = None,
     ) -> Any:
         """The SDK's ``files.resume_upload``, completed with the placement options given.
 
@@ -125,7 +155,11 @@ class Files(_public.Files[M]):
             raise FileNotFoundError(f"Not a file: {file_path}")
         mime_type = guess_mime_type(file_path)
         fields = placement_fields(
-            on_existing=on_existing, written_by_agent=written_by_agent, version_of=version_of
+            on_existing=on_existing,
+            written_by_agent=written_by_agent,
+            version_of=version_of,
+            authored_by=authored_by,
+            authored_at=authored_at,
         )
         return self._drive(
             placed(
@@ -155,6 +189,8 @@ class Files(_public.Files[M]):
         root_folder: bool = True,
         on_existing: str | None = None,
         written_by_agent: bool | None = None,
+        authored_by: str | None = None,
+        authored_at: str | None = None,
     ) -> Any:
         """The SDK's ``files.upload_folder``, completed with the placement options given.
 
@@ -167,7 +203,12 @@ class Files(_public.Files[M]):
         root = Path(path)
         if not root.is_dir():
             raise NotADirectoryError(f"Not a directory: {root}")
-        fields = placement_fields(on_existing=on_existing, written_by_agent=written_by_agent)
+        fields = placement_fields(
+            on_existing=on_existing,
+            written_by_agent=written_by_agent,
+            authored_by=authored_by,
+            authored_at=authored_at,
+        )
         return self._drive(
             _folder_flow(
                 root,
