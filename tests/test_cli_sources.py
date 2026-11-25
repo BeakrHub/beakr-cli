@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 
+import httpx
 import pytest
 import respx
 from typer.testing import CliRunner
@@ -174,12 +175,16 @@ def _notion_lookup(kind: str | None = None, name: str | None = None) -> respx.Ro
     )
 
 
+#: The connections a project's sources can be attached from (B11, engine #3274).
+PROJECT_CONNECTIONS = f"{API}/v1/projects/{PROJECT}/integrations"
+
+
 def _connections(*rows: dict, notion: tuple[str, str | None] | None = None) -> respx.Route:
-    """The caller's connections. With a Notion one, the Notion lookup answers
-    ``notion`` (kind, title), or cannot answer when it is None."""
+    """The project's usable connections. With a Notion one, the Notion lookup
+    answers ``notion`` (kind, title), or cannot answer when it is None."""
     if any(row.get("provider") == "notion:nango" for row in rows):
         _notion_lookup(*(notion or ()))
-    return respx.get(f"{API}/v1/integrations").respond(
+    return respx.get(PROJECT_CONNECTIONS).respond(
         200, json={"data": list(rows), "has_more": False, "next_cursor": None}
     )
 
@@ -1416,8 +1421,7 @@ def test_attach_preview_counts_the_item_as_the_kind_notion_says():
 )
 @respx.mock
 def test_a_lookup_that_cannot_say_leaves_the_link_to_decide(content):
-    _connections({"id": "c2", "provider": "slack:nango"})
-    respx.get(f"{API}/v1/integrations").respond(
+    respx.get(PROJECT_CONNECTIONS).respond(
         200, json={"data": [{"id": "c1", "provider": "notion:nango"}], "has_more": False}
     )
     respx.post(NOTION_LOOKUP).respond(
@@ -1828,7 +1832,7 @@ FOLDER_ONLY = "sources are folders. Attach the folder that holds this file, or u
 @respx.mock
 def test_attaching_one_file_of_a_folder_source_is_refused_before_any_call(argv, name):
     route = respx.post(SOURCES)
-    connections = respx.get(f"{API}/v1/integrations")
+    connections = respx.get(PROJECT_CONNECTIONS)
     result = runner.invoke(app, ["sources", "attach", *argv, "-P", PROJECT])
     assert result.exit_code == 2, result.output
     # Click boxes a usage error; read it as one line without the border.
@@ -1867,3 +1871,151 @@ def test_the_engines_item_not_folder_refusal_is_shown_as_it_says():
     )
     assert result.exit_code == 1, result.output
     assert message in " ".join(result.stderr.split())
+
+
+# -- a project-limited key (B11) -------------------------------------------------------
+#
+# Octant B11: `sources attach <url>` was refused for a key limited to the project it
+# attaches to. With no --connector the CLI listed the organization's connections
+# (GET /v1/integrations), an organization-wide route a project-limited key may not
+# call; the attach itself names the project and is allowed.
+
+PROJECT_LIMITED = {
+    "error": {
+        "code": "insufficient_scope",
+        "message": (
+            "This credential is restricted to specific projects and cannot call an "
+            "endpoint that is not addressed by a single project."
+        ),
+    }
+}
+
+
+DRIVE_LINK = "https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOp"
+NOT_A_ROUTE = {"detail": "Not Found"}
+
+
+@respx.mock
+def test_a_project_limited_key_attaches_by_link_through_the_projects_connections():
+    project_list = _connections(
+        {"id": "c2", "provider": "gdrive:nango", "label": "Lab Drive"},
+        {"id": "c3", "provider": "slack:nango"},
+    )
+    org_list = respx.get(f"{API}/v1/integrations").respond(403, json=PROJECT_LIMITED)
+    route = respx.post(SOURCES).respond(201, json=_attachment(provider="gdrive:nango"))
+    result = runner.invoke(app, ["sources", "attach", DRIVE_LINK, "-P", PROJECT, "--json"])
+    assert result.exit_code == 0, result.output
+    assert _body(route)["connector_id"] == "c2"
+    assert project_list.called and not org_list.called
+
+
+@respx.mock
+def test_every_page_of_the_projects_connections_is_read():
+    respx.get(PROJECT_CONNECTIONS).mock(
+        side_effect=[
+            httpx.Response(
+                200,
+                json={
+                    "data": [{"id": "c3", "provider": "slack:nango"}],
+                    "has_more": True,
+                    "next_cursor": "n1",
+                },
+            ),
+            httpx.Response(
+                200,
+                json={
+                    "data": [{"id": "c2", "provider": "gdrive:nango"}],
+                    "has_more": False,
+                    "next_cursor": None,
+                },
+            ),
+        ]
+    )
+    route = respx.post(SOURCES).respond(201, json=_attachment(provider="gdrive:nango"))
+    result = runner.invoke(app, ["sources", "attach", DRIVE_LINK, "-P", PROJECT, "--json"])
+    assert result.exit_code == 0, result.output
+    assert _body(route)["connector_id"] == "c2"
+
+
+@respx.mock
+def test_an_engine_without_the_project_route_falls_back_to_the_callers_connections():
+    respx.get(PROJECT_CONNECTIONS).respond(404, json=NOT_A_ROUTE)
+    respx.get(f"{API}/v1/integrations").respond(
+        200, json={"data": [{"id": "c2", "provider": "gdrive:nango"}], "has_more": False}
+    )
+    route = respx.post(SOURCES).respond(201, json=_attachment(provider="gdrive:nango"))
+    result = runner.invoke(app, ["sources", "attach", DRIVE_LINK, "-P", PROJECT, "--json"])
+    assert result.exit_code == 0, result.output
+    assert _body(route)["connector_id"] == "c2"
+
+
+@respx.mock
+def test_a_refused_connection_listing_says_to_pass_the_connector():
+    # An older engine: no project route, and the organization's list is refused.
+    respx.get(PROJECT_CONNECTIONS).respond(404, json=NOT_A_ROUTE)
+    respx.get(f"{API}/v1/integrations").respond(403, json=PROJECT_LIMITED)
+    attach = respx.post(SOURCES)
+    result = runner.invoke(app, ["sources", "attach", DRIVE_LINK, "-P", PROJECT, "--json"])
+    assert result.exit_code == 3, result.output
+    message = json.loads(result.stdout)["error"]["message"]
+    assert "--connector <connection id>" in message
+    assert "restricted to specific projects" in message
+    assert "--type page|database" not in message
+    assert not attach.called
+
+
+@respx.mock
+def test_a_refused_notion_lookup_also_names_type_and_name():
+    # The project's list itself refused (an end-user token may not read it).
+    respx.get(PROJECT_CONNECTIONS).respond(403, json=PROJECT_LIMITED)
+    result = runner.invoke(
+        app,
+        ["sources", "attach", f"https://www.notion.so/{NOTION_ID}", "-P", PROJECT, "--json"],
+    )
+    assert result.exit_code == 3, result.output
+    message = json.loads(result.stdout)["error"]["message"]
+    assert '--connector <connection id> and --type page|database --name "..."' in message
+
+
+@respx.mock
+def test_a_missing_project_is_said_as_the_engine_says_it():
+    respx.get(PROJECT_CONNECTIONS).respond(
+        404, json={"error": {"code": "not_found", "message": "Project not found"}}
+    )
+    result = runner.invoke(app, ["sources", "attach", DRIVE_LINK, "-P", PROJECT, "--json"])
+    assert result.exit_code == 4, result.output
+    assert "Project not found" in json.loads(result.stdout)["error"]["message"]
+
+
+@respx.mock
+def test_a_project_limited_key_attaches_with_a_query_it_cannot_check_first():
+    # The query-key listing names no project either; the engine judges the query.
+    respx.get(f"{API}/v1/integrations/source-query-keys").respond(403, json=PROJECT_LIMITED)
+    route = respx.post(SOURCES).respond(201, json=_attachment(provider="gdrive:nango"))
+    result = runner.invoke(
+        app,
+        [
+            "sources",
+            "attach",
+            DRIVE_LINK,
+            "--connector",
+            "c2",
+            "--drive-q",
+            "mimeType = 'application/pdf'",
+            "-P",
+            PROJECT,
+            "--json",
+        ],
+    )
+    assert result.exit_code == 0, result.output
+    assert _body(route)["source_query"] == {"drive_q": "mimeType = 'application/pdf'"}
+
+
+@respx.mock
+def test_listing_the_query_keys_shows_a_refusal_as_it_is():
+    respx.get(f"{API}/v1/integrations/source-query-keys").respond(403, json=PROJECT_LIMITED)
+    result = runner.invoke(app, ["sources", "keys", "--json"])
+    assert result.exit_code == 3, result.output
+    message = json.loads(result.stdout)["error"]["message"]
+    assert "restricted to specific projects" in message
+    assert "does not list source query keys" not in message

@@ -31,11 +31,23 @@ from typing import Any
 
 import click
 import typer
-from beakr_sdk.errors import BeakrError, ConflictError, NotFoundError
+from beakr_sdk.errors import (
+    BeakrError,
+    ConflictError,
+    NotFoundError,
+    NotProvidedError,
+    PermissionDeniedError,
+)
 
 from beakr_cli import cancels, connected_sources
 from beakr_cli.compact import cell
-from beakr_cli.errors import EXIT_NOT_FOUND, describe_error, error_object, exit_code_for
+from beakr_cli.errors import (
+    EXIT_AUTH,
+    EXIT_NOT_FOUND,
+    describe_error,
+    error_object,
+    exit_code_for,
+)
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -97,6 +109,12 @@ class NoConnection(click.ClickException):
     """No connection for the provider: connect one first (exit 4, not found)."""
 
     exit_code = EXIT_NOT_FOUND
+
+
+class ConnectionsRefused(click.ClickException):
+    """The credential may not list the connections to choose from (exit 3)."""
+
+    exit_code = EXIT_AUTH
 
 
 def _note_mode(mode: str | None, provider: str | None) -> None:
@@ -162,12 +180,21 @@ def _query(raw: str | None, **shorthands: str | None) -> dict[str, Any] | None:
     return parsed
 
 
-def _query_keys(sdk: Any) -> list[dict[str, Any]] | None:
-    """The engine's ``source_query`` keys, or None from an engine that does not list them."""
+def _query_keys(sdk: Any, *, refused: bool = True) -> list[dict[str, Any]] | None:
+    """The engine's ``source_query`` keys, or None when they cannot be listed.
+
+    None from an engine that does not list them, and (with ``refused``) for a
+    credential that may not: a project-limited key, since the listing names no
+    project. The query is then sent as given and the engine judges it.
+    """
     try:
         listing = sdk.project_sources.query_keys()
     except NotFoundError:
         return None
+    except PermissionDeniedError:
+        if refused:
+            return None
+        raise
     return list((listing or {}).get("keys") or [])
 
 
@@ -326,6 +353,63 @@ def _emit_preview(data: Any, json_out: bool) -> None:
 
 def _connection_label(row: dict[str, Any]) -> str:
     return f"{row.get('id')} ({row.get('label') or row.get('provider')})"
+
+
+def _connections_refused(provider: str, exc: BeakrError) -> ConnectionsRefused:
+    notion = ' and --type page|database --name "..."' if provider == "notion:nango" else ""
+    return ConnectionsRefused(
+        f"This credential cannot list the connections to choose one ({exc}). Pass the "
+        f"connection with --connector <connection id>{notion}: the connection's id is "
+        "under Settings > Integrations in Beakr, or in `beakr integrations ls` run with "
+        "an unrestricted credential."
+    )
+
+
+def project_connections_path(project_id: str) -> str:
+    return f"/v1/projects/{project_id}/integrations"
+
+
+def _all_pages(first: Any, fetch: Any) -> list[dict[str, Any]]:
+    """Every row of a cursor-paged list, from its first page and a fetch(cursor)."""
+    rows: list[dict[str, Any]] = []
+    page = first if isinstance(first, dict) else {}
+    seen: set[str] = set()
+    while True:
+        rows.extend(row for row in page.get("data") or [] if isinstance(row, dict))
+        cursor = page.get("next_cursor")
+        if not page.get("has_more") or not cursor or cursor in seen:
+            return rows
+        seen.add(cursor)
+        page = fetch(cursor)
+        page = page if isinstance(page, dict) else {}
+
+
+def connector_for(sdk: Any, project_id: str, provider: str) -> str:
+    """The connection to attach ``provider``'s item with, when --connector names none (B11).
+
+    The project's own list comes first (``GET /v1/projects/{id}/integrations``):
+    the connections ``POST .../sources`` takes, which a key limited to the
+    project may read. An engine without that route (404) falls back to the
+    caller's organization-wide list (``GET /v1/integrations``), which such a key
+    may not call; its refusal says to pass --connector.
+    """
+    path = project_connections_path(project_id)
+    try:
+        connections = _all_pages(
+            sdk.request("GET", path),
+            lambda cursor: sdk.request("GET", path, params={"cursor": cursor}),
+        )
+    except NotProvidedError:
+        # An engine before the route. (A project that is missing answers a plain
+        # NotFoundError with its own message, which is shown as it is.)
+        try:
+            listing = sdk.integrations.list()
+        except PermissionDeniedError as refused:
+            raise _connections_refused(provider, refused) from refused
+        connections = (listing or {}).get("data") or []
+    except PermissionDeniedError as exc:
+        raise _connections_refused(provider, exc) from exc
+    return pick_connector(connections, provider)
 
 
 def pick_connector(connections: list[dict[str, Any]], provider: str) -> str:
@@ -761,7 +845,7 @@ def attach(
         keys = _query_keys(sdk) if source_query else None
         if source_query and slug != "notion:nango":
             _check_query(keys, source_query, provider=slug, item_type=kind)
-        connector_id = connector or pick_connector(sdk.integrations.list().get("data") or [], slug)
+        connector_id = connector or connector_for(sdk, project_id, slug)
         type_unsure = False
         if slug == "notion:nango" and scope_mode != "all" and not (item_type and name):
             # Ask Notion what the item is and what it is called: a database's
@@ -1141,7 +1225,8 @@ def keys(
 ) -> None:
     """The source query keys --query takes: which providers and items take each, and an example."""
     with get_sdk() as sdk:
-        listing = _query_keys(sdk)
+        # A credential refused the listing hears the refusal, not "not listed".
+        listing = _query_keys(sdk, refused=False)
     if listing is None:
         raise click.ClickException(
             "This Beakr does not list source query keys yet; --query is sent as given."

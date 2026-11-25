@@ -30694,7 +30694,7 @@
     },
     "/v1/knowledge/wiki/proposals/{proposal_id}/accept": {
       "post": {
-        "description": "Accept a wiki proposal \u2014 apply the proposed changes.\n\nIn a project that requires a person to accept proposals\n(``GET /v1/knowledge/agent-review``), an API key or token accepting any\nproposal is refused with 403 ``person_review_required`` unless the key holds\nthe ``proposals:accept`` scope. The proposal read says so in\n``needs_person_to_accept``.\n\nAccepting a proposal that is already accepted (by a person, or by the\nfiler's auto-approve) succeeds without applying anything again:\n``already_accepted: true`` with ``reviewed_at``, ``reviewed_by_name`` (the\nperson who accepted it; null when auto-approve did) and ``auto_approved``.\nA dismissed or otherwise closed proposal answers 400 saying so.",
+        "description": "Accept a wiki proposal \u2014 apply the proposed changes.\n\nIn a project that requires a person to accept proposals\n(``GET /v1/knowledge/agent-review``), an API key or token accepting any\nproposal is refused with 403 ``person_review_required`` unless the key holds\nthe ``proposals:accept`` scope. The proposal read says so in\n``needs_person_to_accept``.\n\nAccepting a proposal that is already accepted (by a person, or by the\nfiler's auto-approve) succeeds without applying anything again:\n``already_accepted: true`` with ``reviewed_at``, ``reviewed_by_name`` (the\nperson who accepted it; null when auto-approve did) and ``auto_approved``.\nA dismissed or otherwise closed proposal answers 400 saying so.\n\nA proposal whose citations name a file or connected item the caller cannot\nopen (one only projects they cannot read hold), and the page does not\nalready cite, answers 400 ``citation_source_unresolved``, as for an id that\nnames nothing, and stays pending for someone who can open it.",
         "operationId": "accept_proposal_v1_knowledge_wiki_proposals__proposal_id__accept_post",
         "parameters": [
           {
@@ -35900,6 +35900,112 @@
           "projects"
         ],
         "x-beakr-scope": "projects:admin"
+      }
+    },
+    "/v1/projects/{project_id}/integrations": {
+      "get": {
+        "description": "Connections the caller can attach this project's sources from.\n\nThe caller's own and the organization's active connections: the ones\n``POST /v1/projects/{project_id}/sources`` accepts as ``connector_id``. Each\nitem has the shape of ``GET /v1/integrations``, but its ``projects`` lists\nonly this project's sources. A credential limited to projects may call it\nfor one of them, where the organization-wide list is refused. Answers 404\nfor a project the caller cannot read.",
+        "operationId": "list_project_integrations_v1_projects__project_id__integrations_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Opaque cursor from a previous page's `next_cursor`.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous page's `next_cursor`.",
+              "title": "Cursor"
+            }
+          },
+          {
+            "description": "Page size, 1 to 200.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "description": "Page size, 1 to 200.",
+              "maximum": 200,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IntegrationPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "List integrations usable in a project",
+        "tags": [
+          "public",
+          "integrations"
+        ],
+        "x-beakr-scope": "integrations:read"
       }
     },
     "/v1/projects/{project_id}/interviews/from-reviews": {
