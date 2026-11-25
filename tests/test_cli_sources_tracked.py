@@ -590,3 +590,31 @@ def test_import_status_says_how_many_in_knowledge_are_partly_applied(monkeypatch
         "    Of those in Knowledge: 5 being finished, 2 with changes that could not be applied."
         in result.output.splitlines()
     )
+
+
+# -- why a pending item waits (engine #3323) ----------------------------------------------
+
+
+@respx.mock
+def test_tracked_says_why_a_pending_item_waits_and_when_it_goes_next(monkeypatch):
+    waiting = {
+        "external_id": "conn:t5",
+        "title": "Budget notes",
+        "kind": "thread",
+        "state": "pending",
+        "pending_reason": "resend_scheduled",
+        "pending_reason_text": "Beakr sends it again at the next sync.",
+        "next_attempt_at": "2026-11-26T01:00:00Z",
+    }
+    bare = {**waiting, "external_id": "conn:t6", "title": "Plain", "pending_reason_text": None}
+    bare["next_attempt_at"] = None
+    respx.get(TRACKED).respond(200, json=_page([waiting, bare]))
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    lines = [" ".join(line.split()) for line in result.output.splitlines()]
+    assert (
+        "Budget notes [pending] (Beakr sends it again at the next sync; "
+        "next attempt 2026-11-26T01:00:00Z)"
+    ) in lines
+    assert "Plain [pending] (resend scheduled)" in lines

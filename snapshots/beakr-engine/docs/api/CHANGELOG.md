@@ -11,11 +11,21 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=120be362fa01f42408ef892db2391433f84cd82699e2e1cbbcad952c1ff989f2 changelog sha256=43b6789a28ee1554134f60f3c0d79085645fa71207d57788ad1d04770aae444b -->
+<!-- contract-stamp: public-openapi sha256=c83655b83bdd8c95ae8407cc5d3e35c07d5e8b5a1ef4cffb21dfc8358ea03390 changelog sha256=fc2c383a52928eac695222f8fa609a631d5d4b2dfaae8b81be9b38e38088f3c5 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: a
+  pending item, and a `partial` one Beakr retries, says why it is waiting and
+  what happens next: `pending_reason` (`queued`, `compiling`,
+  `waiting_for_compile`, `retrying`, `held_back`, `import_followup`,
+  `resend_scheduled`, `waiting_for_sync` or `auto_sync_off`), a sentence for a
+  person in `pending_reason_text`, and `next_attempt_at` when known. Beakr now
+  sends again any item pending for more than 6 hours with nothing queued or
+  compiling, whatever the source's auto-sync, at most 3 times; after that it
+  reads `failed` with the new `reason_code` `retry_gave_up`, or `partial` with
+  `compile_not_converging`.
 - `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
   new `state`, `partial`: an item whose latest compile wrote to Knowledge and
   left some planned changes undone. `unfinished_changes` says how many;

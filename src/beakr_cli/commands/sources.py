@@ -1765,8 +1765,9 @@ def tracked(
     too large, or Knowledge read it and found nothing to add), failed (nothing
     of its version reached Knowledge, with the reason: compile_failed is sent
     again by the next sync, import_gave_up when a history import stopped trying
-    it) or removed (gone from the source). Counts cover the whole source; the
-    filters narrow the list.
+    it, retry_gave_up when Beakr stopped sending a stuck item again) or removed
+    (gone from the source). A pending item says why it waits and when Beakr
+    tries next. Counts cover the whole source; the filters narrow the list.
     """
     state = _choice(state, TRACKED_STATES, "--state")
     if skipped:
@@ -1821,6 +1822,10 @@ def tracked(
             unfinished = row.get("unfinished_changes")
             if isinstance(unfinished, int) and unfinished > 0:
                 older += f"  ({unfinished} planned change(s) not applied)"
+            # Why a pending (or retried partial) item waits, and when it goes next.
+            waiting = _pending_note(row)
+            if waiting:
+                older += f"  {waiting}"
             console.print(
                 f"  {row.get('title')}  [{row.get('state')}]{older}"
                 + (f"  {reason}" if reason else ""),
@@ -1864,6 +1869,17 @@ def tracked(
 #: A tracked item whose earlier version is in Knowledge while its newest one is
 #: pending, failed or skipped (being updated, or the update failed).
 _OLDER_VERSION = "older_version_in_knowledge"
+
+
+def _pending_note(row: dict[str, Any]) -> str:
+    """Why a pending item waits and when Beakr tries next (engine #3323), or ``""``."""
+    text = str(row.get("pending_reason_text") or "").strip().rstrip(".")
+    if not text and row.get("pending_reason"):
+        text = str(row["pending_reason"]).replace("_", " ")
+    if not text:
+        return ""
+    when = row.get("next_attempt_at")
+    return f"({text}" + (f"; next attempt {when}" if when else "") + ")"
 
 
 def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:
