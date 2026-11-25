@@ -1649,6 +1649,33 @@
    "summary": "Disconnect an integration"
   },
   {
+   "action": "get-history-import-status",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "attachment_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a source's history import status"
+  },
+  {
    "action": "integration-status",
    "anonymous": false,
    "area": "integrations",
@@ -1815,7 +1842,7 @@
      "type": "integer"
     },
     {
-     "description": "Keep skipped items set aside for this reason (e.g. nothing_to_add).",
+     "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
      "name": "reason_code",
      "required": false,
      "type": "string"
@@ -1838,6 +1865,7 @@
       "pending",
       "ingested",
       "skipped",
+      "failed",
       "removed"
      ],
      "name": "state",

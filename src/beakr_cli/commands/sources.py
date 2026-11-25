@@ -1,4 +1,4 @@
-"""``beakr sources ls|attach|edit|rm|sync|status|tracked|cancel-sync``: what a project pulls in.
+"""``beakr sources ls|attach|edit|rm|sync|status|tracked|import-status|...``: what a project reads.
 
 A project's sources are the connected items it reads: a Google Drive folder, a
 Slack channel, a Notion page or database, or everything one connection can see.
@@ -20,8 +20,10 @@ Knowledge; the person runs the command themselves.
 
 ``tracked`` lists every item a source's syncs picked and what became of it
 (ingested, pending, skipped or removed), with why a skipped item was set aside,
-including when Knowledge read it and found nothing to add. ``status`` says the
-same for the items the latest sync brought in.
+including when Knowledge read it and found nothing to add, and why a failed
+item's compile did not finish. ``status`` says the same for the items the
+latest sync brought in, and ``import-status`` how a source's history import
+went.
 """
 
 from __future__ import annotations
@@ -1557,7 +1559,7 @@ def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
 
 
 #: ``--state`` values, as the tracked-items list takes them.
-TRACKED_STATES = ("pending", "ingested", "skipped", "removed")
+TRACKED_STATES = ("pending", "ingested", "skipped", "failed", "removed")
 #: The most items one request of ``tracked`` asks for (the route's page maximum).
 TRACKED_PAGE_MAX = 200
 
@@ -1593,12 +1595,14 @@ def tracked(
         False, "--skipped", help="Only items set aside (same as --state skipped)."
     ),
     state: str | None = typer.Option(
-        None, "--state", help="Only items in this state: pending, ingested, skipped or removed."
+        None,
+        "--state",
+        help="Only items in this state: pending, ingested, skipped, failed or removed.",
     ),
     reason_code: str | None = typer.Option(
         None,
         "--reason-code",
-        help="Only skipped items set aside for this reason, e.g. nothing_to_add.",
+        help="Only skipped or failed items with this reason, e.g. nothing_to_add, compile_failed.",
     ),
     search: str | None = typer.Option(
         None, "--search", help="Only items whose title holds this text."
@@ -1621,8 +1625,11 @@ def tracked(
     \b
     Each item is ingested (read into Knowledge), pending (not read yet),
     skipped (set aside, with the reason: a blocked file type, a file too large,
-    or Knowledge read it and found nothing to add) or removed (gone from the
-    source). Counts cover the whole source; the filters narrow the list.
+    or Knowledge read it and found nothing to add), failed (its compile did not
+    finish, with the reason: compile_failed or compile_partial are sent again
+    by the next sync, compile_not_converging only once the item changes,
+    import_gave_up when a history import stopped trying it) or removed (gone
+    from the source). Counts cover the whole source; the filters narrow the list.
     """
     state = _choice(state, TRACKED_STATES, "--state")
     if skipped:
@@ -1657,8 +1664,7 @@ def tracked(
         counts = data.get("counts") or {}
         total = int(counts.get("total") or 0)
         states = ", ".join(
-            f"{int(counts.get(name) or 0)} {name}"
-            for name in ("ingested", "skipped", "pending", "removed")
+            f"{int(counts.get(name) or 0)} {name}" for name in _tracked_count_names(counts)
         )
         console.print(
             f"{total} tracked item(s) from {data.get('provider') or 'this source'}: {states}.",
@@ -1710,6 +1716,143 @@ def tracked(
             else None
         ),
     )
+
+
+def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:
+    """The states ``tracked`` counts, ``failed`` where the engine counts it (R12)."""
+    names = ("ingested", "skipped", "pending", "removed")
+    return ("ingested", "skipped", "failed", "pending", "removed") if "failed" in counts else names
+
+
+# -- history import status (R6) ------------------------------------------------------------
+#
+# Whether a source takes a history import, whether one is waiting or running, and how the
+# last one ended (GET .../history-import/status, engine #3292). Read through the SDK's
+# ``request``: the released beakr-sdk predates a method for it.
+
+#: The counts of an import's outcome, in the order they are printed.
+IMPORT_COUNTS = ("in_knowledge", "skipped", "failed", "left", "removed")
+
+
+def history_import_path(project_id: str, source_id: str) -> str:
+    return f"/v1/projects/{project_id}/sources/{source_id}/history-import/status"
+
+
+def _reason_counts(rows: Any, code: str = "reason_code") -> str:
+    return ", ".join(
+        f"{row.get(code)} {int(row.get('count') or 0)}"
+        for row in rows or []
+        if isinstance(row, dict) and row.get(code)
+    )
+
+
+def _outcome_text(outcome: dict[str, Any]) -> list[str]:
+    """An import outcome: its summary sentence, then why items were skipped, failed or left."""
+    summary = str(outcome.get("summary") or "").strip()
+    if not summary:
+        summary = ", ".join(
+            f"{int(outcome.get(n) or 0)} {n.replace('_', ' ')}" for n in IMPORT_COUNTS
+        )
+    lines = [summary if summary.endswith(".") else f"{summary}."]
+    for label, rows, code in (
+        ("Skipped", outcome.get("skipped_reasons"), "reason_code"),
+        ("Failed", outcome.get("failed_reasons"), "reason_code"),
+        ("Left", outcome.get("left_reasons"), "reason"),
+    ):
+        counted = _reason_counts(rows, code)
+        if counted:
+            lines.append(f"  {label}: {counted}")
+    followup = outcome.get("followup")
+    if isinstance(followup, dict) and followup.get("status"):
+        sent = followup.get("last_sent")
+        attempts = int(followup.get("attempts") or 0)
+        lines.append(
+            f"  Follow-up {followup['status']}: sent the leftovers again {attempts} time(s)"
+            + (f", {sent} item(s) last time" if sent is not None else "")
+            + (f"; next look {followup['next_at']}" if followup.get("next_at") else "")
+            + "."
+        )
+    return lines
+
+
+def _import_status_lines(data: dict[str, Any], source_id: str) -> list[str]:
+    """``import-status`` for a person: the state, how far it got, and how it ended."""
+    if not data.get("supported"):
+        why = data.get("unsupported_reason") or "this kind of source has no history to import"
+        return [f"{source_id} does not take a history import: {why}."]
+    status = str(data.get("status") or "idle")
+    lines: list[str] = []
+    if status == "idle":
+        lines.append("No history import is waiting or running.")
+    else:
+        lines.append(
+            f"History import {status}"
+            + (
+                " (a sync stopped partway; the next sync runs it again)"
+                if data.get("retrying")
+                else ""
+            )
+            + "."
+        )
+        progress = data.get("progress")
+        if isinstance(progress, dict) and progress:
+            lines.append(
+                f"  {int(progress.get('tracked') or 0)} tracked, "
+                f"{int(progress.get('brought_in') or 0)} read, "
+                f"{int(progress.get('compiled') or 0)} compiled, "
+                f"{int(progress.get('unprocessable') or 0)} set aside."
+            )
+        outcome = data.get("outcome")
+        if isinstance(outcome, dict) and outcome:
+            lines += _outcome_text(outcome)
+    last = data.get("last_outcome")
+    if isinstance(last, dict) and last:
+        cancelled = " (cancelled)" if data.get("last_import_cancelled") else ""
+        lines.append(f"Last import{cancelled}:")
+        lines += [f"  {line}" for line in _outcome_text(last)]
+    elif status == "idle" and not data.get("last_import"):
+        lines.append("No import has run for this source.")
+    return lines
+
+
+@app.command("import-status")
+def import_status(
+    source_id: str = _source_arg,
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Whether a source takes a history import, whether one runs, and how the last one ended.
+
+    \b
+    An import's outcome counts its items in Knowledge, skipped, failed and left
+    (each with why) and removed from the source, and says when it finished and
+    how Beakr is sending what it left again. `beakr sources tracked <id>
+    --state failed` lists the failed items.
+    """
+    project_id = _require_project(project)
+    with get_sdk() as sdk:
+        data = dict(sdk.request("GET", history_import_path(project_id, source_id)) or {})
+
+    def render(answer: dict[str, Any]) -> None:
+        for line in _import_status_lines(answer, source_id):
+            console.print(line, highlight=False, markup=False, soft_wrap=True)
+
+    def lines(answer: dict[str, Any]) -> list[str]:
+        fields = [
+            cell(source_id),
+            f"status={answer.get('status') or 'idle'}",
+            f"supported={'true' if answer.get('supported') else 'false'}",
+        ]
+        for prefix, key in (("", "outcome"), ("last_", "last_outcome")):
+            outcome = answer.get(key)
+            if isinstance(outcome, dict) and outcome:
+                fields.append(f"{prefix}state={outcome.get('state') or ''}")
+                fields += [
+                    f"{prefix}{name}={int(outcome.get(name) or 0)}" for name in IMPORT_COUNTS
+                ]
+        return ["\t".join(fields)]
+
+    emit(data, json_out=json_out, render=render, lines=lines)
 
 
 def _running_syncs(project_id: str, json_out: bool) -> None:

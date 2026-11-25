@@ -6439,6 +6439,471 @@
         "title": "FolderUpdate",
         "type": "object"
       },
+      "HistoryImportFollowupOut": {
+        "properties": {
+          "attempts": {
+            "description": "How many times it has sent the leftovers again.",
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "last_sent": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many items it sent last time.",
+            "title": "Last Sent"
+          },
+          "last_sent_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it last sent items again (ISO 8601).",
+            "title": "Last Sent At"
+          },
+          "max_attempts": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The most times it sends them before it stops.",
+            "title": "Max Attempts"
+          },
+          "next_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it looks at the import next (ISO 8601).",
+            "title": "Next At"
+          },
+          "status": {
+            "description": "waiting (Beakr is still sending what the import left), finished, or gave_up (it stopped and marked what was left failed).",
+            "enum": [
+              "waiting",
+              "finished",
+              "gave_up"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "attempts"
+        ],
+        "title": "HistoryImportFollowupOut",
+        "type": "object"
+      },
+      "HistoryImportLeftReason": {
+        "properties": {
+          "count": {
+            "description": "How many items it applies to.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "label": {
+            "description": "The same, for a person to read.",
+            "title": "Label",
+            "type": "string"
+          },
+          "reason": {
+            "description": "Why these items are not finished yet, as a stable code.",
+            "enum": [
+              "compiling",
+              "waiting_for_compile",
+              "retry_after_failure",
+              "not_read_yet"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason",
+          "label",
+          "count"
+        ],
+        "title": "HistoryImportLeftReason",
+        "type": "object"
+      },
+      "HistoryImportOutcomeOut": {
+        "properties": {
+          "failed": {
+            "description": "Items Beakr stopped trying; failed_reasons says why.",
+            "title": "Failed",
+            "type": "integer"
+          },
+          "failed_reasons": {
+            "description": "Failed items by reason code, largest first.",
+            "items": {
+              "$ref": "#/components/schemas/HistoryImportReasonCount"
+            },
+            "title": "Failed Reasons",
+            "type": "array"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the import finished (ISO 8601); null while working.",
+            "title": "Finished At"
+          },
+          "followup": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryImportFollowupOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How Beakr is finishing the import; null for a running or an older import."
+          },
+          "in_knowledge": {
+            "description": "Items compiled into Knowledge.",
+            "title": "In Knowledge",
+            "type": "integer"
+          },
+          "left": {
+            "description": "Items not finished yet; left_reasons says why.",
+            "title": "Left",
+            "type": "integer"
+          },
+          "left_reasons": {
+            "description": "Why the items left are not finished, largest first.",
+            "items": {
+              "$ref": "#/components/schemas/HistoryImportLeftReason"
+            },
+            "title": "Left Reasons",
+            "type": "array"
+          },
+          "of": {
+            "description": "The import's items: in Knowledge, skipped, failed and left.",
+            "title": "Of",
+            "type": "integer"
+          },
+          "removed": {
+            "description": "Items removed from the source (deleted or trashed); in no other count.",
+            "title": "Removed",
+            "type": "integer"
+          },
+          "skipped": {
+            "description": "Items set aside; skipped_reasons says why.",
+            "title": "Skipped",
+            "type": "integer"
+          },
+          "skipped_reasons": {
+            "description": "Skipped items by reason code, largest first.",
+            "items": {
+              "$ref": "#/components/schemas/HistoryImportReasonCount"
+            },
+            "title": "Skipped Reasons",
+            "type": "array"
+          },
+          "state": {
+            "description": "finished once every item has ended; working until then.",
+            "enum": [
+              "working",
+              "finished"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "summary": {
+            "description": "One sentence for a person, e.g. Import finished on ...",
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "of",
+          "in_knowledge",
+          "skipped",
+          "failed",
+          "left",
+          "removed",
+          "left_reasons",
+          "skipped_reasons",
+          "failed_reasons",
+          "summary"
+        ],
+        "title": "HistoryImportOutcomeOut",
+        "type": "object"
+      },
+      "HistoryImportProgressOut": {
+        "properties": {
+          "brought_in": {
+            "description": "Of those, how many were read from the source.",
+            "title": "Brought In",
+            "type": "integer"
+          },
+          "compiled": {
+            "description": "Of those, how many were compiled into Knowledge.",
+            "title": "Compiled",
+            "type": "integer"
+          },
+          "tracked": {
+            "description": "Items the import added and still tracks.",
+            "title": "Tracked",
+            "type": "integer"
+          },
+          "unprocessable": {
+            "description": "Of those, how many were read and set aside.",
+            "title": "Unprocessable",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "tracked",
+          "brought_in",
+          "compiled",
+          "unprocessable"
+        ],
+        "title": "HistoryImportProgressOut",
+        "type": "object"
+      },
+      "HistoryImportReasonCount": {
+        "properties": {
+          "count": {
+            "description": "How many items carry it.",
+            "title": "Count",
+            "type": "integer"
+          },
+          "reason_code": {
+            "description": "Why the items were skipped or failed, as a stable code.",
+            "title": "Reason Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason_code",
+          "count"
+        ],
+        "title": "HistoryImportReasonCount",
+        "type": "object"
+      },
+      "HistoryImportRequestOut": {
+        "properties": {
+          "back_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The first day imported (YYYY-MM-DD); null for no lower bound.",
+            "title": "Back To"
+          },
+          "cancel_requested_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was cancelled (ISO 8601), if it was.",
+            "title": "Cancel Requested At"
+          },
+          "max_items": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The most items the import takes; null for the default.",
+            "title": "Max Items"
+          },
+          "requested_at": {
+            "description": "When the import was requested (ISO 8601).",
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When a sync first picked it up (ISO 8601); null while waiting.",
+            "title": "Started At"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last day imported, included (YYYY-MM-DD); null for up to now.",
+            "title": "Until"
+          }
+        },
+        "required": [
+          "requested_at"
+        ],
+        "title": "HistoryImportRequestOut",
+        "type": "object"
+      },
+      "HistoryImportStatusOut": {
+        "properties": {
+          "attachment_id": {
+            "description": "The source.",
+            "format": "uuid",
+            "title": "Attachment Id",
+            "type": "string"
+          },
+          "last_import": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryImportRequestOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The last import that ended, whatever became of it."
+          },
+          "last_import_cancelled": {
+            "description": "Whether the last import was cancelled.",
+            "title": "Last Import Cancelled",
+            "type": "boolean"
+          },
+          "last_outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryImportOutcomeOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the last import's items stand: while Beakr is still finishing it, and for a week after it ends. Null for a cancelled import."
+          },
+          "outcome": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryImportOutcomeOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Where the running import's items stand."
+          },
+          "progress": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryImportProgressOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How far the running import has got."
+          },
+          "provider": {
+            "description": "The source's provider, as the source lists it (e.g. gdrive:nango).",
+            "title": "Provider",
+            "type": "string"
+          },
+          "request": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HistoryImportRequestOut"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The import waiting or running; null when idle."
+          },
+          "retrying": {
+            "description": "A sync picked it up and stopped partway; the next sync runs it again.",
+            "title": "Retrying",
+            "type": "boolean"
+          },
+          "status": {
+            "description": "idle (none waiting or running), pending (waiting for the source's sync, or to be run again after a sync that stopped partway), running, or cancelling.",
+            "enum": [
+              "idle",
+              "pending",
+              "running",
+              "cancelling"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supported": {
+            "description": "Whether this source takes a history import.",
+            "title": "Supported",
+            "type": "boolean"
+          },
+          "unsupported_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why it does not, when it does not.",
+            "title": "Unsupported Reason"
+          }
+        },
+        "required": [
+          "attachment_id",
+          "provider",
+          "supported",
+          "status",
+          "retrying",
+          "last_import_cancelled"
+        ],
+        "title": "HistoryImportStatusOut",
+        "type": "object"
+      },
       "ImportBundleIn": {
         "description": "Import a full SKILL.md folder bundle (Anthropic / Hermes / Codex / OpenAI).",
         "properties": {
@@ -18473,6 +18938,11 @@
       },
       "TrackedItemCounts": {
         "properties": {
+          "failed": {
+            "description": "Items whose compile did not finish; each one's reason says why.",
+            "title": "Failed",
+            "type": "integer"
+          },
           "ingested": {
             "description": "Items read into Knowledge.",
             "title": "Ingested",
@@ -18504,6 +18974,7 @@
           "pending",
           "ingested",
           "skipped",
+          "failed",
           "removed"
         ],
         "title": "TrackedItemCounts",
@@ -18556,7 +19027,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why a skipped item was set aside, for a person to read.",
+            "description": "Why a skipped item was set aside, or a failed one failed, for a person.",
             "title": "Reason"
           },
           "reason_code": {
@@ -18568,7 +19039,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why a skipped item was set aside, as a stable code: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Null unless skipped, and for items skipped before reasons were recorded.",
+            "description": "Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Failed: compile_failed and compile_partial (the next sync sends it again), compile_not_converging (not sent again until it changes), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.",
             "title": "Reason Code"
           },
           "selected_at": {
@@ -18597,11 +19068,12 @@
             "title": "Selected Reason"
           },
           "state": {
-            "description": "pending (tracked, not read into Knowledge yet), ingested, skipped (set aside; reason says why) or removed (gone from the source).",
+            "description": "pending (tracked, not read into Knowledge yet, or sent and compiling), ingested, skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source).",
             "enum": [
               "pending",
               "ingested",
               "skipped",
+              "failed",
               "removed"
             ],
             "title": "State",
@@ -37758,6 +38230,90 @@
         "x-beakr-scope": "projects:admin"
       }
     },
+    "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status": {
+      "get": {
+        "description": "Get a source's history import status.\n\nWhether an import is waiting or running and how far it has got, and how\nthe last import ended: how many of its items are in Knowledge, skipped,\nfailed (each with why) and still left, and when it finished. Any caller\nwho can read the project's source may read it; a key limited to projects\nmay read it for one of them.",
+        "operationId": "get_history_import_status_v1_projects__project_id__sources__attachment_id__history_import_status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HistoryImportStatusOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Get a source's history import status",
+        "tags": [
+          "public",
+          "integrations"
+        ],
+        "x-beakr-scope": "projects:read"
+      }
+    },
     "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
       "post": {
         "description": "Cancel a source's running sync.\n\nListing stops at its next step and items not yet started are skipped. Items\nalready synced, and their Knowledge, are kept; compiles they already queued\nstill run (cancel those with POST .../knowledge/compiles/cancel). Works for\nmanual, nightly and change-triggered syncs. Read progress with\nGET /v1/jobs/{sync_job_id}: cancelling while started items finish, then\ncancelled. The person who attached the source (while a project member), a\nproject admin or an org admin may cancel it. 409 when nothing is syncing.",
@@ -37844,7 +38400,7 @@
     },
     "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items": {
       "get": {
-        "description": "List a source's tracked items.\n\nEvery item a connected source's syncs picked, and what became of it: read\ninto Knowledge, still pending, skipped (with the reason it was set aside,\nincluding what Knowledge decided after reading it) or removed from the\nsource. ``counts`` cover the whole source; ``state``, ``reason_code``,\n``search`` and ``since`` narrow the page and ``matched`` says how many they\nkeep. Pages by ``cursor``, newest picked first.",
+        "description": "List a source's tracked items.\n\nEvery item a connected source's syncs picked, and what became of it: read\ninto Knowledge, still pending, skipped (with the reason it was set aside,\nincluding what Knowledge decided after reading it), failed (its compile did\nnot finish, with why) or removed from the source. ``counts`` cover the whole source; ``state``, ``reason_code``,\n``search`` and ``since`` narrow the page and ``matched`` says how many they\nkeep. Pages by ``cursor``, newest picked first.",
         "operationId": "list_tracked_items_v1_projects__project_id__sources__attachment_id__tracked_items_get",
         "parameters": [
           {
@@ -37882,6 +38438,7 @@
                     "pending",
                     "ingested",
                     "skipped",
+                    "failed",
                     "removed"
                   ],
                   "type": "string"
@@ -37895,7 +38452,7 @@
             }
           },
           {
-            "description": "Keep skipped items set aside for this reason (e.g. nothing_to_add).",
+            "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
             "in": "query",
             "name": "reason_code",
             "required": false,
@@ -37909,7 +38466,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Keep skipped items set aside for this reason (e.g. nothing_to_add).",
+              "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
               "title": "Reason Code"
             }
           },
