@@ -11,7 +11,7 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=5ff0b2a28070060e6123e890700d50388c1ca946bd0cb0d5a238aaad9aa611df changelog sha256=1ea58f29c0592a4de91b2ddee85295b33a2d017483f2626bd8cb1f14b95e4808 -->
+<!-- contract-stamp: public-openapi sha256=714b2e2cccee23e19f09f7837920de314856e4844e0c4b53bc75176f3cdefc87 changelog sha256=5c000164509e4f9e5c0cddeaa7ae336a963a0d9cd9b8951aed34a67a3cd04da4 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
@@ -32,6 +32,13 @@ The first public version.
   counts the rest). `dry_run: true` counts what would be sent and sends nothing.
   409 `connection_unusable` when the attacher's connection can no longer read
   the source, 409 `knowledge_off` when Knowledge is off for it.
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: `state`
+  now describes an item's newest version. An item edited at its source whose
+  new version is still waiting for its compile reads `pending`, and one whose
+  new version's compile failed reads `failed`; both used to read `ingested`.
+  The new `older_version_in_knowledge` is true when an earlier version is still
+  in Knowledge (the item is being updated, or its update failed). A sync's
+  `result.outcomes` from `GET /v1/jobs/{job_id}` counts items the same way.
 - New: `GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status`
   (scope `projects:read`; a key limited to projects may call it for one of
   them) says whether a source (`provider`, as the source lists it) takes a

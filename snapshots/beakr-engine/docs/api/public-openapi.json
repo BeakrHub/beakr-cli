@@ -19142,6 +19142,12 @@
             "description": "When a sync last read the item or Knowledge last decided on it (ISO 8601).",
             "title": "Last Synced At"
           },
+          "older_version_in_knowledge": {
+            "default": false,
+            "description": "An earlier version of the item is in Knowledge while its newest one is pending, failed or skipped: the item is being updated, or its update failed.",
+            "title": "Older Version In Knowledge",
+            "type": "boolean"
+          },
           "reason": {
             "anyOf": [
               {
@@ -19192,7 +19198,7 @@
             "title": "Selected Reason"
           },
           "state": {
-            "description": "pending (tracked, not read into Knowledge yet, or sent and compiling), ingested, skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source).",
+            "description": "The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.",
             "enum": [
               "pending",
               "ingested",

@@ -500,3 +500,13 @@ def test_a_recompile_cooldown_is_said_as_the_engine_says_it():
     error = json.loads(result.stdout)["error"]
     assert error["code"] == "recompile_cooldown"
     assert "less than 10 minutes ago" in error["message"]
+
+
+@respx.mock
+def test_tracked_says_when_an_older_version_is_in_knowledge(monkeypatch):
+    updating = {**ASSAY, "state": "pending", "reason_code": None, "reason": None}
+    respx.get(TRACKED).respond(200, json=_page([{**updating, "older_version_in_knowledge": True}]))
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "Assay plan  [pending]  (an older version is in Knowledge)" in result.output

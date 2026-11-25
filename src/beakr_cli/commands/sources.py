@@ -1805,8 +1805,11 @@ def tracked(
             console.print("No tracked items match.", markup=False)
         for row in rows:
             reason = _item_reason(row)
+            # The state is the newest version's; an earlier one may still be in Knowledge.
+            older = "  (an older version is in Knowledge)" if row.get(_OLDER_VERSION) else ""
             console.print(
-                f"  {row.get('title')}  [{row.get('state')}]" + (f"  {reason}" if reason else ""),
+                f"  {row.get('title')}  [{row.get('state')}]{older}"
+                + (f"  {reason}" if reason else ""),
                 highlight=False,
                 markup=False,
                 soft_wrap=True,
@@ -1842,6 +1845,11 @@ def tracked(
             else None
         ),
     )
+
+
+#: A tracked item whose earlier version is in Knowledge while its newest one is
+#: pending, failed or skipped (being updated, or the update failed).
+_OLDER_VERSION = "older_version_in_knowledge"
 
 
 def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:

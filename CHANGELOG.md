@@ -24,6 +24,13 @@ Each release lists the public API changes it supports, taken from the API change
   counts the rest). `dry_run: true` counts what would be sent and sends nothing.
   409 `connection_unusable` when the attacher's connection can no longer read
   the source, 409 `knowledge_off` when Knowledge is off for it.
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: `state`
+  now describes an item's newest version. An item edited at its source whose
+  new version is still waiting for its compile reads `pending`, and one whose
+  new version's compile failed reads `failed`; both used to read `ingested`.
+  The new `older_version_in_knowledge` is true when an earlier version is still
+  in Knowledge (the item is being updated, or its update failed). A sync's
+  `result.outcomes` from `GET /v1/jobs/{job_id}` counts items the same way.
 - New: `GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status`
   (scope `projects:read`; a key limited to projects may call it for one of
   them) says whether a source (`provider`, as the source lists it) takes a
