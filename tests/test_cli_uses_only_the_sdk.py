@@ -29,6 +29,12 @@ HTTPX_ALLOWED = {
     "mcp_errors.py": "error wording over the SDK's response",
     # Names an HTML page the SDK's error carries as its response (a wrong API URL).
     "wrong_api.py": "error wording over the SDK's response",
+    # Hands the SDK an httpx client whose connect phase is capped (B10); the SDK
+    # still builds, sends and retries every request.
+    "_private_api/client.py": "the SDK's own HTTP client, with a connect cap",
+    # Tells a connect that timed out or was refused from one that went quiet, in
+    # the error the SDK raised for a tool call that got no answer (B10).
+    "tool_surface.py": "error wording over the SDK's transport error",
 }
 
 

@@ -151,6 +151,22 @@ def get_sdk(
     )
 
 
+#: Seconds the MCP server's requests may spend connecting to the API (TCP and
+#: TLS) before the installation counts as unreachable; ``BEAKR_CONNECT_TIMEOUT``
+#: overrides it for a slow link.
+CONNECT_TIMEOUT_ENV = "BEAKR_CONNECT_TIMEOUT"
+DEFAULT_CONNECT_TIMEOUT = 5.0
+
+
+def connect_timeout() -> float:
+    """``BEAKR_CONNECT_TIMEOUT`` when it is a positive number of seconds, else 5."""
+    try:
+        value = float(os.environ.get(CONNECT_TIMEOUT_ENV, "") or DEFAULT_CONNECT_TIMEOUT)
+    except ValueError:
+        return DEFAULT_CONNECT_TIMEOUT
+    return value if value > 0 else DEFAULT_CONNECT_TIMEOUT
+
+
 def get_async_sdk(
     *, client_name: str = MCP_CLIENT_NAME, timeout: float = 170.0
 ) -> AsyncPrivateBeakr:
@@ -159,8 +175,11 @@ def get_async_sdk(
     Both clients wait past the research route limit because the engine gives research
     (an agentic loop that downloads and reads documents from connected
     services) up to 150s; 170s outwaits it, as the SDK's research call does
-    (``beakr_sdk.resources.knowledge.RESEARCH_TIMEOUT``). Writes carry
-    ``BEAKR_RUN`` when a script declares one, else this process's run label.
+    (``beakr_sdk.resources.knowledge.RESEARCH_TIMEOUT``). Connecting is capped
+    far shorter (:func:`connect_timeout`): an installation that cannot be
+    reached answers a tool call with "can't reach" in seconds, not minutes.
+    Writes carry ``BEAKR_RUN`` when a script declares one, else this process's
+    run label.
     """
     run = os.environ.get("BEAKR_RUN") or (MCP_RUN_LABEL if client_name == MCP_CLIENT_NAME else None)
     return AsyncPrivateBeakr(
@@ -168,5 +187,6 @@ def get_async_sdk(
         agent=_agent(),
         run=run,
         timeout=timeout,
+        connect_timeout=min(timeout, connect_timeout()),
         default_headers=_headers(),
     )
