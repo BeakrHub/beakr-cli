@@ -1743,6 +1743,42 @@
    "summary": "List connected integrations"
   },
   {
+   "action": "list-project-integrations",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/integrations",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/integrations",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "integrations:read",
+   "summary": "List integrations usable in a project"
+  },
+  {
    "action": "list-tracked-items",
    "anonymous": false,
    "area": "integrations",

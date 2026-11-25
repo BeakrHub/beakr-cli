@@ -6162,7 +6162,7 @@
       "type": "array"
      },
      "since": {
-      "description": "When the run began; items synced since then are counted.",
+      "description": "When the run began. The items counted are the ones this run delivered, however late Knowledge decided them; an item recorded before runs were named on items is counted when it was synced between since and until.",
       "title": "Since",
       "type": "string"
      },

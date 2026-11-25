@@ -8,6 +8,34 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- New: `GET /v1/projects/{project_id}/integrations` (`integrations:read`) lists
+  the connections the caller can attach that project's sources from: their own
+  and the organization's active connections, the ones
+  `POST /v1/projects/{project_id}/sources` accepts as `connector_id`. Items have
+  the shape of `GET /v1/integrations`, but `projects` lists only that project's
+  sources. A key limited to projects may call it for one of them; the
+  organization-wide `GET /v1/integrations` stays refused to such a key. An
+  end-user token is refused it, as it lists the minting credential's
+  connections. A key limited to projects may now also call
+  `GET /v1/knowledge/wiki/page-types`, `.../page-types/history` and
+  `.../page-types/suggestions` with one of its projects, and change that
+  project's cards and settings through `.../page-types/{key}/rename-fields`,
+  `.../page-types/{key}/retype-cards`, `PUT .../page-types/settings` and
+  `.../page-types/suggestions/{suggestion_id}/dismiss`. Another project, or
+  none, answers 403 `insufficient_scope`.
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/accept` refuses, with 400
+  `citation_source_unresolved`, a proposal whose citations name a file or a
+  connected item the accepting caller cannot open (one held only by projects
+  they cannot read) and the page does not already cite, with the same answer as
+  an id that names nothing; the proposal stays pending for someone who can open
+  it. A connected item no project tracks, such as a message an agent read live,
+  is accepted as before. The page section edit route now resolves a `unit`,
+  `external_item` or `artifact` citation within its writer's reach, as the other
+  page edit routes do. A `{{unit:...}}` or `{{external_item:...}}` token a
+  person writes into a page with no citation of its own is recorded only for an
+  item its writer can reach, and `GET /v1/knowledge/wiki/pages/{page_id}/sources`
+  resolves such a token only for an item the reader can reach or the page
+  already cites.
 - A citation's `meta.quote` on `POST /v1/knowledge/wiki/write` is described
   without the word "unverified": a stitched or retyped quote that cannot be
   located in its source is shown as Beakr's description, never as the
@@ -102,7 +130,9 @@ Each release lists the public API changes it supports, taken from the API change
   sent interview; `creator_cannot_resolve`: the interview was drafted with an
   API key, an agent's or the CLI's token, or a credential that could not
   resolve the flag itself; `person_required`: the project requires a person to accept
-  changes; `no_verified_option`; `answers_disagree`; `answer_not_citable`;
+  changes; `no_verified_option`; `answer_values_unknown`: the answer names no
+  value the resolution could be checked against; `answers_disagree`;
+  `answer_not_citable`;
   `several_cards`; `page_changed`; `not_permitted`; `not_applicable`) and
   `suggestion_note` says why in a sentence. A skipped question leaves its flag
   untouched.
@@ -516,6 +546,22 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **`sources attach` works with a key limited to the project.** With no
+  `--connector`, the connection is chosen from the project's own list
+  (`GET /v1/projects/{project_id}/integrations`), which such a key may read,
+  instead of the organization-wide `GET /v1/integrations`, which it may not.
+  An engine without that route falls back to the organization's list; a list
+  the credential may not read says to pass `--connector <connection id>` (for
+  Notion also `--type` and `--name`). A query whose keys the credential cannot
+  list first is sent as given, for the engine to judge.
+- **`beakr mcp` starts at once when the installation is unreachable.**
+  `initialize` is answered before the installation is read, so a VPN that is
+  down no longer holds a client's start-up past its limit (34 to 63 s, against
+  Claude Code's 30). The tools the installation serves are read in the
+  background; until then the listing follows the last read for that
+  installation, and `tools/list_changed` corrects it. Connecting gives up
+  after 5 s (`BEAKR_CONNECT_TIMEOUT`), and a tool call that cannot connect
+  says "Can't reach the Beakr installation at <url>" (`unreachable`).
 - **Review flags show their interview answers.** `beakr kb review options`
   and the MCP server's `review_options` list each answer an interview brought
   back to a flag (who, when, their words, decisive or not, the option it points
