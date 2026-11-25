@@ -24,6 +24,15 @@ from beakr_cli.source_links import SourceLinkError, parse_source_link, provider_
 API = "https://api.test"
 PROJECT = "p1"
 SOURCES = f"{API}/v1/projects/{PROJECT}/sources"
+
+
+def _listed(*rows: dict) -> None:
+    """The project's sources as ``ls`` lists them; ``status`` reads its source's health there."""
+    respx.get(SOURCES).respond(
+        200, json={"data": list(rows), "has_more": False, "next_cursor": None}
+    )
+
+
 NOTION_ID = "0123456789abcdef0123456789abcdef"
 NOTION_DASHED = "01234567-89ab-cdef-0123-456789abcdef"
 VIEW_ID = "fedcba9876543210fedcba9876543210"
@@ -738,6 +747,7 @@ def test_sync_starts_and_names_the_status_command():
 
 @respx.mock
 def test_status_reports_the_latest_sync(monkeypatch):
+    _listed()
     # An engine that does not count compiles yet: the sync alone is reported.
     respx.get(f"{API}/v1/projects/{PROJECT}/knowledge/compiles").respond(
         404, json={"detail": "Not Found"}
@@ -2019,3 +2029,69 @@ def test_listing_the_query_keys_shows_a_refusal_as_it_is():
     message = json.loads(result.stdout)["error"]["message"]
     assert "restricted to specific projects" in message
     assert "does not list source query keys" not in message
+
+
+# -- a source whose syncs keep failing (R10) ---------------------------------------------
+#
+# Octant R10: a source failing every hour looked freshly synced, because the listed
+# sync_status and last_sync_at are the latest attempt's. The engine now lists
+# failing_since, sync_failure_reason and last_successful_sync_at on each source.
+
+FAILING = {
+    "sync_status": "failed",
+    "last_sync_at": "2026-11-24T10:00:00Z",
+    "failing_since": "2026-11-22T01:00:00Z",
+    "sync_failure_reason": "The Google Drive connection has expired; reconnect it.",
+    "last_successful_sync_at": "2026-11-21T01:00:00Z",
+}
+
+
+@respx.mock
+def test_ls_says_since_when_a_sources_syncs_fail_and_why(monkeypatch):
+    respx.get(SOURCES).respond(
+        200,
+        json={
+            "data": [
+                _attachment(id="s1", external_item_name="Lab Drive", **FAILING),
+                _attachment(id="s2", external_item_name="Handbook", sync_status="completed"),
+            ],
+            "has_more": False,
+        },
+    )
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    failing, healthy = result.stdout.splitlines()
+    assert "\tsync=failed\tfailing_since=2026-11-22T01:00:00Z\t" in failing + "\t"
+    assert "last_successful_sync_at=2026-11-21T01:00:00Z" in failing
+    assert "failing_since" not in healthy
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "ls", "-P", PROJECT])
+    said = " ".join(result.output.split())
+    # The Sync column (wrapped in a narrow terminal), then one line per failing source.
+    assert "failed, failing since" in result.output
+    assert (
+        "Lab Drive (s1): Syncs have failed since 2026-11-22T01:00:00Z: The Google Drive "
+        "connection has expired; reconnect it. Last successful sync: 2026-11-21T01:00:00Z."
+    ) in said
+
+
+@respx.mock
+def test_status_says_the_syncs_keep_failing_and_json_carries_it(monkeypatch):
+    respx.get(f"{API}/v1/projects/{PROJECT}/knowledge/compiles").respond(
+        404, json={"detail": "Not Found"}
+    )
+    respx.get(f"{SOURCES}/s1/sync-status").respond(
+        200, json={"status": "failed", "files_total": 0, "files_completed": 0, "files_failed": 0}
+    )
+    no_success = {**FAILING, "last_successful_sync_at": None}
+    _listed(_attachment(id="s1", **no_success))
+    result = runner.invoke(app, ["sources", "status", "s1", "-P", PROJECT, "--json"])
+    assert result.exit_code == 0, result.output
+    data = json.loads(result.stdout)
+    assert data["failing_since"] == "2026-11-22T01:00:00Z"
+    assert data["sync_failure_reason"].startswith("The Google Drive connection has expired")
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "status", "s1", "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "Syncs have failed since 2026-11-22T01:00:00Z" in said
+    assert "No sync has succeeded yet." in said

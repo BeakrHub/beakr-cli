@@ -607,6 +607,42 @@ def _rows_field(row: dict[str, Any]) -> list[str]:
     return [f"notion_rows={cell(','.join(parts), width=2000)}"]
 
 
+#: A source's sync health (R10): when its syncs started failing, the latest
+#: reason, and when one last succeeded. The engine sets ``failing_since`` while
+#: every finished sync since the last success has failed.
+SYNC_HEALTH_FIELDS = ("failing_since", "sync_failure_reason", "last_successful_sync_at")
+
+
+def _failing_sentence(row: dict[str, Any]) -> str | None:
+    """ "Syncs have failed since <when>: <why>. Last successful sync: <when>." or None.
+
+    ``sync_status`` and ``last_sync_at`` are the latest attempt, so a source
+    that fails every hour still looked freshly synced.
+    """
+    since = row.get("failing_since")
+    if not since:
+        return None
+    reason = str(row.get("sync_failure_reason") or "").strip().rstrip(".")
+    last_ok = row.get("last_successful_sync_at")
+    return (
+        f"Syncs have failed since {since}"
+        + (f": {reason}." if reason else ".")
+        + (f" Last successful sync: {last_ok}." if last_ok else " No sync has succeeded yet.")
+    )
+
+
+def _sync_cell(row: dict[str, Any]) -> str:
+    """The Sync column: the latest sync's state, and since when syncs fail."""
+    state = str(row.get("sync_status") or "never")
+    since = row.get("failing_since")
+    return f"{state}, failing since {str(since)[:10]}" if since else state
+
+
+def _health_fields(row: dict[str, Any]) -> list[str]:
+    """``failing_since=...`` and the rest, in a machine line, only when set."""
+    return [f"{name}={cell(row[name], width=500)}" for name in SYNC_HEALTH_FIELDS if row.get(name)]
+
+
 def _source_lines(rows: list[dict[str, Any]]) -> list[str]:
     return [
         "\t".join(
@@ -617,6 +653,7 @@ def _source_lines(rows: list[dict[str, Any]]) -> list[str]:
                 f"type={cell(r.get('external_item_type') or '')}",
                 f"knowledge={'on' if r.get('ingest_wiki') else 'off'}",
                 f"sync={cell(r.get('sync_status') or 'never')}",
+                *_health_fields(r),
                 *_rows_field(r),
             ]
         )
@@ -633,8 +670,9 @@ _NO_SOURCES = "No sources yet. Attach one with `beakr sources attach <link>`."
 def list_sources(project: str | None = _project_opt, json_out: bool = _json_opt) -> None:
     """List the project's sources: provider, item, Knowledge on or off, latest sync.
 
-    A Notion source also shows, for each database it reads, how many rows matched
-    its rules at the last sync.
+    A source whose syncs keep failing says since when, why, and when one last
+    succeeded. A Notion source also shows, for each database it reads, how many
+    rows matched its rules at the last sync.
     """
     project_id = _require_project(project)
     with get_sdk() as sdk:
@@ -653,12 +691,21 @@ def list_sources(project: str | None = _project_opt, json_out: bool = _json_opt)
                     f"{r.get('provider') or ''} {r.get('external_item_type') or ''}".strip(),
                     ("on" if r.get("ingest_wiki") else "off")
                     + (", nightly" if r.get("auto_sync_wiki") else ""),
-                    str(r.get("sync_status") or "never"),
+                    _sync_cell(r),
                 ]
                 for r in data
             ],
             title=f"Sources ({len(data)})",
         )
+        for r in data:
+            failing = _failing_sentence(r)
+            if failing:
+                console.print(
+                    f"{r.get('external_item_name') or r.get('id')} ({r.get('id')}): {failing}",
+                    highlight=False,
+                    markup=False,
+                    soft_wrap=True,
+                )
         counted = [(r, _notion_rows(r)) for r in data if _notion_rows(r)]
         if counted:
             console.print("Notion rows matching at the last sync:", markup=False)
@@ -1358,7 +1405,8 @@ def status(
 
     \b
     With a source: its sync state (syncing, cancelling, cancelled, completed,
-    failed), files done, failed (and why) and skipped by a cancel, how a cancel
+    failed), since when its syncs keep failing and why (and when one last
+    succeeded), files done, failed (and why) and skipped by a cancel, how a cancel
     went, what became of the items it brought in (ingested, skipped, pending,
     failed) and why any were set aside, and how many of its Knowledge
     compiles are queued and running. A running sync can be stopped with
@@ -1372,8 +1420,14 @@ def status(
     with get_sdk() as sdk:
         result = dict(sdk.project_sources.status(project_id, source_id) or {})
         queue = _queued_compiles(sdk, project_id, source_id)
+        # The latest sync's state says nothing of the ones before it: whether
+        # syncs keep failing is on the listed source (R10).
+        row = _attached_row(sdk, project_id, source_id) or {}
     if queue is not None:
         result["compiles"] = queue
+    for name in SYNC_HEALTH_FIELDS:
+        if row.get(name) is not None:
+            result[name] = row[name]
 
     def render(data: dict[str, Any]) -> None:
         state = data.get("status")
@@ -1388,6 +1442,9 @@ def status(
                 highlight=False,
                 markup=False,
             )
+            failing = _failing_sentence(data)
+            if failing:
+                console.print(failing, highlight=False, markup=False, soft_wrap=True)
             stop = data.get("cancel")
             if isinstance(stop, dict) and stop:
                 by = f" by {stop['by_name']}" if stop.get("by_name") else ""
@@ -1427,6 +1484,7 @@ def status(
         ]
         if data.get("files_cancelled") is not None:
             fields.append(f"files_cancelled={int(data.get('files_cancelled') or 0)}")
+        fields += _health_fields(data)
         outcomes = data.get("outcomes")
         if isinstance(outcomes, dict):
             counts = outcomes.get("counts") or {}

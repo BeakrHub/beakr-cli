@@ -21,6 +21,15 @@ from beakr_cli.main import app
 API = "https://api.test"
 PROJECT = "p1"
 SOURCES = f"{API}/v1/projects/{PROJECT}/sources"
+
+
+def _listed(*rows: dict) -> None:
+    """The project's sources as ``ls`` lists them; ``status`` reads its source's health there."""
+    respx.get(SOURCES).respond(
+        200, json={"data": list(rows), "has_more": False, "next_cursor": None}
+    )
+
+
 TRACKED = f"{SOURCES}/s1/tracked-items"
 COMPILES = f"{API}/v1/projects/{PROJECT}/knowledge/compiles"
 runner = CliRunner()
@@ -224,6 +233,7 @@ STATUS = {
 
 @respx.mock
 def test_status_says_what_knowledge_set_aside_and_why(at_terminal):
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(json=STATUS)
     respx.get(COMPILES).respond(json={"queued": 0, "running": 0, "last_cancel": None})
     result = runner.invoke(app, ["sources", "status", "s1", "-P", PROJECT])
@@ -242,6 +252,7 @@ def test_status_says_what_knowledge_set_aside_and_why(at_terminal):
 
 @respx.mock
 def test_status_points_at_tracked_when_more_items_were_set_aside_than_it_names(at_terminal):
+    _listed()
     many = {**OUTCOMES, "counts": {**OUTCOMES["counts"], "pending": 40}}
     respx.get(f"{SOURCES}/s1/sync-status").respond(json={**STATUS, "outcomes": many})
     respx.get(COMPILES).respond(json={"queued": 0, "running": 0, "last_cancel": None})
@@ -252,6 +263,7 @@ def test_status_points_at_tracked_when_more_items_were_set_aside_than_it_names(a
 
 @respx.mock
 def test_status_piped_counts_each_outcome():
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(json=STATUS)
     respx.get(COMPILES).respond(json={"queued": 0, "running": 0, "last_cancel": None})
     result = runner.invoke(app, ["sources", "status", "s1", "-P", PROJECT])
