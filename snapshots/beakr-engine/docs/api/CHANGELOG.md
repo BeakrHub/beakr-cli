@@ -11,11 +11,34 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=5789da4f58817cf82b5eec3fd441d9d7cdd0c08615cef9fe7fc4678c877905a1 changelog sha256=9fb1df41a20242e849ac40e2ed611af580bd65c05ade2da92975122d4bde02e3 -->
+<!-- contract-stamp: public-openapi sha256=714b2e2cccee23e19f09f7837920de314856e4844e0c4b53bc75176f3cdefc87 changelog sha256=5c000164509e4f9e5c0cddeaa7ae336a963a0d9cd9b8951aed34a67a3cd04da4 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- New: `POST /v1/projects/{project_id}/sources/{attachment_id}/recompile`
+  (`uploads:write` or `integrations:admin`) sends a source's tracked items to
+  Knowledge again, in any state: the items named in `external_ids` (their
+  tracked-items `external_id`), or every item with `all: true`. `mode: retry`
+  sends again only items not in Knowledge at their current version (pending,
+  failed or skipped); `mode: full` also sends items already in Knowledge and has
+  each whole document read again, for example after the source's guidance
+  changed. A sync of the source starts at once, through the connection of the
+  person who attached it, and its job id comes back as `sync_job_id`; if a sync
+  is already running, the new one starts when it ends. Anyone who can edit the
+  project may call it. It is not held by the hourly cooldown on
+  `POST .../sync`: one request per source every 10 minutes (429
+  `recompile_cooldown`, with `Retry-After`), up to 500 items each (`over_cap`
+  counts the rest). `dry_run: true` counts what would be sent and sends nothing.
+  409 `connection_unusable` when the attacher's connection can no longer read
+  the source, 409 `knowledge_off` when Knowledge is off for it.
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: `state`
+  now describes an item's newest version. An item edited at its source whose
+  new version is still waiting for its compile reads `pending`, and one whose
+  new version's compile failed reads `failed`; both used to read `ingested`.
+  The new `older_version_in_knowledge` is true when an earlier version is still
+  in Knowledge (the item is being updated, or its update failed). A sync's
+  `result.outcomes` from `GET /v1/jobs/{job_id}` counts items the same way.
 - New: `GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status`
   (scope `projects:read`; a key limited to projects may call it for one of
   them) says whether a source (`provider`, as the source lists it) takes a
