@@ -151,6 +151,7 @@ def upload_command(
     uploads them (every file of the command gets them); `beakr files edit`
     changes them later.
     """
+    check_authorship(author, date)
     ingest = not no_knowledge
     if wait_knowledge and not ingest:
         err_console.print("--wait-knowledge waits for Knowledge; --no-knowledge keeps it out.")
@@ -356,6 +357,36 @@ def authored_by(authors: list[str] | None) -> str | list[str] | None:
     if not named:
         return ""
     return named[0] if len(named) == 1 else named
+
+
+def check_authorship(author: list[str] | None, date: str | None) -> None:
+    """Refuse a bad ``--author`` or ``--date`` before anything is sent.
+
+    The API's own parsers (:mod:`beakr_cli.authorship`, as the MCP server's
+    ``upload_files`` checks them): up to 20 authors, each a name, ``Name
+    <email>`` or an email, and a date or ISO 8601 date-time not in the future.
+    Sent as given, 21 authors came back from the engine as "Input should be a
+    valid string", the first branch of its validation error (r108 sweep, 26 Nov
+    2026), and a folder upload asked once per file. ``""`` clears and is not
+    checked.
+    """
+    from beakr_cli.authorship import MAX_AUTHORED_BY_CHARS, parse_authored_at, parse_authors
+
+    named = [entry for entry in author or [] if entry.strip()]
+    if named:
+        try:
+            if any(len(entry) > MAX_AUTHORED_BY_CHARS for entry in named):
+                raise ValueError(
+                    f"authored_by: an entry is over {MAX_AUTHORED_BY_CHARS} characters"
+                )
+            parse_authors(named)
+        except ValueError as exc:
+            raise typer.BadParameter(f"{exc}. Nothing was sent.", param_hint="--author") from exc
+    if date is not None and date.strip():
+        try:
+            parse_authored_at(date)
+        except ValueError as exc:
+            raise typer.BadParameter(f"{exc}. Nothing was sent.", param_hint="--date") from exc
 
 
 def authors_text(artifact: dict[str, Any]) -> str | None:
@@ -895,6 +926,7 @@ def edit_file(
     """
     if author is None and date is None:
         raise click.UsageError("Give --author or --date (an empty value clears it).")
+    check_authorship(author, date)
     with get_sdk() as sdk:
         artifact = sdk.files.set_authorship(
             artifact_id, authored_by=authored_by(author), authored_at=date
@@ -941,7 +973,7 @@ def file_versions(
         if not rows:
             err_console.print("No versions.")
             return
-        ordered = sorted(rows, key=lambda v: v.get("version_no") or 0, reverse=True)
+        ordered = _newest_first(rows)
         print_table(
             ["Version", "Version ID", "Created", "Size", "MIME"],
             [
@@ -957,7 +989,38 @@ def file_versions(
             title=f"Versions of {artifact_id}",
         )
 
-    emit(versions, json_out=json_out, render=render)
+    def lines(page: Any) -> list[str]:
+        return [_version_line(row) for row in _newest_first(page_rows(page))] or [
+            "note: No versions."
+        ]
+
+    emit(versions, json_out=json_out, render=render, lines=lines)
+
+
+def _newest_first(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """A file's versions by ``version_no``, newest first (the route lists oldest first)."""
+    return sorted(rows, key=lambda v: v.get("version_no") or 0, reverse=True)
+
+
+def _version_line(version: dict[str, Any]) -> str:
+    """One version piped: its id, then what the terminal table shows as ``key=value``.
+
+    Piped, the command printed only the version ids in the route's order, oldest
+    first, so an agent could not tell which id was the newest version (r108
+    sweep, 26 Nov 2026).
+    """
+    fields = [
+        cell(version.get("id")),
+        f"version={version.get('version_no') or ''}",
+        f"created_at={version.get('created_at') or ''}",
+    ]
+    if isinstance(version.get("size_bytes"), int):
+        fields.append(f"size_bytes={version['size_bytes']}")
+    if version.get("mime_type"):
+        fields.append(f"mime_type={cell(version['mime_type'])}")
+    if version.get("written_by_agent"):
+        fields.append("written_by_agent=true")
+    return "\t".join(fields)
 
 
 def register(root: typer.Typer) -> None:
