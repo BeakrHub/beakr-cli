@@ -1841,17 +1841,9 @@ def tracked(
             )
 
     def lines(data: dict[str, Any]) -> list[str]:
-        return [
-            "\t".join(
-                [
-                    cell(row.get("external_id") or ""),
-                    str(row.get("state") or ""),
-                    cell(row.get("reason_code") or "-"),
-                    cell(row.get("title") or ""),
-                ]
-            )
-            for row in data.get("data") or []
-        ] or ["note: No tracked items match."]
+        return [_tracked_line(row) for row in data.get("data") or []] or [
+            "note: No tracked items match."
+        ]
 
     emit(
         result,
@@ -1869,6 +1861,30 @@ def tracked(
 #: A tracked item whose earlier version is in Knowledge while its newest one is
 #: pending, failed or skipped (being updated, or the update failed).
 _OLDER_VERSION = "older_version_in_knowledge"
+
+
+def _tracked_line(row: dict[str, Any]) -> str:
+    """One tracked item piped: external_id, state, reason_code and title, then what the
+    terminal view adds (why a pending item waits and its next try, unfinished changes,
+    an older version in Knowledge) as ``key=value`` columns, present only when set."""
+    columns = [
+        cell(row.get("external_id") or ""),
+        str(row.get("state") or ""),
+        cell(row.get("reason_code") or "-"),
+        cell(row.get("title") or ""),
+    ]
+    if row.get("pending_reason"):
+        columns.append(f"pending_reason={cell(row['pending_reason'])}")
+    if row.get("pending_reason_text"):
+        columns.append(f"pending_reason_text={cell(row['pending_reason_text'], width=300)}")
+    if row.get("next_attempt_at"):
+        columns.append(f"next_attempt_at={cell(row['next_attempt_at'])}")
+    unfinished = row.get("unfinished_changes")
+    if isinstance(unfinished, int) and not isinstance(unfinished, bool) and unfinished > 0:
+        columns.append(f"unfinished_changes={unfinished}")
+    if row.get(_OLDER_VERSION):
+        columns.append(f"{_OLDER_VERSION}=true")
+    return "\t".join(columns)
 
 
 def _pending_note(row: dict[str, Any]) -> str:

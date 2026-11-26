@@ -561,7 +561,9 @@ def test_tracked_lists_partial_items_with_their_unfinished_changes(monkeypatch):
     result = runner.invoke(app, ["sources", "tracked", "s1", "--state", "partial", "-P", PROJECT])
     assert result.exit_code == 0, result.output
     assert dict(route.calls.last.request.url.params)["state"] == "partial"
-    assert result.stdout.splitlines() == ["conn:t4\tpartial\tcompile_partial\tDesign review"]
+    assert result.stdout.splitlines() == [
+        "conn:t4\tpartial\tcompile_partial\tDesign review\tunfinished_changes=3"
+    ]
     monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
     result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
     said = " ".join(result.output.split())
@@ -618,3 +620,32 @@ def test_tracked_says_why_a_pending_item_waits_and_when_it_goes_next(monkeypatch
         "next attempt 2026-11-26T01:00:00Z)"
     ) in lines
     assert "Plain [pending] (resend scheduled)" in lines
+
+
+@respx.mock
+def test_tracked_piped_says_why_a_pending_item_waits_and_when_it_goes_next():
+    """What an agent reads (compact, piped) carries the pending reason and the next try,
+    as the terminal view, --json and the MCP tool do; the first four columns stay put."""
+    waiting = {
+        "external_id": "conn:t5",
+        "title": "Budget notes",
+        "kind": "thread",
+        "state": "pending",
+        "pending_reason": "resend_scheduled",
+        "pending_reason_text": "Beakr sends it again at the next sync.",
+        "next_attempt_at": "2026-11-26T01:00:00Z",
+    }
+    bare = {**waiting, "external_id": "conn:t6", "title": "Plain", "pending_reason_text": None}
+    bare["next_attempt_at"] = None
+    older = {**PARTIAL, "external_id": "conn:t7", "older_version_in_knowledge": True}
+    respx.get(TRACKED).respond(200, json=_page([waiting, bare, older]))
+    result = runner.invoke(app, ["sources", "tracked", "s1", "--state", "pending", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines() == [
+        "conn:t5\tpending\t-\tBudget notes\tpending_reason=resend_scheduled"
+        "\tpending_reason_text=Beakr sends it again at the next sync."
+        "\tnext_attempt_at=2026-11-26T01:00:00Z",
+        "conn:t6\tpending\t-\tPlain\tpending_reason=resend_scheduled",
+        "conn:t7\tpartial\tcompile_partial\tDesign review\tunfinished_changes=3"
+        "\tolder_version_in_knowledge=true",
+    ]
