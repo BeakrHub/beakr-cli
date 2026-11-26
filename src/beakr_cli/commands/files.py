@@ -779,7 +779,21 @@ def show_file(
                 soft_wrap=True,
             )
 
-    emit(artifact, json_out=json_out, render=render)
+    emit(artifact, json_out=json_out, render=render, lines=_show_lines)
+
+
+def _show_lines(a: dict[str, Any]) -> list[str]:
+    """``files show`` piped: the summary line, then who wrote the file and when.
+
+    The generic summary keeps five scalar fields and no list, so without this an
+    agent never saw the authors or the date the terminal view prints."""
+    columns = [summary_line(a)]
+    written_by = authors_text(a)
+    if written_by:
+        columns.append(f"authors={cell(written_by, width=2000)}")
+    if a.get("authored_at"):
+        columns.append(f"authored_at={cell(a['authored_at'])}")
+    return ["\t".join(columns)]
 
 
 @app.command("approve")

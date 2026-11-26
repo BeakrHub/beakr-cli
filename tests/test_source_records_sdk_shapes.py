@@ -54,8 +54,14 @@ def _sdk_0_3() -> ModuleType:
 
 
 def test_with_the_installed_sdk_the_read_call_is_added_back():
+    from importlib.metadata import version
+
     record = installed_public_source(SLACK)
-    assert "retrieval" not in record  # 0.2.x drops it: what the workaround is for
+    # 0.2.x drops it, which is what the workaround is for; 0.3.0 and later keep it
+    # (CI runs this with the locked 0.2.0 and the newest SDK the requirement admits).
+    installed = tuple(int(part) for part in version("beakr-sdk").split(".")[:2])
+    if installed < (0, 3):
+        assert "retrieval" not in record
 
     assert with_read_call(record, SLACK)["retrieval"] == SLACK["retrieval"]
 

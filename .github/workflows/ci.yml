@@ -140,3 +140,33 @@ jobs:
 
       - name: Tests
         run: uv run pytest -q
+
+  # pyproject.toml admits a range of beakr-sdk releases and uv.lock pins the
+  # lowest (0.2.0), which the jobs above test. This job runs the tests with the
+  # newest release the requirement admits, so a CLI that only works with the
+  # locked SDK, or a requirement that shuts out the current SDK, fails here.
+  newest-sdk:
+    name: tests-newest-sdk
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      BEAKR_ENGINE_PATH: ${{ github.workspace }}/snapshots/beakr-engine
+      BEAKR_REQUIRE_ENGINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install, then upgrade beakr-sdk as far as the requirement admits
+        run: |
+          set -euo pipefail
+          uv sync --frozen --extra dev
+          spec=$(uv run --no-sync python -c 'import tomllib; d = tomllib.load(open("pyproject.toml", "rb")); print(next(r for r in d["project"]["dependencies"] if r.startswith("beakr-sdk")))')
+          echo "requirement: $spec"
+          uv pip install --upgrade-package beakr-sdk "$spec"
+          uv run --no-sync python -c 'import importlib.metadata as m; print("beakr-sdk", m.version("beakr-sdk"))'
+
+      - name: Tests
+        run: uv run --no-sync pytest -q
