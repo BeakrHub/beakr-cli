@@ -643,6 +643,14 @@ Each release lists the public API changes it supports, taken from the API change
   pending item waits for and prints each item's `external_id`; and
   `upload_files` takes `authors` and `authored_at`, checked by the API's own
   rules before anything is uploaded.
+- **Installs beside beakr-sdk 0.3 and 0.4.** The CLI required `beakr-sdk`
+  below 0.3, so it could not be installed with the current SDK (0.4.0) or
+  beside it; it now takes `beakr-sdk>=0.2.0,<0.5`, as the self-hosted line
+  already did. CI runs the tests with the locked 0.2.0 and with the newest
+  SDK the requirement admits.
+- **`beakr files show` piped names who wrote the file and when.** The compact
+  line an agent reads adds `authors=` (each `Name <email>`) and `authored_at=`,
+  which only the terminal view and `--json` printed.
 - **`beakr sources tracked` says why a pending item waits.** Each pending
   item (and a partial one Beakr retries) shows the engine's reason and, when
   known, its next attempt (`pending_reason_text`, `next_attempt_at`); a stuck

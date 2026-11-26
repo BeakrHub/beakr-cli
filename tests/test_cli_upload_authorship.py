@@ -120,6 +120,22 @@ def test_files_show_says_who_wrote_it(monkeypatch):
     assert "Written:   2026-06-14" in result.output
 
 
+@respx.mock
+def test_files_show_piped_says_who_wrote_it_and_when():
+    """What an agent reads (compact, piped) names the authors and the date, as the
+    terminal view does; a file with neither keeps the one summary line."""
+    route = respx.get(f"{API}/v1/artifacts/a1").respond(200, json=ARTIFACT)
+    result = runner.invoke(app, ["files", "show", "a1"])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines() == [
+        "a1\tAssay notes\tauthors=Jane Doe <jane@example.com>; Bob Smith\tauthored_at=2026-06-14"
+    ]
+    route.respond(200, json={**ARTIFACT, "authored_by": None, "authors": [], "authored_at": None})
+    bare = runner.invoke(app, ["files", "show", "a1"])
+    assert bare.exit_code == 0, bare.output
+    assert bare.stdout.splitlines() == ["a1\tAssay notes"]
+
+
 def test_the_stdio_server_keeps_who_wrote_a_cited_file():
     """As the hosted ``formatting.public_source`` keeps it (engine fix/upload-authors-list)."""
     from beakr_cli import mcp_server
