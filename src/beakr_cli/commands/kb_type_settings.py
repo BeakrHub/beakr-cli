@@ -9,11 +9,13 @@ card counts. ``history`` lists the changes made to a project's types (or the
 organization's). ``suggestions`` lists what waits for a person: types Beakr was
 not allowed to add and cards to move; ``dismiss-suggestion`` dismisses one.
 
-Over ``/v1/knowledge/wiki/page-types/settings``, ``.../history`` and
-``.../suggestions`` through the SDK's ``knowledge.card_type_settings``,
+Over ``/v1/knowledge/wiki/page-types`` (whose listing answers the settings),
+``.../settings``, ``.../history`` and ``.../suggestions`` through
+:mod:`beakr_cli.card_type_routes` (``list_card_types``,
 ``set_card_type_settings``, ``card_type_history``, ``card_type_suggestions``
-and ``dismiss_card_type_suggestion``. The commands attach to the ``kb types``
-group of :mod:`beakr_cli.commands.kb_types`.
+and ``dismiss_card_type_suggestion``: the SDK's ``request``, since the released
+beakr-sdk has no typed methods for these routes). The commands attach to the
+``kb types`` group of :mod:`beakr_cli.commands.kb_types`.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ from typing import Any
 
 import typer
 
-from beakr_cli import card_settings, card_types
+from beakr_cli import card_settings, card_type_routes, card_types
 from beakr_cli.commands.kb_types import (
     _apply_opt,
     _json_opt,
@@ -92,10 +94,13 @@ def settings_command(
     project_id = _require_project(project)
     with get_sdk() as sdk:
         if not changing:
-            settings = dict(sdk.knowledge.card_type_settings(project_id) or {})
+            # The listing answers the settings beside the types.
+            listing = card_type_routes.list_card_types(sdk, project_id=project_id) or {}
+            settings = dict(listing.get("settings") or {})
         else:
             result = dict(
-                sdk.knowledge.set_card_type_settings(
+                card_type_routes.set_card_type_settings(
+                    sdk,
                     project_id,
                     inherit=inherit,
                     agent_may_change=beakr_may_add,
@@ -196,7 +201,8 @@ def history_command(
     )
     with get_sdk() as sdk:
         page = dict(
-            sdk.knowledge.card_type_history(
+            card_type_routes.card_type_history(
+                sdk,
                 **where,
                 key=key,
                 include_suggestions=suggestions or None,
@@ -238,7 +244,9 @@ def suggestions_command(
     """
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        page = dict(sdk.knowledge.card_type_suggestions(project_id, limit=limit, cursor=cursor))
+        page = dict(
+            card_type_routes.card_type_suggestions(sdk, project_id, limit=limit, cursor=cursor)
+        )
 
     def render(data: dict[str, Any]) -> None:
         entries = data.get("data") or []
@@ -268,7 +276,9 @@ def dismiss_suggestion_command(
     """Dismiss one suggestion. Only the project's owners may; exit 5 if it was already answered."""
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        dismissed = dict(sdk.knowledge.dismiss_card_type_suggestion(suggestion_id, project_id))
+        dismissed = dict(
+            card_type_routes.dismiss_card_type_suggestion(sdk, suggestion_id, project_id)
+        )
     emit(
         dismissed,
         json_out=json_out,

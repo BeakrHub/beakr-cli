@@ -1034,6 +1034,11 @@ plus `discover_tools`, which returns every other tool's name, description and
 input schema and adds the tools it finds to the listing (the server sends
 `notifications/tools/list_changed`, so the client reads the listing again).
 
+The server's stderr (the MCP client's log) carries no request URLs: an
+upload's presigned URL holds its signature in the query string. To debug
+requests, set `BEAKR_LOG_HTTP=1` in the server's environment; each request is
+then logged with its URL, signed URLs' signatures and credentials masked.
+
 Every Knowledge write the MCP server makes records its agent (`X-Beakr-Agent`):
 the MCP client's own name and version from its `initialize` handshake
 (`claude-code/2.1.283`, `codex-mcp-client/0.40.0`). When several agents run

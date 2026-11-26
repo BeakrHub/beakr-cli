@@ -78,7 +78,9 @@ PROJECT_PARAMETER: dict[str, str] = {
     "update_source": "project",
     "preview_source_rules": "project",
     "sync_source": "project",
+    "recompile_source": "project",
     "remove_source": "project",
+    "tracked_items": "project",
     "draft_review_interview": "project",
 }
 

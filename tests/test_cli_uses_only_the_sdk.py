@@ -33,6 +33,12 @@ HTTPX_ALLOWED = {
     # installation's web image serves (not the API, which is under /v1), sending
     # no credential, to say which beakr-cli its release ships.
     "installation_clients.py": "installation's static client manifest",
+    # Hands the SDK an httpx client whose connect phase is capped (B10); the SDK
+    # still builds, sends and retries every request.
+    "_private_api/client.py": "the SDK's own HTTP client, with a connect cap",
+    # Tells a connect that timed out or was refused from one that went quiet, in
+    # the error the SDK raised for a tool call that got no answer (B10).
+    "tool_surface.py": "error wording over the SDK's transport error",
 }
 
 

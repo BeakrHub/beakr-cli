@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from typing import Any
 
+import click
 import typer
 from beakr_sdk.errors import BeakrError, PermissionDeniedError
 from beakr_sdk.resources._upload import iter_folder_files
@@ -15,7 +16,7 @@ from rich.markup import escape
 
 from beakr_cli._private_api.resources.files import refused_row
 from beakr_cli.commands.jobs import all_uploaded, duplicate_of, wait_for_jobs
-from beakr_cli.compact import summary_line
+from beakr_cli.compact import cell, summary_line
 from beakr_cli.output import console, emit, err_console, page_rows, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -93,6 +94,20 @@ def upload_command(
         help="Mark the upload as an agent's work, not a person's: the version records it, "
         "and a file it creates is marked as written by Beakr.",
     ),
+    author: list[str] | None = typer.Option(
+        None,
+        "--author",
+        metavar="NAME",
+        help="Who wrote the file, if not you: a name, 'Name <email>' or an email; repeat "
+        "it for co-authors (up to 20). Knowledge attributes what it states to them.",
+    ),
+    date: str | None = typer.Option(
+        None,
+        "--date",
+        metavar="DATE",
+        help="When it was written: YYYY-MM-DD or an ISO 8601 date-time (not in the "
+        "future). Knowledge dates its rows by it when the text states no date.",
+    ),
     resume: str | None = typer.Option(
         None,
         "--resume",
@@ -131,6 +146,10 @@ def upload_command(
 
     Uploading to a folder that already holds a file with the same name adds a
     version to that file (--on-existing new makes a separate file instead).
+
+    --author and --date record who wrote the files and when, apart from who
+    uploads them (every file of the command gets them); `beakr files edit`
+    changes them later.
     """
     ingest = not no_knowledge
     if wait_knowledge and not ingest:
@@ -141,7 +160,7 @@ def upload_command(
         if len(paths) != 1 or not paths[0].is_file():
             err_console.print("--resume takes exactly one file: the one that was interrupted.")
             raise typer.Exit(2)
-        placement = _placement_options(on_existing, written_by_agent, version_of)
+        placement = _placement_options(on_existing, written_by_agent, version_of, author, date)
         with get_sdk(timeout=300.0) as sdk:
             err_console.print(f"Resuming upload {resume} of {paths[0]}...", markup=False)
             try:
@@ -188,7 +207,7 @@ def upload_command(
 
     results: list[dict[str, Any]] = []
     skipped: list[dict[str, Any]] = []
-    placement = _placement_options(on_existing, written_by_agent, version_of)
+    placement = _placement_options(on_existing, written_by_agent, version_of, author, date)
     folder_placement = {key: value for key, value in placement.items() if key != "version_of"}
     with get_sdk(timeout=300.0) as sdk:
         for path in paths:
@@ -358,12 +377,37 @@ def upload_command(
         raise typer.Exit(1)
 
 
+def authored_by(authors: list[str] | None) -> str | list[str] | None:
+    """``--author`` as the API takes ``authored_by``: one author as given, several as a
+    list (up to 20), and ``--author ""`` as ``""``, which clears them on an edit."""
+    if authors is None:
+        return None
+    named = [author.strip() for author in authors if author.strip()]
+    if not named:
+        return ""
+    return named[0] if len(named) == 1 else named
+
+
+def authors_text(artifact: dict[str, Any]) -> str | None:
+    """Every author of a file, ``Name <email>`` each, or its display line."""
+    rows = [row for row in artifact.get("authors") or [] if isinstance(row, dict)]
+    if rows:
+        return "; ".join(
+            f"{row.get('name')} <{row['email']}>" if row.get("email") else str(row.get("name"))
+            for row in rows
+        )
+    return artifact.get("authored_by") or None
+
+
 def _placement_options(
     on_existing: str | None,
     written_by_agent: bool,
     version_of: str | None = None,
+    author: list[str] | None = None,
+    date: str | None = None,
 ) -> dict[str, Any]:
-    """The keyword arguments --on-existing, --written-by-agent and --version-of add.
+    """The keyword arguments --on-existing, --written-by-agent, --version-of, --author
+    and --date add.
 
     Only what was asked for: with neither flag nothing is added, and the server
     versions a file at the same path by default. The CLI's own ``files`` resource
@@ -377,6 +421,10 @@ def _placement_options(
         options["written_by_agent"] = True
     if version_of is not None:
         options["version_of"] = version_of
+    if author is not None:
+        options["authored_by"] = authored_by(author)
+    if date is not None:
+        options["authored_at"] = date
     return options
 
 
@@ -740,11 +788,16 @@ def show_file(
 
     def render(a: dict[str, Any]) -> None:
         console.print(f"[bold]{escape(str(a.get('title')))}[/bold] ({escape(str(a.get('id')))})")
+        written_by = authors_text(a)
+        if written_by:
+            label = "Authors:" if len(a.get("authors") or []) > 1 else "Author:"
+            console.print(f"{label:<11}{written_by}", markup=False)
         for label, key in (
             ("Type", "artifact_type"),
             ("Knowledge", "knowledge_status"),
             ("MIME", "mime_type"),
             ("Project", "home_project_id"),
+            ("Written", "authored_at"),
             ("Version", "current_version_id"),
             ("Created", "created_at"),
             ("Updated", "updated_at"),
@@ -761,7 +814,21 @@ def show_file(
                 soft_wrap=True,
             )
 
-    emit(artifact, json_out=json_out, render=render)
+    emit(artifact, json_out=json_out, render=render, lines=_show_lines)
+
+
+def _show_lines(a: dict[str, Any]) -> list[str]:
+    """``files show`` piped: the summary line, then who wrote the file and when.
+
+    The generic summary keeps five scalar fields and no list, so without this an
+    agent never saw the authors or the date the terminal view prints."""
+    columns = [summary_line(a)]
+    written_by = authors_text(a)
+    if written_by:
+        columns.append(f"authors={cell(written_by, width=2000)}")
+    if a.get("authored_at"):
+        columns.append(f"authored_at={cell(a['authored_at'])}")
+    return ["\t".join(columns)]
 
 
 @app.command("approve")
@@ -834,6 +901,65 @@ def remove_file(
         json_out=json_out,
         render=lambda _: console.print(f"Deleted {artifact_id}.", markup=False),
     )
+
+
+@app.command("edit")
+def edit_file(
+    artifact_id: str = typer.Argument(..., help="File id."),
+    author: list[str] | None = typer.Option(
+        None,
+        "--author",
+        metavar="NAME",
+        help="Who wrote it: a name, 'Name <email>' or an email; repeat it for co-authors "
+        "(it replaces every author). '' clears them.",
+    ),
+    date: str | None = typer.Option(
+        None,
+        "--date",
+        metavar="DATE",
+        help="When it was written: YYYY-MM-DD or an ISO 8601 date-time; '' clears it.",
+    ),
+    json_out: bool = _json_opt,
+) -> None:
+    """Record who wrote a file and when, apart from who uploaded it.
+
+    \b
+    beakr files edit FILE_ID --author "Jane Doe <jane@example.com>" --date 2026-06-14
+    beakr files edit FILE_ID --author "Jane Doe" --author "Bob Smith"
+    beakr files edit FILE_ID --author ""
+    """
+    if author is None and date is None:
+        raise click.UsageError("Give --author or --date (an empty value clears it).")
+    with get_sdk() as sdk:
+        artifact = sdk.files.set_authorship(
+            artifact_id, authored_by=authored_by(author), authored_at=date
+        )
+
+    def render(a: dict[str, Any]) -> None:
+        by = a.get("authored_by")
+        at = a.get("authored_at")
+        console.print(
+            f"Saved {a.get('title') or artifact_id}: "
+            + (f"written by {by}" if by else "no author recorded")
+            + (f", {at}" if at else "")
+            + ".",
+            markup=False,
+            highlight=False,
+        )
+
+    def lines(a: dict[str, Any]) -> list[str]:
+        return [
+            "\t".join(
+                [
+                    cell(a.get("id") or artifact_id),
+                    f"authored_by={cell(a.get('authored_by') or '')}",
+                    f"authored_at={a.get('authored_at') or ''}",
+                    f"authors={len(a.get('authors') or [])}",
+                ]
+            )
+        ]
+
+    emit(artifact, json_out=json_out, render=render, lines=lines)
 
 
 @app.command("versions")

@@ -1,11 +1,13 @@
 """``beakr kb types ls|edit|reset|copy|promote|rename-fields|retype``: a project's card types.
 
 Card types are the kinds of cards Knowledge writes for a project (its
-ontology), over ``/v1/knowledge/wiki/page-types`` through the SDK's
-``knowledge.list_card_types``, ``update_card_type``, ``remove_card_type_copy``,
-``copy_card_types`` and ``promote_card_types``. ``ls`` shows the types one
-project uses and which scope defines each. ``edit`` changes a type as one scope
-holds it: a project (the default) or, with ``--org-wide``, the organization;
+ontology), over ``/v1/knowledge/wiki/page-types`` through
+:mod:`beakr_cli.card_type_routes` (``list_card_types``, ``update_card_type``,
+``remove_card_type_copy``, ``copy_card_types`` and ``promote_card_types``: the
+SDK's ``request``, since the released beakr-sdk has no typed methods for these
+routes). ``ls`` shows the types one project uses and which scope defines each.
+``edit`` changes a type as one scope holds it: a project (the default) or, with
+``--org-wide``, the organization;
 changing a type the scope only inherits gives the scope its own copy, and
 ``reset`` removes that copy. ``copy`` carries the types one project defines
 into another project, and ``promote`` up to the organization. A project's
@@ -13,7 +15,7 @@ owners change its types and an organization's admins the organization's. Cards
 already written are not rewritten; later compiles use the new definition.
 
 ``rename-fields`` and ``retype`` are the two that do change the cards a project
-already has (``knowledge.rename_card_type_fields``, ``retype_cards``): the first
+already has (``rename_card_type_fields``, ``retype_cards``): the first
 renames fields on every card of a type, the second moves every card of a type
 to another type. Both preview and write nothing unless given ``--apply``.
 """
@@ -24,7 +26,7 @@ from typing import Any
 
 import typer
 
-from beakr_cli import card_settings, card_types, card_updates
+from beakr_cli import card_settings, card_type_routes, card_types, card_updates
 from beakr_cli.commands.kb import app as kb_app
 from beakr_cli.commands.project_knowledge import _require_project
 from beakr_cli.output import console, emit, err_console, print_table
@@ -227,7 +229,9 @@ def ls_command(
     project_id = _require_project(project)
     with get_sdk() as sdk:
         listing = dict(
-            sdk.knowledge.list_card_types(project_id=project_id, include_counts=counts or None)
+            card_type_routes.list_card_types(
+                sdk, project_id=project_id, include_counts=counts or None
+            )
         )
     emit(listing, json_out=json_out, render=_render_list, lines=_list_lines)
 
@@ -310,7 +314,7 @@ def edit_command(
             "--when-not-to-use, --alias, --field, --required-field, --grain or --status."
         )
     with get_sdk() as sdk:
-        saved = dict(sdk.knowledge.update_card_type(key, **where, **changes))
+        saved = dict(card_type_routes.update_card_type(sdk, key, **where, **changes))
     page_type = saved.get("page_type") or {}
     err_console.print(
         f"Changed the card type {page_type.get('label') or key} ({key}) for "
@@ -349,7 +353,7 @@ def reset_command(
     """
     key, where = _where(key, project, org_wide)
     with get_sdk() as sdk:
-        removed = dict(sdk.knowledge.remove_card_type_copy(key, **where))
+        removed = dict(card_type_routes.remove_card_type_copy(sdk, key, **where))
     emit(
         removed,
         json_out=json_out,
@@ -444,7 +448,7 @@ def copy_command(
     """
     with get_sdk() as sdk:
         result = dict(
-            sdk.knowledge.copy_card_types(source, destination, list(keys), replace=replace)
+            card_type_routes.copy_card_types(sdk, source, destination, list(keys), replace=replace)
         )
     emit(result, json_out=json_out, render=_render_copied("copy"), lines=_copied_lines)
 
@@ -465,7 +469,9 @@ def promote_command(
     """
     project_id = _require_project(project)
     with get_sdk() as sdk:
-        result = dict(sdk.knowledge.promote_card_types(project_id, list(keys), replace=replace))
+        result = dict(
+            card_type_routes.promote_card_types(sdk, project_id, list(keys), replace=replace)
+        )
     emit(result, json_out=json_out, render=_render_copied("promote"), lines=_copied_lines)
 
 
@@ -542,7 +548,8 @@ def rename_fields_command(
 
         def send(continue_event_id: str | None = None) -> dict[str, Any]:
             return dict(
-                sdk.knowledge.rename_card_type_fields(
+                card_type_routes.rename_card_type_fields(
+                    sdk,
                     key,
                     project_id,
                     renames,
@@ -595,7 +602,8 @@ def retype_command(
 
         def send(continue_event_id: str | None = None) -> dict[str, Any]:
             return dict(
-                sdk.knowledge.retype_cards(
+                card_type_routes.retype_cards(
+                    sdk,
                     key,
                     project_id,
                     target,

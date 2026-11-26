@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "beakr-cli"
-version = "0.7.0"
+version = "0.8.0"
 description = "CLI and MCP server for Beakr"
 readme = "README.md"
 license = "Apache-2.0"
@@ -20,10 +20,10 @@ classifiers = [
 ]
 dependencies = [
     # The Python SDK (BeakrHub/beakr-python), from PyPI; see the README's
-    # "The Python SDK dependency" for working against an unreleased SDK. Up to 0.4:
-    # a self-hosted release bundles this CLI with the self-hosted SDK wheel, 0.4.0
-    # since that line took main's 17 Nov release for Full 1.0.6.
-    "beakr-sdk>=0.2.0,<0.5",
+    # "The Python SDK dependency" for working against an unreleased SDK. Up to 0.5:
+    # a self-hosted release bundles this CLI with the self-hosted SDK wheel, 0.5.0
+    # since that line took main's 0.5.0 for Full 1.0.8.
+    "beakr-sdk>=0.2.0,<0.6",
     # Capped: typer 0.26 vendors its own click (typer._click), and its error
     # handler no longer catches the real click exceptions `beakr api` raises,
     # so every usage error and even `beakr api --help` ended in a traceback.
@@ -86,6 +86,8 @@ select = ["E", "F", "I", "UP"]
 # Carries the engine's hosted renderer byte for byte from ``organization_line``
 # on (tests/test_mcp_render_matches_engine.py); the engine allows longer lines.
 "src/beakr_cli/mcp_render.py" = ["E501"]
+# The engine's review-flag text byte for byte (tests/test_review_flags_match_engine.py).
+"src/beakr_cli/review_flags.py" = ["E501"]
 
 [tool.ruff.format]
 exclude = ["src/beakr_cli/_private_api/_generated/*"]

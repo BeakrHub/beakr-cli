@@ -8,6 +8,7 @@ from typing import Any
 import typer
 from rich.markup import escape
 
+from beakr_cli import card_type_routes
 from beakr_cli.commands import model_refusals, project_knowledge, project_profile
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import CAPTURE_FIELD, LEARNING_FIELD, read_binding, write_binding
@@ -153,11 +154,14 @@ def create_project(
         if value is not None
     }
     with get_sdk() as sdk:
-        project = sdk.projects.create(
+        # Through card_type_routes: the released beakr-sdk's projects.create
+        # takes no card_types (ENG-2524).
+        project = card_type_routes.create_project(
+            sdk,
             name,
             description=description,
             tags=list(tag or []) or None,
-            **({"card_types": chosen} if chosen else {}),
+            card_types=chosen or None,
         )
     emit(
         project,

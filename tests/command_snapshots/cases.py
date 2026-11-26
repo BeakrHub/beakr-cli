@@ -460,6 +460,7 @@ EXEMPT: dict[str, str] = {
     # the engine recorded positive-path responses for them; their requests and
     # output are pinned with mocked responses in tests/test_cli_core_surface.py.
     "files upload": "the `upload` command registered under `files` too (snapshot `upload`)",
+    "files edit": "no recorded response yet; tests/test_cli_upload_authorship.py",
     "end-user-tokens mint": "no recorded response yet; tests/test_cli_core_surface.py",
     "end-user-tokens ls": "no recorded response yet; tests/test_cli_core_surface.py",
     "end-user-tokens revoke": "no recorded response yet; tests/test_cli_core_surface.py",
@@ -476,6 +477,9 @@ EXEMPT: dict[str, str] = {
     "sources cancel-sync": "no recorded response yet; tests/test_cli_sources_cancel.py",
     "sources preview": "no recorded response yet; tests/test_cli_sources.py",
     "sources keys": "no recorded response yet; tests/test_cli_sources.py",
+    "sources tracked": "no recorded response yet; tests/test_cli_sources_tracked.py",
+    "sources import-status": "no recorded response yet; tests/test_cli_sources_tracked.py",
+    "sources recompile": "no recorded response yet; tests/test_cli_sources_tracked.py",
     "interviews link create": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link ls": "no recorded response yet; tests/test_cli_core_surface.py",
     "interviews link show": "no recorded response yet; tests/test_cli_core_surface.py",

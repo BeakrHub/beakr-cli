@@ -144,9 +144,14 @@ async def call_api(request: Callable[[AsyncBeakr], Awaitable[T]]) -> T:
     for attempt in range(2):
         if session is not None:
             # The session's token, renewed before it expires (SessionScopeError when
-            # the session cannot be started: never the person's full credential).
+            # the session cannot be started: never the person's full credential). A
+            # start still in flight (beakr mcp's first, in the background) is waited for.
             await session.ensure_started()
-            await session.fresh_token()
+            if session.no_session:
+                # That start found no session to hold: the call runs as before.
+                session = None
+            else:
+                await session.fresh_token()
         async with get_async_sdk() as sdk:
             try:
                 return await request(sdk)

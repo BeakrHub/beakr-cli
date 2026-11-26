@@ -54,15 +54,22 @@ def upload_folder_skipping(
     ingest: bool,
     on_existing: str | None = None,
     written_by_agent: bool | None = None,
+    authored_by: Any = None,
+    authored_at: Any = None,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Upload ``root``'s files; return the uploaded rows (with a ``refused`` row for a
     file whose placement was refused) and the skipped files
-    (``{"path", "name", "code", "message"}``), each in folder order."""
+    (``{"path", "name", "code", "message"}``), each in folder order. ``authored_by`` and
+    ``authored_at`` (Octant R11) go on every file's completion, as the SDK sends them."""
     placement: dict[str, Any] = {}
     if on_existing is not None:
         placement["on_existing"] = on_existing
     if written_by_agent is not None:
         placement["written_by_agent"] = written_by_agent
+    if authored_by is not None:
+        placement["authored_by"] = authored_by
+    if authored_at is not None:
+        placement["authored_at"] = authored_at
     rows = sdk.files.upload_folder(
         root,
         project_id=project_id,

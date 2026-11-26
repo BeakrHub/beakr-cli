@@ -21,6 +21,15 @@ from beakr_cli.main import app
 API = "https://api.test"
 PROJECT = "p1"
 SOURCES = f"{API}/v1/projects/{PROJECT}/sources"
+
+
+def _listed(*rows: dict) -> None:
+    """The project's sources as ``ls`` lists them; ``status`` reads its source's health there."""
+    respx.get(SOURCES).respond(
+        200, json={"data": list(rows), "has_more": False, "next_cursor": None}
+    )
+
+
 COMPILES = f"{API}/v1/projects/{PROJECT}/knowledge/compiles"
 runner = CliRunner()
 
@@ -125,6 +134,7 @@ def test_cancel_sync_encodes_the_source_as_one_path_segment():
 
 @respx.mock
 def test_status_of_a_syncing_source_shows_its_compiles_and_how_to_stop_it(at_terminal):
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(
         200,
         json={"status": "syncing", "files_total": 10, "files_completed": 4, "files_failed": 0},
@@ -140,6 +150,7 @@ def test_status_of_a_syncing_source_shows_its_compiles_and_how_to_stop_it(at_ter
 
 @respx.mock
 def test_status_piped_adds_the_compile_counts_and_json_carries_them():
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(
         200,
         json={"status": "syncing", "files_total": 10, "files_completed": 4, "files_failed": 0},
@@ -157,6 +168,7 @@ def test_status_piped_adds_the_compile_counts_and_json_carries_them():
 
 @respx.mock
 def test_status_of_a_finished_sync_offers_no_cancel(at_terminal):
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(
         200,
         json={"status": "completed", "files_total": 3, "files_completed": 3, "files_failed": 0},
@@ -212,6 +224,7 @@ def test_status_without_a_source_says_when_none_is_syncing():
 
 @respx.mock
 def test_status_of_a_cancelled_sync_says_how_far_it_got(at_terminal):
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(
         200,
         json={
@@ -240,6 +253,7 @@ def test_status_of_a_cancelled_sync_says_how_far_it_got(at_terminal):
 
 @respx.mock
 def test_status_piped_counts_what_the_cancel_skipped():
+    _listed()
     respx.get(f"{SOURCES}/s1/sync-status").respond(
         200,
         json={

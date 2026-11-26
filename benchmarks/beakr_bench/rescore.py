@@ -27,7 +27,7 @@ import hashlib
 import json
 import sys
 from dataclasses import asdict, fields
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -68,7 +68,7 @@ def _provenance(
             "sha256": _sha256(Path(scoring.__file__)),
         },
         "case_definitions": {name: _sha256(path) for name, path in sorted(case_files.items())},
-        "rescored_at": datetime.now(UTC).isoformat(timespec="seconds"),
+        "rescored_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "note": (
             "Same run, same stored answers, scored again under the scorer and case "
             "definitions named here. Not a new run; the original report is unchanged."

@@ -76,7 +76,9 @@ _CALLS: dict[str, dict[str, Any]] = {
     "update_source": {"attachment_id": _SOURCE, "knowledge": False},
     "preview_source_rules": {"attachment_id": _SOURCE},
     "sync_source": {"attachment_id": _SOURCE},
+    "recompile_source": {"attachment_id": _SOURCE},
     "remove_source": {"attachment_id": _SOURCE},
+    "tracked_items": {"attachment_id": _SOURCE},
     "draft_review_interview": {},
 }
 

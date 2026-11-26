@@ -28,7 +28,7 @@ from __future__ import annotations
 import json
 import zipfile
 from collections import Counter
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -78,7 +78,7 @@ def load_conversations(path: str | Path) -> list[dict[str, Any]]:
 def _iso(timestamp: Any) -> str | None:
     if isinstance(timestamp, bool) or not isinstance(timestamp, int | float):
         return None
-    return datetime.fromtimestamp(timestamp, tz=UTC).isoformat()
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).isoformat()
 
 
 def _branch(conversation: dict[str, Any]) -> list[dict[str, Any]]:

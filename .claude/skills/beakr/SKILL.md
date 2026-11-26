@@ -172,7 +172,7 @@ Always cite sources when presenting information from the knowledge base:
 - In writes, cite with that readable reference as `reference` (or a read's `source_ref`), and only this conversation (`conversation` with `meta.excerpt`), files the user uploaded, a web page (its http(s) URL, title and the quoted passage), or sources Knowledge already cites; anything else is refused `citation_not_citeable`
 - Include the page title so the user can find it
 - `research` answers cite the same way, with a Sources list per document -- keep the references when you present them
-- An excerpt marked `(paraphrase)`, `(human asserted)`, or `(unverified)` is not a checked quote; open the source before relying on it
+- An excerpt in quotation marks is the source's own words; `Described by Beakr:` and `Added by a person:` lead text that is not, so open the source before quoting it as the source's
 - For claims that need verification, use `provenance` to show supporting/contradicting sources
 - When writing pages, see [reference/writing-pages.md](reference/writing-pages.md) for citation records
 

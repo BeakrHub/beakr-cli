@@ -47,6 +47,7 @@ READ_TOOLS = frozenset(
         "knowledge_queue",
         "project_sources",
         "preview_source_rules",
+        "tracked_items",
     }
 )
 #: Tools that change something. update_beakr upgrades this installation here (the
@@ -70,6 +71,7 @@ WRITE_TOOLS = frozenset(
         "attach_source",
         "update_source",
         "sync_source",
+        "recompile_source",
         "remove_source",
         "draft_review_interview",
         "update_beakr",

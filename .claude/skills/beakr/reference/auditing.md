@@ -41,7 +41,7 @@ Read 5-10 pages with `cat {page, outline: true}` first, then the sections that m
 For key pages, call `provenance {page}` and look for:
 - Sections with no citations (unsourced claims)
 - Sections with `contradicts` citations (disputed content)
-- Excerpts marked `(paraphrase)` or `(unverified)`, or sources marked "source changed since cited"
+- Citations with no excerpt, excerpts that are not the source's own words (`Described by Beakr:`, `Added by a person:`), or sources marked "source changed since cited"
 
 ### 7. Report findings
 

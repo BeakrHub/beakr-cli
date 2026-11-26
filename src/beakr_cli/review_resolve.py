@@ -58,6 +58,16 @@ def base_path(proposal_id: str) -> str:
     return f"/v1/knowledge/wiki/proposals/{proposal_id}"
 
 
+def is_decided(flag: dict[str, Any]) -> bool:
+    """Whether the proposal read is a review flag that is no longer open.
+
+    One already resolved (by a person, or by Beakr from a person's own interview
+    answer) or dismissed has no options left to apply, so ``review_options`` says
+    how it was decided instead, as the hosted tool does.
+    """
+    return flag.get("proposal_type") == "review" and flag.get("status") not in (None, "pending")
+
+
 def page_changed(proposal_id: str) -> ResolveRefused:
     return ResolveRefused(
         "conflict",

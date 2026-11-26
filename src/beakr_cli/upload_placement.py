@@ -1,8 +1,9 @@
 """What an upload does to a file already at its path: the fields sent on completion.
 
 ``POST /v1/uploads/{upload_id}/complete`` takes ``on_existing`` (``"version"``, the
-server's default, or ``"new"``), ``written_by_agent`` and ``artifact_id`` (the file
-to add the upload to as a version). The beakr-sdk the CLI locks (0.2.0) sends none
+server's default, or ``"new"``), ``written_by_agent``, ``artifact_id`` (the file
+to add the upload to as a version), and ``authored_by`` and ``authored_at`` (who
+wrote the file and when). The beakr-sdk the CLI locks (0.2.0) sends none
 of them, so :func:`placed` adds them to the completion the SDK's own upload flow
 builds. That works with any beakr-sdk: one that sends them itself is given the same
 values. Drop it once the CLI locks a beakr-sdk whose upload methods take them
@@ -38,9 +39,16 @@ def placement_fields(
     on_existing: str | None = None,
     written_by_agent: bool | None = None,
     version_of: str | None = None,
+    authored_by: str | list[str] | None = None,
+    authored_at: str | None = None,
 ) -> dict[str, Any]:
     """The completion fields for these options; only those given, so the server's
-    defaults (version a file at the same path, a person's upload) apply otherwise."""
+    defaults (version a file at the same path, a person's upload) apply otherwise.
+
+    ``authored_by`` and ``authored_at`` record who wrote the file and when, apart
+    from who uploads it (R11): a name, ``Name <email>`` or an email, or a list of
+    up to 20 for co-authors, and a date (``YYYY-MM-DD``) or an ISO 8601 date-time.
+    """
     fields: dict[str, Any] = {}
     if on_existing is not None:
         fields["on_existing"] = on_existing
@@ -48,6 +56,10 @@ def placement_fields(
         fields["written_by_agent"] = True
     if version_of is not None:
         fields["artifact_id"] = version_of
+    if authored_by is not None:
+        fields["authored_by"] = authored_by
+    if authored_at is not None:
+        fields["authored_at"] = authored_at
     return fields
 
 

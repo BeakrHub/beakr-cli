@@ -1527,6 +1527,19 @@
       "description": "Direct link.",
       "title": "External Item Url"
      },
+     "failing_since": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the first sync after the latest successful one started, while every sync that finished since has failed; null when the latest finished sync succeeded or none has failed. Syncs still running and cancelled syncs are not counted.",
+      "title": "Failing Since"
+     },
      "guidance": {
       "anyOf": [
        {
@@ -1550,6 +1563,19 @@
       "description": "Whether its content is compiled into Knowledge.",
       "title": "Ingest Wiki",
       "type": "boolean"
+     },
+     "last_successful_sync_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "When the latest successful sync of this source started; null when none has succeeded. `last_sync_at` is the latest attempt, whatever its outcome.",
+      "title": "Last Successful Sync At"
      },
      "last_sync_at": {
       "anyOf": [
@@ -1614,6 +1640,18 @@
       "description": "Whether this provider's content can be compiled into Knowledge.",
       "title": "Supports Wiki Ingest",
       "type": "boolean"
+     },
+     "sync_failure_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "description": "Why the latest sync failed, in plain words (for example, the connection has expired); set only while `failing_since` is set.",
+      "title": "Sync Failure Reason"
      },
      "sync_status": {
       "anyOf": [
@@ -5913,6 +5951,58 @@
     "title": "SourceQueryKeysOut",
     "type": "object"
    },
+   "SourceSyncCancel": {
+    "properties": {
+     "at": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "When it happened (ISO 8601, UTC).",
+      "title": "At"
+     },
+     "by_name": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Name of the by.",
+      "title": "By Name"
+     },
+     "items_done": {
+      "description": "Items done.",
+      "title": "Items Done",
+      "type": "integer"
+     },
+     "items_total": {
+      "description": "Items total.",
+      "title": "Items Total",
+      "type": "integer"
+     },
+     "summary": {
+      "description": "A short summary.",
+      "title": "Summary",
+      "type": "string"
+     }
+    },
+    "required": [
+     "items_done",
+     "items_total",
+     "summary"
+    ],
+    "title": "SourceSyncCancel",
+    "type": "object"
+   },
    "SourceSyncFile": {
     "additionalProperties": true,
     "properties": {
@@ -5980,6 +6070,177 @@
     "title": "SourceSyncFile",
     "type": "object"
    },
+   "SourceSyncOutcomeItem": {
+    "properties": {
+     "external_id": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "The item's key in Beakr; null for a failed or cancelled delivery, which names a sync step rather than one tracked item.",
+      "title": "External Id"
+     },
+     "outcome": {
+      "description": "ingested, partial (in Knowledge with planned changes that did not land), skipped, pending (read, Knowledge not done with it yet), removed, failed or cancelled.",
+      "title": "Outcome",
+      "type": "string"
+     },
+     "reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Why a skipped or failed item ended so, for a person to read.",
+      "title": "Reason"
+     },
+     "reason_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Why a skipped or failed item ended so, as a stable code.",
+      "title": "Reason Code"
+     },
+     "title": {
+      "description": "The item's title.",
+      "title": "Title",
+      "type": "string"
+     }
+    },
+    "required": [
+     "title",
+     "outcome"
+    ],
+    "title": "SourceSyncOutcomeItem",
+    "type": "object"
+   },
+   "SourceSyncOutcomeReason": {
+    "properties": {
+     "count": {
+      "description": "How many of the run's items ended this way.",
+      "title": "Count",
+      "type": "integer"
+     },
+     "outcome": {
+      "description": "skipped, failed or partial.",
+      "title": "Outcome",
+      "type": "string"
+     },
+     "reason_code": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "The reason's stable code; null for an item with none recorded.",
+      "title": "Reason Code"
+     }
+    },
+    "required": [
+     "outcome",
+     "count"
+    ],
+    "title": "SourceSyncOutcomeReason",
+    "type": "object"
+   },
+   "SourceSyncOutcomes": {
+    "description": "What became of each item one sync run brought in, including Knowledge's own verdicts.",
+    "properties": {
+     "counts": {
+      "additionalProperties": {
+       "type": "integer"
+      },
+      "description": "Items by outcome: ingested, partial, skipped, pending, removed, failed, cancelled.",
+      "title": "Counts",
+      "type": "object"
+     },
+     "has_more": {
+      "description": "Whether more items were counted than are listed.",
+      "title": "Has More",
+      "type": "boolean"
+     },
+     "items": {
+      "description": "The first items_limit items, skipped and failed first, then pending, removed and ingested.",
+      "items": {
+       "$ref": "#/components/schemas/SourceSyncOutcomeItem"
+      },
+      "title": "Items",
+      "type": "array"
+     },
+     "items_limit": {
+      "description": "The most items listed here.",
+      "title": "Items Limit",
+      "type": "integer"
+     },
+     "reasons": {
+      "description": "Skipped and failed items by reason, most common first.",
+      "items": {
+       "$ref": "#/components/schemas/SourceSyncOutcomeReason"
+      },
+      "title": "Reasons",
+      "type": "array"
+     },
+     "since": {
+      "description": "When the run began. The items counted are the ones this run delivered, however late Knowledge decided them; an item recorded before runs were named on items is counted when it was synced between since and until.",
+      "title": "Since",
+      "type": "string"
+     },
+     "total": {
+      "description": "Every item counted.",
+      "title": "Total",
+      "type": "integer"
+     },
+     "tracked_items_path": {
+      "description": "The source's tracked-items list narrowed to this run: every item, paged.",
+      "title": "Tracked Items Path",
+      "type": "string"
+     },
+     "until": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "When the source's next run began, for a run that is not the latest.",
+      "title": "Until"
+     }
+    },
+    "required": [
+     "since",
+     "total",
+     "counts",
+     "reasons",
+     "items",
+     "items_limit",
+     "has_more",
+     "tracked_items_path"
+    ],
+    "title": "SourceSyncOutcomes",
+    "type": "object"
+   },
    "SourceSyncQueued": {
     "properties": {
      "job_id": {
@@ -6022,6 +6283,70 @@
    },
    "SourceSyncStatus": {
     "properties": {
+     "agentic_found": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Agentic found.",
+      "title": "Agentic Found"
+     },
+     "agentic_ran": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Agentic ran.",
+      "title": "Agentic Ran"
+     },
+     "cancel": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SourceSyncCancel"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Cancel."
+     },
+     "empty_reason": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Empty reason.",
+      "title": "Empty Reason"
+     },
+     "error": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "What went wrong, or null.",
+      "title": "Error"
+     },
      "files": {
       "default": [],
       "description": "The files.",
@@ -6031,10 +6356,36 @@
       "title": "Files",
       "type": "array"
      },
+     "files_cancelled": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Files cancelled.",
+      "title": "Files Cancelled"
+     },
      "files_completed": {
       "description": "Files completed.",
       "title": "Files Completed",
       "type": "integer"
+     },
+     "files_expected": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Files expected.",
+      "title": "Files Expected"
      },
      "files_failed": {
       "description": "Files failed.",
@@ -6045,6 +6396,58 @@
       "description": "Files total.",
       "title": "Files Total",
       "type": "integer"
+     },
+     "outcomes": {
+      "anyOf": [
+       {
+        "$ref": "#/components/schemas/SourceSyncOutcomes"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Per-item outcomes of this run, including items Knowledge set aside after reading them; null before the source's first run."
+     },
+     "phase": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Phase.",
+      "title": "Phase"
+     },
+     "recent_found": {
+      "anyOf": [
+       {
+        "type": "integer"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "Recent found.",
+      "title": "Recent Found"
+     },
+     "started_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "When it started, or null if it has not.",
+      "title": "Started At"
      },
      "status": {
       "anyOf": [

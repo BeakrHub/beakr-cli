@@ -2,9 +2,10 @@
 change its card types and the cards it already has, upload the person's files into it, add
 the people who work in it, stop queued Knowledge work (``knowledge_queue``,
 ``cancel_compiles``, ``cancel_sync``; hosted in beakr-engine ``queue_tools.py``), list,
-attach, change, preview, sync and remove its connected sources (``project_sources``,
-``attach_source``, ``update_source``, ``preview_source_rules``, ``sync_source``,
-``remove_source``; hosted in ``source_tools.py``), and draft an interview from its open
+attach, change, preview, sync and remove its connected sources and list what each
+tracks (``project_sources``, ``attach_source``, ``update_source``,
+``preview_source_rules``, ``sync_source``, ``remove_source``, ``tracked_items``; hosted
+in ``source_tools.py``), and draft an interview from its open
 review flags (``draft_review_interview``; hosted in ``review_interview_tools.py``).
 
 The hosted MCP server has the same seven tools (beakr-engine
@@ -42,7 +43,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Literal
 
 from beakr_sdk.errors import BeakrError, BeakrUploadInterrupted
 from beakr_sdk.resources._upload import (
@@ -51,10 +52,12 @@ from beakr_sdk.resources._upload import (
     upload_flow,
     upload_relative_path,
 )
+from typing_extensions import TypedDict
 
 from beakr_cli import (
     cancels,
     card_settings,
+    card_type_routes,
     card_types,
     card_updates,
     connected_sources,
@@ -62,7 +65,17 @@ from beakr_cli import (
     scope_session,
 )
 from beakr_cli.mcp_errors import ApiCallError, call_api
-from beakr_cli.mcp_tools_platform import _is_project_id, _project_id, _readable_projects
+from beakr_cli.mcp_result import page_result
+from beakr_cli.mcp_tools_platform import (
+    MAX_LIST_ITEMS,
+    PageLimit,
+    _bounded_limit,
+    _is_project_id,
+    _noted,
+    _page_of,
+    _project_id,
+    _readable_projects,
+)
 from beakr_cli.upload_path_policy import (
     MAX_UPLOAD_BYTES,
     named_path_refusal,
@@ -184,11 +197,11 @@ async def create_project(
     session = _held_session()
     try:
         project = await call_api(
-            # card_types only when chosen: a beakr-sdk before 0.4 does not take it.
-            lambda sdk: sdk.projects.create(
+            lambda sdk: card_type_routes.create_project(
+                sdk,
                 name,
                 description=(description or "").strip() or None,
-                **({"card_types": chosen} if chosen else {}),
+                card_types=chosen or None,
             )
         )
     except ApiCallError as exc:
@@ -411,7 +424,9 @@ async def edit_card_type(
         return _error("invalid_arguments", *card_types.ORG_WITH_PROJECT)
     if reset:
         await call_api(
-            lambda sdk: sdk.knowledge.remove_card_type_copy(key, scope=scope, project_id=project_id)
+            lambda sdk: card_type_routes.remove_card_type_copy(
+                sdk, key, scope=scope, project_id=project_id
+            )
         )
         return card_types.card_type_reset_text(key, scope)
     changes = card_types.changes(
@@ -429,8 +444,8 @@ async def edit_card_type(
     if not changes:
         return _error("invalid_arguments", *card_types.NOTHING_TO_CHANGE)
     saved = await call_api(
-        lambda sdk: sdk.knowledge.update_card_type(
-            key, scope=scope, project_id=project_id, **changes
+        lambda sdk: card_type_routes.update_card_type(
+            sdk, key, scope=scope, project_id=project_id, **changes
         )
     )
     return card_types.card_type_saved_text(_dict(_dict(saved).get("page_type")), scope)
@@ -468,7 +483,8 @@ async def card_type_settings(
         return _error("invalid_arguments", *card_types.NO_PROJECT)
     project_id = await _project_id(project)
     answer = await call_api(
-        lambda sdk: sdk.knowledge.set_card_type_settings(
+        lambda sdk: card_type_routes.set_card_type_settings(
+            sdk,
             project_id,
             keep_types_in_use=keep_types_in_use is True,
             # Only apply=true writes: anything else, a missing value included, previews.
@@ -526,14 +542,24 @@ async def update_existing_cards(
     async def send(continue_event_id: str | None = None) -> dict[str, Any]:
         if change == "rename_fields":
             answer = await call_api(
-                lambda sdk: sdk.knowledge.rename_card_type_fields(
-                    key, project_id, pairs, dry_run=dry_run, continue_event_id=continue_event_id
+                lambda sdk: card_type_routes.rename_card_type_fields(
+                    sdk,
+                    key,
+                    project_id,
+                    pairs,
+                    dry_run=dry_run,
+                    continue_event_id=continue_event_id,
                 )
             )
         else:
             answer = await call_api(
-                lambda sdk: sdk.knowledge.retype_cards(
-                    key, project_id, target, dry_run=dry_run, continue_event_id=continue_event_id
+                lambda sdk: card_type_routes.retype_cards(
+                    sdk,
+                    key,
+                    project_id,
+                    target,
+                    dry_run=dry_run,
+                    continue_event_id=continue_event_id,
                 )
             )
         return _dict(answer)
@@ -592,6 +618,8 @@ class _Upload:
     scratch: Path | None = None
     #: Sent on each completion: the agent wrote these files (``written_by_agent``).
     written_by_agent: bool = False
+    #: Sent on each completion: who wrote the files and when (``authored_by``, ``authored_at``).
+    authorship: dict[str, Any] = field(default_factory=dict)
 
 
 #: Uploads this server has run, by id, for ``upload_status``.
@@ -682,7 +710,7 @@ def _file_flow(upload: _Upload, item: _Item, folders: dict[Path, str | None], ch
                 ingest=upload.ingest,
                 relative_path=recorded,
             ),
-            placement_fields(written_by_agent=upload.written_by_agent),
+            placement_fields(written_by_agent=upload.written_by_agent, **upload.authorship),
             abort_refused=True,
         )
     )
@@ -780,6 +808,9 @@ async def _report_progress(upload: _Upload) -> None:
         return
 
 
+# typing_extensions' TypedDict, not typing's: pydantic (the MCP library's tool schemas)
+# refuses typing.TypedDict below Python 3.12, so `beakr mcp` failed at import on 3.10
+# and 3.11, which requires-python allows. The docstring is the listed schema's text.
 class InlineFile(TypedDict, total=False):
     """One file sent in the call, as the hosted server takes it: a name and its content once."""
 
@@ -860,6 +891,57 @@ def _discard(scratch: Path | None) -> None:
         shutil.rmtree(scratch, ignore_errors=True)
 
 
+def _authorship(authors: Any, authored_at: Any) -> dict[str, Any]:
+    """``authored_by`` and ``authored_at`` for each file's completion, as the route reads them.
+
+    The hosted ``upload_files`` rules (``project_uploads._authorship``), with the
+    API's own parsers (:mod:`beakr_cli.authorship`): up to ``MAX_AUTHORS`` names,
+    each a name, ``Name <email>`` or an email; a date or an ISO 8601 date-time,
+    never in the future. An empty list or date states nothing. A bad value returns
+    an ``invalid_arguments`` error (it has ``status``) and nothing is uploaded.
+    """
+    from beakr_cli.authorship import (
+        MAX_AUTHORED_BY_CHARS,
+        MAX_AUTHORS,
+        parse_authored_at,
+        parse_authors,
+    )
+
+    stated: dict[str, Any] = {}
+    if isinstance(authors, str):
+        authors = [authors]
+    if isinstance(authors, list) and any(str(entry or "").strip() for entry in authors):
+        entries = [str(entry or "") for entry in authors if str(entry or "").strip()]
+        too_long = next((entry for entry in entries if len(entry) > MAX_AUTHORED_BY_CHARS), None)
+        try:
+            if too_long is not None:
+                raise ValueError(
+                    f"authored_by: an entry is over {MAX_AUTHORED_BY_CHARS} characters"
+                )
+            if len(entries) > MAX_AUTHORS:
+                raise ValueError(f"authored_by names more than {MAX_AUTHORS} authors")
+            stated["authored_by"] = [author.text() for author in parse_authors(entries)]
+        except ValueError as exc:
+            return _error(
+                "invalid_arguments",
+                f"{str(exc).replace('authored_by', 'authors', 1)}. Nothing was uploaded.",
+                f"Pass authors as up to {MAX_AUTHORS} names, each a person's name (Jane "
+                "Doe), a name with an email (Jane Doe <jane@example.com>) or an email.",
+            )
+    written = str(authored_at or "").strip()
+    if written:
+        try:
+            stated["authored_at"] = parse_authored_at(written)
+        except ValueError as exc:
+            return _error(
+                "invalid_arguments",
+                f"{exc}. Nothing was uploaded.",
+                "Pass authored_at as a date (2026-06-14) or an ISO 8601 date-time "
+                "(2026-06-14T09:30:00Z), not in the future.",
+            )
+    return stated
+
+
 async def upload_files(
     project: str,
     paths: list[str] | None = None,
@@ -869,8 +951,13 @@ async def upload_files(
     knowledge: bool = True,
     resume_upload_id: str = "",
     written_by_agent: bool = False,
+    authors: list[str] | None = None,
+    authored_at: str = "",
 ) -> str | dict[str, Any]:
     """Upload local files or folders into a project (described in the shared agent tool surface)."""
+    authorship = _authorship(authors, authored_at)
+    if "status" in authorship:
+        return authorship
     project_id = await _project_id(project)
     named = next(
         (p for p in await _readable_projects() if str(p.get("id")) == project_id),
@@ -896,7 +983,11 @@ async def upload_files(
                 "Pass the one path that was interrupted, without files.",
             )
         return await _resume(
-            resume_upload_id, paths, project_name, written_by_agent=written_by_agent is True
+            resume_upload_id,
+            paths,
+            project_name,
+            written_by_agent=written_by_agent is True,
+            authorship=authorship,
         )
     items, skipped = _gather(paths)
     scratch = None
@@ -946,6 +1037,7 @@ async def upload_files(
         total_bytes=total_bytes,
         scratch=scratch,
         written_by_agent=written_by_agent is True,
+        authorship=authorship,
     )
     _UPLOADS[upload.id] = upload
     # Not the call's own task: a client that gives up on the call (Codex after 60
@@ -959,7 +1051,12 @@ async def upload_files(
 
 
 async def _resume(
-    upload_id: str, paths: list[str], project_name: str, *, written_by_agent: bool = False
+    upload_id: str,
+    paths: list[str],
+    project_name: str,
+    *,
+    written_by_agent: bool = False,
+    authorship: dict[str, Any] | None = None,
 ) -> str | dict[str, Any]:
     if len(paths) != 1:
         return _error(
@@ -974,7 +1071,9 @@ async def _resume(
         return _error("invalid_arguments", f"Cannot resume {paths[0]}: {refused or 'not a file'}.")
     try:
         result = await call_api(
-            lambda sdk: sdk.files.resume_upload(upload_id, path, written_by_agent=written_by_agent)
+            lambda sdk: sdk.files.resume_upload(
+                upload_id, path, written_by_agent=written_by_agent, **(authorship or {})
+            )
         )
     except BeakrUploadInterrupted as exc:
         return _error(
@@ -1035,6 +1134,19 @@ def _size(count: float) -> str:
     return str(count)
 
 
+def _written_words(authorship: dict[str, Any]) -> str:
+    """``written by Jane Doe and Bob Smith on 2026-06-14``; "" when nothing was stated."""
+    from beakr_cli.authorship import display_authors
+
+    by = display_authors(list(authorship.get("authored_by") or []))
+    at = authorship.get("authored_at")
+    if not (by or at):
+        return ""
+    return " ".join(
+        part for part in ("written", f"by {by}" if by else "", f"on {at}" if at else "") if part
+    )
+
+
 def _upload_text(upload: _Upload, *, skipped: list[dict[str, Any]] | None = None) -> str:
     total = len(upload.items)
     lines = []
@@ -1049,6 +1161,11 @@ def _upload_text(upload: _Upload, *, skipped: list[dict[str, Any]] | None = None
         lines.append(
             f"Uploaded {len(upload.sent)} of {total} files ({_size(upload.sent_bytes)}) to "
             f"{upload.project_name} (upload {upload.id})."
+        )
+    written = _written_words(upload.authorship)
+    if written:
+        lines.append(
+            f"Recorded as {written}; Knowledge built from them is attributed and dated so."
         )
     for row in upload.sent[:50]:
         lines.append(_sent_line(row))
@@ -1318,12 +1435,29 @@ async def project_sources(project: str, attachment_id: str | None = None) -> str
     if source is None:
         return _error(*connected_sources.NOT_ATTACHED)
     status = await call_api(lambda sdk: sdk.project_sources.status(project_id, attachment))
-    return "\n".join(
-        [
-            connected_sources.source_line(source),
-            connected_sources.sync_status_text(_dict(status)),
-        ]
-    )
+    lines = [
+        connected_sources.source_line(source),
+        connected_sources.sync_status_text(_dict(status)),
+    ]
+    imported = await _import_status_line(project_id, attachment)
+    if imported:
+        lines.append(imported)
+    return "\n".join(lines)
+
+
+async def _import_status_line(project_id: str, attachment: str) -> str:
+    """The source's history import, when it has one; "" when it has none or it can't be read.
+
+    An extra read beside the sync status, as the hosted server makes it: a refusal
+    of this one read never fails the call that asked for the source.
+    """
+    try:
+        status = await call_api(
+            lambda sdk: connected_sources.history_import_status(sdk, project_id, attachment)
+        )
+    except (ApiCallError, BeakrError):
+        return ""
+    return connected_sources.import_status_text(_dict(status))
 
 
 async def attach_source(
@@ -1434,6 +1568,84 @@ async def sync_source(project: str, attachment_id: str) -> str | dict[str, Any]:
     return connected_sources.sync_started_text(_dict(answer))
 
 
+#: Refusals of a recompile request a person waits out, answered in the engine's own
+#: sentence with what this tool can do about it (the hosted ``_RECOMPILE_WAIT_FIX``).
+_RECOMPILE_WAIT_FIX = {
+    "sync_running": (
+        "Wait for the source's running sync to finish (project_sources with this "
+        "attachment_id shows its progress), then call recompile_source again."
+    ),
+    "recompile_cooldown": (
+        "One request per source every 10 minutes: call recompile_source again after the "
+        "time it names. dry_run=true still counts what would be sent."
+    ),
+}
+#: The most item ids one request takes (the hosted ``RECOMPILE_MAX_ITEMS``).
+RECOMPILE_MAX_ITEMS = 500
+
+
+def _item_ids(value: Any) -> list[str] | None:
+    """The tracked-items external_ids to send, in order and once each; None for the whole source.
+
+    An empty list is the whole source too: a model that fills every optional
+    property sends [] for what it means to leave out.
+    """
+    if not isinstance(value, list):
+        return None
+    seen: dict[str, None] = {}
+    for entry in value:
+        text = str(entry if entry is not None else "").strip()
+        if text:
+            seen.setdefault(text, None)
+    return list(seen) or None
+
+
+async def recompile_source(
+    project: str,
+    attachment_id: str,
+    mode: Literal["retry", "full"] = "retry",
+    external_ids: list[str] | None = None,
+    dry_run: bool = False,
+) -> str | dict[str, Any]:
+    """Send a source's tracked items to Knowledge again (described in the shared surface)."""
+    attachment = connected_sources.attachment_id(attachment_id)
+    if not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    chosen = str(mode or "retry").strip().lower()
+    if chosen not in ("retry", "full"):
+        return _error(
+            "invalid_arguments",
+            f"mode {chosen!r} is not one this tool takes.",
+            "Pass mode 'retry' (items not in Knowledge only) or 'full' (every chosen item, "
+            "read whole again).",
+        )
+    items = _item_ids(external_ids)
+    if items is not None and len(items) > RECOMPILE_MAX_ITEMS:
+        return _error(
+            "too_many_items",
+            f"{len(items)} items is more than one call sends ({RECOMPILE_MAX_ITEMS}).",
+            f"Send at most {RECOMPILE_MAX_ITEMS} external_ids a call, or leave external_ids "
+            "out to send the whole source.",
+        )
+    body: dict[str, Any] = {"mode": chosen, "dry_run": dry_run is True}
+    if items is None:
+        body["all"] = True
+    else:
+        body["external_ids"] = items
+    project_id = await _project_id(project)
+    try:
+        answer = await call_api(
+            lambda sdk: connected_sources.recompile(sdk, project_id, attachment, body)
+        )
+    except ApiCallError as exc:
+        code = str(exc.fields.get("error_code") or "")
+        fix = _RECOMPILE_WAIT_FIX.get(code)
+        if fix is None:
+            raise
+        return _error(code, str(exc.fields.get("message") or exc), fix)
+    return connected_sources.recompile_text(_dict(answer))
+
+
 async def remove_source(project: str, attachment_id: str) -> str | dict[str, Any]:
     """Remove a connected source from a project (described in the shared surface)."""
     attachment = connected_sources.attachment_id(attachment_id)
@@ -1442,6 +1654,60 @@ async def remove_source(project: str, attachment_id: str) -> str | dict[str, Any
     project_id = await _project_id(project)
     await call_api(lambda sdk: sdk.project_sources.remove(project_id, attachment))
     return connected_sources.removed_text(attachment)
+
+
+# --- tracked_items ------------------------------------------------------------------------
+#
+# Every item a source tracks and what became of it, with why a skipped one was set aside.
+# One page per call, as the hosted ``tracked_items`` answers it (``source_tools.py``). The
+# route is read through the SDK's ``request``: the released beakr-sdk has no method for it.
+
+TrackedState = Literal["ingested", "partial", "pending", "skipped", "failed", "removed"]
+
+#: The filters tracked_items passes to the route, as the route names them.
+_TRACKED_FILTERS = ("state", "reason_code", "search", "since")
+
+
+async def tracked_items(
+    project: str,
+    attachment_id: str,
+    state: TrackedState | None = None,
+    reason_code: str | None = None,
+    search: str | None = None,
+    since: str | None = None,
+    cursor: str = "",
+    limit: PageLimit = MAX_LIST_ITEMS,
+) -> str | dict[str, Any]:
+    """List a source's tracked items and why skipped ones were set aside (described in the
+    shared surface)."""
+    attachment = connected_sources.attachment_id(attachment_id)
+    if not attachment:
+        return _error(*connected_sources.NAME_SOURCE)
+    project_id = await _project_id(project)
+    page_size, reduced = _bounded_limit(limit)
+    params: dict[str, Any] = {"limit": page_size}
+    given_cursor = str(cursor or "").strip()
+    if given_cursor:
+        params["cursor"] = given_cursor
+    filters = {"state": state, "reason_code": reason_code, "search": search, "since": since}
+    for name in _TRACKED_FILTERS:
+        value = str(filters[name] or "").strip()
+        if value:
+            params[name] = value
+    page = _dict(
+        await call_api(
+            lambda sdk: connected_sources.tracked_items_page(sdk, project_id, attachment, params)
+        )
+    )
+    rows, has_more, next_cursor = _page_of(page, "data")
+    return page_result(
+        _noted(connected_sources.tracked_items_text(page, rows), reduced),
+        tool="tracked_items",
+        returned=len(rows),
+        has_more=has_more,
+        next_cursor=next_cursor,
+        same_args="and the same project, attachment_id and filters",
+    )
 
 
 # --- draft_review_interview -------------------------------------------------------------
@@ -1489,7 +1755,9 @@ PROJECT_TOOLS = (
     update_source,
     preview_source_rules,
     sync_source,
+    recompile_source,
     remove_source,
+    tracked_items,
     draft_review_interview,
 )
 

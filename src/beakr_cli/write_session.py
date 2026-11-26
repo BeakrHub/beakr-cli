@@ -67,6 +67,8 @@ WRITE_COMMANDS: dict[str, str] = {
     "upload": TOKEN,
     "files upload": TOKEN,
     "files rm": TOKEN,
+    # A file's authors and date (Octant R11): its record in the project, as files rm.
+    "files edit": TOKEN,
     # Only a person approves a file: their own key, joined to no session.
     "files approve": PERSON,
     # A project's Knowledge and its profile
@@ -187,7 +189,10 @@ NOT_GATED: frozenset[str] = frozenset(
         # A project's connected sources: reads, and their administration (as for
         # `integrations connect`): the sync's Knowledge is the compile's, not a write here
         "sources ls", "sources keys", "sources preview", "sources status",
+        "sources tracked", "sources import-status",
         "sources attach", "sources edit", "sources rm", "sources sync",
+        # Sending a source's items to Knowledge again (Octant R4): a sync, as sources sync
+        "sources recompile",
         # Stopping queued or running work, as `runs cancel`
         "kb compiles cancel", "sources cancel-sync",
         # An interview drafted from review flags: no Knowledge until its answers come back

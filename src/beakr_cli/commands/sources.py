@@ -1,4 +1,4 @@
-"""``beakr sources ls|attach|edit|rm|sync|status|cancel-sync``: what a project pulls in.
+"""``beakr sources ls|attach|edit|rm|sync|recompile|status|tracked|...``: what a project reads.
 
 A project's sources are the connected items it reads: a Google Drive folder, a
 Slack channel, a Notion page or database, or everything one connection can see.
@@ -17,6 +17,13 @@ predate them.
 With an agent's credential, attaching, changing and syncing a source are refused
 (exit 6) while the project requires a person to approve what agents bring into
 Knowledge; the person runs the command themselves.
+
+``tracked`` lists every item a source's syncs picked and what became of it
+(ingested, pending, skipped or removed), with why a skipped item was set aside,
+including when Knowledge read it and found nothing to add, and why a failed
+item's compile did not finish. ``status`` says the same for the items the
+latest sync brought in, and ``import-status`` how a source's history import
+went.
 """
 
 from __future__ import annotations
@@ -26,11 +33,23 @@ from typing import Any
 
 import click
 import typer
-from beakr_sdk.errors import BeakrError, ConflictError, NotFoundError
+from beakr_sdk.errors import (
+    BeakrError,
+    ConflictError,
+    NotFoundError,
+    NotProvidedError,
+    PermissionDeniedError,
+)
 
-from beakr_cli import cancels
+from beakr_cli import cancels, connected_sources
 from beakr_cli.compact import cell
-from beakr_cli.errors import EXIT_NOT_FOUND, describe_error, error_object, exit_code_for
+from beakr_cli.errors import (
+    EXIT_AUTH,
+    EXIT_NOT_FOUND,
+    describe_error,
+    error_object,
+    exit_code_for,
+)
 from beakr_cli.output import console, emit, err_console, print_table, short
 from beakr_cli.project_binding import resolve_project
 from beakr_cli.project_ref import project_ref_callback
@@ -92,6 +111,12 @@ class NoConnection(click.ClickException):
     """No connection for the provider: connect one first (exit 4, not found)."""
 
     exit_code = EXIT_NOT_FOUND
+
+
+class ConnectionsRefused(click.ClickException):
+    """The credential may not list the connections to choose from (exit 3)."""
+
+    exit_code = EXIT_AUTH
 
 
 def _note_mode(mode: str | None, provider: str | None) -> None:
@@ -157,12 +182,21 @@ def _query(raw: str | None, **shorthands: str | None) -> dict[str, Any] | None:
     return parsed
 
 
-def _query_keys(sdk: Any) -> list[dict[str, Any]] | None:
-    """The engine's ``source_query`` keys, or None from an engine that does not list them."""
+def _query_keys(sdk: Any, *, refused: bool = True) -> list[dict[str, Any]] | None:
+    """The engine's ``source_query`` keys, or None when they cannot be listed.
+
+    None from an engine that does not list them, and (with ``refused``) for a
+    credential that may not: a project-limited key, since the listing names no
+    project. The query is then sent as given and the engine judges it.
+    """
     try:
         listing = sdk.project_sources.query_keys()
     except NotFoundError:
         return None
+    except PermissionDeniedError:
+        if refused:
+            return None
+        raise
     return list((listing or {}).get("keys") or [])
 
 
@@ -321,6 +355,63 @@ def _emit_preview(data: Any, json_out: bool) -> None:
 
 def _connection_label(row: dict[str, Any]) -> str:
     return f"{row.get('id')} ({row.get('label') or row.get('provider')})"
+
+
+def _connections_refused(provider: str, exc: BeakrError) -> ConnectionsRefused:
+    notion = ' and --type page|database --name "..."' if provider == "notion:nango" else ""
+    return ConnectionsRefused(
+        f"This credential cannot list the connections to choose one ({exc}). Pass the "
+        f"connection with --connector <connection id>{notion}: the connection's id is "
+        "under Settings > Integrations in Beakr, or in `beakr integrations ls` run with "
+        "an unrestricted credential."
+    )
+
+
+def project_connections_path(project_id: str) -> str:
+    return f"/v1/projects/{project_id}/integrations"
+
+
+def _all_pages(first: Any, fetch: Any) -> list[dict[str, Any]]:
+    """Every row of a cursor-paged list, from its first page and a fetch(cursor)."""
+    rows: list[dict[str, Any]] = []
+    page = first if isinstance(first, dict) else {}
+    seen: set[str] = set()
+    while True:
+        rows.extend(row for row in page.get("data") or [] if isinstance(row, dict))
+        cursor = page.get("next_cursor")
+        if not page.get("has_more") or not cursor or cursor in seen:
+            return rows
+        seen.add(cursor)
+        page = fetch(cursor)
+        page = page if isinstance(page, dict) else {}
+
+
+def connector_for(sdk: Any, project_id: str, provider: str) -> str:
+    """The connection to attach ``provider``'s item with, when --connector names none (B11).
+
+    The project's own list comes first (``GET /v1/projects/{id}/integrations``):
+    the connections ``POST .../sources`` takes, which a key limited to the
+    project may read. An engine without that route (404) falls back to the
+    caller's organization-wide list (``GET /v1/integrations``), which such a key
+    may not call; its refusal says to pass --connector.
+    """
+    path = project_connections_path(project_id)
+    try:
+        connections = _all_pages(
+            sdk.request("GET", path),
+            lambda cursor: sdk.request("GET", path, params={"cursor": cursor}),
+        )
+    except NotProvidedError:
+        # An engine before the route. (A project that is missing answers a plain
+        # NotFoundError with its own message, which is shown as it is.)
+        try:
+            listing = sdk.integrations.list()
+        except PermissionDeniedError as refused:
+            raise _connections_refused(provider, refused) from refused
+        connections = (listing or {}).get("data") or []
+    except PermissionDeniedError as exc:
+        raise _connections_refused(provider, exc) from exc
+    return pick_connector(connections, provider)
 
 
 def pick_connector(connections: list[dict[str, Any]], provider: str) -> str:
@@ -518,6 +609,42 @@ def _rows_field(row: dict[str, Any]) -> list[str]:
     return [f"notion_rows={cell(','.join(parts), width=2000)}"]
 
 
+#: A source's sync health (R10): when its syncs started failing, the latest
+#: reason, and when one last succeeded. The engine sets ``failing_since`` while
+#: every finished sync since the last success has failed.
+SYNC_HEALTH_FIELDS = ("failing_since", "sync_failure_reason", "last_successful_sync_at")
+
+
+def _failing_sentence(row: dict[str, Any]) -> str | None:
+    """ "Syncs have failed since <when>: <why>. Last successful sync: <when>." or None.
+
+    ``sync_status`` and ``last_sync_at`` are the latest attempt, so a source
+    that fails every hour still looked freshly synced.
+    """
+    since = row.get("failing_since")
+    if not since:
+        return None
+    reason = str(row.get("sync_failure_reason") or "").strip().rstrip(".")
+    last_ok = row.get("last_successful_sync_at")
+    return (
+        f"Syncs have failed since {since}"
+        + (f": {reason}." if reason else ".")
+        + (f" Last successful sync: {last_ok}." if last_ok else " No sync has succeeded yet.")
+    )
+
+
+def _sync_cell(row: dict[str, Any]) -> str:
+    """The Sync column: the latest sync's state, and since when syncs fail."""
+    state = str(row.get("sync_status") or "never")
+    since = row.get("failing_since")
+    return f"{state}, failing since {str(since)[:10]}" if since else state
+
+
+def _health_fields(row: dict[str, Any]) -> list[str]:
+    """``failing_since=...`` and the rest, in a machine line, only when set."""
+    return [f"{name}={cell(row[name], width=500)}" for name in SYNC_HEALTH_FIELDS if row.get(name)]
+
+
 def _source_lines(rows: list[dict[str, Any]]) -> list[str]:
     return [
         "\t".join(
@@ -528,6 +655,7 @@ def _source_lines(rows: list[dict[str, Any]]) -> list[str]:
                 f"type={cell(r.get('external_item_type') or '')}",
                 f"knowledge={'on' if r.get('ingest_wiki') else 'off'}",
                 f"sync={cell(r.get('sync_status') or 'never')}",
+                *_health_fields(r),
                 *_rows_field(r),
             ]
         )
@@ -544,8 +672,9 @@ _NO_SOURCES = "No sources yet. Attach one with `beakr sources attach <link>`."
 def list_sources(project: str | None = _project_opt, json_out: bool = _json_opt) -> None:
     """List the project's sources: provider, item, Knowledge on or off, latest sync.
 
-    A Notion source also shows, for each database it reads, how many rows matched
-    its rules at the last sync.
+    A source whose syncs keep failing says since when, why, and when one last
+    succeeded. A Notion source also shows, for each database it reads, how many
+    rows matched its rules at the last sync.
     """
     project_id = _require_project(project)
     with get_sdk() as sdk:
@@ -564,12 +693,21 @@ def list_sources(project: str | None = _project_opt, json_out: bool = _json_opt)
                     f"{r.get('provider') or ''} {r.get('external_item_type') or ''}".strip(),
                     ("on" if r.get("ingest_wiki") else "off")
                     + (", nightly" if r.get("auto_sync_wiki") else ""),
-                    str(r.get("sync_status") or "never"),
+                    _sync_cell(r),
                 ]
                 for r in data
             ],
             title=f"Sources ({len(data)})",
         )
+        for r in data:
+            failing = _failing_sentence(r)
+            if failing:
+                console.print(
+                    f"{r.get('external_item_name') or r.get('id')} ({r.get('id')}): {failing}",
+                    highlight=False,
+                    markup=False,
+                    soft_wrap=True,
+                )
         counted = [(r, _notion_rows(r)) for r in data if _notion_rows(r)]
         if counted:
             console.print("Notion rows matching at the last sync:", markup=False)
@@ -756,7 +894,7 @@ def attach(
         keys = _query_keys(sdk) if source_query else None
         if source_query and slug != "notion:nango":
             _check_query(keys, source_query, provider=slug, item_type=kind)
-        connector_id = connector or pick_connector(sdk.integrations.list().get("data") or [], slug)
+        connector_id = connector or connector_for(sdk, project_id, slug)
         type_unsure = False
         if slug == "notion:nango" and scope_mode != "all" and not (item_type and name):
             # Ask Notion what the item is and what it is called: a database's
@@ -1136,7 +1274,8 @@ def keys(
 ) -> None:
     """The source query keys --query takes: which providers and items take each, and an example."""
     with get_sdk() as sdk:
-        listing = _query_keys(sdk)
+        # A credential refused the listing hears the refusal, not "not listed".
+        listing = _query_keys(sdk, refused=False)
     if listing is None:
         raise click.ClickException(
             "This Beakr does not list source query keys yet; --query is sent as given."
@@ -1238,6 +1377,140 @@ def sync(
     )
 
 
+# -- recompile (R4) -----------------------------------------------------------------------
+#
+# Send a source's tracked items to Knowledge again, in any state (POST .../recompile,
+# engine #3298). Through the SDK's ``request``: the released beakr-sdk predates a method.
+
+#: What the engine says about the sync a recompile starts.
+_RECOMPILE_SYNC = {
+    "started": "A sync reading them has started",
+    "waiting_for_running_sync": "A sync is already running; a new one reads them when it ends",
+    "not_started": "No sync was started",
+}
+
+
+def recompile_path(project_id: str, source_id: str) -> str:
+    return f"/v1/projects/{project_id}/sources/{source_id}/recompile"
+
+
+def _external_ids(items: list[str] | None) -> list[str]:
+    """``--items a,b --items c`` as ``["a", "b", "c"]``, in order, without repeats."""
+    seen: dict[str, None] = {}
+    for value in items or []:
+        for part in value.split(","):
+            if part.strip():
+                seen.setdefault(part.strip(), None)
+    return list(seen)
+
+
+def _recompile_lines(data: dict[str, Any], source_id: str) -> list[str]:
+    mode = data.get("mode") or "retry"
+    requested = int(data.get("requested") or 0)
+    verb = "Would send" if data.get("dry_run") else "Sent"
+    lines = [f"{verb} {requested} item(s) of {source_id} to Knowledge again ({mode})."]
+    left = int(data.get("in_knowledge_left") or 0)
+    if left:
+        lines.append(
+            f"{left} already in Knowledge at their current version were left alone "
+            "(--full sends them too)."
+        )
+    in_progress = int(data.get("in_progress_left") or 0)
+    if in_progress:
+        lines.append(
+            f"{in_progress} still on their way into Knowledge were left out "
+            "(their compile is queued or running): send them again once they finish."
+        )
+    over = int(data.get("over_cap") or 0)
+    if over:
+        lines.append(f"{over} more are past the 500-item limit: send them in a later request.")
+    missing = [str(item) for item in data.get("not_found") or []]
+    if missing:
+        lines.append(f"Not tracked by this source, nothing sent: {', '.join(missing)}.")
+    if not data.get("dry_run"):
+        sync = _RECOMPILE_SYNC.get(str(data.get("sync")), str(data.get("sync") or ""))
+        job = data.get("sync_job_id")
+        lines.append(f"{sync}" + (f" (job {job})." if job else "."))
+    return lines
+
+
+@app.command("recompile")
+def recompile(
+    source_id: str = _source_arg,
+    items: list[str] | None = typer.Option(
+        None,
+        "--items",
+        help="Items to send again, by external_id (`beakr sources tracked`); comma-separated "
+        "or repeated.",
+    ),
+    all_items: bool = typer.Option(False, "--all", help="Every item the source tracks (500 max)."),
+    full: bool = typer.Option(
+        False,
+        "--full",
+        help="Also send items already in Knowledge and read each whole document again.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Count what would be sent; send nothing."
+    ),
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Send a source's items to Knowledge again, in any state, and sync them now.
+
+    \b
+    Without --full only items not in Knowledge at their current version go
+    (pending, failed, skipped). --full sends items already in Knowledge too and
+    has each whole document read again, for example after the source's guidance
+    changed. Items still on their way into Knowledge are left out and counted.
+    Anyone who can edit the project may; one request per source every ten
+    minutes, up to 500 items each, and none while a sync of the source runs. It
+    is not held by `beakr sources sync`'s hourly cooldown.
+
+    \b
+    beakr sources recompile <id> --items conn:t1,conn:t2
+    beakr sources recompile <id> --all --full --dry-run
+    """
+    external_ids = _external_ids(items)
+    if bool(external_ids) == all_items:
+        raise click.UsageError("Name the items with --items, or pass --all (not both).")
+    project_id = _require_project(project)
+    body: dict[str, Any] = {"mode": "full" if full else "retry", "dry_run": dry_run}
+    if all_items:
+        body["all"] = True
+    else:
+        body["external_ids"] = external_ids
+    with get_sdk() as sdk:
+        data = dict(sdk.request("POST", recompile_path(project_id, source_id), json=body) or {})
+
+    def render(answer: dict[str, Any]) -> None:
+        for line in _recompile_lines(answer, source_id):
+            console.print(line, highlight=False, markup=False, soft_wrap=True)
+
+    def lines(answer: dict[str, Any]) -> list[str]:
+        fields = [
+            cell(source_id),
+            f"mode={answer.get('mode') or body['mode']}",
+            f"dry_run={'true' if answer.get('dry_run') else 'false'}",
+            f"requested={int(answer.get('requested') or 0)}",
+            f"in_knowledge_left={int(answer.get('in_knowledge_left') or 0)}",
+            f"in_progress_left={int(answer.get('in_progress_left') or 0)}",
+            f"over_cap={int(answer.get('over_cap') or 0)}",
+            f"not_found={len(answer.get('not_found') or [])}",
+            f"sync={answer.get('sync') or ''}",
+        ]
+        if answer.get("sync_job_id"):
+            fields.append(f"sync_job_id={answer['sync_job_id']}")
+        return ["\t".join(fields)]
+
+    emit(
+        data,
+        json_out=json_out,
+        render=render,
+        lines=lines,
+        hint=None if data.get("dry_run") else f"beakr sources status {source_id}",
+    )
+
+
 #: Sync states in which a sync is still going: ``cancel-sync`` can stop it.
 #: The engine lists a queued or running sync as "syncing" (``_map_sync_job_status``).
 RUNNING_SYNC_STATES = frozenset({"syncing", "running", "queued"})
@@ -1268,8 +1541,10 @@ def status(
 
     \b
     With a source: its sync state (syncing, cancelling, cancelled, completed,
-    failed), files done, failed (and why) and skipped by a cancel, how a cancel
-    went, and how many of its Knowledge
+    failed), since when its syncs keep failing and why (and when one last
+    succeeded), files done, failed (and why) and skipped by a cancel, how a cancel
+    went, what became of the items it brought in (ingested, skipped, pending,
+    failed) and why any were set aside, and how many of its Knowledge
     compiles are queued and running. A running sync can be stopped with
     `beakr sources cancel-sync`.
     Without one: the sources whose sync is running (exit 0, also when none is).
@@ -1281,8 +1556,14 @@ def status(
     with get_sdk() as sdk:
         result = dict(sdk.project_sources.status(project_id, source_id) or {})
         queue = _queued_compiles(sdk, project_id, source_id)
+        # The latest sync's state says nothing of the ones before it: whether
+        # syncs keep failing is on the listed source (R10).
+        row = _attached_row(sdk, project_id, source_id) or {}
     if queue is not None:
         result["compiles"] = queue
+    for name in SYNC_HEALTH_FIELDS:
+        if row.get(name) is not None:
+            result[name] = row[name]
 
     def render(data: dict[str, Any]) -> None:
         state = data.get("status")
@@ -1297,6 +1578,9 @@ def status(
                 highlight=False,
                 markup=False,
             )
+            failing = _failing_sentence(data)
+            if failing:
+                console.print(failing, highlight=False, markup=False, soft_wrap=True)
             stop = data.get("cancel")
             if isinstance(stop, dict) and stop:
                 by = f" by {stop['by_name']}" if stop.get("by_name") else ""
@@ -1306,13 +1590,20 @@ def status(
                     highlight=False,
                     markup=False,
                 )
-            failed = [f for f in data.get("files") or [] if f.get("outcome") == "failed"]
-            for entry in failed:
-                console.print(
-                    f"  {entry.get('name')}  {entry.get('reason') or ''}",
-                    highlight=False,
-                    markup=False,
-                )
+            outcomes = data.get("outcomes")
+            if isinstance(outcomes, dict) and outcomes:
+                # What became of each item, Knowledge's own verdicts included; the
+                # failed deliveries are among its items.
+                for line in _outcome_lines(outcomes, source_id):
+                    console.print(line, highlight=False, markup=False, soft_wrap=True)
+            else:
+                failed = [f for f in data.get("files") or [] if f.get("outcome") == "failed"]
+                for entry in failed:
+                    console.print(
+                        f"  {entry.get('name')}  {entry.get('reason') or ''}",
+                        highlight=False,
+                        markup=False,
+                    )
         if queue is not None:
             for line in cancels.queue_lines(queue, "for this source"):
                 console.print(line, highlight=False, markup=False)
@@ -1329,6 +1620,14 @@ def status(
         ]
         if data.get("files_cancelled") is not None:
             fields.append(f"files_cancelled={int(data.get('files_cancelled') or 0)}")
+        fields += _health_fields(data)
+        outcomes = data.get("outcomes")
+        if isinstance(outcomes, dict):
+            counts = outcomes.get("counts") or {}
+            fields += [
+                f"items_{name}={int(counts.get(name) or 0)}"
+                for name in connected_sources.OUTCOME_ORDER
+            ]
         if queue is not None:
             fields += [
                 f"compiles_queued={int(queue.get('queued') or 0)}",
@@ -1345,6 +1644,411 @@ def status(
         if _sync_running(result.get("status"))
         else None,
     )
+
+
+#: Items ``status`` names by line; the rest are counted, and ``tracked`` lists them.
+STATUS_ITEMS_SHOWN = connected_sources.STATUS_ITEMS_SHOWN
+
+
+def _item_reason(item: dict[str, Any]) -> str:
+    code = item.get("reason_code")
+    reason = str(item.get("reason") or "").strip()
+    if reason and code:
+        return f"{reason} ({code})"
+    return reason or str(code or "")
+
+
+def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
+    """What became of the items one sync brought in, for ``status``."""
+    counts = outcomes.get("counts") or {}
+    parts = [
+        f"{counts[name]} {name}" for name in connected_sources.OUTCOME_ORDER if counts.get(name)
+    ]
+    if not parts:
+        return ["Items: none brought in by this sync yet."]
+    lines = [f"Items: {', '.join(parts)}."]
+    reasons = [
+        f"{entry.get('reason_code') or 'no reason recorded'} {entry.get('count')}"
+        for entry in outcomes.get("reasons") or []
+        if isinstance(entry, dict)
+    ]
+    if reasons:
+        lines.append(f"Why: {', '.join(reasons)}.")
+    listed = [
+        item
+        for item in outcomes.get("items") or []
+        if isinstance(item, dict) and item.get("outcome") != "ingested"
+    ][:STATUS_ITEMS_SHOWN]
+    for item in listed:
+        reason = _item_reason(item)
+        lines.append(
+            f"  {item.get('title')}  [{item.get('outcome')}]" + (f"  {reason}" if reason else "")
+        )
+    set_aside = sum(
+        int(counts.get(name) or 0) for name in connected_sources.OUTCOME_ORDER if name != "ingested"
+    )
+    if set_aside > len(listed):
+        lines.append(f"Every item and why: beakr sources tracked {source_id}")
+    return lines
+
+
+#: ``--state`` values, as the tracked-items list takes them.
+TRACKED_STATES = ("pending", "ingested", "partial", "skipped", "failed", "removed")
+#: The most items one request of ``tracked`` asks for (the route's page maximum).
+TRACKED_PAGE_MAX = 200
+
+
+def _tracked_params(
+    *,
+    state: str | None,
+    reason_code: str | None,
+    search: str | None,
+    since: str | None,
+    limit: int,
+    cursor: str | None,
+) -> dict[str, Any]:
+    params: dict[str, Any] = {"limit": limit}
+    if cursor:
+        params["cursor"] = cursor
+    for name, value in (
+        ("state", state),
+        ("reason_code", reason_code),
+        ("search", search),
+        ("since", since),
+    ):
+        text = str(value or "").strip()
+        if text:
+            params[name] = text
+    return params
+
+
+@app.command("tracked")
+def tracked(
+    source_id: str = _source_arg,
+    skipped: bool = typer.Option(
+        False, "--skipped", help="Only items set aside (same as --state skipped)."
+    ),
+    state: str | None = typer.Option(
+        None,
+        "--state",
+        help="Only items in this state: pending, ingested, partial, skipped, failed or removed.",
+    ),
+    reason_code: str | None = typer.Option(
+        None,
+        "--reason-code",
+        help="Only skipped, failed or partial items with this reason, e.g. nothing_to_add, "
+        "compile_failed, compile_partial.",
+    ),
+    search: str | None = typer.Option(
+        None, "--search", help="Only items whose title holds this text."
+    ),
+    since: str | None = typer.Option(
+        None,
+        "--since",
+        help="Only items synced at or after this time (ISO 8601), e.g. a sync's start.",
+    ),
+    limit: int = typer.Option(
+        50, "--limit", "-n", min=1, max=TRACKED_PAGE_MAX, help="Items per page (1-200)."
+    ),
+    cursor: str | None = typer.Option(None, "--cursor", help="Continue from a page's next_cursor."),
+    all_pages: bool = typer.Option(False, "--all", help="Follow every page."),
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """The items a source tracks, what became of each, and why skipped ones were set aside.
+
+    \b
+    Each item is ingested (read into Knowledge), partial (in Knowledge with some
+    planned changes not applied: compile_partial means the next sync retries
+    them, compile_not_converging that they could not be applied), pending (not
+    read yet), skipped (set aside, with the reason: a blocked file type, a file
+    too large, or Knowledge read it and found nothing to add), failed (nothing
+    of its version reached Knowledge, with the reason: compile_failed is sent
+    again by the next sync, import_gave_up when a history import stopped trying
+    it, retry_gave_up when Beakr stopped sending a stuck item again) or removed
+    (gone from the source). A pending item says why it waits and when Beakr
+    tries next. Counts cover the whole source; the filters narrow the list.
+    """
+    state = _choice(state, TRACKED_STATES, "--state")
+    if skipped:
+        if state not in (None, "skipped"):
+            raise click.UsageError("--skipped is --state skipped; give one of them.")
+        state = "skipped"
+    project_id = _require_project(project)
+    pages: list[dict[str, Any]] = []
+    next_cursor = cursor
+    with get_sdk() as sdk:
+        while True:
+            params = _tracked_params(
+                state=state,
+                reason_code=reason_code,
+                search=search,
+                since=since,
+                limit=limit,
+                cursor=next_cursor,
+            )
+            page = connected_sources.tracked_items_page(sdk, project_id, source_id, params)
+            pages.append(dict(page or {}))
+            next_cursor = pages[-1].get("next_cursor") if pages[-1].get("has_more") else None
+            if not (all_pages and next_cursor):
+                break
+    result = dict(pages[-1])
+    result["data"] = [row for page in pages for row in page.get("data") or []]
+    if all_pages:
+        result["next_cursor"] = None
+        result["has_more"] = False
+
+    def render(data: dict[str, Any]) -> None:
+        counts = data.get("counts") or {}
+        total = int(counts.get("total") or 0)
+        states = ", ".join(
+            f"{int(counts.get(name) or 0)} {name}" for name in _tracked_count_names(counts)
+        )
+        console.print(
+            f"{total} tracked item(s) from {data.get('provider') or 'this source'}: {states}.",
+            highlight=False,
+            markup=False,
+        )
+        matched = data.get("matched")
+        if isinstance(matched, int) and matched != total:
+            console.print(f"{matched} match the filters.", highlight=False, markup=False)
+        rows = data.get("data") or []
+        if not rows:
+            console.print("No tracked items match.", markup=False)
+        for row in rows:
+            reason = _item_reason(row)
+            # The state is the newest version's; an earlier one may still be in Knowledge.
+            older = "  (an older version is in Knowledge)" if row.get(_OLDER_VERSION) else ""
+            unfinished = row.get("unfinished_changes")
+            if isinstance(unfinished, int) and unfinished > 0:
+                older += f"  ({unfinished} planned change(s) not applied)"
+            # Why a pending (or retried partial) item waits, and when it goes next.
+            waiting = _pending_note(row)
+            if waiting:
+                older += f"  {waiting}"
+            console.print(
+                f"  {row.get('title')}  [{row.get('state')}]{older}"
+                + (f"  {reason}" if reason else ""),
+                highlight=False,
+                markup=False,
+                soft_wrap=True,
+            )
+        if data.get("has_more") and data.get("next_cursor"):
+            err_console.print(
+                f"More: beakr sources tracked {source_id} --cursor {data['next_cursor']} "
+                "(or --all)",
+                markup=False,
+            )
+
+    def lines(data: dict[str, Any]) -> list[str]:
+        return [_tracked_line(row) for row in data.get("data") or []] or [
+            "note: No tracked items match."
+        ]
+
+    emit(
+        result,
+        json_out=json_out,
+        render=render,
+        lines=lines,
+        hint=(
+            f"beakr sources tracked {source_id} --cursor {result['next_cursor']}"
+            if result.get("has_more") and result.get("next_cursor")
+            else None
+        ),
+    )
+
+
+#: A tracked item whose earlier version is in Knowledge while its newest one is
+#: pending, failed or skipped (being updated, or the update failed).
+_OLDER_VERSION = "older_version_in_knowledge"
+
+
+def _tracked_line(row: dict[str, Any]) -> str:
+    """One tracked item piped: external_id, state, reason_code and title, then what the
+    terminal view adds (why a pending item waits and its next try, unfinished changes,
+    an older version in Knowledge) as ``key=value`` columns, present only when set."""
+    columns = [
+        cell(row.get("external_id") or ""),
+        str(row.get("state") or ""),
+        cell(row.get("reason_code") or "-"),
+        cell(row.get("title") or ""),
+    ]
+    if row.get("pending_reason"):
+        columns.append(f"pending_reason={cell(row['pending_reason'])}")
+    if row.get("pending_reason_text"):
+        columns.append(f"pending_reason_text={cell(row['pending_reason_text'], width=300)}")
+    if row.get("next_attempt_at"):
+        columns.append(f"next_attempt_at={cell(row['next_attempt_at'])}")
+    unfinished = row.get("unfinished_changes")
+    if isinstance(unfinished, int) and not isinstance(unfinished, bool) and unfinished > 0:
+        columns.append(f"unfinished_changes={unfinished}")
+    if row.get(_OLDER_VERSION):
+        columns.append(f"{_OLDER_VERSION}=true")
+    return "\t".join(columns)
+
+
+def _pending_note(row: dict[str, Any]) -> str:
+    """Why a pending item waits and when Beakr tries next (engine #3323), or ``""``."""
+    text = str(row.get("pending_reason_text") or "").strip().rstrip(".")
+    if not text and row.get("pending_reason"):
+        text = str(row["pending_reason"]).replace("_", " ")
+    if not text:
+        return ""
+    when = row.get("next_attempt_at")
+    return f"({text}" + (f"; next attempt {when}" if when else "") + ")"
+
+
+def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:
+    """The states ``tracked`` counts: ``partial`` and ``failed`` where the engine counts them."""
+    order = ("ingested", "partial", "skipped", "failed", "pending", "removed")
+    optional = {"partial", "failed"}
+    return tuple(name for name in order if name not in optional or name in counts)
+
+
+# -- history import status (R6) ------------------------------------------------------------
+#
+# Whether a source takes a history import, whether one is waiting or running, and how the
+# last one ended (GET .../history-import/status, engine #3292). Read through the SDK's
+# ``request``: the released beakr-sdk predates a method for it.
+
+#: The counts of an import's outcome, in the order they are printed.
+IMPORT_COUNTS = ("in_knowledge", "skipped", "failed", "left", "removed")
+#: Of ``in_knowledge``: partly compiled items being finished, and those with changes
+#: that could not be applied (engine #3311); printed and piped when the engine sends them.
+IMPORT_PARTIAL_COUNTS = ("finishing", "partly_applied")
+
+
+def history_import_path(project_id: str, source_id: str) -> str:
+    return f"/v1/projects/{project_id}/sources/{source_id}/history-import/status"
+
+
+def _reason_counts(rows: Any, code: str = "reason_code") -> str:
+    return ", ".join(
+        f"{row.get(code)} {int(row.get('count') or 0)}"
+        for row in rows or []
+        if isinstance(row, dict) and row.get(code)
+    )
+
+
+def _outcome_text(outcome: dict[str, Any]) -> list[str]:
+    """An import outcome: its summary sentence, then why items were skipped, failed or left."""
+    summary = str(outcome.get("summary") or "").strip()
+    if not summary:
+        summary = ", ".join(
+            f"{int(outcome.get(n) or 0)} {n.replace('_', ' ')}" for n in IMPORT_COUNTS
+        )
+    lines = [summary if summary.endswith(".") else f"{summary}."]
+    finishing = int(outcome.get("finishing") or 0)
+    partly = int(outcome.get("partly_applied") or 0)
+    if finishing or partly:
+        lines.append(
+            f"  Of those in Knowledge: {finishing} being finished, "
+            f"{partly} with changes that could not be applied."
+        )
+    for label, rows, code in (
+        ("Skipped", outcome.get("skipped_reasons"), "reason_code"),
+        ("Failed", outcome.get("failed_reasons"), "reason_code"),
+        ("Left", outcome.get("left_reasons"), "reason"),
+    ):
+        counted = _reason_counts(rows, code)
+        if counted:
+            lines.append(f"  {label}: {counted}")
+    followup = outcome.get("followup")
+    if isinstance(followup, dict) and followup.get("status"):
+        sent = followup.get("last_sent")
+        attempts = int(followup.get("attempts") or 0)
+        lines.append(
+            f"  Follow-up {followup['status']}: sent the leftovers again {attempts} time(s)"
+            + (f", {sent} item(s) last time" if sent is not None else "")
+            + (f"; next look {followup['next_at']}" if followup.get("next_at") else "")
+            + "."
+        )
+    return lines
+
+
+def _import_status_lines(data: dict[str, Any], source_id: str) -> list[str]:
+    """``import-status`` for a person: the state, how far it got, and how it ended."""
+    if not data.get("supported"):
+        why = data.get("unsupported_reason") or "this kind of source has no history to import"
+        return [f"{source_id} does not take a history import: {why}."]
+    status = str(data.get("status") or "idle")
+    lines: list[str] = []
+    if status == "idle":
+        lines.append("No history import is waiting or running.")
+    else:
+        lines.append(
+            f"History import {status}"
+            + (
+                " (a sync stopped partway; the next sync runs it again)"
+                if data.get("retrying")
+                else ""
+            )
+            + "."
+        )
+        progress = data.get("progress")
+        if isinstance(progress, dict) and progress:
+            lines.append(
+                f"  {int(progress.get('tracked') or 0)} tracked, "
+                f"{int(progress.get('brought_in') or 0)} read, "
+                f"{int(progress.get('compiled') or 0)} compiled, "
+                f"{int(progress.get('unprocessable') or 0)} set aside."
+            )
+        outcome = data.get("outcome")
+        if isinstance(outcome, dict) and outcome:
+            lines += _outcome_text(outcome)
+    last = data.get("last_outcome")
+    if isinstance(last, dict) and last:
+        cancelled = " (cancelled)" if data.get("last_import_cancelled") else ""
+        lines.append(f"Last import{cancelled}:")
+        lines += [f"  {line}" for line in _outcome_text(last)]
+    elif status == "idle" and not data.get("last_import"):
+        lines.append("No import has run for this source.")
+    return lines
+
+
+@app.command("import-status")
+def import_status(
+    source_id: str = _source_arg,
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Whether a source takes a history import, whether one runs, and how the last one ended.
+
+    \b
+    An import's outcome counts its items in Knowledge, skipped, failed and left
+    (each with why) and removed from the source, and says when it finished and
+    how Beakr is sending what it left again. `beakr sources tracked <id>
+    --state failed` lists the failed items.
+    """
+    project_id = _require_project(project)
+    with get_sdk() as sdk:
+        data = dict(sdk.request("GET", history_import_path(project_id, source_id)) or {})
+
+    def render(answer: dict[str, Any]) -> None:
+        for line in _import_status_lines(answer, source_id):
+            console.print(line, highlight=False, markup=False, soft_wrap=True)
+
+    def lines(answer: dict[str, Any]) -> list[str]:
+        fields = [
+            cell(source_id),
+            f"status={answer.get('status') or 'idle'}",
+            f"supported={'true' if answer.get('supported') else 'false'}",
+        ]
+        for prefix, key in (("", "outcome"), ("last_", "last_outcome")):
+            outcome = answer.get(key)
+            if isinstance(outcome, dict) and outcome:
+                fields.append(f"{prefix}state={outcome.get('state') or ''}")
+                fields += [
+                    f"{prefix}{name}={int(outcome.get(name) or 0)}" for name in IMPORT_COUNTS
+                ]
+                fields += [
+                    f"{prefix}{name}={int(outcome[name] or 0)}"
+                    for name in IMPORT_PARTIAL_COUNTS
+                    if name in outcome
+                ]
+        return ["\t".join(fields)]
+
+    emit(data, json_out=json_out, render=render, lines=lines)
 
 
 def _running_syncs(project_id: str, json_out: bool) -> None:

@@ -382,12 +382,23 @@ async def gate(server: Any, tool: str, agent: str | None) -> dict[str, Any] | No
     if session is None or tool in UNGATED_TOOLS:
         return None
     try:
+        # Waits for the server's first start when it is still in flight (B10).
         await session.ensure_started()
+        if session.no_session:
+            # That start found no session to hold: the call runs as before.
+            return None
         await session.name_client(agent)
         if not session.pending:
             return None
         await session.refresh()
     except BeakrError as exc:
+        unreachable = _connection_error(exc)
+        if unreachable is not None:
+            # The session could not start because the installation can't be reached:
+            # the "can't reach" answer every tool gives for that (B10).
+            from beakr_cli.tool_surface import unreachable_error
+
+            return unreachable_error(tool, unreachable)
         return _refused(exc)
     replaced = session.take_replaced()
     if not session.pending:
@@ -777,6 +788,18 @@ async def _resolve_lists(
     write_ids = list(dict.fromkeys(resolve(ref) for ref in write))
     read_ids = list(dict.fromkeys([*(resolve(ref) for ref in read), *write_ids]))
     return read_ids, write_ids
+
+
+def _connection_error(exc: BaseException) -> BaseException | None:
+    """The SDK's ``APIConnectionError`` behind a session refusal, when there is one."""
+    from beakr_sdk.errors import APIConnectionError
+
+    seen: BaseException | None = exc
+    while seen is not None:
+        if isinstance(seen, APIConnectionError):
+            return seen
+        seen = seen.__cause__
+    return None
 
 
 def _refused(exc: BeakrError) -> dict[str, Any]:

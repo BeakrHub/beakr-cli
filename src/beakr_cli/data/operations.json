@@ -1254,6 +1254,18 @@
       "type": "string"
      },
      {
+      "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+      "name": "authored_at",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
+      "name": "authored_by",
+      "required": false,
+      "type": "object"
+     },
+     {
       "description": "Optional new description for the artifact.",
       "name": "description",
       "required": false,
@@ -1649,6 +1661,33 @@
    "summary": "Disconnect an integration"
   },
   {
+   "action": "get-history-import-status",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/sources/{attachment_id}/history-import/status",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "attachment_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "Get a source's history import status"
+  },
+  {
    "action": "integration-status",
    "anonymous": false,
    "area": "integrations",
@@ -1741,6 +1780,180 @@
    "response": "json",
    "scope": "integrations:read",
    "summary": "List connected integrations"
+  },
+  {
+   "action": "list-project-integrations",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/integrations",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/integrations",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    }
+   ],
+   "response": "json",
+   "scope": "integrations:read",
+   "summary": "List integrations usable in a project"
+  },
+  {
+   "action": "list-tracked-items",
+   "anonymous": false,
+   "area": "integrations",
+   "body": null,
+   "destructive": false,
+   "method": "GET",
+   "op": "GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items",
+   "paginated": true,
+   "path": "/v1/projects/{project_id}/sources/{attachment_id}/tracked-items",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "attachment_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [
+    {
+     "description": "Opaque cursor from a previous page's `next_cursor`.",
+     "name": "cursor",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "default": 50,
+     "description": "Page size, 1 to 200.",
+     "name": "limit",
+     "required": false,
+     "type": "integer"
+    },
+    {
+     "description": "Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial).",
+     "name": "reason_code",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Keep items whose title holds this text (case-insensitive).",
+     "name": "search",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Keep items a sync read, or Knowledge decided on, at or after this time (ISO 8601). A sync status's outcomes link here with its run's start.",
+     "name": "since",
+     "required": false,
+     "type": "string"
+    },
+    {
+     "description": "Keep items in this state only.",
+     "enum": [
+      "pending",
+      "ingested",
+      "partial",
+      "skipped",
+      "failed",
+      "removed"
+     ],
+     "name": "state",
+     "required": false,
+     "type": "string"
+    }
+   ],
+   "response": "json",
+   "scope": "projects:read",
+   "summary": "List a source's tracked items"
+  },
+  {
+   "action": "recompile-project-source",
+   "anonymous": false,
+   "area": "integrations",
+   "body": {
+    "fields": [
+     {
+      "default": false,
+      "description": "Send every item the source tracks (up to 500 per request) instead of a list.",
+      "name": "all",
+      "option": "body-all",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "default": false,
+      "description": "Count what would be sent and send nothing (for a confirm step).",
+      "name": "dry_run",
+      "required": false,
+      "type": "boolean"
+     },
+     {
+      "description": "The items to send again, by their tracked-items `external_id`. Leave out and set `all` to send every item the source tracks.",
+      "multiple": true,
+      "name": "external_ids",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "retry: send again only items not in Knowledge at their current version (pending, failed, skipped). full: send every chosen item, items in Knowledge included, and have the compiler read each whole document again.",
+      "enum": [
+       "retry",
+       "full"
+      ],
+      "name": "mode",
+      "required": true,
+      "type": "string"
+     }
+    ],
+    "media": "json",
+    "object": true,
+    "required": true
+   },
+   "destructive": false,
+   "method": "POST",
+   "op": "POST /v1/projects/{project_id}/sources/{attachment_id}/recompile",
+   "paginated": false,
+   "path": "/v1/projects/{project_id}/sources/{attachment_id}/recompile",
+   "path_params": [
+    {
+     "name": "project_id",
+     "required": true,
+     "type": "string"
+    },
+    {
+     "name": "attachment_id",
+     "required": true,
+     "type": "string"
+    }
+   ],
+   "query": [],
+   "response": "json",
+   "scope": "uploads:write",
+   "summary": "Send a source's items again"
   },
   {
    "action": "create-interview-link",
@@ -4503,7 +4716,7 @@
       "type": "string"
      },
      {
-      "description": "Scope for action=page_type. Project is default; global requires admin review.",
+      "description": "Scope for action=page_type. Project is the default and what a run proposes. org (a type every project is offered) is created only at an organization admin's own direct request, never by background or scheduled work; global requires admin review.",
       "enum": [
        "global",
        "org",
@@ -8133,6 +8346,18 @@
       "name": "artifact_type",
       "required": false,
       "type": "string"
+     },
+     {
+      "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+      "name": "authored_at",
+      "required": false,
+      "type": "string"
+     },
+     {
+      "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
+      "name": "authored_by",
+      "required": false,
+      "type": "object"
      },
      {
       "description": "Description of the upload complete, in plain text.",
