@@ -635,8 +635,8 @@ In detail:
   every HTTP request at INFO to stderr, which is the MCP client's log. An
   upload's presigned URL carries its signature in the query string, so the
   signature landed there too. Request lines now stay at WARNING. Set
-  `BEAKR_LOG_HTTP=1` in the server's environment to see them, with signed
-  URLs' signatures and credentials masked. Other `beakr` commands configure
+  `BEAKR_LOG_HTTP=1` in the server's environment to see one line per
+  request, with signed URLs' signatures and credentials masked. Other `beakr` commands configure
   no logging and never printed these lines.
 - **`beakr sources tracked` piped says why a pending item waits.** After its
   four columns (external id, state, reason code, title), the line an agent
@@ -644,9 +644,8 @@ In detail:
   `next_attempt_at=`. Where they apply, it also adds `unfinished_changes=` and
   `older_version_in_knowledge=true`, as the terminal view, `--json` and the MCP
   tool already show.
-- **The stdio MCP server catches up with 1.0.8's source and upload work**, as
-  the hosted server does (agent tool surface from engine #3331): a new
-  `recompile_source` tool sends a source's items to Knowledge again;
+- **The stdio MCP server catches up with the hosted server's source and upload
+  tools**: a new `recompile_source` tool sends a source's items to Knowledge again;
   `project_sources` says when a source's syncs keep failing and how its history
   import went; `tracked_items` filters and lists partial items, says what a
   pending item waits for and prints each item's `external_id`; and
