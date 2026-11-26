@@ -626,9 +626,24 @@ gets every tool below too:
 - Versions and installs: `beakr upload` adds a new version to a file already
   at the path. `beakr mcp` starts at once even when the installation can't be
   reached, and the CLI now installs beside beakr-sdk 0.5.
+- Security: `beakr mcp` no longer writes request URLs, such as an upload's
+  presigned URL, to its log.
 
 In detail:
 
+- **`beakr mcp` keeps request URLs out of its log.** The stdio server logged
+  every HTTP request at INFO to stderr, which is the MCP client's log. An
+  upload's presigned URL carries its signature in the query string, so the
+  signature landed there too. Request lines now stay at WARNING. Set
+  `BEAKR_LOG_HTTP=1` in the server's environment to see them, with signed
+  URLs' signatures and credentials masked. Other `beakr` commands configure
+  no logging and never printed these lines.
+- **`beakr sources tracked` piped says why a pending item waits.** After its
+  four columns (external id, state, reason code, title), the line an agent
+  reads now adds `pending_reason=`, `pending_reason_text=` and
+  `next_attempt_at=`. Where they apply, it also adds `unfinished_changes=` and
+  `older_version_in_knowledge=true`, as the terminal view, `--json` and the MCP
+  tool already show.
 - **The stdio MCP server catches up with 1.0.8's source and upload work**, as
   the hosted server does (agent tool surface from engine #3331): a new
   `recompile_source` tool sends a source's items to Knowledge again;
