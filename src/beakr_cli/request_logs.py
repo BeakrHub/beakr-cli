@@ -6,7 +6,9 @@ its full URL ("HTTP Request: PUT <url> ..."), and an upload's presigned S3 URL
 carries its signature in the query string: a credential, written to whatever
 captures the MCP client's stderr. The request loggers stay at WARNING unless
 ``BEAKR_LOG_HTTP=1`` asks for them, and even then a signed URL's signature,
-credential and token are masked.
+credential and token are masked. It asks for INFO, httpx's one line per
+request, not DEBUG: httpcore's DEBUG trace writes every response's headers
+(about 61 KB per upload).
 
 The CLI's other commands configure no logging, so Python's last-resort
 handler prints WARNING and above only and these lines never appear
@@ -51,12 +53,12 @@ def wanted() -> bool:
 
 
 def quiet_request_logs() -> None:
-    """Request loggers at WARNING (DEBUG with ``BEAKR_LOG_HTTP=1``); mask signed URLs.
+    """Request loggers at WARNING (INFO with ``BEAKR_LOG_HTTP=1``); mask signed URLs.
 
     Call it after the logging is configured (the server's construction): the
     mask goes on the root handlers that exist then.
     """
-    level = logging.DEBUG if wanted() else logging.WARNING
+    level = logging.INFO if wanted() else logging.WARNING
     for name in REQUEST_LOGGERS:
         logging.getLogger(name).setLevel(level)
     for handler in logging.getLogger().handlers:

@@ -66,7 +66,10 @@ def test_the_server_start_keeps_them_quiet_too():
 
 
 def test_asking_for_request_logs_shows_them_without_the_signature():
-    result = _run("import beakr_cli.mcp_server\n" + _REQUEST, BEAKR_LOG_HTTP="1")
+    levels = "import logging\nprint([logging.getLogger(n).level for n in ('httpx', 'httpcore')])\n"
+    result = _run("import beakr_cli.mcp_server\n" + levels + _REQUEST, BEAKR_LOG_HTTP="1")
+    # INFO: httpx's request lines, not httpcore's DEBUG trace of every response's headers.
+    assert result.stdout.splitlines()[0] == "[20, 20]", result.stdout
     assert result.returncode == 0, result.stderr
     said = _squashed(result.stderr)
     assert "HTTPRequest" in said and "api.test/v1/artifacts/a1" in said
