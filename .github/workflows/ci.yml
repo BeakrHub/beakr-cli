@@ -142,13 +142,24 @@ jobs:
         run: uv run pytest -q
 
   # pyproject.toml admits a range of beakr-sdk releases and uv.lock pins the
-  # lowest (0.2.0), which the jobs above test. This job runs the tests with the
-  # newest release the requirement admits, so a CLI that only works with the
-  # locked SDK, or a requirement that shuts out the current SDK, fails here.
+  # lowest (0.2.0), which the jobs above test. These two run the tests with the
+  # newest SDK too: the newest release the requirement admits (what `pip install
+  # beakr-cli` gets today), and beakr-python's main, the next SDK release. The
+  # second fails at install when main's version is outside the requirement, so a
+  # requirement that would shut out the next SDK (it once stopped below 0.3
+  # while main was 0.4.0) fails here before that SDK is released.
   newest-sdk:
-    name: tests-newest-sdk
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: tests-newest-sdk
+            sdk: release
+          - name: tests-sdk-main
+            sdk: main
     env:
       BEAKR_ENGINE_PATH: ${{ github.workspace }}/snapshots/beakr-engine
       BEAKR_REQUIRE_ENGINE: "1"
@@ -159,13 +170,20 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install, then upgrade beakr-sdk as far as the requirement admits
+      - name: Install, then replace beakr-sdk with the newest the requirement admits
+        env:
+          SDK: ${{ matrix.sdk }}
         run: |
           set -euo pipefail
           uv sync --frozen --extra dev
           spec=$(uv run --no-sync python -c 'import tomllib; d = tomllib.load(open("pyproject.toml", "rb")); print(next(r for r in d["project"]["dependencies"] if r.startswith("beakr-sdk")))')
           echo "requirement: $spec"
-          uv pip install --upgrade-package beakr-sdk "$spec"
+          if [ "$SDK" = main ]; then
+            # Both requirements at once: unsatisfiable when main's version is not admitted.
+            uv pip install --upgrade-package beakr-sdk "beakr-sdk @ git+https://github.com/BeakrHub/beakr-python@main" "$spec"
+          else
+            uv pip install --upgrade-package beakr-sdk "$spec"
+          fi
           uv run --no-sync python -c 'import importlib.metadata as m; print("beakr-sdk", m.version("beakr-sdk"))'
 
       - name: Tests

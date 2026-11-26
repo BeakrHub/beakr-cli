@@ -151,7 +151,7 @@ wheels = [
 
 [[package]]
 name = "beakr-cli"
-version = "0.7.0"
+version = "0.8.0"
 source = { editable = "." }
 dependencies = [
     { name = "beakr-sdk" },
@@ -186,7 +186,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", marker = "extra == 'bench'", specifier = ">=1.13.0" },
-    { name = "beakr-sdk", specifier = ">=0.2.0,<0.5" },
+    { name = "beakr-sdk", specifier = ">=0.2.0,<0.6" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "keyring", specifier = ">=25" },
     { name = "mcp", specifier = ">=2.3,<3" },
