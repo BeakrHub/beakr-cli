@@ -81,7 +81,7 @@ def test_cancel_sync_piped_is_one_line_and_json_is_the_answer():
     result = runner.invoke(app, ["sources", "cancel-sync", "s1", "-P", PROJECT, "--yes"])
     assert result.exit_code == 0, result.output
     assert result.stdout.splitlines()[0].split("\t") == ["s1", "cancelling", "job=j1"]
-    assert "next: beakr sources status s1" in result.stdout
+    assert "next: beakr sources status s1 -P p1" in result.stdout
     result = runner.invoke(app, ["sources", "cancel-sync", "s1", "-P", PROJECT, "-y", "--json"])
     assert json.loads(result.stdout) == _sync_cancelled()
 
@@ -110,7 +110,7 @@ def test_cancel_sync_with_nothing_running_is_a_conflict_that_says_so(body):
     assert result.exit_code == 5, result.output
     said = " ".join(result.output.split())
     assert "No sync is running for this source. (HTTP 409, no_running_sync)" in said
-    assert "Nothing to stop. `beakr sources status s1` shows its last sync." in said
+    assert "Nothing to stop. `beakr sources status s1 -P p1` shows its last sync." in said
 
 
 @pytest.mark.parametrize(("status", "exit_code"), [(403, 3), (404, 4)])
@@ -161,7 +161,7 @@ def test_status_piped_adds_the_compile_counts_and_json_carries_them():
     fields = result.stdout.splitlines()[0].split("\t")
     assert fields[:2] == ["s1", "syncing"]
     assert fields[-2:] == ["compiles_queued=12", "compiles_running=1"]
-    assert "next: beakr sources cancel-sync s1" in result.stdout
+    assert "next: beakr sources cancel-sync s1 -P p1" in result.stdout
     result = runner.invoke(app, ["sources", "status", "s1", "-P", PROJECT, "--json"])
     assert json.loads(result.stdout)["compiles"] == _queue()
 

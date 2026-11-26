@@ -4,6 +4,27 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## Unreleased
+
+### Changes
+
+- **The commands `beakr sources` suggests run as printed.** Every suggested
+  command for one source (`next:` piped, and the terminal's "Start it", "Stop
+  it", "More" lines and the "Already attached" fix) names its project with
+  `-P`, so it works outside a directory bound to the project. The next page of
+  `beakr sources tracked` keeps `--state`, `--reason-code`, `--search`,
+  `--since` and `--limit`; before, it listed the next items of the whole
+  source. Attaching a source with Knowledge off suggests
+  `beakr sources edit <id> --knowledge`, not a sync that the engine refuses.
+- **`beakr files versions` piped is newest first** and names each version:
+  `version=`, `created_at=`, `size_bytes=`, `mime_type=` and
+  `written_by_agent=true` after its id.
+- **`beakr upload` and `beakr files edit` check `--author` and `--date` before
+  sending**, by the API's own rules as `beakr mcp`'s `upload_files` does: more
+  than 20 authors, an entry that is not a name, `Name <email>` or an email, and
+  a date that is not one or is in the future exit 2 and say why, and nothing is
+  sent.
+
 ## beakr-cli 0.8.0 (2026-11-26)
 
 ### Changes
