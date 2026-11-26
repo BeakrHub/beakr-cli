@@ -6449,6 +6449,20 @@
       "description": "When it started, or null if it has not.",
       "title": "Started At"
      },
+     "starts_at": {
+      "anyOf": [
+       {
+        "format": "date-time",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "When a scheduled sync that is waiting for its turn will start (ISO 8601); null once it has started, and for a sync that started at once. Its status is `syncing` meanwhile.",
+      "title": "Starts At"
+     },
      "status": {
       "anyOf": [
        {
@@ -6461,6 +6475,19 @@
       "default": null,
       "description": "Current status of the source sync status.",
       "title": "Status"
+     },
+     "update_check": {
+      "anyOf": [
+       {
+        "type": "boolean"
+       },
+       {
+        "type": "null"
+       }
+      ],
+      "default": null,
+      "description": "True for an update check: the scheduled re-read of the items the source already tracks, which brings in edits and removals but no new items.",
+      "title": "Update Check"
      }
     },
     "required": [
