@@ -4,7 +4,7 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
-## beakr-cli 0.7.0 (2026-11-18)
+## beakr-cli 0.8.0 (2026-11-26)
 
 ### Changes
 
@@ -891,6 +891,40 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+What's new for people using `beakr` and its MCP server (`beakr mcp`), which
+gets every tool below too:
+
+- Sources: `beakr sources attach` adds connected items to a project, and
+  `sources tracked` shows each item's state and why it is waiting, partial or
+  set aside. `sources recompile` sends items to Knowledge again, and
+  `sources import-status` shows how a history import went.
+- Authors: `beakr upload --author --date` and `beakr files edit` record who
+  wrote a file and when, and Knowledge attributes and dates what it says by
+  them.
+- Card types: you can manage a project's card types from the command line
+  (`beakr kb types`), and review flags can be resolved or turned into an
+  interview (`beakr kb review`).
+- Versions and installs: `beakr upload` adds a new version to a file already
+  at the path. `beakr mcp` starts at once even when the installation can't be
+  reached, and the CLI now installs beside beakr-sdk 0.5.
+- Security: `beakr mcp` no longer writes request URLs, such as an upload's
+  presigned URL, to its log.
+
+In detail:
+
+- **`beakr mcp` keeps request URLs out of its log.** The stdio server logged
+  every HTTP request at INFO to stderr, which is the MCP client's log. An
+  upload's presigned URL carries its signature in the query string, so the
+  signature landed there too. Request lines now stay at WARNING. Set
+  `BEAKR_LOG_HTTP=1` in the server's environment to see them, with signed
+  URLs' signatures and credentials masked. Other `beakr` commands configure
+  no logging and never printed these lines.
+- **`beakr sources tracked` piped says why a pending item waits.** After its
+  four columns (external id, state, reason code, title), the line an agent
+  reads now adds `pending_reason=`, `pending_reason_text=` and
+  `next_attempt_at=`. Where they apply, it also adds `unfinished_changes=` and
+  `older_version_in_knowledge=true`, as the terminal view, `--json` and the MCP
+  tool already show.
 - **The stdio MCP server catches up with 1.0.8's source and upload work**, as
   the hosted server does (agent tool surface from engine #3331): a new
   `recompile_source` tool sends a source's items to Knowledge again;
@@ -899,11 +933,12 @@ Each release lists the public API changes it supports, taken from the API change
   pending item waits for and prints each item's `external_id`; and
   `upload_files` takes `authors` and `authored_at`, checked by the API's own
   rules before anything is uploaded.
-- **Installs beside beakr-sdk 0.3 and 0.4.** The CLI required `beakr-sdk`
-  below 0.3, so it could not be installed with the current SDK (0.4.0) or
-  beside it; it now takes `beakr-sdk>=0.2.0,<0.5`, as the self-hosted line
-  already did. CI runs the tests with the locked 0.2.0 and with the newest
-  SDK the requirement admits.
+- **Installs beside beakr-sdk 0.3, 0.4 and 0.5.** The CLI required
+  `beakr-sdk` below 0.3, so it could not be installed beside the current SDK;
+  it now takes `beakr-sdk>=0.2.0,<0.6`. It needs nothing newer than 0.2.0, so
+  an older SDK already installed keeps working. CI runs the tests with the
+  locked 0.2.0, the newest SDK release the requirement admits, and
+  beakr-python's main.
 - **`beakr files show` piped names who wrote the file and when.** The compact
   line an agent reads adds `authors=` (each `Name <email>`) and `authored_at=`,
   which only the terminal view and `--json` printed.
@@ -1161,6 +1196,17 @@ Each release lists the public API changes it supports, taken from the API change
   the organization, and `reset=true` drops a project's own copy. A type key
   that is not letters, digits, spaces, hyphens and underscores is refused
   before anything is sent.
+- **`knowledge_base` command `orient` returns a project's orientation map**:
+  its card types and how many pages each has, what a card of the main types
+  holds (sections, Facts fields, Connections), the cards they link to most, and
+  how reads behave at the project's size. Without `scope` it lists the projects
+  you can read. `wiki_stats` now ends by pointing at it, as the hosted server's
+  does, and the `knowledge_base` description starts with it.
+
+## beakr-cli 0.7.0 (2026-11-16)
+
+### Client changes
+
 - **Cite a record outside Beakr.** `beakr kb add-fact`, `add-connection` and
   `add-finding` take `--cite-record URL` with `--record-system`, `--record-id` or
   `--source-title`, and `--excerpt`: an ELN entry, a registry compound, or an
@@ -1186,13 +1232,34 @@ Each release lists the public API changes it supports, taken from the API change
   `set_project_profile`, `add_project_member` and `update_beakr` as able to
   change what is already there; `import_conversation`, `create_project` and
   `upload_files` as additive.
-- **`knowledge_base` command `orient` returns a project's orientation map**:
-  its card types and how many pages each has, what a card of the main types
-  holds (sections, Facts fields, Connections), the cards they link to most, and
-  how reads behave at the project's size. Without `scope` it lists the projects
-  you can read. `wiki_stats` now ends by pointing at it, as the hosted server's
-  does, and the `knowledge_base` description starts with it.
 
+### Changes
+
+- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
+  cites where the caller can read it now carries `knowledge_reference` (how
+  Knowledge's newest citation of it names it), and its `source_ref` is then the
+  item reference a Knowledge write accepts as a citation. Cite such an item by
+  that `source_ref`; cite any other item as an `external_record`. A credential
+  confined to some projects sees only citations on pages in those projects.
+- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
+  page and section write operations: an API key or token can cite a record in
+  a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
+  Send `{source_type: "external_record", url, title, meta: {system, record_id,
+  excerpt}, stance}` in `citations` (a section's, the change's or a card row's).
+  `url` must be an `http` or `https` link with a host and no user name or
+  password, at most 2,048 characters; `meta.system` names the system (at most 60
+  characters), `meta.record_id` is the record's id there, and `title` (which may
+  be sent as `source_title`) its name, at most 300 characters; a record needs a
+  `record_id` or a `title`, and `meta.excerpt` holds at most 1,000 characters.
+  Anything else is refused with `citation_not_citeable`; nothing is trimmed.
+  Beakr stores the citation as you give it and never opens the link. Reads name
+  the record `(System › record_id)` in the text, for example `(CDD Vault ›
+  MOL-1234)`, with its link in the source record's `location.url` and on the
+  Sources line, and mark its excerpt `(unverified)`; a later write cites the
+  record by that reference again (in the prose, a row's `evidence` or a
+  citation's `reference`). One record is one citation, keyed `record:<hash>`; to
+  cite it in the prose by a name of your own, give it a `key` such as
+  `record:mol-1234` and write `{{record:mol-1234}}`.
 ## beakr-cli 0.6.0 (2026-11-15)
 
 ### Changes

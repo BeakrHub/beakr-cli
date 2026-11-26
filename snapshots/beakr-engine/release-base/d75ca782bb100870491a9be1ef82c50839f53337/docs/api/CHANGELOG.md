@@ -11,11 +11,36 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=f396872662a6a5053e053ca599c59c4ab021839371db1ab0f448819a827b7f64 changelog sha256=992d9be72180d2ca8e2beeb186ee3b844a2f5985fa06d289b7eb871ac612be79 -->
+<!-- contract-stamp: public-openapi sha256=68dba5cd91b19ce918e4aa416ac838fba362ffd459c224b309ef8de8532b3155 changelog sha256=7a24d1ca66cb2da6951971fba2000690f33272849a52e6abcbd8b0bc4d5bd357 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/integrations/tools/{tool_name}/call`: a source Knowledge already
+  cites where the caller can read it now carries `knowledge_reference` (how
+  Knowledge's newest citation of it names it), and its `source_ref` is then the
+  item reference a Knowledge write accepts as a citation. Cite such an item by
+  that `source_ref`; cite any other item as an `external_record`. A credential
+  confined to some projects sees only citations on pages in those projects.
+- `POST /v1/knowledge/wiki/write`, `POST /v1/knowledge/wiki/proposals` and the
+  page and section write operations: an API key or token can cite a record in
+  a system outside Beakr (a compound registry, a LIMS, an ELN) by its link.
+  Send `{source_type: "external_record", url, title, meta: {system, record_id,
+  excerpt}, stance}` in `citations` (a section's, the change's or a card row's).
+  `url` must be an `http` or `https` link with a host and no user name or
+  password, at most 2,048 characters; `meta.system` names the system (at most 60
+  characters), `meta.record_id` is the record's id there, and `title` (which may
+  be sent as `source_title`) its name, at most 300 characters; a record needs a
+  `record_id` or a `title`, and `meta.excerpt` holds at most 1,000 characters.
+  Anything else is refused with `citation_not_citeable`; nothing is trimmed.
+  Beakr stores the citation as you give it and never opens the link. Reads name
+  the record `(System › record_id)` in the text, for example `(CDD Vault ›
+  MOL-1234)`, with its link in the source record's `location.url` and on the
+  Sources line, and mark its excerpt `(unverified)`; a later write cites the
+  record by that reference again (in the prose, a row's `evidence` or a
+  citation's `reference`). One record is one citation, keyed `record:<hash>`; to
+  cite it in the prose by a name of your own, give it a `key` such as
+  `record:mol-1234` and write `{{record:mol-1234}}`.
 - `POST /v1/artifacts/read`: a file with no extracted text of its own whose
   bytes are not text (an Ask notebook, or any other format Beakr indexes
   without a stored extraction) now reads as the text `POST

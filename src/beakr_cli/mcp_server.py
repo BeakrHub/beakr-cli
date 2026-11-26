@@ -13,7 +13,7 @@ from typing import Annotated, Any, Literal
 from beakr_sdk.sources import public_source as _shared_public_source
 from pydantic import Field
 
-from beakr_cli import __version__, mcp_render, tool_surface
+from beakr_cli import __version__, mcp_render, request_logs, tool_surface
 
 # Underscored: every public coroutine in this module is read as an MCP tool.
 from beakr_cli.mcp_errors import call_api as _call_api
@@ -229,6 +229,9 @@ mcp = tool_surface.TieredMCPServer(
     # Rebuilt once the installation's tools are known, before `initialize` is answered.
     instructions_for=lambda hidden: instructions(hidden) + _NOTES,
 )
+# Building the server configured logging (a RichHandler at INFO on stderr): keep
+# httpx's request lines, with an upload's presigned URL, out of the client's log.
+request_logs.quiet_request_logs()
 
 
 def _format_proposal(data: dict) -> str:
@@ -1615,6 +1618,7 @@ def run_server() -> None:
     """Start the MCP server on stdio."""
     import threading
 
+    request_logs.quiet_request_logs()
     threading.Thread(target=_refresh_update_cache, name="beakr-update-check", daemon=True).start()
     mcp.run(transport="stdio")
 
