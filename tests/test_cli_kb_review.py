@@ -552,3 +552,46 @@ def test_the_stdio_tool_says_the_resolved_row_cites_the_answer() -> None:
     respx.post(f"{BASE}/resolve-rows").respond(200, json={**RESOLVED, "cited_answers": cited})
     text = _tool("resolve_review", proposal_id=FLAG, option_id="B", expected_revision=3)
     assert text.endswith(" It now cites the interview answer of Dana Reyes (IC50 questions.md).")
+
+
+@respx.mock
+def test_piped_resolve_says_the_section_revision_and_the_answer_it_cites() -> None:
+    # ROOT CAUSE (sandbox sweep, 2026-11-26): piped, resolve printed only
+    # "<id>  status=resolved" (the generic compact line), so an agent never read
+    # the revision it left or that the section now cites an interview answer.
+    respx.get(f"{BASE}/conflict").respond(200, json=CONFLICT)
+    respx.post(f"{BASE}/resolutions").respond(200, json=_drafted())
+    cited = [{"answered_by": "Dana Reyes", "file_name": "IC50 questions.md"}]
+    respx.post(f"{BASE}/resolve").respond(200, json={**RESOLVED, "cited_answers": cited})
+    result = _invoke("kb", "review", "resolve", FLAG, "--option", "A", "--yes", mode="compact")
+    assert result.exit_code == 0, result.output
+    assert result.stdout.strip() == (
+        f"Resolved review flag {FLAG}: section dosing changed; the page is now at revision 4. "
+        "It now cites the interview answer of Dana Reyes (IC50 questions.md)."
+    )
+
+
+@respx.mock
+def test_a_decided_flag_is_found_by_its_prefix_among_review_flags_only() -> None:
+    # ROOT CAUSE (sandbox sweep, 2026-11-26): the prefix lookup of a decided flag
+    # listed every proposal of every status, up to 1,000 accepted page edits,
+    # and ran past three minutes on sandbox. Every listing now asks for review
+    # flags, and a row of another type is not taken even from an engine that
+    # ignores the filter.
+    other = {"id": FLAG[:8] + "-0000-4000-8000-000000000000", "proposal_type": "edit"}
+    seen: list[dict] = []
+
+    def listed(request):
+        seen.append(dict(request.url.params))
+        status = request.url.params["status"]
+        rows = [{**other, "status": status}]
+        if status == "resolved":
+            rows.append(AUTO_APPLIED)
+        return httpx.Response(200, json={"data": rows, "has_more": False, "next_cursor": None})
+
+    respx.get(f"{API}/v1/knowledge/wiki/proposals").mock(side_effect=listed)
+    respx.get(BASE).respond(200, json=AUTO_APPLIED)
+    result = _invoke("kb", "review", "options", FLAG[:8])
+    assert result.exit_code == 0, result.output
+    assert f"Review flag {FLAG} is resolved" in result.stdout
+    assert seen and all(params.get("proposal_type") == "review" for params in seen)

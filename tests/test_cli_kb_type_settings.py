@@ -309,3 +309,19 @@ def test_projects_create_takes_the_card_type_choice() -> None:
         refused = _invoke("projects", "create", "Lyon", *extra)
         assert refused.exit_code == 2, extra
     assert route.call_count == 2
+
+
+@respx.mock
+@pytest.mark.real_project_refs
+def test_an_unknown_project_to_copy_types_from_names_that_option() -> None:
+    # ROOT CAUSE (sandbox sweep, 2026-11-26): the refusal read "Invalid value for
+    # --project", an option `projects create` does not have.
+    respx.get(f"{API}/v1/projects").respond(200, json={"data": [], "has_more": False})
+    create = respx.post(f"{API}/v1/projects").respond(201, json={"id": OTHER, "name": "Lyon"})
+    result = _invoke(
+        "projects", "create", "Lyon", "--card-types", "own", "--copy-types-from", "no-such"
+    )
+    assert result.exit_code == 2
+    assert "--copy-types-from" in result.output
+    assert "--project" not in result.output.replace("--copy-types-from", "")
+    assert create.call_count == 0

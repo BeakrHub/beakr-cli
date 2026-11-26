@@ -84,7 +84,7 @@ def _base(proposal_id: str) -> str:
 
 
 def _flag_id(sdk: Any, given: str) -> str:
-    return resolve_proposal_id(sdk, given, pending_only=True)
+    return resolve_proposal_id(sdk, given, pending_only=True, proposal_type="review")
 
 
 def _changed(proposal_id: str, detail: str) -> ConflictError:
@@ -215,9 +215,9 @@ def _any_flag_id(sdk: Any, given: str) -> str:
     pending flags are searched alone first, since those are the ones acted on.
     """
     try:
-        return resolve_proposal_id(sdk, given, pending_only=True)
+        return resolve_proposal_id(sdk, given, pending_only=True, proposal_type="review")
     except NotFoundError:
-        return resolve_proposal_id(sdk, given)
+        return resolve_proposal_id(sdk, given, proposal_type="review")
 
 
 def _answer_fields(flag: dict) -> dict[str, Any]:
@@ -346,8 +346,16 @@ def review_resolve(
                 request_id=exc.request_id,
                 fix=PERSON_ONLY_CLI_FIX,
             ) from exc
-    if not machine_output(result, json_out=json_out):
+    # Piped, the same sentences as the terminal: the section, the new revision
+    # and any interview answer the result now cites. ROOT CAUSE (sandbox sweep,
+    # 2026-11-26): the generic compact line kept only the id and status, so an
+    # agent never read which revision it left or that the text cites an answer.
+    if not machine_output(result, json_out=json_out, lines=_resolved_lines):
         console.print(resolved_text(result), markup=False, highlight=False, soft_wrap=True)
+
+
+def _resolved_lines(result: dict) -> list[str]:
+    return resolved_text(result).splitlines()
 
 
 def _option_choice(
