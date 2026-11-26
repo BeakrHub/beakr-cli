@@ -635,6 +635,14 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **The stdio MCP server catches up with 1.0.8's source and upload work**, as
+  the hosted server does (agent tool surface from engine #3331): a new
+  `recompile_source` tool sends a source's items to Knowledge again;
+  `project_sources` says when a source's syncs keep failing and how its history
+  import went; `tracked_items` filters and lists partial items, says what a
+  pending item waits for and prints each item's `external_id`; and
+  `upload_files` takes `authors` and `authored_at`, checked by the API's own
+  rules before anything is uploaded.
 - **`beakr sources tracked` says why a pending item waits.** Each pending
   item (and a partial one Beakr retries) shows the engine's reason and, when
   known, its next attempt (`pending_reason_text`, `next_attempt_at`); a stuck

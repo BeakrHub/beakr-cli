@@ -98,6 +98,9 @@ async def test_the_tools_are_listed_in_the_discovery_tier_with_the_shared_text()
         "knowledge",
         "resume_upload_id",
         "written_by_agent",
+        # Who wrote the files and when (Octant R11), as the hosted tool takes them.
+        "authors",
+        "authored_at",
     }
     assert listed["upload_status"].annotations.read_only_hint is True
     assert listed["upload_files"].annotations.read_only_hint is False
@@ -517,3 +520,74 @@ async def test_a_name_two_members_share_is_refused() -> None:
 
     assert result["error_code"] == "person_ambiguous"
     assert not added.called
+
+
+# --- upload_files: who wrote the files and when (Octant R11) ---------------------------
+
+
+@respx.mock
+async def test_authors_and_their_date_go_on_each_completion(tmp_path: Path) -> None:
+    summary = _file(tmp_path, "summary.md")
+    notes = _file(tmp_path, "notes.md")
+    respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    routes = mock_resumable_uploads(API)
+    bodies = _complete_answering(routes, {})
+
+    text = await mcp_tools_projects.upload_files(
+        A,
+        paths=[str(summary), str(notes)],
+        authors=["Jane Doe <JANE@example.com>", " ", "jane@example.com", "Bob Smith"],
+        authored_at="2026-06-14T09:30:00Z",
+    )
+
+    assert [body.get("authored_by") for body in bodies] == [
+        ["Jane Doe <jane@example.com>", "Bob Smith"]
+    ] * 2
+    assert [body.get("authored_at") for body in bodies] == ["2026-06-14T09:30:00Z"] * 2
+    assert (
+        "Recorded as written by Jane Doe <jane@example.com> and Bob Smith on "
+        "2026-06-14T09:30:00Z; Knowledge built from them is attributed and dated so."
+    ) in text
+
+
+@respx.mock
+async def test_empty_authors_and_date_state_nothing(tmp_path: Path) -> None:
+    summary = _file(tmp_path, "summary.md")
+    respx.get(f"{API}/v1/projects/{A}").respond(json={"id": A, "name": "Helios"})
+    respx.get(f"{API}/v1/projects").respond(json=_projects(A))
+    routes = mock_resumable_uploads(API)
+    bodies = _complete_answering(routes, {})
+
+    text = await mcp_tools_projects.upload_files(
+        A, paths=[str(summary)], authors=[], authored_at=" "
+    )
+
+    assert "authored_by" not in bodies[0] and "authored_at" not in bodies[0]
+    assert "Recorded as" not in text
+
+
+@pytest.mark.parametrize(
+    ("authors", "authored_at", "said"),
+    [
+        (["Jane <not an address>"], "", "authors must be a name"),
+        ([f"Person {n}" for n in range(21)], "", "authors names more than 20 authors"),
+        (["x" * 321], "", "authors: an entry is over 320 characters"),
+        ([], "2999-01-01", "authored_at: '2999-01-01' is in the future"),
+        ([], "June 14", "is not a date"),
+    ],
+)
+@respx.mock
+async def test_a_bad_author_or_date_uploads_nothing(
+    tmp_path: Path, authors: list[str], authored_at: str, said: str
+) -> None:
+    summary = _file(tmp_path, "summary.md")
+    routes = mock_resumable_uploads(API)
+
+    result = await mcp_tools_projects.upload_files(
+        A, paths=[str(summary)], authors=authors, authored_at=authored_at
+    )
+
+    assert result["status"] == "error" and result["error_code"] == "invalid_arguments"
+    assert said in result["message"] and result["message"].endswith("Nothing was uploaded.")
+    assert routes["created"] == []
