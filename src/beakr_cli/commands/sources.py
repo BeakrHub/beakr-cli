@@ -1,4 +1,4 @@
-"""``beakr sources ls|attach|edit|rm|sync|status|tracked|import-status|...``: what a project reads.
+"""``beakr sources ls|attach|edit|rm|sync|recompile|status|tracked|...``: what a project reads.
 
 A project's sources are the connected items it reads: a Google Drive folder, a
 Slack channel, a Notion page or database, or everything one connection can see.
@@ -1377,6 +1377,140 @@ def sync(
     )
 
 
+# -- recompile (R4) -----------------------------------------------------------------------
+#
+# Send a source's tracked items to Knowledge again, in any state (POST .../recompile,
+# engine #3298). Through the SDK's ``request``: the released beakr-sdk predates a method.
+
+#: What the engine says about the sync a recompile starts.
+_RECOMPILE_SYNC = {
+    "started": "A sync reading them has started",
+    "waiting_for_running_sync": "A sync is already running; a new one reads them when it ends",
+    "not_started": "No sync was started",
+}
+
+
+def recompile_path(project_id: str, source_id: str) -> str:
+    return f"/v1/projects/{project_id}/sources/{source_id}/recompile"
+
+
+def _external_ids(items: list[str] | None) -> list[str]:
+    """``--items a,b --items c`` as ``["a", "b", "c"]``, in order, without repeats."""
+    seen: dict[str, None] = {}
+    for value in items or []:
+        for part in value.split(","):
+            if part.strip():
+                seen.setdefault(part.strip(), None)
+    return list(seen)
+
+
+def _recompile_lines(data: dict[str, Any], source_id: str) -> list[str]:
+    mode = data.get("mode") or "retry"
+    requested = int(data.get("requested") or 0)
+    verb = "Would send" if data.get("dry_run") else "Sent"
+    lines = [f"{verb} {requested} item(s) of {source_id} to Knowledge again ({mode})."]
+    left = int(data.get("in_knowledge_left") or 0)
+    if left:
+        lines.append(
+            f"{left} already in Knowledge at their current version were left alone "
+            "(--full sends them too)."
+        )
+    in_progress = int(data.get("in_progress_left") or 0)
+    if in_progress:
+        lines.append(
+            f"{in_progress} still on their way into Knowledge were left out "
+            "(their compile is queued or running): send them again once they finish."
+        )
+    over = int(data.get("over_cap") or 0)
+    if over:
+        lines.append(f"{over} more are past the 500-item limit: send them in a later request.")
+    missing = [str(item) for item in data.get("not_found") or []]
+    if missing:
+        lines.append(f"Not tracked by this source, nothing sent: {', '.join(missing)}.")
+    if not data.get("dry_run"):
+        sync = _RECOMPILE_SYNC.get(str(data.get("sync")), str(data.get("sync") or ""))
+        job = data.get("sync_job_id")
+        lines.append(f"{sync}" + (f" (job {job})." if job else "."))
+    return lines
+
+
+@app.command("recompile")
+def recompile(
+    source_id: str = _source_arg,
+    items: list[str] | None = typer.Option(
+        None,
+        "--items",
+        help="Items to send again, by external_id (`beakr sources tracked`); comma-separated "
+        "or repeated.",
+    ),
+    all_items: bool = typer.Option(False, "--all", help="Every item the source tracks (500 max)."),
+    full: bool = typer.Option(
+        False,
+        "--full",
+        help="Also send items already in Knowledge and read each whole document again.",
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="Count what would be sent; send nothing."
+    ),
+    project: str | None = _project_opt,
+    json_out: bool = _json_opt,
+) -> None:
+    """Send a source's items to Knowledge again, in any state, and sync them now.
+
+    \b
+    Without --full only items not in Knowledge at their current version go
+    (pending, failed, skipped). --full sends items already in Knowledge too and
+    has each whole document read again, for example after the source's guidance
+    changed. Items still on their way into Knowledge are left out and counted.
+    Anyone who can edit the project may; one request per source every ten
+    minutes, up to 500 items each, and none while a sync of the source runs. It
+    is not held by `beakr sources sync`'s hourly cooldown.
+
+    \b
+    beakr sources recompile <id> --items conn:t1,conn:t2
+    beakr sources recompile <id> --all --full --dry-run
+    """
+    external_ids = _external_ids(items)
+    if bool(external_ids) == all_items:
+        raise click.UsageError("Name the items with --items, or pass --all (not both).")
+    project_id = _require_project(project)
+    body: dict[str, Any] = {"mode": "full" if full else "retry", "dry_run": dry_run}
+    if all_items:
+        body["all"] = True
+    else:
+        body["external_ids"] = external_ids
+    with get_sdk() as sdk:
+        data = dict(sdk.request("POST", recompile_path(project_id, source_id), json=body) or {})
+
+    def render(answer: dict[str, Any]) -> None:
+        for line in _recompile_lines(answer, source_id):
+            console.print(line, highlight=False, markup=False, soft_wrap=True)
+
+    def lines(answer: dict[str, Any]) -> list[str]:
+        fields = [
+            cell(source_id),
+            f"mode={answer.get('mode') or body['mode']}",
+            f"dry_run={'true' if answer.get('dry_run') else 'false'}",
+            f"requested={int(answer.get('requested') or 0)}",
+            f"in_knowledge_left={int(answer.get('in_knowledge_left') or 0)}",
+            f"in_progress_left={int(answer.get('in_progress_left') or 0)}",
+            f"over_cap={int(answer.get('over_cap') or 0)}",
+            f"not_found={len(answer.get('not_found') or [])}",
+            f"sync={answer.get('sync') or ''}",
+        ]
+        if answer.get("sync_job_id"):
+            fields.append(f"sync_job_id={answer['sync_job_id']}")
+        return ["\t".join(fields)]
+
+    emit(
+        data,
+        json_out=json_out,
+        render=render,
+        lines=lines,
+        hint=None if data.get("dry_run") else f"beakr sources status {source_id}",
+    )
+
+
 #: Sync states in which a sync is still going: ``cancel-sync`` can stop it.
 #: The engine lists a queued or running sync as "syncing" (``_map_sync_job_status``).
 RUNNING_SYNC_STATES = frozenset({"syncing", "running", "queued"})
@@ -1559,7 +1693,7 @@ def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
 
 
 #: ``--state`` values, as the tracked-items list takes them.
-TRACKED_STATES = ("pending", "ingested", "skipped", "failed", "removed")
+TRACKED_STATES = ("pending", "ingested", "partial", "skipped", "failed", "removed")
 #: The most items one request of ``tracked`` asks for (the route's page maximum).
 TRACKED_PAGE_MAX = 200
 
@@ -1597,12 +1731,13 @@ def tracked(
     state: str | None = typer.Option(
         None,
         "--state",
-        help="Only items in this state: pending, ingested, skipped, failed or removed.",
+        help="Only items in this state: pending, ingested, partial, skipped, failed or removed.",
     ),
     reason_code: str | None = typer.Option(
         None,
         "--reason-code",
-        help="Only skipped or failed items with this reason, e.g. nothing_to_add, compile_failed.",
+        help="Only skipped, failed or partial items with this reason, e.g. nothing_to_add, "
+        "compile_failed, compile_partial.",
     ),
     search: str | None = typer.Option(
         None, "--search", help="Only items whose title holds this text."
@@ -1623,13 +1758,16 @@ def tracked(
     """The items a source tracks, what became of each, and why skipped ones were set aside.
 
     \b
-    Each item is ingested (read into Knowledge), pending (not read yet),
-    skipped (set aside, with the reason: a blocked file type, a file too large,
-    or Knowledge read it and found nothing to add), failed (its compile did not
-    finish, with the reason: compile_failed or compile_partial are sent again
-    by the next sync, compile_not_converging only once the item changes,
-    import_gave_up when a history import stopped trying it) or removed (gone
-    from the source). Counts cover the whole source; the filters narrow the list.
+    Each item is ingested (read into Knowledge), partial (in Knowledge with some
+    planned changes not applied: compile_partial means the next sync retries
+    them, compile_not_converging that they could not be applied), pending (not
+    read yet), skipped (set aside, with the reason: a blocked file type, a file
+    too large, or Knowledge read it and found nothing to add), failed (nothing
+    of its version reached Knowledge, with the reason: compile_failed is sent
+    again by the next sync, import_gave_up when a history import stopped trying
+    it, retry_gave_up when Beakr stopped sending a stuck item again) or removed
+    (gone from the source). A pending item says why it waits and when Beakr
+    tries next. Counts cover the whole source; the filters narrow the list.
     """
     state = _choice(state, TRACKED_STATES, "--state")
     if skipped:
@@ -1679,8 +1817,18 @@ def tracked(
             console.print("No tracked items match.", markup=False)
         for row in rows:
             reason = _item_reason(row)
+            # The state is the newest version's; an earlier one may still be in Knowledge.
+            older = "  (an older version is in Knowledge)" if row.get(_OLDER_VERSION) else ""
+            unfinished = row.get("unfinished_changes")
+            if isinstance(unfinished, int) and unfinished > 0:
+                older += f"  ({unfinished} planned change(s) not applied)"
+            # Why a pending (or retried partial) item waits, and when it goes next.
+            waiting = _pending_note(row)
+            if waiting:
+                older += f"  {waiting}"
             console.print(
-                f"  {row.get('title')}  [{row.get('state')}]" + (f"  {reason}" if reason else ""),
+                f"  {row.get('title')}  [{row.get('state')}]{older}"
+                + (f"  {reason}" if reason else ""),
                 highlight=False,
                 markup=False,
                 soft_wrap=True,
@@ -1718,10 +1866,27 @@ def tracked(
     )
 
 
+#: A tracked item whose earlier version is in Knowledge while its newest one is
+#: pending, failed or skipped (being updated, or the update failed).
+_OLDER_VERSION = "older_version_in_knowledge"
+
+
+def _pending_note(row: dict[str, Any]) -> str:
+    """Why a pending item waits and when Beakr tries next (engine #3323), or ``""``."""
+    text = str(row.get("pending_reason_text") or "").strip().rstrip(".")
+    if not text and row.get("pending_reason"):
+        text = str(row["pending_reason"]).replace("_", " ")
+    if not text:
+        return ""
+    when = row.get("next_attempt_at")
+    return f"({text}" + (f"; next attempt {when}" if when else "") + ")"
+
+
 def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:
-    """The states ``tracked`` counts, ``failed`` where the engine counts it (R12)."""
-    names = ("ingested", "skipped", "pending", "removed")
-    return ("ingested", "skipped", "failed", "pending", "removed") if "failed" in counts else names
+    """The states ``tracked`` counts: ``partial`` and ``failed`` where the engine counts them."""
+    order = ("ingested", "partial", "skipped", "failed", "pending", "removed")
+    optional = {"partial", "failed"}
+    return tuple(name for name in order if name not in optional or name in counts)
 
 
 # -- history import status (R6) ------------------------------------------------------------
@@ -1732,6 +1897,9 @@ def _tracked_count_names(counts: dict[str, Any]) -> tuple[str, ...]:
 
 #: The counts of an import's outcome, in the order they are printed.
 IMPORT_COUNTS = ("in_knowledge", "skipped", "failed", "left", "removed")
+#: Of ``in_knowledge``: partly compiled items being finished, and those with changes
+#: that could not be applied (engine #3311); printed and piped when the engine sends them.
+IMPORT_PARTIAL_COUNTS = ("finishing", "partly_applied")
 
 
 def history_import_path(project_id: str, source_id: str) -> str:
@@ -1754,6 +1922,13 @@ def _outcome_text(outcome: dict[str, Any]) -> list[str]:
             f"{int(outcome.get(n) or 0)} {n.replace('_', ' ')}" for n in IMPORT_COUNTS
         )
     lines = [summary if summary.endswith(".") else f"{summary}."]
+    finishing = int(outcome.get("finishing") or 0)
+    partly = int(outcome.get("partly_applied") or 0)
+    if finishing or partly:
+        lines.append(
+            f"  Of those in Knowledge: {finishing} being finished, "
+            f"{partly} with changes that could not be applied."
+        )
     for label, rows, code in (
         ("Skipped", outcome.get("skipped_reasons"), "reason_code"),
         ("Failed", outcome.get("failed_reasons"), "reason_code"),
@@ -1849,6 +2024,11 @@ def import_status(
                 fields.append(f"{prefix}state={outcome.get('state') or ''}")
                 fields += [
                     f"{prefix}{name}={int(outcome.get(name) or 0)}" for name in IMPORT_COUNTS
+                ]
+                fields += [
+                    f"{prefix}{name}={int(outcome[name] or 0)}"
+                    for name in IMPORT_PARTIAL_COUNTS
+                    if name in outcome
                 ]
         return ["\t".join(fields)]
 

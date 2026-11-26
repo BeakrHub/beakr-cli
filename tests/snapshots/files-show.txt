@@ -5,6 +5,10 @@ $ beakr files show 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --json
 {
   "access_via": "owner",
   "artifact_type": "doc",
+  "authored_at": null,
+  "authored_by": null,
+  "authored_by_user_id": null,
+  "authors": [],
   "can_delete": true,
   "can_edit": true,
   "can_move": true,

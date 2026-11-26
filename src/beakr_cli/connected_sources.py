@@ -83,6 +83,24 @@ def tracked_items_path(project_id: str, attachment_id: str) -> str:
     return f"/v1/projects/{segment(project_id)}/sources/{segment(attachment_id)}/tracked-items"
 
 
+def history_import_path(project_id: str, attachment_id: str) -> str:
+    """The source's public history import status (``GET .../history-import/status``)."""
+    return (
+        f"/v1/projects/{segment(project_id)}/sources/{segment(attachment_id)}/history-import/status"
+    )
+
+
+def history_import_status(sdk: Any, project_id: str, attachment_id: str) -> Any:
+    """A source's history import status (awaitable from the async client), through ``request``."""
+    return sdk.request("GET", history_import_path(project_id, attachment_id))
+
+
+def recompile(sdk: Any, project_id: str, attachment_id: str, body: dict[str, Any]) -> Any:
+    """Send a source's items to Knowledge again (awaitable), through the SDK's ``request``."""
+    path = f"/v1/projects/{segment(project_id)}/sources/{segment(attachment_id)}/recompile"
+    return sdk.request("POST", path, json=body)
+
+
 def tracked_items_page(
     sdk: Any, project_id: str, attachment_id: str, params: dict[str, Any]
 ) -> Any:
@@ -112,8 +130,28 @@ def _rules_text(source: dict[str, Any]) -> str:
     return "; ".join(parts) or "no filter or guidance"
 
 
+def failing_text(source: dict[str, Any]) -> str:
+    """Since when a source's syncs fail, why, and when one last worked; "" when healthy.
+
+    ``last_sync_at`` and ``sync_status`` are the latest attempt, so a source
+    that failed every night still read as freshly synced (Octant R10). The
+    engine sets ``failing_since`` while every finished sync since the last
+    success has failed; the CLI's ``beakr sources`` prints the same sentence.
+    """
+    since = source.get("failing_since")
+    if not since:
+        return ""
+    reason = str(source.get("sync_failure_reason") or "").strip().rstrip(".")
+    last_ok = source.get("last_successful_sync_at")
+    return (
+        f"Syncs have failed since {since}"
+        + (f": {reason}." if reason else ".")
+        + (f" Last successful sync: {last_ok}." if last_ok else " No sync has succeeded yet.")
+    )
+
+
 def source_line(source: dict[str, Any]) -> str:
-    """One source on one line: what it is, its id, and how it is set."""
+    """One source on one line: what it is, its id, how it is set, and whether it fails."""
     name = source.get("external_item_name") or source.get("external_item_id")
     kind = source.get("external_item_type") or "item"
     last = source.get("last_sync_at")
@@ -126,10 +164,11 @@ def source_line(source: dict[str, Any]) -> str:
         if source.get("supports_wiki_ingest", True)
         else "not read into Knowledge"
     )
+    failing = failing_text(source)
     return (
         f"- {name} ({source.get('provider')} {kind}) attachment_id {source.get('id')}: "
         f"{knowledge}, nightly sync {_on_off(source.get('auto_sync_wiki'))}, {synced}; "
-        f"{_rules_text(source)}."
+        f"{_rules_text(source)}." + (f" {failing}" if failing else "")
     )
 
 
@@ -148,7 +187,7 @@ def sources_text(sources: list[dict[str, Any]], *, more: bool) -> str:
 #: Items a sync status names in text; the rest are counted, and tracked_items lists them.
 STATUS_ITEMS_SHOWN = 10
 #: Run outcomes, in the order a sync status counts them.
-OUTCOME_ORDER = ("ingested", "skipped", "pending", "removed", "failed", "cancelled")
+OUTCOME_ORDER = ("ingested", "partial", "skipped", "pending", "removed", "failed", "cancelled")
 
 
 def _reason_text(item: dict[str, Any]) -> str:
@@ -202,23 +241,82 @@ def sync_status_text(status: dict[str, Any]) -> str:
     return "\n".join([line, *outcomes_text(outcomes)])
 
 
+#: A tracked item's states, in the order the counts print them (the route's
+#: ``TrackedItemState``). partial: in Knowledge with planned changes that did not
+#: land (#3311); failed: nothing of it reached Knowledge (#3278).
+TRACKED_STATES = ("ingested", "partial", "pending", "skipped", "failed", "removed")
+
+
+def _waiting_text(row: dict[str, Any]) -> str:
+    """What a pending (or retried partial) item waits for, and when Beakr next acts on it."""
+    waiting = str(row.get("pending_reason_text") or row.get("pending_reason") or "").strip()
+    next_at = row.get("next_attempt_at")
+    if not (waiting or next_at):
+        return ""
+    text = f"; waiting: {waiting.rstrip('.')}" if waiting else "; waiting"
+    return text + (f" (next attempt {next_at})" if next_at else "")
+
+
+def tracked_item_line(row: dict[str, Any]) -> str:
+    """One tracked item: its title, state, key (what recompile_source takes) and why."""
+    state = str(row.get("state") or "pending")
+    changes = row.get("unfinished_changes")
+    if state == "partial" and isinstance(changes, int):
+        state = f"partial, {changes} change(s) not applied"
+    line = f"- {row.get('title')} [{state}] external_id {row.get('external_id')}"
+    line += _reason_text(row) + _waiting_text(row)
+    if row.get("older_version_in_knowledge"):
+        line += "; an older version is in Knowledge"
+    return line
+
+
 def tracked_items_text(page: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     """One page of a source's tracked items, with the whole source's counts."""
     counts = _dict(page.get("counts"))
     total = int(counts.get("total") or 0)
-    states = ", ".join(
-        f"{int(counts.get(name) or 0)} {name}"
-        for name in ("ingested", "skipped", "pending", "removed")
-    )
+    states = ", ".join(f"{int(counts.get(name) or 0)} {name}" for name in TRACKED_STATES)
     lines = [f"{total} tracked item(s) from {page.get('provider') or 'this source'}: {states}."]
     matched = page.get("matched")
     if isinstance(matched, int) and matched != total:
         lines.append(f"{matched} match the filters.")
     if not rows:
         lines.append("No tracked items match.")
-    for row in rows:
-        lines.append(f"- {row.get('title')} [{row.get('state')}]{_reason_text(row)}")
+    lines.extend(tracked_item_line(row) for row in rows)
     return "\n".join(lines)
+
+
+def import_status_text(status: dict[str, Any]) -> str:
+    """A source's history import in a line or two; "" when it takes none or none has run.
+
+    The public import-status route (Octant R6, #3292): whether an import is
+    waiting or running and where its items stand, else how the last one ended.
+    """
+    if not status.get("supported"):
+        return ""
+    state = str(status.get("status") or "idle")
+    if state != "idle":
+        line = f"History import {state}" + (
+            " (a sync stopped partway; the next sync runs it again)"
+            if status.get("retrying")
+            else ""
+        )
+        outcome = _dict(status.get("outcome"))
+        progress = _dict(status.get("progress"))
+        if outcome.get("summary"):
+            return f"{line}: {outcome['summary']}"
+        if progress:
+            return (
+                f"{line}: {int(progress.get('tracked') or 0)} tracked, "
+                f"{int(progress.get('brought_in') or 0)} read, "
+                f"{int(progress.get('compiled') or 0)} compiled, "
+                f"{int(progress.get('unprocessable') or 0)} set aside."
+            )
+        return f"{line}."
+    last = _dict(status.get("last_outcome"))
+    if not last.get("summary"):
+        return ""
+    cancelled = " (cancelled)" if status.get("last_import_cancelled") else ""
+    return f"Last history import{cancelled}: {last['summary']}"
 
 
 def attached_text(source: dict[str, Any]) -> str:
@@ -274,6 +372,58 @@ def sync_started_text(answer: dict[str, Any]) -> str:
         f"Sync started ({message}). project_sources with this attachment_id reports its "
         "progress; cancel_sync stops it."
     )
+
+
+#: What the sync a recompile request started is doing (``SourceRecompileOut.sync``).
+_RECOMPILE_SYNC = {
+    "started": "A sync reading them has started",
+    "waiting_for_running_sync": "A sync is already running; a new one reads them when it ends",
+    "not_started": "No sync was started",
+}
+
+
+def recompile_text(answer: dict[str, Any]) -> str:
+    """What sending a source's items to Knowledge again did, or would do (a dry run)."""
+    mode = answer.get("mode") or "retry"
+    requested = int(answer.get("requested") or 0)
+    in_knowledge = int(answer.get("in_knowledge_left") or 0)
+    in_progress = int(answer.get("in_progress_left") or 0)
+    dry_run = bool(answer.get("dry_run"))
+    verb = "Dry run: would send" if dry_run else "Sent"
+    lines = [
+        f"{verb} {requested} item(s) to Knowledge again (mode {mode}). Left out: "
+        f"{in_knowledge} already in Knowledge, {in_progress} still on their way in."
+    ]
+    if in_knowledge:
+        lines.append(
+            f"The {in_knowledge} already in Knowledge at their current version were left "
+            "alone; mode full sends them too and has each whole document read again."
+        )
+    if in_progress:
+        lines.append(
+            f"The {in_progress} still on their way into Knowledge (their compile is queued "
+            "or running) were left out: send them again once they finish."
+        )
+    over = int(answer.get("over_cap") or 0)
+    if over:
+        lines.append(f"{over} more are past the 500-item limit: send them in a later call.")
+    missing = [str(item) for item in answer.get("not_found") or []]
+    if missing:
+        lines.append(f"Not tracked by this source, nothing sent: {', '.join(missing)}.")
+    if dry_run:
+        lines.append(
+            "Nothing was sent. Call again without dry_run, after the person agrees, to send them."
+        )
+        return "\n".join(lines)
+    sync = str(answer.get("sync") or "")
+    job = answer.get("sync_job_id")
+    lines.append(_RECOMPILE_SYNC.get(sync, sync) + (f" (job {job})." if job else "."))
+    if requested:
+        lines.append(
+            "project_sources with this attachment_id reports its progress; tracked_items shows "
+            "each item's state."
+        )
+    return "\n".join(lines)
 
 
 def removed_text(attachment_id: str) -> str:

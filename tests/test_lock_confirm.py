@@ -78,6 +78,9 @@ CONFIRM_LOCK_TOOLS = {
     "preview_source_rules",
     "sync_source",
     "remove_source",
+    # 1.0.8 (engine #3331): Send to Knowledge again and the tracked items.
+    "recompile_source",
+    "tracked_items",
 }
 
 runner = CliRunner()

@@ -11,11 +11,78 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=a27aeaa5959bc4e805e7bae86f016f9b25881c0cf59fbecf684cf1b23b397b26 changelog sha256=7ec562b2a5f75c2c8c1ee26ce069b8ac80ee331182548129840b9cb458d6352b -->
+<!-- contract-stamp: public-openapi sha256=72f465b078e3235fd62edc9b46024141d67dfb191e49beb0374ecd5119ba9fae changelog sha256=6d9aacd2372b5a5f489ac39bf44af8d8f979b2ac44bd24290ce5a5b7de2e7a4a -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: a
+  pending item, and a `partial` one Beakr retries, says why it is waiting and
+  what happens next: `pending_reason` (`queued`, `compiling`,
+  `waiting_for_compile`, `retrying`, `held_back`, `import_followup`,
+  `resend_scheduled`, `waiting_for_sync` or `auto_sync_off`), a sentence for a
+  person in `pending_reason_text`, and `next_attempt_at` when known. Beakr now
+  sends again any item pending for more than 6 hours with nothing queued or
+  compiling, whatever the source's auto-sync, at most 3 times; after that it
+  reads `failed` with the new `reason_code` `retry_gave_up`, or `partial` with
+  `compile_not_converging`.
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
+  new `state`, `partial`: an item whose latest compile wrote to Knowledge and
+  left some planned changes undone. `unfinished_changes` says how many;
+  `reason_code` `compile_partial` means the next sync retries them, and
+  `compile_not_converging` that they could not be applied (Beakr stopped after
+  its tries made no progress, or after 3 tries). Such items used to read
+  `pending` or `failed`; `failed` now means nothing of the item's version
+  reached Knowledge. `counts.partial` counts them, and `state=partial` and
+  `reason_code` filter them. A sync's `result.outcomes` from
+  `GET /v1/jobs/{job_id}` counts them as `partial`, with their reasons.
+  `GET .../history-import/status` counts them in `in_knowledge`, with
+  `finishing` (retried) and `partly_applied` (could not be applied) beside it.
+- A file can record who wrote it and when, apart from who uploaded it.
+  `POST /v1/uploads/{upload_id}/complete`, each `files[]` item of
+  `POST /v1/bulk/complete` and `PATCH /v1/artifacts/{artifact_id}` take
+  `authored_by`, one author or a list of up to 20 for a co-written file (each
+  a name, `Name <email>` or an email), and `authored_at` (a date or an ISO 8601
+  date-time, not in the future); `[]` or `""` clears one. `ArtifactOut` and
+  `CreatedArtifactOut` return `authors` (each `name`, `user_id`, the org member
+  it matched by email or exact display name, and `email`), `authored_by` (the
+  authors as one line, "Jane Doe and Bob Smith") and `authored_at` (the date
+  as given, or a UTC time); `authored_by_user_id` is deprecated and names the
+  first author's member. A file versioned without them keeps its own. Its
+  compile attributes what the file states to its authors rather than the
+  uploader, links each author's person card when they are a member with one,
+  and dates its rows by `authored_at` when the text states no date of its own;
+  with `written_by_agent`, an agent wrote it for them. Each citation of such a
+  file carries `written_by` on its source record (`SourceWrittenBy`: `authors`,
+  each `name` and `org_member`; `by_agent`; `text`).
+- New: `POST /v1/projects/{project_id}/sources/{attachment_id}/recompile`
+  (`uploads:write` or `integrations:admin`) sends a source's tracked items to
+  Knowledge again, in any state: the items named in `external_ids` (their
+  tracked-items `external_id`), or every item with `all: true`. `mode: retry`
+  sends again only items not in Knowledge at their current version (pending,
+  failed or skipped); `mode: full` also sends items already in Knowledge and has
+  each whole document read again, for example after the source's guidance
+  changed. A sync of the source starts at once, through the connection of the
+  person who attached it, and its job id comes back as `sync_job_id`; if a sync
+  is already running, the new one starts when it ends. Anyone who can edit the
+  project may call it. It is not held by the hourly cooldown on
+  `POST .../sync`: one request per source every 10 minutes (429
+  `recompile_cooldown`, with `Retry-After`), up to 500 items each (`over_cap`
+  counts the rest). `dry_run: true` counts what would be sent and sends nothing.
+  409 `connection_unusable` when the attacher's connection can no longer read
+  the source, 409 `knowledge_off` when Knowledge is off for it, and 409
+  `sync_running` while a sync of the source is running (what it reads is
+  already on its way). `mode: retry` leaves alone every item the tracked-items
+  list reads `ingested`, and neither mode sends a pending item still on its way
+  into Knowledge (its compile queued or running, or read in the last 30
+  minutes); `in_progress_left` counts those.
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: `state`
+  now describes an item's newest version. An item edited at its source whose
+  new version is still waiting for its compile reads `pending`, and one whose
+  new version's compile failed reads `failed`; both used to read `ingested`.
+  The new `older_version_in_knowledge` is true when an earlier version is still
+  in Knowledge (the item is being updated, or its update failed). A sync's
+  `result.outcomes` from `GET /v1/jobs/{job_id}` counts items the same way.
 - New: `GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status`
   (scope `projects:read`; a key limited to projects may call it for one of
   them) says whether a source (`provider`, as the source lists it) takes a

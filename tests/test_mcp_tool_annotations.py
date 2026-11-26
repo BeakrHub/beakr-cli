@@ -71,6 +71,7 @@ WRITE_TOOLS = frozenset(
         "attach_source",
         "update_source",
         "sync_source",
+        "recompile_source",
         "remove_source",
         "draft_review_interview",
         "update_beakr",

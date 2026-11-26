@@ -8,6 +8,73 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### Changes
 
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: a
+  pending item, and a `partial` one Beakr retries, says why it is waiting and
+  what happens next: `pending_reason` (`queued`, `compiling`,
+  `waiting_for_compile`, `retrying`, `held_back`, `import_followup`,
+  `resend_scheduled`, `waiting_for_sync` or `auto_sync_off`), a sentence for a
+  person in `pending_reason_text`, and `next_attempt_at` when known. Beakr now
+  sends again any item pending for more than 6 hours with nothing queued or
+  compiling, whatever the source's auto-sync, at most 3 times; after that it
+  reads `failed` with the new `reason_code` `retry_gave_up`, or `partial` with
+  `compile_not_converging`.
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items` has a
+  new `state`, `partial`: an item whose latest compile wrote to Knowledge and
+  left some planned changes undone. `unfinished_changes` says how many;
+  `reason_code` `compile_partial` means the next sync retries them, and
+  `compile_not_converging` that they could not be applied (Beakr stopped after
+  its tries made no progress, or after 3 tries). Such items used to read
+  `pending` or `failed`; `failed` now means nothing of the item's version
+  reached Knowledge. `counts.partial` counts them, and `state=partial` and
+  `reason_code` filter them. A sync's `result.outcomes` from
+  `GET /v1/jobs/{job_id}` counts them as `partial`, with their reasons.
+  `GET .../history-import/status` counts them in `in_knowledge`, with
+  `finishing` (retried) and `partly_applied` (could not be applied) beside it.
+- A file can record who wrote it and when, apart from who uploaded it.
+  `POST /v1/uploads/{upload_id}/complete`, each `files[]` item of
+  `POST /v1/bulk/complete` and `PATCH /v1/artifacts/{artifact_id}` take
+  `authored_by`, one author or a list of up to 20 for a co-written file (each
+  a name, `Name <email>` or an email), and `authored_at` (a date or an ISO 8601
+  date-time, not in the future); `[]` or `""` clears one. `ArtifactOut` and
+  `CreatedArtifactOut` return `authors` (each `name`, `user_id`, the org member
+  it matched by email or exact display name, and `email`), `authored_by` (the
+  authors as one line, "Jane Doe and Bob Smith") and `authored_at` (the date
+  as given, or a UTC time); `authored_by_user_id` is deprecated and names the
+  first author's member. A file versioned without them keeps its own. Its
+  compile attributes what the file states to its authors rather than the
+  uploader, links each author's person card when they are a member with one,
+  and dates its rows by `authored_at` when the text states no date of its own;
+  with `written_by_agent`, an agent wrote it for them. Each citation of such a
+  file carries `written_by` on its source record (`SourceWrittenBy`: `authors`,
+  each `name` and `org_member`; `by_agent`; `text`).
+- New: `POST /v1/projects/{project_id}/sources/{attachment_id}/recompile`
+  (`uploads:write` or `integrations:admin`) sends a source's tracked items to
+  Knowledge again, in any state: the items named in `external_ids` (their
+  tracked-items `external_id`), or every item with `all: true`. `mode: retry`
+  sends again only items not in Knowledge at their current version (pending,
+  failed or skipped); `mode: full` also sends items already in Knowledge and has
+  each whole document read again, for example after the source's guidance
+  changed. A sync of the source starts at once, through the connection of the
+  person who attached it, and its job id comes back as `sync_job_id`; if a sync
+  is already running, the new one starts when it ends. Anyone who can edit the
+  project may call it. It is not held by the hourly cooldown on
+  `POST .../sync`: one request per source every 10 minutes (429
+  `recompile_cooldown`, with `Retry-After`), up to 500 items each (`over_cap`
+  counts the rest). `dry_run: true` counts what would be sent and sends nothing.
+  409 `connection_unusable` when the attacher's connection can no longer read
+  the source, 409 `knowledge_off` when Knowledge is off for it, and 409
+  `sync_running` while a sync of the source is running (what it reads is
+  already on its way). `mode: retry` leaves alone every item the tracked-items
+  list reads `ingested`, and neither mode sends a pending item still on its way
+  into Knowledge (its compile queued or running, or read in the last 30
+  minutes); `in_progress_left` counts those.
+- `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: `state`
+  now describes an item's newest version. An item edited at its source whose
+  new version is still waiting for its compile reads `pending`, and one whose
+  new version's compile failed reads `failed`; both used to read `ingested`.
+  The new `older_version_in_knowledge` is true when an earlier version is still
+  in Knowledge (the item is being updated, or its update failed). A sync's
+  `result.outcomes` from `GET /v1/jobs/{job_id}` counts items the same way.
 - New: `GET /v1/projects/{project_id}/sources/{attachment_id}/history-import/status`
   (scope `projects:read`; a key limited to projects may call it for one of
   them) says whether a source (`provider`, as the source lists it) takes a
@@ -824,6 +891,47 @@ Each release lists the public API changes it supports, taken from the API change
 
 ### CLI and SDK
 
+- **The stdio MCP server catches up with 1.0.8's source and upload work**, as
+  the hosted server does (agent tool surface from engine #3331): a new
+  `recompile_source` tool sends a source's items to Knowledge again;
+  `project_sources` says when a source's syncs keep failing and how its history
+  import went; `tracked_items` filters and lists partial items, says what a
+  pending item waits for and prints each item's `external_id`; and
+  `upload_files` takes `authors` and `authored_at`, checked by the API's own
+  rules before anything is uploaded.
+- **Installs beside beakr-sdk 0.3 and 0.4.** The CLI required `beakr-sdk`
+  below 0.3, so it could not be installed with the current SDK (0.4.0) or
+  beside it; it now takes `beakr-sdk>=0.2.0,<0.5`, as the self-hosted line
+  already did. CI runs the tests with the locked 0.2.0 and with the newest
+  SDK the requirement admits.
+- **`beakr files show` piped names who wrote the file and when.** The compact
+  line an agent reads adds `authors=` (each `Name <email>`) and `authored_at=`,
+  which only the terminal view and `--json` printed.
+- **`beakr sources tracked` says why a pending item waits.** Each pending
+  item (and a partial one Beakr retries) shows the engine's reason and, when
+  known, its next attempt (`pending_reason_text`, `next_attempt_at`); a stuck
+  item Beakr stopped sending again reads `failed` with `retry_gave_up`.
+- **Partly compiled items read as partial.** `beakr sources tracked --state
+  partial` lists items in Knowledge with planned changes that did not land,
+  each with how many (`unfinished_changes`) and why (`compile_partial`: the
+  next sync retries them; `compile_not_converging`: they could not be
+  applied), and the counts include them. `beakr sources import-status` says how
+  many of those in Knowledge are being finished or partly applied.
+- **Uploads record who wrote a file and when.** `beakr upload --author NAME
+  --date DATE` sends `authored_by` and `authored_at` with every file of the
+  command (files, folders and `--resume`); repeat `--author` for co-authors (up
+  to 20). `beakr files edit FILE_ID --author ... --date ...` replaces them later
+  (`--author ""` clears them), and `beakr files show` lists every author. The
+  stdio MCP server keeps a cited file's `written_by` (its authors, `by_agent`
+  and `text`) on its source records, as the hosted server does.
+- **`beakr sources recompile <id>` sends a source's items to Knowledge again.**
+  `--items` (tracked-items `external_id`s) or `--all`; `--full` also sends
+  items already in Knowledge and has each whole document read again (for
+  example after the source's guidance changed); `--dry-run` counts and sends
+  nothing. A sync starts at once; it is not held by `sources sync`'s hourly
+  cooldown (one request per source every ten minutes, up to 500 items, none
+  while a sync of the source runs). Items still on their way into Knowledge
+  are left out and counted (`in_progress_left`).
 - **`beakr sources import-status <id>` says how a history import went.**
   Whether the source takes one, whether one is waiting or running and how far
   it has got, and how the running or last import ended: in Knowledge,

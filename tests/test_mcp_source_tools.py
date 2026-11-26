@@ -241,6 +241,8 @@ async def test_project_sources_for_one_source_adds_how_far_its_sync_has_got():
     status = respx.get(f"{ONE}/sync-status").respond(
         json={"status": "syncing", "files_completed": 4, "files_expected": 10, "files_failed": 1}
     )
+    # An engine before the public import status: the read is refused, the line left out.
+    respx.get(f"{ONE}/history-import/status").respond(404, json={"detail": "Not Found"})
     text = await mcp_tools_projects.project_sources(PROJECT, attachment_id=SOURCE)
     assert status.call_count == 1
     assert text == (
@@ -656,6 +658,10 @@ async def test_project_sources_for_one_source_says_what_knowledge_set_aside_and_
             "outcomes": OUTCOMES,
         }
     )
+    # A source that takes no history import adds no line.
+    respx.get(f"{ONE}/history-import/status").respond(
+        json={"provider": "gdrive:nango", "supported": False, "status": "idle"}
+    )
     text = await mcp_tools_projects.project_sources(PROJECT, attachment_id=SOURCE)
     assert text.splitlines()[1:] == [
         "Sync: completed, 1 of 2 items, 1 failed.",
@@ -729,10 +735,12 @@ async def test_tracked_items_sends_the_filters_and_answers_one_page_with_how_to_
     assert result["next"] == [hint]
     assert result["content"] == "\n".join(
         [
-            "5 tracked item(s) from gmail: 3 ingested, 1 skipped, 1 pending, 0 removed.",
+            "5 tracked item(s) from gmail: 3 ingested, 0 partial, 1 pending, 1 skipped, "
+            "0 failed, 0 removed.",
             "2 match the filters.",
-            "- Lunch order [skipped]: A lunch order; nothing for the project. (nothing_to_add)",
-            "- Protocol [ingested]",
+            "- Lunch order [skipped] external_id conn:thread-1: A lunch order; nothing for the "
+            "project. (nothing_to_add)",
+            "- Protocol [ingested] external_id conn:t2",
             "",
             f"[{hint}]",
         ]
@@ -767,3 +775,146 @@ async def test_tracked_items_over_the_page_maximum_asks_for_fifty_and_says_so():
     assert not result.is_error, result.content[0].text
     assert route.calls.last.request.url.params["limit"] == "50"
     assert result.content[0].text.startswith("Repaired this call: reduced `limit` from 100 to 50")
+
+
+# -- 1.0.8: failing sources, partial and waiting items, imports, recompile ----------------
+#
+# The hosted halves are beakr-engine #3331 (``source_tools.py``); these pin the same text.
+
+FAILING = {
+    **ATTACHED,
+    "ingest_wiki": True,
+    "sync_status": "failed",
+    "last_sync_at": "2026-11-25T03:00:00Z",
+    "failing_since": "2026-11-23T03:00:00Z",
+    "sync_failure_reason": "The connection has expired.",
+    "last_successful_sync_at": "2026-11-22T03:00:00Z",
+}
+
+
+def test_a_failing_source_says_since_when_why_and_when_one_last_worked():
+    from beakr_cli import connected_sources
+
+    assert connected_sources.source_line(FAILING).endswith(
+        "guidance 'Protocols and amendments only.'. Syncs have failed since "
+        "2026-11-23T03:00:00Z: The connection has expired. Last successful sync: "
+        "2026-11-22T03:00:00Z."
+    )
+    assert connected_sources.source_line(ATTACHED) == LINE
+
+
+def test_tracked_rows_say_partial_changes_what_a_pending_item_waits_for_and_its_key():
+    from beakr_cli import connected_sources
+
+    assert connected_sources.tracked_item_line(
+        {
+            "external_id": "conn:thread-2",
+            "title": "Assay plan",
+            "state": "partial",
+            "unfinished_changes": 2,
+            "reason_code": "compile_partial",
+            "reason": "2 planned changes did not land.",
+            "pending_reason": "retrying",
+            "pending_reason_text": "Beakr tries the changes left again at 02:17 UTC.",
+            "next_attempt_at": "2026-11-26T02:17:00Z",
+            "older_version_in_knowledge": True,
+        }
+    ) == (
+        "- Assay plan [partial, 2 change(s) not applied] external_id conn:thread-2: 2 planned "
+        "changes did not land. (compile_partial); waiting: Beakr tries the changes left again "
+        "at 02:17 UTC (next attempt 2026-11-26T02:17:00Z); an older version is in Knowledge"
+    )
+
+
+@respx.mock
+async def test_project_sources_for_one_source_adds_how_its_last_import_ended():
+    _project()
+    respx.get(SOURCES).respond(json={"data": [{**ATTACHED, "ingest_wiki": True}]})
+    respx.get(f"{ONE}/sync-status").respond(json={"status": "completed"})
+    respx.get(f"{ONE}/history-import/status").respond(
+        json={
+            "supported": True,
+            "status": "idle",
+            "last_import_cancelled": False,
+            "last_outcome": {"summary": "Import finished on 24 Nov 2026: 492 in Knowledge"},
+        }
+    )
+    text = await mcp_tools_projects.project_sources(PROJECT, attachment_id=SOURCE)
+    assert text.splitlines()[-1] == (
+        "Last history import: Import finished on 24 Nov 2026: 492 in Knowledge"
+    )
+
+
+RECOMPILED = {
+    "mode": "retry",
+    "dry_run": False,
+    "requested": 1,
+    "in_knowledge_left": 0,
+    "in_progress_left": 0,
+    "over_cap": 0,
+    "not_found": [],
+    "sync": "started",
+    "sync_job_id": JOB,
+}
+
+
+@respx.mock
+async def test_recompile_source_sends_the_chosen_items_once_each_in_order():
+    _project()
+    route = respx.post(f"{ONE}/recompile").respond(json=RECOMPILED)
+    text = await mcp_tools_projects.recompile_source(
+        PROJECT, SOURCE, external_ids=[" gmail:t1 ", "gmail:t2", "gmail:t1", ""]
+    )
+    assert _sent(route) == {
+        "mode": "retry",
+        "dry_run": False,
+        "external_ids": ["gmail:t1", "gmail:t2"],
+    }
+    assert text == (
+        "Sent 1 item(s) to Knowledge again (mode retry). Left out: 0 already in Knowledge, "
+        "0 still on their way in.\n"
+        f"A sync reading them has started (job {JOB}).\n"
+        "project_sources with this attachment_id reports its progress; tracked_items shows "
+        "each item's state."
+    )
+
+
+@respx.mock
+async def test_recompile_source_with_no_items_sends_the_whole_source_as_a_dry_run():
+    _project()
+    route = respx.post(f"{ONE}/recompile").respond(
+        json={**RECOMPILED, "mode": "full", "dry_run": True, "requested": 7, "sync": "not_started"}
+    )
+    text = await mcp_tools_projects.recompile_source(
+        PROJECT, SOURCE, mode="full", external_ids=[], dry_run=True
+    )
+    assert _sent(route) == {"mode": "full", "dry_run": True, "all": True}
+    assert text.splitlines()[0].startswith("Dry run: would send 7 item(s) to Knowledge again")
+    assert text.splitlines()[-1] == (
+        "Nothing was sent. Call again without dry_run, after the person agrees, to send them."
+    )
+
+
+@pytest.mark.parametrize(
+    ("arguments", "code"),
+    [
+        ({"mode": "everything"}, "invalid_arguments"),
+        ({"external_ids": [f"gmail:t{n}" for n in range(501)]}, "too_many_items"),
+    ],
+)
+async def test_recompile_source_refuses_before_anything_is_sent(arguments, code):
+    result = await mcp_tools_projects.recompile_source(PROJECT, SOURCE, **arguments)
+    assert result["status"] == "error" and result["error_code"] == code
+
+
+@pytest.mark.parametrize("code", ["sync_running", "recompile_cooldown"])
+@respx.mock
+async def test_recompile_source_says_what_to_wait_for(code):
+    _project()
+    respx.post(f"{ONE}/recompile").respond(
+        409 if code == "sync_running" else 429,
+        json={"error": {"code": code, "message": "Not now.", "fix": "Retry-After: 540"}},
+    )
+    result = await mcp_tools_projects.recompile_source(PROJECT, SOURCE)
+    assert result["error_code"] == code and result["message"] == "Not now."
+    assert result["fix"] == mcp_tools_projects._RECOMPILE_WAIT_FIX[code]

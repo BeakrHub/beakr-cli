@@ -126,6 +126,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "files download",
         "files rm",
         "files versions",
+        "files edit",
         "documents search",
         "documents grep",
         "documents ls",
@@ -243,6 +244,7 @@ CORE_COMMANDS: frozenset[str] = frozenset(
         "sources cancel-sync",
         "sources tracked",
         "sources import-status",
+        "sources recompile",
         "sources preview",
         "sources keys",
     }

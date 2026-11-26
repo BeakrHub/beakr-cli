@@ -402,3 +402,219 @@ def test_import_status_says_when_a_source_takes_no_import():
     result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
     assert result.exit_code == 0, result.output
     assert result.stdout.splitlines() == ["s1\tstatus=idle\tsupported=false"]
+
+
+# -- recompile (R4; engine #3298) ----------------------------------------------------------
+
+RECOMPILE = f"{SOURCES}/s1/recompile"
+SENT = {
+    "mode": "retry",
+    "dry_run": False,
+    "requested": 2,
+    "in_knowledge_left": 1,
+    "over_cap": 0,
+    "not_found": ["conn:gone"],
+    "sync": "started",
+    "sync_job_id": "11111111-2222-3333-4444-555555555555",
+}
+
+
+@respx.mock
+def test_recompile_sends_the_named_items_and_says_what_went(monkeypatch):
+    route = respx.post(RECOMPILE).respond(200, json=SENT)
+    argv = ["sources", "recompile", "s1", "--items", "conn:t1,conn:t2", "--items", "conn:gone"]
+    result = runner.invoke(app, [*argv, "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls.last.request.content) == {
+        "mode": "retry",
+        "dry_run": False,
+        "external_ids": ["conn:t1", "conn:t2", "conn:gone"],
+    }
+    assert result.stdout.splitlines() == [
+        "s1\tmode=retry\tdry_run=false\trequested=2\tin_knowledge_left=1"
+        "\tin_progress_left=0\tover_cap=0\tnot_found=1\tsync=started"
+        "\tsync_job_id=11111111-2222-3333-4444-555555555555",
+        "next: beakr sources status s1",
+    ]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, [*argv, "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "Sent 2 item(s) of s1 to Knowledge again (retry)." in said
+    assert "1 already in Knowledge at their current version were left alone" in said
+    assert "Not tracked by this source, nothing sent: conn:gone." in said
+    assert "A sync reading them has started (job 11111111-2222-3333-4444-555555555555)." in said
+
+
+@respx.mock
+def test_recompile_all_in_full_as_a_dry_run(monkeypatch):
+    route = respx.post(RECOMPILE).respond(
+        200,
+        json={
+            **SENT,
+            "mode": "full",
+            "dry_run": True,
+            "requested": 500,
+            "over_cap": 23,
+            "in_knowledge_left": 0,
+            "not_found": [],
+            "sync": "not_started",
+            "sync_job_id": None,
+        },
+    )
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(
+        app, ["sources", "recompile", "s1", "--all", "--full", "--dry-run", "-P", PROJECT]
+    )
+    assert result.exit_code == 0, result.output
+    assert json.loads(route.calls.last.request.content) == {
+        "mode": "full",
+        "dry_run": True,
+        "all": True,
+    }
+    said = " ".join(result.output.split())
+    assert "Would send 500 item(s) of s1 to Knowledge again (full)." in said
+    assert "23 more are past the 500-item limit" in said
+    assert "sync" not in said.lower().replace("beakr sources status", "")
+
+
+@pytest.mark.parametrize("argv", [[], ["--items", "conn:t1", "--all"], ["--items", " , "]])
+def test_recompile_needs_items_or_all(argv):
+    result = runner.invoke(app, ["sources", "recompile", "s1", *argv, "-P", PROJECT])
+    assert result.exit_code == 2
+    assert "--items" in result.output and "--all" in result.output
+
+
+@respx.mock
+def test_a_recompile_cooldown_is_said_as_the_engine_says_it():
+    respx.post(RECOMPILE).respond(
+        429,
+        headers={"Retry-After": "540"},
+        json={
+            "error": {
+                "code": "recompile_cooldown",
+                "message": "This source was sent to Knowledge again less than 10 minutes ago.",
+            }
+        },
+    )
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "-P", PROJECT, "--json"])
+    assert result.exit_code != 0
+    error = json.loads(result.stdout)["error"]
+    assert error["code"] == "recompile_cooldown"
+    assert "less than 10 minutes ago" in error["message"]
+
+
+@respx.mock
+def test_tracked_says_when_an_older_version_is_in_knowledge(monkeypatch):
+    updating = {**ASSAY, "state": "pending", "reason_code": None, "reason": None}
+    respx.get(TRACKED).respond(200, json=_page([{**updating, "older_version_in_knowledge": True}]))
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "Assay plan  [pending]  (an older version is in Knowledge)" in result.output
+
+
+@respx.mock
+def test_recompile_says_how_many_were_still_on_their_way(monkeypatch):
+    respx.post(RECOMPILE).respond(
+        200, json={**SENT, "dry_run": True, "in_progress_left": 4, "sync": "not_started"}
+    )
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "--dry-run", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "\tin_progress_left=4\t" in result.stdout
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "--dry-run", "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "4 still on their way into Knowledge were left out" in said
+
+
+@respx.mock
+def test_a_running_sync_refusal_is_said_as_the_engine_says_it():
+    message = (
+        "A sync is running; these items are already on their way. "
+        "You can send items again once it finishes."
+    )
+    respx.post(RECOMPILE).respond(409, json={"error": {"code": "sync_running", "message": message}})
+    result = runner.invoke(app, ["sources", "recompile", "s1", "--all", "-P", PROJECT, "--json"])
+    assert result.exit_code == 5, result.output
+    error = json.loads(result.stdout)["error"]
+    assert error["code"] == "sync_running"
+    assert error["message"] == message
+
+
+# -- partly compiled items (engine #3311) --------------------------------------------------
+
+PARTIAL = {
+    "external_id": "conn:t4",
+    "title": "Design review",
+    "kind": "thread",
+    "state": "partial",
+    "reason_code": "compile_partial",
+    "reason": "Some planned changes did not land; the next sync retries them.",
+    "unfinished_changes": 3,
+}
+
+
+@respx.mock
+def test_tracked_lists_partial_items_with_their_unfinished_changes(monkeypatch):
+    counts = {**COUNTS, "total": 4, "partial": 1, "failed": 0}
+    route = respx.get(TRACKED).respond(200, json={**_page([PARTIAL]), "counts": counts})
+    result = runner.invoke(app, ["sources", "tracked", "s1", "--state", "partial", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert dict(route.calls.last.request.url.params)["state"] == "partial"
+    assert result.stdout.splitlines() == ["conn:t4\tpartial\tcompile_partial\tDesign review"]
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
+    said = " ".join(result.output.split())
+    assert "1 ingested, 1 partial, 1 skipped, 0 failed, 1 pending, 0 removed." in said
+    assert "Design review [partial] (3 planned change(s) not applied)" in said
+
+
+@respx.mock
+def test_import_status_says_how_many_in_knowledge_are_partly_applied(monkeypatch):
+    partly = {**FINISHED, "finishing": 5, "partly_applied": 2}
+    respx.get(HISTORY).respond(
+        200,
+        json={
+            "provider": "gdrive:nango",
+            "supported": True,
+            "status": "idle",
+            "last_outcome": partly,
+        },
+    )
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    assert "\tlast_finishing=5\tlast_partly_applied=2" in result.stdout
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "import-status", "s1", "-P", PROJECT])
+    assert (
+        "    Of those in Knowledge: 5 being finished, 2 with changes that could not be applied."
+        in result.output.splitlines()
+    )
+
+
+# -- why a pending item waits (engine #3323) ----------------------------------------------
+
+
+@respx.mock
+def test_tracked_says_why_a_pending_item_waits_and_when_it_goes_next(monkeypatch):
+    waiting = {
+        "external_id": "conn:t5",
+        "title": "Budget notes",
+        "kind": "thread",
+        "state": "pending",
+        "pending_reason": "resend_scheduled",
+        "pending_reason_text": "Beakr sends it again at the next sync.",
+        "next_attempt_at": "2026-11-26T01:00:00Z",
+    }
+    bare = {**waiting, "external_id": "conn:t6", "title": "Plain", "pending_reason_text": None}
+    bare["next_attempt_at"] = None
+    respx.get(TRACKED).respond(200, json=_page([waiting, bare]))
+    monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
+    result = runner.invoke(app, ["sources", "tracked", "s1", "-P", PROJECT])
+    assert result.exit_code == 0, result.output
+    lines = [" ".join(line.split()) for line in result.output.splitlines()]
+    assert (
+        "Budget notes [pending] (Beakr sends it again at the next sync; "
+        "next attempt 2026-11-26T01:00:00Z)"
+    ) in lines
+    assert "Plain [pending] (resend scheduled)" in lines

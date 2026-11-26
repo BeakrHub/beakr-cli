@@ -745,6 +745,55 @@
             "$ref": "#/components/schemas/ArtifactType",
             "description": "Kind of file."
           },
+          "authored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.",
+            "readOnly": true,
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.",
+            "readOnly": true,
+            "title": "Authored By"
+          },
+          "authored_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.",
+            "readOnly": true,
+            "title": "Authored By User Id"
+          },
+          "authors": {
+            "description": "Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.",
+            "items": {
+              "$ref": "#/components/schemas/AuthorOut"
+            },
+            "readOnly": true,
+            "title": "Authors",
+            "type": "array"
+          },
           "can_delete": {
             "default": false,
             "description": "Whether the caller can delete.",
@@ -1256,6 +1305,10 @@
           "updated_at",
           "created_at",
           "queue_result",
+          "authors",
+          "authored_by",
+          "authored_by_user_id",
+          "authored_at",
           "saved_to_files"
         ],
         "title": "ArtifactKnowledgeQueueResponse",
@@ -1339,6 +1392,10 @@
         "examples": [
           {
             "artifact_type": "protocol",
+            "authored_at": null,
+            "authored_by": null,
+            "authored_by_user_id": null,
+            "authors": [],
             "can_delete": true,
             "can_edit": true,
             "can_move": true,
@@ -1380,6 +1437,55 @@
           "artifact_type": {
             "$ref": "#/components/schemas/ArtifactType",
             "description": "Stored artifact type."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.",
+            "readOnly": true,
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.",
+            "readOnly": true,
+            "title": "Authored By"
+          },
+          "authored_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.",
+            "readOnly": true,
+            "title": "Authored By User Id"
+          },
+          "authors": {
+            "description": "Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.",
+            "items": {
+              "$ref": "#/components/schemas/AuthorOut"
+            },
+            "readOnly": true,
+            "title": "Authors",
+            "type": "array"
           },
           "can_delete": {
             "default": false,
@@ -1853,6 +1959,10 @@
           "metadata",
           "updated_at",
           "created_at",
+          "authors",
+          "authored_by",
+          "authored_by_user_id",
+          "authored_at",
           "saved_to_files"
         ],
         "title": "ArtifactOut",
@@ -2025,7 +2135,7 @@
         "type": "string"
       },
       "ArtifactUpdate": {
-        "description": "Request payload for updating an artifact's metadata.\n\nAttributes:\n    title: Optional new title for the artifact.\n    artifact_type: Optional new artifact type.\n    description: Optional new description for the artifact.",
+        "description": "Request payload for updating an artifact's metadata.\n\nAttributes:\n    title: Optional new title for the artifact.\n    artifact_type: Optional new artifact type.\n    description: Optional new description for the artifact.\n    authored_by: Who wrote the file: one author or a list ([] or \"\" clears them).\n    authored_at: When the file was written (\"\" clears it).",
         "examples": [
           {
             "description": "Extraction protocol, revision 4",
@@ -2043,6 +2153,40 @@
               }
             ],
             "description": "Optional new artifact type."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "items": {
+                  "maxLength": 320,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
+            "title": "Authored By"
           },
           "description": {
             "anyOf": [
@@ -2210,6 +2354,49 @@
           "data"
         ],
         "title": "ArtifactVersionOutPage",
+        "type": "object"
+      },
+      "AuthorOut": {
+        "description": "One author of a file, as recorded.",
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The author's email, when given.",
+            "examples": [
+              "dana@example.com"
+            ],
+            "title": "Email"
+          },
+          "name": {
+            "description": "The author's name; an email when only that was given.",
+            "title": "Name",
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The org member this author matched, if any.",
+            "title": "User Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AuthorOut",
         "type": "object"
       },
       "BatchKnowledgeSummary": {
@@ -2432,6 +2619,40 @@
             "$ref": "#/components/schemas/ArtifactType",
             "default": "doc",
             "description": "The kind of file to create, such as `doc` or `dataset`."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "items": {
+                  "maxLength": 320,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
+            "title": "Authored By"
           },
           "content_hash": {
             "anyOf": [
@@ -4448,6 +4669,51 @@
       "CreatedArtifactOut": {
         "description": "Created artifact info.",
         "properties": {
+          "authored_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written, as recorded: a date (`2026-06-14`) or a UTC date-time (`2026-06-14T09:30:00Z`). Null when none was given.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The authors as one line for a reader: `Jane Doe`, `Jane Doe and Bob Smith` or `Jane Doe, Bob Smith and Ana Li`. Null when none was given.",
+            "title": "Authored By"
+          },
+          "authored_by_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Deprecated: read `authors`. The org member the first author matched, if any; kept only because the public contract never drops a field within a major version.",
+            "title": "Authored By User Id"
+          },
+          "authors": {
+            "description": "Who wrote the file, in order, as recorded at upload or set later: each with the org member it matched, if any. Empty when none was given.",
+            "items": {
+              "$ref": "#/components/schemas/AuthorOut"
+            },
+            "title": "Authors",
+            "type": "array"
+          },
           "folder_id": {
             "anyOf": [
               {
@@ -6959,6 +7225,12 @@
             "description": "When the import finished (ISO 8601); null while working.",
             "title": "Finished At"
           },
+          "finishing": {
+            "default": 0,
+            "description": "Of in_knowledge: items partly in Knowledge whose planned changes left are retried.",
+            "title": "Finishing",
+            "type": "integer"
+          },
           "followup": {
             "anyOf": [
               {
@@ -6971,7 +7243,7 @@
             "description": "How Beakr is finishing the import; null for a running or an older import."
           },
           "in_knowledge": {
-            "description": "Items compiled into Knowledge.",
+            "description": "Items compiled into Knowledge, those partly in Knowledge included.",
             "title": "In Knowledge",
             "type": "integer"
           },
@@ -6991,6 +7263,12 @@
           "of": {
             "description": "The import's items: in Knowledge, skipped, failed and left.",
             "title": "Of",
+            "type": "integer"
+          },
+          "partly_applied": {
+            "default": 0,
+            "description": "Of in_knowledge: items partly in Knowledge with changes that couldn't be applied.",
+            "title": "Partly Applied",
             "type": "integer"
           },
           "removed": {
@@ -19209,7 +19487,7 @@
               }
             ],
             "default": null,
-            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.",
             "title": "Source Recorded At"
           }
         },
@@ -19575,6 +19853,136 @@
         "title": "SourceReadIn",
         "type": "object"
       },
+      "SourceRecompileIn": {
+        "description": "Which of a source's tracked items to send to Knowledge again, and how.",
+        "properties": {
+          "all": {
+            "default": false,
+            "description": "Send every item the source tracks (up to 500 per request) instead of a list.",
+            "title": "All",
+            "type": "boolean"
+          },
+          "dry_run": {
+            "default": false,
+            "description": "Count what would be sent and send nothing (for a confirm step).",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "external_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 500,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The items to send again, by their tracked-items `external_id`. Leave out and set `all` to send every item the source tracks.",
+            "title": "External Ids"
+          },
+          "mode": {
+            "description": "retry: send again only items not in Knowledge at their current version (pending, failed, skipped). full: send every chosen item, items in Knowledge included, and have the compiler read each whole document again.",
+            "enum": [
+              "retry",
+              "full"
+            ],
+            "title": "Mode",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode"
+        ],
+        "title": "SourceRecompileIn",
+        "type": "object"
+      },
+      "SourceRecompileOut": {
+        "description": "What sending a source's items to Knowledge again did.",
+        "properties": {
+          "dry_run": {
+            "description": "True when nothing was sent and only counted.",
+            "title": "Dry Run",
+            "type": "boolean"
+          },
+          "in_knowledge_left": {
+            "description": "In retry mode, chosen items already in Knowledge and left alone; else 0.",
+            "title": "In Knowledge Left",
+            "type": "integer"
+          },
+          "in_progress_left": {
+            "default": 0,
+            "description": "Chosen pending items still on their way into Knowledge (their compile is queued or running, or they were read in the last 30 minutes), left out; send them again once they finish.",
+            "title": "In Progress Left",
+            "type": "integer"
+          },
+          "mode": {
+            "description": "The mode the request used.",
+            "enum": [
+              "retry",
+              "full"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "not_found": {
+            "description": "Requested external_ids this source does not track; nothing was sent for them.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Not Found",
+            "type": "array"
+          },
+          "over_cap": {
+            "description": "Chosen items past the 500-item limit, not sent; send them in a later request.",
+            "title": "Over Cap",
+            "type": "integer"
+          },
+          "requested": {
+            "description": "Items marked to be sent again (the count a dry run would mark).",
+            "title": "Requested",
+            "type": "integer"
+          },
+          "sync": {
+            "description": "started: a sync reading the marked items is running (follow it with sync_job_id). waiting_for_running_sync: a sync was already running; a new one starts when it ends. not_started: nothing was marked, or this was a dry run.",
+            "enum": [
+              "started",
+              "waiting_for_running_sync",
+              "not_started"
+            ],
+            "title": "Sync",
+            "type": "string"
+          },
+          "sync_job_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The started sync's job id (GET /v1/jobs/{job_id}), or null.",
+            "title": "Sync Job Id"
+          }
+        },
+        "required": [
+          "mode",
+          "dry_run",
+          "requested",
+          "in_knowledge_left",
+          "over_cap",
+          "not_found",
+          "sync"
+        ],
+        "title": "SourceRecompileOut",
+        "type": "object"
+      },
       "SourceRecord": {
         "additionalProperties": true,
         "description": "A structured public source record (``source_ref`` is reusable in writes).",
@@ -19791,9 +20199,105 @@
             "default": null,
             "description": "Current status of the source record.",
             "title": "Status"
+          },
+          "written_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceWrittenBy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "On a citation of an uploaded file whose upload recorded its authors (`authored_by`): who wrote it. The file's recorded date is the citation's `evidence.source_recorded_at` when its text states no date of its own."
           }
         },
         "title": "SourceRecord",
+        "type": "object"
+      },
+      "SourceWrittenBy": {
+        "additionalProperties": true,
+        "description": "Who wrote a cited file, as its upload recorded it (`authored_by`).",
+        "properties": {
+          "authors": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SourceWrittenByAuthor"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Each author, in the order recorded.",
+            "title": "Authors"
+          },
+          "by_agent": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when an agent wrote the file for these authors (`written_by_agent`).",
+            "title": "By Agent"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "One line for a reader: \"Jane Doe\", \"Jane Doe and Bob Smith\" or \"an agent for Jane Doe and Bob Smith\".",
+            "title": "Text"
+          }
+        },
+        "title": "SourceWrittenBy",
+        "type": "object"
+      },
+      "SourceWrittenByAuthor": {
+        "additionalProperties": true,
+        "description": "One author of a cited file, as its upload recorded them.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The author's name, as recorded.",
+            "title": "Name"
+          },
+          "org_member": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "True when the author is a member of the org.",
+            "title": "Org Member"
+          }
+        },
+        "title": "SourceWrittenByAuthor",
         "type": "object"
       },
       "StagedProposalRef": {
@@ -21142,6 +21646,11 @@
             "title": "Ingested",
             "type": "integer"
           },
+          "partial": {
+            "description": "Items in Knowledge with planned changes that did not land (not in ingested).",
+            "title": "Partial",
+            "type": "integer"
+          },
           "pending": {
             "description": "Items tracked and not read into Knowledge yet.",
             "title": "Pending",
@@ -21167,6 +21676,7 @@
           "total",
           "pending",
           "ingested",
+          "partial",
           "skipped",
           "failed",
           "removed"
@@ -21212,6 +21722,49 @@
             "description": "When a sync last read the item or Knowledge last decided on it (ISO 8601).",
             "title": "Last Synced At"
           },
+          "next_attempt_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When Beakr next reads or sends the item (ISO 8601), when known.",
+            "title": "Next Attempt At"
+          },
+          "older_version_in_knowledge": {
+            "default": false,
+            "description": "An earlier version of the item is in Knowledge while its newest one is pending, failed or skipped: the item is being updated, or its update failed.",
+            "title": "Older Version In Knowledge",
+            "type": "boolean"
+          },
+          "pending_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a pending item, or a partial one Beakr retries: why it is waiting, as a stable code. queued, compiling, waiting_for_compile (sent in the last half hour), retrying (partial; the next try lands the changes left), held_back (the source's last sync hit its limit or the quota), import_followup (a history import's follow-up sends it), resend_scheduled (its compile didn't finish; Beakr sends it again), waiting_for_sync (the source's next scheduled sync takes it) or auto_sync_off (nothing scheduled will; Sync now or send it again). Null for any other item.",
+            "title": "Pending Reason"
+          },
+          "pending_reason_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The same, and what happens next, for a person to read.",
+            "title": "Pending Reason Text"
+          },
           "reason": {
             "anyOf": [
               {
@@ -21221,7 +21774,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why a skipped item was set aside, or a failed one failed, for a person.",
+            "description": "Why a skipped item was set aside, a failed one failed, or a partial one is not finished, for a person.",
             "title": "Reason"
           },
           "reason_code": {
@@ -21233,7 +21786,7 @@
                 "type": "null"
               }
             ],
-            "description": "Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Failed: compile_failed and compile_partial (the next sync sends it again), compile_not_converging (not sent again until it changes), import_gave_up (a history import stopped trying it). Null otherwise, and for items skipped before reasons were recorded.",
+            "description": "Why a skipped item was set aside, or a failed one failed, as a stable code. Skipped: nothing_to_add, empty, file_too_large, blocked_file_type, no_export, export_failed, source_refused_file, sent_by_beakr, same_as_skipped_copy, unprocessable. Partial: compile_partial (the next sync retries the changes left), compile_not_converging (they could not be applied; not sent again until it changes). Failed: compile_failed (the next sync sends it again), import_gave_up (a history import stopped trying it), retry_gave_up (Beakr sent it again 3 times and its compile never finished). Null otherwise, and for items skipped before reasons were recorded.",
             "title": "Reason Code"
           },
           "selected_at": {
@@ -21262,10 +21815,11 @@
             "title": "Selected Reason"
           },
           "state": {
-            "description": "pending (tracked, not read into Knowledge yet, or sent and compiling), ingested, skipped (set aside; reason says why), failed (its compile did not finish; reason says why and whether a sync sends it again) or removed (gone from the source).",
+            "description": "The state of the item's newest version: pending (tracked, not read into Knowledge yet, or sent and compiling), ingested (in Knowledge), partial (in Knowledge, with unfinished_changes planned changes that did not land; reason_code compile_partial means the next sync retries them, compile_not_converging that they could not be applied), skipped (set aside; reason says why), failed (nothing of it reached Knowledge; reason says why and whether a sync sends it again) or removed (gone from the source). An older version may still be in Knowledge: see older_version_in_knowledge.",
             "enum": [
               "pending",
               "ingested",
+              "partial",
               "skipped",
               "failed",
               "removed"
@@ -21277,6 +21831,18 @@
             "description": "The item's title, or its key when it has none.",
             "title": "Title",
             "type": "string"
+          },
+          "unfinished_changes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For a partial item: how many planned changes to Knowledge did not land; null otherwise, or when the count is not known.",
+            "title": "Unfinished Changes"
           }
         },
         "required": [
@@ -21618,6 +22184,40 @@
             "$ref": "#/components/schemas/ArtifactType",
             "default": "doc",
             "description": "Kind of file."
+          },
+          "authored_at": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When the file was written: a date (`2026-06-14`) or an ISO 8601 date-time (`2026-06-14T09:30:00Z`; no offset means UTC), not in the future. Knowledge built from the file is dated by it when the text states no date of its own.",
+            "title": "Authored At"
+          },
+          "authored_by": {
+            "anyOf": [
+              {
+                "maxLength": 320,
+                "type": "string"
+              },
+              {
+                "items": {
+                  "maxLength": 320,
+                  "type": "string"
+                },
+                "maxItems": 20,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Who wrote the file, when that is not who uploads it: one author, or a list of up to 20 for a co-written file. Each is a person's name (`Jane Doe`), optionally with an email (`Jane Doe <jane@example.com>`), or an email, matched to an org member by email, else by an exact display name only one member has. `[]` or `\"\"` clears the authors. Knowledge built from the file attributes what it says to them and links each one's person card when they are a member with one. With `written_by_agent`, an agent wrote it for them.",
+            "title": "Authored By"
           },
           "description": {
             "anyOf": [
@@ -23718,7 +24318,7 @@
               }
             ],
             "default": null,
-            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. Absent for a source with no time of its own, such as a file.",
+            "description": "When the source system recorded the quoted part: when a message was posted, an email sent, a comment written or a meeting held. An ISO 8601 time with the offset the source system gave, or a date (`2026-03-04`) for an all-day event. For a file, the date it gives itself, else the date its upload recorded (`authored_at`). Absent for a source with no time of its own.",
             "title": "Source Recorded At"
           },
           "source_ref": {
@@ -27384,7 +27984,7 @@
         "x-beakr-scope": "projects:read"
       },
       "patch": {
-        "description": "Change a file's `title`, `description` or `artifact_type`; fields left out are kept. Needs write access to the file.",
+        "description": "Change a file's `title`, `description` or `artifact_type`, or who wrote it and when (`authored_by`, `authored_at`; `\"\"` clears one); fields left out are kept. Knowledge built from the file earlier keeps its attribution until it is compiled again. Needs write access to the file.",
         "operationId": "update_artifact_route_v1_artifacts__artifact_id__patch",
         "parameters": [
           {
@@ -41720,6 +42320,100 @@
         "x-beakr-scope": "projects:read"
       }
     },
+    "/v1/projects/{project_id}/sources/{attachment_id}/recompile": {
+      "post": {
+        "description": "Send a source's items to Knowledge again.\n\nSends chosen tracked items (`external_ids`), or every item (`all`), to\nKnowledge again in any state: pending, failed, skipped, or already in\nKnowledge (`mode: full`, for example after changing the source's guidance,\nor when a compile took in too little). The items are marked and a sync of\nthe source starts at once, run through the connection of the person who\nattached it; that sync reads each marked item from its service and compiles\nit, whatever its version. Not held by Sync now's hourly cooldown: one\nrequest per source every 10 minutes, up to 500 items each. Anyone who can\nedit the project may ask. `dry_run` counts without sending. Usage counts\nagainst the organization's Knowledge allowance as a sync does. Pending\nitems still on their way into Knowledge are left out (`in_progress_left`),\nand while a sync of the source runs the request is refused (409\n`sync_running`).",
+        "operationId": "recompile_project_source_v1_projects__project_id__sources__attachment_id__recompile_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "examples": [
+                "9d8e4c1a-6b2f-4a3e-8c7d-5e0f1a2b3c4d"
+              ],
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Attachment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceRecompileIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceRecompileOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Validation error: `error.details.errors` lists every failing field."
+          },
+          "4XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "The request was refused; `error.code` says why."
+          },
+          "5XX": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Server error; retry with backoff and quote `error.request_id` if it persists."
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "Send a source's items again",
+        "tags": [
+          "public",
+          "integrations"
+        ],
+        "x-beakr-scope": "uploads:write"
+      }
+    },
     "/v1/projects/{project_id}/sources/{attachment_id}/sync/cancel": {
       "post": {
         "description": "Cancel a source's running sync.\n\nListing stops at its next step and items not yet started are skipped. Items\nalready synced, and their Knowledge, are kept; compiles they already queued\nstill run (cancel those with POST .../knowledge/compiles/cancel). Works for\nmanual, nightly and change-triggered syncs. Read progress with\nGET /v1/jobs/{sync_job_id}: cancelling while started items finish, then\ncancelled. The person who attached the source (while a project member), a\nproject admin or an org admin may cancel it. 409 when nothing is syncing.",
@@ -41843,6 +42537,7 @@
                   "enum": [
                     "pending",
                     "ingested",
+                    "partial",
                     "skipped",
                     "failed",
                     "removed"
@@ -41858,7 +42553,7 @@
             }
           },
           {
-            "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
+            "description": "Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial).",
             "in": "query",
             "name": "reason_code",
             "required": false,
@@ -41872,7 +42567,7 @@
                   "type": "null"
                 }
               ],
-              "description": "Keep skipped or failed items with this reason (e.g. nothing_to_add, compile_failed).",
+              "description": "Keep skipped, failed or partial items with this reason (e.g. nothing_to_add, compile_failed, compile_partial).",
               "title": "Reason Code"
             }
           },

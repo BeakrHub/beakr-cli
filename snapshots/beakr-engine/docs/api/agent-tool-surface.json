@@ -30,7 +30,9 @@
     "update_source",
     "preview_source_rules",
     "sync_source",
-    "remove_source"
+    "remove_source",
+    "recompile_source",
+    "tracked_items"
   ],
   "confirm_lock_property": {
     "description": "The id of a locked project a session_lock_confirm answer named, to enter it. Pass it only to repeat that call.",
@@ -68,6 +70,7 @@
     "update_source",
     "preview_source_rules",
     "sync_source",
+    "recompile_source",
     "remove_source",
     "tracked_items",
     "draft_review_interview",
@@ -566,7 +569,7 @@
         "openWorldHint": false,
         "readOnlyHint": false
       },
-      "description": "Upload files into a project, after the person agrees. Knowledge compiles from them within a few minutes (knowledge=false keeps them out). A file already in the project under the same folder and name gets the upload as its new version, not a second file (the answer says so, or that it was unchanged). Pass written_by_agent: true for content you wrote yourself (a summary, notes, a report), false for the person's own files, which stay sources; it defaults to false on the beakr CLI's local MCP server (files on disk) and true on the hosted one (content in the call). On the beakr CLI's local MCP server pass `paths`: files or folders on this computer (absolute, or relative to the folder the server runs in). A folder keeps its subfolders, hidden files and credential files are refused, and it answers within about 40 seconds: a larger upload carries on in the background and upload_status reports it. The hosted MCP server cannot read the user's disk: pass `files`, a list of {name, text} or {name, content_base64}, with an optional `folder` to put them under, at most 20 files and about 3.5 MB of content in one call (the refusal names the exact limit). For anything larger, or a folder on disk, the hosted server uploads nothing: tell the user to run `beakr upload PATH --project NAME` in a terminal, or to add the files in the Beakr web app.",
+      "description": "Upload files into a project, after the person agrees. Knowledge compiles from them within a few minutes (knowledge=false keeps them out). A file already in the project under the same folder and name gets the upload as its new version, not a second file (the answer says so, or that it was unchanged). Pass written_by_agent: true for content you wrote yourself (a summary, notes, a report), false for the person's own files, which stay sources; it defaults to false on the beakr CLI's local MCP server (files on disk) and true on the hosted one (content in the call). When someone else wrote the files (a colleague's notes, an old report), pass authors (up to 20 names, each optionally with an email) and authored_at (the date written): Knowledge built from them is attributed to those people and dated by it. On the beakr CLI's local MCP server pass `paths`: files or folders on this computer (absolute, or relative to the folder the server runs in). A folder keeps its subfolders, hidden files and credential files are refused, and it answers within about 40 seconds: a larger upload carries on in the background and upload_status reports it. The hosted MCP server cannot read the user's disk: pass `files`, a list of {name, text} or {name, content_base64}, with an optional `folder` to put them under, at most 20 files and about 3.5 MB of content in one call (the refusal names the exact limit). For anything larger, or a folder on disk, the hosted server uploads nothing: tell the user to run `beakr upload PATH --project NAME` in a terminal, or to add the files in the Beakr web app.",
       "name": "upload_files",
       "surfaces": [
         "remote",
@@ -662,7 +665,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "List the sources connected to a project (a Drive folder, a Slack channel, a Notion page...): each one's attachment_id, whether Knowledge reads it, whether it syncs nightly, when it last synced, and its filter and guidance. With attachment_id: that source, how far its sync has got, and what became of the items it brought in, including the ones Knowledge set aside after reading them and why.",
+      "description": "List the sources connected to a project (a Drive folder, a Slack channel, a Notion page...): each one's attachment_id, whether Knowledge reads it, whether it syncs nightly, when it last synced, and its filter and guidance. A source whose syncs keep failing says since when, why, and when one last succeeded. With attachment_id: that source, how far its sync has got, and what became of the items it brought in, including the ones Knowledge set aside after reading them and why, and its history import when it has one.",
       "name": "project_sources",
       "surfaces": [
         "remote",
@@ -737,6 +740,22 @@
     },
     {
       "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      },
+      "description": "Send a connected source's items (attachment_id) to Knowledge again, after the person agrees: chosen items by the external_id tracked_items prints, or the whole source. mode retry (the default) sends only items not in Knowledge (pending, failed, skipped, partial); mode full also sends items already in Knowledge and has each whole document read again, for example after the source's guidance changed. A sync starts at once and spends the organization's ingest budget; dry_run=true counts what would be sent first. Items still on their way in are left out and counted. One request per source every 10 minutes, up to 500 items, and none while the source is syncing; anyone who can edit the project may ask.",
+      "name": "recompile_source",
+      "surfaces": [
+        "remote",
+        "stdio"
+      ],
+      "tier": "discovery",
+      "title": "Send a source's items again"
+    },
+    {
+      "annotations": {
         "destructiveHint": true,
         "idempotentHint": true,
         "openWorldHint": false,
@@ -758,7 +777,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "List the items a connected source (attachment_id) tracks and what became of each: ingested into Knowledge, pending, skipped or removed. A skipped item says why it was set aside (reason_code and a sentence), including when Knowledge read it and found nothing to add. Filter by state, reason_code, search (title text) or since (synced at or after a time). Reads only. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
+      "description": "List the items a connected source (attachment_id) tracks and what became of each, with its external_id: ingested into Knowledge, partial (in Knowledge with changes that did not land), pending, skipped, failed or removed. A skipped, failed or partial item says why (reason_code and a sentence), including when Knowledge read it and found nothing to add; a pending one says what it waits for and when Beakr next tries. Filter by state, reason_code, search (title text) or since (synced at or after a time). Reads only; recompile_source sends items again. Results come one page at a time: the result's coverage says whether more exist, and passing its next_cursor as cursor returns the next page.",
       "name": "tracked_items",
       "surfaces": [
         "remote",

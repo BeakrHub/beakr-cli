@@ -6086,7 +6086,7 @@
       "title": "External Id"
      },
      "outcome": {
-      "description": "ingested, skipped, pending (read, Knowledge not done with it yet), removed, failed or cancelled.",
+      "description": "ingested, partial (in Knowledge with planned changes that did not land), skipped, pending (read, Knowledge not done with it yet), removed, failed or cancelled.",
       "title": "Outcome",
       "type": "string"
      },
@@ -6137,7 +6137,7 @@
       "type": "integer"
      },
      "outcome": {
-      "description": "skipped or failed.",
+      "description": "skipped, failed or partial.",
       "title": "Outcome",
       "type": "string"
      },
@@ -6169,7 +6169,7 @@
       "additionalProperties": {
        "type": "integer"
       },
-      "description": "Items by outcome: ingested, skipped, pending, removed, failed, cancelled.",
+      "description": "Items by outcome: ingested, partial, skipped, pending, removed, failed, cancelled.",
       "title": "Counts",
       "type": "object"
      },
