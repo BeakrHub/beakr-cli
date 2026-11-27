@@ -21,7 +21,7 @@ classifiers = [
 dependencies = [
     # The Python SDK (BeakrHub/beakr-python), from PyPI; see the README's
     # "The Python SDK dependency" for working against an unreleased SDK.
-    "beakr-sdk>=0.2.0,<0.6",
+    "beakr-sdk>=0.2.0,<0.7",
     # Capped: typer 0.26 vendors its own click (typer._click), and its error
     # handler no longer catches the real click exceptions `beakr api` raises,
     # so every usage error and even `beakr api --help` ended in a traceback.

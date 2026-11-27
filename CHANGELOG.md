@@ -14,10 +14,6 @@ Each release lists the public API changes it supports, taken from the API change
   `no_row_change`, and the new `no_draft_explanation` field holds the reason in
   one sentence, to show the reviewer (dismiss the flag if the card is right).
   `no_draft_explanation` is null in every other answer.
-## Unreleased
-
-### Changes
-
 - **The commands `beakr sources` suggests run as printed.** Every suggested
   command for one source (`next:` piped, and the terminal's "Start it", "Stop
   it", "More" lines and the "Already attached" fix) names its project with
@@ -34,6 +30,8 @@ Each release lists the public API changes it supports, taken from the API change
   than 20 authors, an entry that is not a name, `Name <email>` or an email, and
   a date that is not one or is in the future exit 2 and say why, and nothing is
   sent.
+- **Installs beside beakr-sdk 0.6.** The CLI now takes
+  `beakr-sdk>=0.2.0,<0.7`. It still needs nothing newer than 0.2.0.
 
 ## beakr-cli 0.8.0 (2026-11-26)
 
