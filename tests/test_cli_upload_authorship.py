@@ -161,3 +161,86 @@ def test_the_stdio_server_keeps_who_wrote_a_cited_file():
     }
     bare = mcp_server._public_source({"source_ref": "file:a1", "written_by": {"authors": []}})
     assert "written_by" not in bare
+
+
+# r108 sweep (sandbox, 26 Nov 2026): 21 authors went to the engine, which answered
+# "Input should be a valid string" (the first branch of its validation error) and,
+# for a folder, refused each file in turn. The MCP server's upload_files already
+# checked them with the API's own parsers before sending; the CLI now does too.
+TWENTY_ONE = [arg for n in range(1, 22) for arg in ("--author", f"Author {n}")]
+
+
+@pytest.mark.parametrize(
+    ("argv", "flag", "said"),
+    [
+        (TWENTY_ONE, "--author", "authored_by names more than 20 authors. Nothing was sent."),
+        (["--author", "Bad <not-an-email>"], "--author", "'not-an-email' is not an email"),
+        (["--date", "2999-01-01"], "--date", "'2999-01-01' is in the future. Nothing was sent."),
+        (["--date", "yesterday"], "--date", "'yesterday' is not a date (YYYY-MM-DD)"),
+    ],
+    ids=["21-authors", "bad-email", "future-date", "not-a-date"],
+)
+@respx.mock(assert_all_called=False)
+def test_a_bad_author_or_date_is_refused_before_anything_is_sent(tmp_path, argv, flag, said):
+    routes = mock_resumable_uploads(API)
+    edit = respx.patch(f"{API}/v1/artifacts/a1").respond(200, json=ARTIFACT)
+    note = tmp_path / "note.md"
+    note.write_text("x")
+    for command in (["upload", str(note), "-P", "p1"], ["files", "edit", "a1"]):
+        result = runner.invoke(app, [*command, *argv])
+        assert result.exit_code == 2, result.output
+        said_once = " ".join(result.output.replace("│", " ").split())
+        assert flag in said_once and said in said_once
+    assert not edit.called
+    assert not routes["create"].called and not routes["complete"].called
+
+
+@respx.mock
+def test_twenty_authors_and_a_clear_still_go_through():
+    route = respx.patch(f"{API}/v1/artifacts/a1").respond(200, json=ARTIFACT)
+    twenty = [arg for n in range(1, 21) for arg in ("--author", f"Author {n}")]
+    assert runner.invoke(app, ["files", "edit", "a1", *twenty]).exit_code == 0
+    assert len(json.loads(route.calls.last.request.content)["authored_by"]) == 20
+    cleared = runner.invoke(app, ["files", "edit", "a1", "--author", "", "--date", ""])
+    assert cleared.exit_code == 0, cleared.output
+    assert json.loads(route.calls.last.request.content) == {"authored_by": "", "authored_at": ""}
+
+
+VERSIONS = {
+    # The route lists a file's versions oldest first.
+    "data": [
+        {
+            "id": "v-one",
+            "version_no": 1,
+            "created_at": "2026-11-26T20:47:53Z",
+            "size_bytes": 49,
+            "mime_type": "text/plain",
+            "written_by_agent": False,
+        },
+        {
+            "id": "v-two",
+            "version_no": 2,
+            "created_at": "2026-11-26T20:48:50Z",
+            "size_bytes": 71,
+            "mime_type": "text/plain",
+            "written_by_agent": True,
+        },
+    ],
+    "has_more": False,
+    "next_cursor": None,
+}
+
+
+@respx.mock
+def test_files_versions_piped_is_newest_first_with_each_versions_number():
+    """r108 sweep: piped, `files versions` printed only the ids in the route's order,
+    oldest first, though it says "newest first", so an agent could not tell which
+    id was the newest version."""
+    respx.get(f"{API}/v1/artifacts/a1/versions").respond(200, json=VERSIONS)
+    result = runner.invoke(app, ["files", "versions", "a1"])
+    assert result.exit_code == 0, result.output
+    assert result.stdout.splitlines() == [
+        "v-two\tversion=2\tcreated_at=2026-11-26T20:48:50Z\tsize_bytes=71"
+        "\tmime_type=text/plain\twritten_by_agent=true",
+        "v-one\tversion=1\tcreated_at=2026-11-26T20:47:53Z\tsize_bytes=49\tmime_type=text/plain",
+    ]

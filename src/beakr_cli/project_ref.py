@@ -34,6 +34,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+import click
 import typer
 
 from beakr_cli.project_scope_names import closest_project_names
@@ -275,10 +276,17 @@ def _outside_session(session_id: str | None, ref: str, *, agent: str | None) -> 
     return f"{outside} Add it with `beakr session edit {session_id}` or at {picker}."
 
 
-def project_ref_callback(value: Any) -> Any:
-    """Typer callback: resolve a project option (one value or a repeatable list) to ids."""
+def project_ref_callback(param: click.Parameter, value: Any) -> Any:
+    """Typer callback: resolve a project option (one value or a repeatable list) to ids.
+
+    A refusal names the option it was given to: ``--copy-types-from`` on
+    ``projects create`` read "Invalid value for --project" (sandbox sweep,
+    2026-11-26), an option that command does not have.
+    """
     if value is None:
         return None
+    long_names = [opt for opt in getattr(param, "opts", []) if opt.startswith("--")]
+    hint = long_names[0] if long_names else "--project"
     if isinstance(value, (list, tuple)):
-        return [resolve_project_ref(str(v)) for v in value]
-    return resolve_project_ref(str(value))
+        return [resolve_project_ref(str(v), param_hint=hint) for v in value]
+    return resolve_project_ref(str(value), param_hint=hint)

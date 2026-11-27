@@ -164,7 +164,7 @@ def test_one_page_piped_is_a_line_per_item_and_names_the_next_page():
         "nothing_to_add",
         "Lunch order",
     ]
-    assert "next: beakr sources tracked s1 --cursor c2" in result.stdout
+    assert "next: beakr sources tracked s1 --cursor c2 -P p1" in result.stdout
 
 
 @respx.mock
@@ -434,7 +434,7 @@ def test_recompile_sends_the_named_items_and_says_what_went(monkeypatch):
         "s1\tmode=retry\tdry_run=false\trequested=2\tin_knowledge_left=1"
         "\tin_progress_left=0\tover_cap=0\tnot_found=1\tsync=started"
         "\tsync_job_id=11111111-2222-3333-4444-555555555555",
-        "next: beakr sources status s1",
+        "next: beakr sources status s1 -P p1",
     ]
     monkeypatch.setattr("beakr_cli.output.is_piped", lambda: False)
     result = runner.invoke(app, [*argv, "-P", PROJECT])
