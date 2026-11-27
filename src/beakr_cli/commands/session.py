@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import click
 import typer
 from beakr_sdk.errors import BeakrError, NotFoundError
 
@@ -61,15 +62,16 @@ app = typer.Typer(
 _json_opt = typer.Option(False, "--json", "-j", help="Output raw JSON.")
 
 
-def _person_project_refs(value: Any) -> Any:
+def _person_project_refs(param: click.Parameter, value: Any) -> Any:
     """Resolve --read/--write names with the person's own credential, never the shell's
     session token: the session may not read the project yet, or may have ended.
 
-    Each value may name several projects, comma-separated (``--read A,B``)."""
+    Each value may name several projects, comma-separated (``--read A,B``). The
+    option is passed on so a refusal names it (main #240's project_ref_callback)."""
     if isinstance(value, (list, tuple)):
         value = [part.strip() for v in value for part in str(v).split(",") if part.strip()]
     with scope_session.person_credential():
-        return project_ref_callback(value)
+        return project_ref_callback(param, value)
 
 
 _read_opt = typer.Option(
@@ -880,7 +882,9 @@ def edit(
     # project name is looked up (the agent's own proposals go through start_session).
     scope_session.refuse_session_change_inside_conversation("beakr session edit")
     chosen = _session_id(session_id)
-    read, write = _person_project_refs(read), _person_project_refs(write)
+    # Not a Typer callback here (the values arrive raw): name each option so a refusal does.
+    read = _person_project_refs(click.Option(["--read"]), read)
+    write = _person_project_refs(click.Option(["--write"]), write)
     _refuse_together(
         **{
             "--read/--write": bool(read or write or read_all or write_all),

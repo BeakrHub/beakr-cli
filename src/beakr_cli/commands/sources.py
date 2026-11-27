@@ -29,6 +29,7 @@ went.
 from __future__ import annotations
 
 import json
+import shlex
 from typing import Any
 
 import click
@@ -135,6 +136,17 @@ def _require_project(project: str | None) -> str:
     if not project_id:
         raise click.UsageError("Pass --project or run `beakr init` to bind this directory to one.")
     return str(project_id)
+
+
+def source_command(verb: str, source_id: Any, project_id: str, *flags: str) -> str:
+    """``beakr sources VERB SOURCE_ID [FLAGS] -P PROJECT``, quoted to paste as it is.
+
+    Every per-source command needs the project (``_require_project``), and an
+    agent runs a ``next:`` line as printed, often outside a directory bound to
+    the project, so a suggested command always names it (r108 sweep, 26 Nov
+    2026: ``next: beakr sources sync <id>`` failed with "Pass --project").
+    """
+    return shlex.join(["beakr", "sources", verb, str(source_id), *flags, "-P", str(project_id)])
 
 
 def _choice(value: str | None, allowed: tuple[str, ...], flag: str) -> str | None:
@@ -527,8 +539,9 @@ def _refuse_duplicate(
         f"Already attached as {name} ({source_id}).",
         code="already_attached",
         fix=(
-            f"Change it with `beakr sources edit {source_id}` (rules, Knowledge, nightly sync), "
-            f"or detach it first with `beakr sources rm {source_id}`."
+            f"Change it with `{source_command('edit', source_id, project_id)}` (rules, "
+            "Knowledge, nightly sync), or detach it first with "
+            f"`{source_command('rm', source_id, project_id)}`."
         ),
         details={"source_id": source_id, "external_item_name": name},
         request_id=exc.request_id,
@@ -816,7 +829,7 @@ def attach(
         raise click.UsageError("Give the item as the argument or as --url, not both.")
     if item and item.strip().lower().startswith(("http://", "https://")):
         item, url = None, item
-    view_hint: str | None = None
+    view_id: str | None = None
     link_name: str | None = None
 
     if scope_mode == "all":
@@ -855,11 +868,7 @@ def attach(
             )
         title = name or link.name or item_id
         if link.view_id and source_query is None:
-            view_hint = (
-                f"The link opened one saved view of the database ({link.view_id}). To pull "
-                f"only its rows: beakr sources edit <id> --query "
-                f'\'{{"notion_view": "{link.view_id}"}}\''
-            )
+            view_id = link.view_id
     else:
         missing = [
             flag
@@ -964,6 +973,14 @@ def attach(
         return
 
     source_id = result.get("id")
+    # A sync of a source with Knowledge off is refused ("Wiki ingestion is not
+    # enabled for this source", 400), so its next step is turning Knowledge on.
+    if "sync" in result:
+        next_step = source_command("status", source_id, project_id)
+    elif result.get("ingest_wiki"):
+        next_step = source_command("sync", source_id, project_id)
+    else:
+        next_step = source_command("edit", source_id, project_id, "--knowledge")
 
     def render(data: dict[str, Any]) -> None:
         console.print(
@@ -976,11 +993,21 @@ def attach(
         if "sync" in data:
             _render_sync(data["sync"])
         elif data.get("ingest_wiki"):
-            err_console.print(f"Start it: beakr sources sync {source_id}", markup=False)
-        if view_hint:
-            # Unwrapped, so the command stays one copyable line.
+            err_console.print(f"Start it: {next_step}", markup=False, soft_wrap=True)
+        else:
             err_console.print(
-                view_hint.replace("<id>", str(source_id)), markup=False, soft_wrap=True
+                f"Nothing is read until Knowledge is on: {next_step}",
+                markup=False,
+                soft_wrap=True,
+            )
+        if view_id:
+            # Unwrapped, so the command stays one copyable line.
+            only_view = json.dumps({"notion_view": view_id})
+            err_console.print(
+                f"The link opened one saved view of the database ({view_id}). To pull only "
+                f"its rows: {source_command('edit', source_id, project_id, '--query', only_view)}",
+                markup=False,
+                soft_wrap=True,
             )
 
     emit(
@@ -988,11 +1015,7 @@ def attach(
         json_out=json_out,
         render=render,
         lines=lambda data: _source_lines([data]),
-        hint=(
-            f"beakr sources status {source_id}"
-            if "sync" in result
-            else f"beakr sources sync {source_id}"
-        ),
+        hint=next_step,
     )
     if sync_error is not None:
         err_console.print(
@@ -1082,8 +1105,8 @@ def edit(
                 _add_fix(
                     exc,
                     _unsaved(exc, "Nothing was saved; the source keeps its rules.")
-                    + f"`beakr sources preview {source_id} --query ...` checks a query without "
-                    "saving it.",
+                    + f"`{source_command('preview', source_id, project_id)} --query ...` checks "
+                    "a query without saving it.",
                 )
             raise
         result = _with_sync_state(dict(source or {}), row)
@@ -1121,7 +1144,7 @@ def edit(
         json_out=json_out,
         render=render,
         lines=lines,
-        hint=f"beakr sources sync {source_id}" if knowledge else None,
+        hint=source_command("sync", source_id, project_id) if knowledge else None,
     )
     for warning in _edit_warnings(counted) if counted is not None else []:
         err_console.print(f"Warning: {warning}", highlight=False, markup=False, soft_wrap=True)
@@ -1373,7 +1396,7 @@ def sync(
         result,
         json_out=json_out,
         render=_render_sync,
-        hint=f"beakr sources status {source_id}",
+        hint=source_command("status", source_id, project_id),
     )
 
 
@@ -1507,7 +1530,7 @@ def recompile(
         json_out=json_out,
         render=render,
         lines=lines,
-        hint=None if data.get("dry_run") else f"beakr sources status {source_id}",
+        hint=None if data.get("dry_run") else source_command("status", source_id, project_id),
     )
 
 
@@ -1594,7 +1617,7 @@ def status(
             if isinstance(outcomes, dict) and outcomes:
                 # What became of each item, Knowledge's own verdicts included; the
                 # failed deliveries are among its items.
-                for line in _outcome_lines(outcomes, source_id):
+                for line in _outcome_lines(outcomes, source_id, project_id):
                     console.print(line, highlight=False, markup=False, soft_wrap=True)
             else:
                 failed = [f for f in data.get("files") or [] if f.get("outcome") == "failed"]
@@ -1608,7 +1631,11 @@ def status(
             for line in cancels.queue_lines(queue, "for this source"):
                 console.print(line, highlight=False, markup=False)
         if _sync_running(state):
-            err_console.print(f"Stop it: beakr sources cancel-sync {source_id}", markup=False)
+            err_console.print(
+                f"Stop it: {source_command('cancel-sync', source_id, project_id)}",
+                markup=False,
+                soft_wrap=True,
+            )
 
     def lines(data: dict[str, Any]) -> list[str]:
         fields = [
@@ -1640,7 +1667,7 @@ def status(
         json_out=json_out,
         render=render,
         lines=lines,
-        hint=f"beakr sources cancel-sync {source_id}"
+        hint=source_command("cancel-sync", source_id, project_id)
         if _sync_running(result.get("status"))
         else None,
     )
@@ -1658,7 +1685,7 @@ def _item_reason(item: dict[str, Any]) -> str:
     return reason or str(code or "")
 
 
-def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
+def _outcome_lines(outcomes: dict[str, Any], source_id: str, project_id: str) -> list[str]:
     """What became of the items one sync brought in, for ``status``."""
     counts = outcomes.get("counts") or {}
     parts = [
@@ -1688,7 +1715,7 @@ def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
         int(counts.get(name) or 0) for name in connected_sources.OUTCOME_ORDER if name != "ingested"
     )
     if set_aside > len(listed):
-        lines.append(f"Every item and why: beakr sources tracked {source_id}")
+        lines.append(f"Every item and why: {source_command('tracked', source_id, project_id)}")
     return lines
 
 
@@ -1696,6 +1723,40 @@ def _outcome_lines(outcomes: dict[str, Any], source_id: str) -> list[str]:
 TRACKED_STATES = ("pending", "ingested", "partial", "skipped", "failed", "removed")
 #: The most items one request of ``tracked`` asks for (the route's page maximum).
 TRACKED_PAGE_MAX = 200
+#: Items per page when ``--limit`` is not given.
+TRACKED_PAGE_DEFAULT = 50
+
+
+def tracked_next_page(
+    source_id: str,
+    project_id: str,
+    cursor: str,
+    *,
+    state: str | None,
+    reason_code: str | None,
+    search: str | None,
+    since: str | None,
+    limit: int,
+) -> str:
+    """The ``beakr sources tracked`` command for the page after this one.
+
+    The cursor carries only the position: each page must be asked with the same
+    filters, or the route lists the next rows of the whole source (r108 sweep,
+    26 Nov 2026: the hint dropped ``--state``/``--search`` and ``-P``, so it
+    failed outside a bound directory and, with ``-P`` added, paged every item).
+    """
+    flags: list[str] = []
+    for flag, value in (
+        ("--state", state),
+        ("--reason-code", reason_code),
+        ("--search", search),
+        ("--since", since),
+    ):
+        if value is not None:
+            flags += [flag, value]
+    if limit != TRACKED_PAGE_DEFAULT:
+        flags += ["--limit", str(limit)]
+    return source_command("tracked", source_id, project_id, *flags, "--cursor", cursor)
 
 
 def _tracked_params(
@@ -1748,7 +1809,12 @@ def tracked(
         help="Only items synced at or after this time (ISO 8601), e.g. a sync's start.",
     ),
     limit: int = typer.Option(
-        50, "--limit", "-n", min=1, max=TRACKED_PAGE_MAX, help="Items per page (1-200)."
+        TRACKED_PAGE_DEFAULT,
+        "--limit",
+        "-n",
+        min=1,
+        max=TRACKED_PAGE_MAX,
+        help="Items per page (1-200).",
     ),
     cursor: str | None = typer.Option(None, "--cursor", help="Continue from a page's next_cursor."),
     all_pages: bool = typer.Option(False, "--all", help="Follow every page."),
@@ -1797,6 +1863,20 @@ def tracked(
     if all_pages:
         result["next_cursor"] = None
         result["has_more"] = False
+    next_page = (
+        tracked_next_page(
+            source_id,
+            project_id,
+            str(result["next_cursor"]),
+            state=state,
+            reason_code=reason_code,
+            search=search,
+            since=since,
+            limit=limit,
+        )
+        if result.get("has_more") and result.get("next_cursor")
+        else None
+    )
 
     def render(data: dict[str, Any]) -> None:
         counts = data.get("counts") or {}
@@ -1833,12 +1913,8 @@ def tracked(
                 markup=False,
                 soft_wrap=True,
             )
-        if data.get("has_more") and data.get("next_cursor"):
-            err_console.print(
-                f"More: beakr sources tracked {source_id} --cursor {data['next_cursor']} "
-                "(or --all)",
-                markup=False,
-            )
+        if next_page:
+            err_console.print(f"More: {next_page} (or --all)", markup=False, soft_wrap=True)
 
     def lines(data: dict[str, Any]) -> list[str]:
         return [_tracked_line(row) for row in data.get("data") or []] or [
@@ -1850,11 +1926,7 @@ def tracked(
         json_out=json_out,
         render=render,
         lines=lines,
-        hint=(
-            f"beakr sources tracked {source_id} --cursor {result['next_cursor']}"
-            if result.get("has_more") and result.get("next_cursor")
-            else None
-        ),
+        hint=next_page,
     )
 
 
@@ -2112,7 +2184,9 @@ def cancel_sync(
         except BeakrError as exc:
             if cancels.is_no_running_sync(exc):
                 _add_fix(
-                    exc, f"Nothing to stop. `beakr sources status {source_id}` shows its last sync."
+                    exc,
+                    f"Nothing to stop. `{source_command('status', source_id, project_id)}` shows "
+                    "its last sync.",
                 )
             raise
 
@@ -2133,7 +2207,7 @@ def cancel_sync(
                 ]
             )
         ],
-        hint=f"beakr sources status {source_id}",
+        hint=source_command("status", source_id, project_id),
     )
 
 

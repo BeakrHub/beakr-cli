@@ -30,6 +30,6 @@ $ beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --body - --yes
   {"expected_revision": 7, "new_section_body": "## Solubility\n\nHX-07 dissolves at 4-12 mg/mL depending on buffer.\n", "section_id": "solubility"}
 [exit 0]
 --- stdout
-5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f	status=resolved
+Resolved review flag 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f: section solubility changed; the page is now at revision 8.
 --- stderr
 

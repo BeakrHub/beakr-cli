@@ -742,7 +742,7 @@ def test_sync_starts_and_names_the_status_command():
     result = runner.invoke(app, ["sources", "sync", "s1", "-P", PROJECT])
     assert result.exit_code == 0, result.output
     assert route.called
-    assert "next: beakr sources status s1" in result.stdout
+    assert "next: beakr sources status s1 -P p1" in result.stdout
 
 
 @respx.mock
@@ -1649,7 +1649,7 @@ def test_the_engines_unknown_property_refusal_is_shown_once_with_a_preview_hint(
     said = " ".join(result.stderr.split())
     assert "'tags' in database 'Requests' (did you mean 'Tags'?)" in said
     assert said.lower().count("nothing was") == 1
-    assert ("beakr sources preview s1 --query" if command == "edit" else "--preview") in said
+    assert ("beakr sources preview s1 -P p1 --query" if command == "edit" else "--preview") in said
 
 
 @respx.mock

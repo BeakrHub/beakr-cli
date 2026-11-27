@@ -4,6 +4,27 @@ Releases of `beakr-cli`, the Beakr CLI and MCP server (built on the `beakr-sdk`
 Python SDK).
 Each release lists the public API changes it supports, taken from the API changelog.
 
+## Unreleased
+
+### Changes
+
+- **The commands `beakr sources` suggests run as printed.** Every suggested
+  command for one source (`next:` piped, and the terminal's "Start it", "Stop
+  it", "More" lines and the "Already attached" fix) names its project with
+  `-P`, so it works outside a directory bound to the project. The next page of
+  `beakr sources tracked` keeps `--state`, `--reason-code`, `--search`,
+  `--since` and `--limit`; before, it listed the next items of the whole
+  source. Attaching a source with Knowledge off suggests
+  `beakr sources edit <id> --knowledge`, not a sync that the engine refuses.
+- **`beakr files versions` piped is newest first** and names each version:
+  `version=`, `created_at=`, `size_bytes=`, `mime_type=` and
+  `written_by_agent=true` after its id.
+- **`beakr upload` and `beakr files edit` check `--author` and `--date` before
+  sending**, by the API's own rules as `beakr mcp`'s `upload_files` does: more
+  than 20 authors, an entry that is not a name, `Name <email>` or an email, and
+  a date that is not one or is in the future exit 2 and say why, and nothing is
+  sent.
+
 ## beakr-cli 0.8.0 (2026-11-26)
 
 ### Changes
@@ -916,8 +937,8 @@ In detail:
   every HTTP request at INFO to stderr, which is the MCP client's log. An
   upload's presigned URL carries its signature in the query string, so the
   signature landed there too. Request lines now stay at WARNING. Set
-  `BEAKR_LOG_HTTP=1` in the server's environment to see them, with signed
-  URLs' signatures and credentials masked. Other `beakr` commands configure
+  `BEAKR_LOG_HTTP=1` in the server's environment to see one line per
+  request, with signed URLs' signatures and credentials masked. Other `beakr` commands configure
   no logging and never printed these lines.
 - **`beakr sources tracked` piped says why a pending item waits.** After its
   four columns (external id, state, reason code, title), the line an agent
@@ -925,9 +946,8 @@ In detail:
   `next_attempt_at=`. Where they apply, it also adds `unfinished_changes=` and
   `older_version_in_knowledge=true`, as the terminal view, `--json` and the MCP
   tool already show.
-- **The stdio MCP server catches up with 1.0.8's source and upload work**, as
-  the hosted server does (agent tool surface from engine #3331): a new
-  `recompile_source` tool sends a source's items to Knowledge again;
+- **The stdio MCP server catches up with the hosted server's source and upload
+  tools**: a new `recompile_source` tool sends a source's items to Knowledge again;
   `project_sources` says when a source's syncs keep failing and how its history
   import went; `tracked_items` filters and lists partial items, says what a
   pending item waits for and prints each item's `external_id`; and
