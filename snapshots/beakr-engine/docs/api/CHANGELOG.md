@@ -11,11 +11,17 @@ decision records, repository paths and review identifiers out of it; they
 belong in the internal technical docs. tests/unit/test_public_docs_hygiene.py
 enforces this. -->
 
-<!-- contract-stamp: public-openapi sha256=c83655b83bdd8c95ae8407cc5d3e35c07d5e8b5a1ef4cffb21dfc8358ea03390 changelog sha256=fc2c383a52928eac695222f8fa609a631d5d4b2dfaae8b81be9b38e38088f3c5 -->
+<!-- contract-stamp: public-openapi sha256=8acb208e149a1620250db82052543f596cdcea3de8641cfd7f237e265a8841a7 changelog sha256=1ff32e985506758fdcb921c6231ef3027fd8710f3754cdb2fe5969a459e5c779 -->
 ## 1.0.0 (unreleased)
 
 The first public version.
 
+- `POST /v1/knowledge/wiki/proposals/{proposal_id}/resolutions`: on a flag on a
+  card's Facts or Connections table where no row needs to change, the answer
+  says so instead of failing: `options` is empty, `no_draft_reason` is the new
+  `no_row_change`, and the new `no_draft_explanation` field holds the reason in
+  one sentence, to show the reviewer (dismiss the flag if the card is right).
+  `no_draft_explanation` is null in every other answer.
 - `GET /v1/projects/{project_id}/sources/{attachment_id}/tracked-items`: a
   pending item, and a `partial` one Beakr retries, says why it is waiting and
   what happens next: `pending_reason` (`queued`, `compiling`,

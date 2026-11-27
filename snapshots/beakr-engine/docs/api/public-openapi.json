@@ -21078,6 +21078,19 @@
             "description": "The page revision the options were drafted against.",
             "title": "Current Revision"
           },
+          "no_draft_explanation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "With no_row_change, the model's reason in one sentence, to show the reviewer. Null otherwise.",
+            "title": "No Draft Explanation"
+          },
           "no_draft_reason": {
             "anyOf": [
               {
@@ -21088,7 +21101,7 @@
               }
             ],
             "default": null,
-            "description": "Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.",
+            "description": "Why options is empty: no_section (the flag names no section of the page as it is now), rows_not_found (a card-table flag whose rows could not be found), no_row_change (the model found no row of the card table to change; see no_draft_explanation), empty_section, refused, truncated, unparseable, timed_out, edits_not_found or no_valid_options. Null when there are options.",
             "title": "No Draft Reason"
           },
           "options": {
