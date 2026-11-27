@@ -41,6 +41,8 @@ $ beakr kb review resolve 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f --outcome both_va
   {"outcome": "both_valid"}
 [exit 0]
 --- stdout
-5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f	status=resolved
+Resolved review 5f0c2d1e-8a7b-4c3d-9e2f-1a0b9c8d7e6f on 1 card(s).
+Updated: Helios HX-07 Solubility Card
+Skipped: HX-07 Formulation (changed_since_review)
 --- stderr
 
